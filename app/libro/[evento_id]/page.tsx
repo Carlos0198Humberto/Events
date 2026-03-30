@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -205,7 +206,7 @@ function IconAsistentes() {
   );
 }
 
-const TAB_ICONS: Record<Vista, JSX.Element> = {
+const TAB_ICONS: Record<Vista, React.ReactElement> = {
   portada: <IconPortada />,
   fotos: <IconFotos />,
   deseos: <IconDeseos />,
