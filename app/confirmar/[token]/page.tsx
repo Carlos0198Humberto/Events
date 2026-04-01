@@ -44,6 +44,7 @@ const PALETAS: Record<
     acento: string;
     claro: string;
     label: string;
+    emoji: string;
   }
 > = {
   boda: {
@@ -53,6 +54,7 @@ const PALETAS: Record<
     acento: "#d8b4fe",
     claro: "#f3e8ff",
     label: "Boda",
+    emoji: "💍",
   },
   quinceañera: {
     gradHero: "linear-gradient(135deg,#fae8ff 0%,#f0abfc 40%,#e879f9 100%)",
@@ -61,6 +63,7 @@ const PALETAS: Record<
     acento: "#f0abfc",
     claro: "#fae8ff",
     label: "Quinceañera",
+    emoji: "👑",
   },
   cumpleaños: {
     gradHero: "linear-gradient(135deg,#fef3c7 0%,#fde68a 40%,#fbbf24 100%)",
@@ -69,6 +72,7 @@ const PALETAS: Record<
     acento: "#fcd34d",
     claro: "#fef3c7",
     label: "Cumpleaños",
+    emoji: "🎂",
   },
   graduacion: {
     gradHero: "linear-gradient(135deg,#dbeafe 0%,#93c5fd 40%,#60a5fa 100%)",
@@ -77,6 +81,7 @@ const PALETAS: Record<
     acento: "#93c5fd",
     claro: "#dbeafe",
     label: "Graduación",
+    emoji: "🎓",
   },
   otro: {
     gradHero: "linear-gradient(135deg,#ccfbf1 0%,#5eead4 40%,#2dd4bf 100%)",
@@ -85,6 +90,7 @@ const PALETAS: Record<
     acento: "#5eead4",
     claro: "#ccfbf1",
     label: "Evento",
+    emoji: "✨",
   },
 };
 
@@ -181,6 +187,28 @@ function IconGallery({
     </svg>
   );
 }
+function IconHeart({
+  size = 20,
+  color = "currentColor",
+}: {
+  size?: number;
+  color?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+    </svg>
+  );
+}
 function IconMap({
   size = 20,
   color = "currentColor",
@@ -205,8 +233,27 @@ function IconMap({
     </svg>
   );
 }
+function IconStar({
+  size = 20,
+  color = "currentColor",
+}: {
+  size?: number;
+  color?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={color}
+      stroke="none"
+    >
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  );
+}
 
-// ─── Logo Events ────────────────────────────────────────────
+// ─── Logo Events ─────────────────────────────────────────────
 function EventsLogo({ size = 28 }: { size?: number }) {
   return (
     <svg
@@ -247,6 +294,16 @@ function EventsLogo({ size = 28 }: { size?: number }) {
       />
     </svg>
   );
+}
+
+// ─── Número de tarjeta desde token ──────────────────────────
+function tokenToCardNumber(token: string): string {
+  const suffix = token
+    .slice(-8)
+    .replace(/[^a-f0-9]/gi, "")
+    .slice(-4);
+  const num = parseInt(suffix, 16) % 9999;
+  return String(num + 1).padStart(4, "0");
 }
 
 // ─── SubirFotoSection ────────────────────────────────────────
@@ -291,20 +348,22 @@ function SubirFotoSection({
       .from("fotos-eventos")
       .upload(path, archivo, { upsert: false });
     if (storageError) {
-      alert("Error al subir la foto. Intenta de nuevo.");
+      alert("Error al subir. Intenta de nuevo.");
       setSubiendo(false);
       return;
     }
     const { data: urlData } = supabase.storage
       .from("fotos-eventos")
       .getPublicUrl(path);
-    await supabase.from("fotos").insert({
-      evento_id: eventoId,
-      invitado_id: invitado.id,
-      url: urlData.publicUrl,
-      path,
-      caption: caption.trim() || null,
-    });
+    await supabase
+      .from("fotos")
+      .insert({
+        evento_id: eventoId,
+        invitado_id: invitado.id,
+        url: urlData.publicUrl,
+        path,
+        caption: caption.trim() || null,
+      });
     setYaSubio(true);
     setSubiendo(false);
   };
@@ -318,7 +377,6 @@ function SubirFotoSection({
           padding: "18px 22px",
           border: `1.5px solid ${col.acento}`,
           textAlign: "center",
-          marginTop: 16,
         }}
       >
         <div
@@ -336,7 +394,7 @@ function SubirFotoSection({
           <IconCheck size={24} color="white" />
         </div>
         <p style={{ fontWeight: 700, color: col.texto, fontSize: 15 }}>
-          Foto enviada al muro
+          Foto enviada al muro ✓
         </p>
         <p style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
           Tu momento ya está en el álbum del evento
@@ -353,7 +411,6 @@ function SubirFotoSection({
         padding: 20,
         border: `1px solid ${col.acento}50`,
         boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
-        marginTop: 16,
       }}
     >
       <p
@@ -369,7 +426,6 @@ function SubirFotoSection({
       >
         <IconCamera size={18} color={col.texto} /> Comparte una foto del evento
       </p>
-
       {preview ? (
         <div style={{ marginBottom: 14 }}>
           <img
@@ -445,7 +501,6 @@ function SubirFotoSection({
           />
         </label>
       )}
-
       {preview && (
         <input
           value={caption}
@@ -466,7 +521,6 @@ function SubirFotoSection({
           }}
         />
       )}
-
       {archivo && (
         <button
           onClick={subirFoto}
@@ -570,7 +624,6 @@ export default function ConfirmarInvitacion() {
     setGuardando(false);
   };
 
-  // ── Loading ──
   if (loading)
     return (
       <main
@@ -610,7 +663,6 @@ export default function ConfirmarInvitacion() {
       </main>
     );
 
-  // ── Not found ──
   if (!invitado || !evento)
     return (
       <main
@@ -648,6 +700,7 @@ export default function ConfirmarInvitacion() {
     );
 
   const col = PALETAS[evento.tipo] || PALETAS.otro;
+  const cardNumber = tokenToCardNumber(invitado.token);
   const fechaEvento = new Date(evento.fecha).toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
@@ -658,6 +711,7 @@ export default function ConfirmarInvitacion() {
     evento.fecha_limite_confirmacion,
   ).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
   const muroUrl = `/muro/${evento.id}?token=${invitado.token}`;
+  const muroDeseosUrl = `/muro/${evento.id}?token=${invitado.token}&tab=deseos`;
 
   // ── Menú flotante ──
   const MenuFlotante = () => (
@@ -773,7 +827,18 @@ export default function ConfirmarInvitacion() {
           paddingBottom: 100,
         }}
       >
-        {/* Hero */}
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;600;700;800&display=swap');
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'DM Sans', sans-serif; }
+          @keyframes spin { to { transform: rotate(360deg) } }
+          @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+          @keyframes popIn { from { opacity:0; transform:scale(0.94); } to { opacity:1; transform:scale(1); } }
+          .card-badge-shine { background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.55) 50%, transparent 60%); background-size: 200% 100%; animation: shine 3s ease-in-out infinite; }
+          @keyframes shine { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
+        `}</style>
+
+        {/* ── HERO con número de tarjeta ── */}
         <div
           style={{
             position: "relative",
@@ -801,6 +866,7 @@ export default function ConfirmarInvitacion() {
               />
             </div>
           )}
+
           <div
             style={{
               textAlign: "center",
@@ -809,7 +875,7 @@ export default function ConfirmarInvitacion() {
               zIndex: 1,
             }}
           >
-            {/* Logo pequeño en hero */}
+            {/* Logo */}
             <div
               style={{
                 display: "flex",
@@ -832,6 +898,57 @@ export default function ConfirmarInvitacion() {
                 Events
               </span>
             </div>
+
+            {/* ── NÚMERO DE TARJETA ── */}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(255,255,255,0.85)",
+                borderRadius: 99,
+                padding: "5px 14px",
+                marginBottom: 14,
+                border: `1.5px solid ${col.acento}`,
+                boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                className="card-badge-shine"
+                style={{ position: "absolute", inset: 0 }}
+              />
+              <span style={{ fontSize: 16, position: "relative", zIndex: 1 }}>
+                🎫
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: col.texto,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                Tarjeta #{cardNumber}
+              </span>
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: col.texto,
+                  opacity: 0.55,
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                · {col.label}
+              </span>
+            </div>
+
             <p
               style={{
                 fontSize: 11,
@@ -843,7 +960,7 @@ export default function ConfirmarInvitacion() {
                 letterSpacing: 2,
               }}
             >
-              Tienes una invitación · {col.label}
+              Tienes una invitación especial
             </p>
             <h1
               style={{
@@ -852,9 +969,10 @@ export default function ConfirmarInvitacion() {
                 color: col.texto,
                 lineHeight: 1.15,
                 marginBottom: 8,
+                fontFamily: "'Cormorant Garamond', serif",
               }}
             >
-              {evento.nombre}
+              {col.emoji} {evento.nombre}
             </h1>
             {evento.anfitriones && (
               <p
@@ -892,6 +1010,8 @@ export default function ConfirmarInvitacion() {
                 </p>
               </div>
             )}
+
+            {/* Chip de invitado */}
             <div
               style={{
                 background: "rgba(255,255,255,0.92)",
@@ -916,14 +1036,21 @@ export default function ConfirmarInvitacion() {
               >
                 Para
               </p>
-              <p style={{ fontSize: 22, fontWeight: 800, color: col.texto }}>
+              <p
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color: col.texto,
+                  fontFamily: "'Cormorant Garamond', serif",
+                }}
+              >
                 {invitado.nombre}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Detalles */}
+        {/* ── DETALLES ── */}
         <div style={{ maxWidth: 500, margin: "0 auto", padding: "24px 16px" }}>
           <div
             style={{
@@ -1071,7 +1198,7 @@ export default function ConfirmarInvitacion() {
             </div>
           )}
 
-          {/* Botones acción */}
+          {/* ── BOTONES PRINCIPALES ── */}
           {!yaRespondio ? (
             <div
               style={{
@@ -1097,6 +1224,7 @@ export default function ConfirmarInvitacion() {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 10,
+                  fontFamily: "'DM Sans', sans-serif",
                 }}
               >
                 <IconCheck size={20} color="white" /> Confirmar mi asistencia
@@ -1117,6 +1245,7 @@ export default function ConfirmarInvitacion() {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 10,
+                  fontFamily: "'DM Sans', sans-serif",
                 }}
               >
                 <IconX size={18} color="#9ca3af" />{" "}
@@ -1164,7 +1293,7 @@ export default function ConfirmarInvitacion() {
             </div>
           )}
 
-          {/* Ver muro */}
+          {/* ── VER MURO ── */}
           <div
             style={{
               marginTop: 20,
@@ -1237,6 +1366,7 @@ export default function ConfirmarInvitacion() {
           paddingBottom: 60,
         }}
       >
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;600;700;800&display=swap'); *{box-sizing:border-box;margin:0;padding:0} body{font-family:'DM Sans',sans-serif}`}</style>
         <div
           style={{
             background: col.gradHero,
@@ -1259,14 +1389,20 @@ export default function ConfirmarInvitacion() {
           >
             <IconCheck size={30} color={col.texto} />
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: col.texto }}>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 800,
+              color: col.texto,
+              fontFamily: "'Cormorant Garamond',serif",
+            }}
+          >
             ¡Qué alegría!
           </h1>
           <p style={{ color: col.texto, opacity: 0.8, marginTop: 4 }}>
             {invitado.nombre}, confirma los detalles de tu asistencia
           </p>
         </div>
-
         <div style={{ maxWidth: 480, margin: "0 auto", padding: "24px 16px" }}>
           <div
             style={{
@@ -1276,7 +1412,6 @@ export default function ConfirmarInvitacion() {
               boxShadow: "0 8px 32px rgba(0,0,0,0.07)",
             }}
           >
-            {/* Número de personas */}
             <div style={{ marginBottom: 22 }}>
               <label
                 style={{
@@ -1342,8 +1477,6 @@ export default function ConfirmarInvitacion() {
                 {numPersonas}
               </p>
             </div>
-
-            {/* Mensaje */}
             <div style={{ marginBottom: 18 }}>
               <label
                 style={{
@@ -1377,8 +1510,6 @@ export default function ConfirmarInvitacion() {
                 }}
               />
             </div>
-
-            {/* Alergias */}
             <div style={{ marginBottom: 22 }}>
               <label
                 style={{
@@ -1408,7 +1539,6 @@ export default function ConfirmarInvitacion() {
                 }}
               />
             </div>
-
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={() => setPaso("invitacion")}
@@ -1422,6 +1552,7 @@ export default function ConfirmarInvitacion() {
                   fontSize: 13,
                   fontWeight: 700,
                   cursor: "pointer",
+                  fontFamily: "'DM Sans',sans-serif",
                 }}
               >
                 Volver
@@ -1444,6 +1575,7 @@ export default function ConfirmarInvitacion() {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
+                  fontFamily: "'DM Sans',sans-serif",
                 }}
               >
                 {guardando ? (
@@ -1460,7 +1592,7 @@ export default function ConfirmarInvitacion() {
       </main>
     );
 
-  // ══════════ VISTA: CONFIRMADO ══════════
+  // ══════════ VISTA: CONFIRMADO — tarjeta completa con botones de muro ══════════
   if (paso === "confirmado")
     return (
       <main
@@ -1470,111 +1602,494 @@ export default function ConfirmarInvitacion() {
           paddingBottom: 60,
         }}
       >
-        <div style={{ maxWidth: 480, margin: "0 auto", padding: "40px 16px" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;600;700;800&display=swap');
+          *{box-sizing:border-box;margin:0;padding:0} body{font-family:'DM Sans',sans-serif}
+          @keyframes confetti { 0%{transform:translateY(-10px) rotate(0deg);opacity:1} 100%{transform:translateY(80px) rotate(720deg);opacity:0} }
+          @keyframes fadeUp { from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)} }
+          @keyframes popIn { from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)} }
+          @keyframes shine { 0%{background-position:200% center}100%{background-position:-200% center} }
+          .btn-action { transition: transform 0.15s, box-shadow 0.15s; }
+          .btn-action:hover { transform: translateY(-2px); }
+          .btn-action:active { transform: scale(0.97); }
+        `}</style>
+
+        <div
+          style={{ maxWidth: 480, margin: "0 auto", padding: "32px 16px 60px" }}
+        >
+          {/* ── CABECERA ÉXITO ── */}
           <div
             style={{
-              background: "white",
-              borderRadius: 28,
-              padding: "36px 28px",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.08)",
-              border: `2px solid ${col.acento}`,
               textAlign: "center",
+              marginBottom: 24,
+              animation: "fadeUp 0.4s ease both",
             }}
           >
             <div
               style={{
-                width: 80,
-                height: 80,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg,#0D9488,#0F766E)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 20px",
-                boxShadow: "0 8px 24px rgba(13,148,136,0.35)",
+                position: "relative",
+                display: "inline-block",
+                marginBottom: 16,
               }}
             >
-              <IconCheck size={40} color="white" />
+              <div
+                style={{
+                  width: 90,
+                  height: 90,
+                  borderRadius: "50%",
+                  background: `linear-gradient(135deg,${col.acento},${col.texto})`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto",
+                  boxShadow: `0 12px 40px ${col.acento}60`,
+                }}
+              >
+                <IconCheck size={46} color="white" />
+              </div>
+              {/* Mini confetti dots */}
+              {["#fbbf24", "#34d399", "#60a5fa", "#f472b6"].map((c, i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: c,
+                    top: `${[0, 0, 70, 70][i]}%`,
+                    left: `${[0, 100, 0, 100][i]}%`,
+                    animation: `confetti ${1.2 + i * 0.2}s ease ${i * 0.1}s both`,
+                    transform: "translate(-50%,-50%)",
+                  }}
+                />
+              ))}
             </div>
             <h2
               style={{
-                fontSize: 26,
+                fontSize: 28,
                 fontWeight: 900,
                 color: col.texto,
-                marginBottom: 8,
+                fontFamily: "'Cormorant Garamond',serif",
+                marginBottom: 6,
               }}
             >
               ¡Confirmado!
             </h2>
-            <p
-              style={{
-                fontSize: 15,
-                color: "#374151",
-                marginBottom: 6,
-                lineHeight: 1.6,
-              }}
-            >
+            <p style={{ fontSize: 15, color: "#374151", lineHeight: 1.6 }}>
               <strong>{invitado.nombre}</strong>, estamos muy felices de que
               puedas acompañarnos.
             </p>
-            <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 4 }}>
-              {fechaEvento}
-            </p>
-            <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 24 }}>
-              {evento.lugar}
-            </p>
+          </div>
 
+          {/* ── TARJETA DIGITAL ── */}
+          <div
+            style={{
+              background: "white",
+              borderRadius: 28,
+              overflow: "hidden",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.10)",
+              border: `2px solid ${col.acento}40`,
+              animation: "popIn 0.5s ease 0.1s both",
+              marginBottom: 20,
+            }}
+          >
+            {/* Header de tarjeta */}
             <div
               style={{
-                background: col.claro,
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 24,
-                border: `1px solid ${col.acento}`,
+                background: col.gradHero,
+                padding: "20px 24px",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
-              <p style={{ fontSize: 14, color: col.texto, fontWeight: 700 }}>
-                Te esperamos con mucho amor
-              </p>
-              {evento.anfitriones && (
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: col.texto,
-                    opacity: 0.8,
-                    marginTop: 4,
-                  }}
-                >
-                  — {evento.anfitriones}
-                </p>
-              )}
+              {/* Shine overlay */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.25) 50%,transparent 60%)",
+                  backgroundSize: "200% 100%",
+                  animation: "shine 4s ease-in-out infinite",
+                }}
+              />
+              <div
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <EventsLogo size={32} />
+                  <div>
+                    <p
+                      style={{
+                        fontFamily: "'Cormorant Garamond',serif",
+                        fontSize: 18,
+                        fontWeight: 600,
+                        color: col.texto,
+                        lineHeight: 1,
+                      }}
+                    >
+                      Events
+                    </p>
+                    <p
+                      style={{
+                        fontSize: 10,
+                        color: col.texto,
+                        opacity: 0.65,
+                        fontWeight: 600,
+                        letterSpacing: 0.3,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Invitaciones digitales
+                    </p>
+                  </div>
+                </div>
+                {/* Número de tarjeta */}
+                <div style={{ textAlign: "right" }}>
+                  <p
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      color: col.texto,
+                      opacity: 0.6,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Tarjeta
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 900,
+                      color: col.texto,
+                      letterSpacing: 2,
+                      fontFamily: "'DM Sans',sans-serif",
+                    }}
+                  >
+                    #{cardNumber}
+                  </p>
+                </div>
+              </div>
             </div>
 
+            {/* Cuerpo tarjeta */}
+            <div style={{ padding: "20px 24px 24px" }}>
+              {/* Emoji + evento */}
+              <div style={{ textAlign: "center", marginBottom: 16 }}>
+                <div style={{ fontSize: 40, marginBottom: 8 }}>{col.emoji}</div>
+                <h3
+                  style={{
+                    fontFamily: "'Cormorant Garamond',serif",
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: "#111",
+                    marginBottom: 4,
+                  }}
+                >
+                  {evento.nombre}
+                </h3>
+                {evento.anfitriones && (
+                  <p style={{ fontSize: 13, color: "#6b7280" }}>
+                    {evento.anfitriones}
+                  </p>
+                )}
+              </div>
+
+              {/* Detalles compactos */}
+              <div
+                style={{
+                  background: col.claro,
+                  borderRadius: 16,
+                  padding: "12px 16px",
+                  marginBottom: 16,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    fontSize: 13,
+                    color: "#374151",
+                  }}
+                >
+                  <span>📅</span>
+                  <span
+                    style={{ fontWeight: 600, textTransform: "capitalize" }}
+                  >
+                    {fechaEvento}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    fontSize: 13,
+                    color: "#374151",
+                  }}
+                >
+                  <span>📍</span>
+                  <span style={{ fontWeight: 600 }}>{evento.lugar}</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    fontSize: 13,
+                    color: "#374151",
+                  }}
+                >
+                  <span>👥</span>
+                  <span style={{ fontWeight: 600 }}>
+                    {numPersonas} persona{numPersonas > 1 ? "s" : ""} confirmada
+                    {numPersonas > 1 ? "s" : ""}
+                  </span>
+                </div>
+              </div>
+
+              {/* Chip de invitado con estrella */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: `linear-gradient(135deg,${col.acento}20,${col.acento}40)`,
+                  borderRadius: 14,
+                  padding: "10px 14px",
+                  border: `1px solid ${col.acento}60`,
+                }}
+              >
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: "50%",
+                    background: col.texto,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{ color: "white", fontWeight: 800, fontSize: 16 }}
+                  >
+                    {invitado.nombre.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p
+                    style={{ fontWeight: 700, fontSize: 14, color: col.texto }}
+                  >
+                    {invitado.nombre}
+                  </p>
+                  <p style={{ fontSize: 11, color: col.texto, opacity: 0.7 }}>
+                    Invitado confirmado ✓
+                  </p>
+                </div>
+                <IconStar size={18} color={col.texto} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── SECCIÓN FOTO ── */}
+          <div
+            style={{
+              animation: "fadeUp 0.5s ease 0.25s both",
+              marginBottom: 16,
+            }}
+          >
             <SubirFotoSection
               invitado={invitado}
               eventoId={evento.id}
               col={col}
             />
+          </div>
 
+          {/* ── BOTONES DE MURO ── */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              animation: "fadeUp 0.5s ease 0.35s both",
+            }}
+          >
+            {/* Botón: Foto al muro */}
             <Link
               href={muroUrl}
+              className="btn-action"
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
+                gap: 14,
                 background: "linear-gradient(135deg,#0D9488,#0F766E)",
                 color: "white",
                 textDecoration: "none",
-                borderRadius: 16,
-                padding: "14px 24px",
-                fontSize: 14,
-                fontWeight: 800,
-                boxShadow: "0 4px 16px rgba(13,148,136,0.30)",
-                marginTop: 16,
+                borderRadius: 18,
+                padding: "16px 20px",
+                boxShadow: "0 6px 24px rgba(13,148,136,0.35)",
               }}
             >
-              <IconGallery size={18} color="white" /> Ver el muro del evento
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.18)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <IconCamera size={22} color="white" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 800, fontSize: 15 }}>
+                  Ver muro del evento
+                </p>
+                <p style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
+                  Fotos, reacciones y recuerdos
+                </p>
+              </div>
+              <svg
+                width={18}
+                height={18}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Link>
+
+            {/* Botón: Dejar un deseo */}
+            <Link
+              href={muroDeseosUrl}
+              className="btn-action"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                background: "white",
+                color: col.texto,
+                textDecoration: "none",
+                borderRadius: 18,
+                padding: "16px 20px",
+                border: `2px solid ${col.acento}`,
+                boxShadow: `0 4px 20px ${col.acento}30`,
+              }}
+            >
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  background: col.claro,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  border: `1px solid ${col.acento}`,
+                }}
+              >
+                <IconHeart size={22} color={col.texto} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 800, fontSize: 15 }}>
+                  Dejar un deseo 💌
+                </p>
+                <p style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+                  Escribe tu mensaje especial al muro
+                </p>
+              </div>
+              <svg
+                width={18}
+                height={18}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={col.texto}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Link>
+
+            {/* Botón: Libro de recuerdos */}
+            <Link
+              href={`/libro/${evento.id}?token=${invitado.token}`}
+              className="btn-action"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                background: col.claro,
+                color: col.texto,
+                textDecoration: "none",
+                borderRadius: 18,
+                padding: "14px 20px",
+                border: `1px solid ${col.acento}50`,
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: col.acento + "40",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <svg
+                  width={20}
+                  height={20}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={col.texto}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 700, fontSize: 14 }}>
+                  Libro de recuerdos
+                </p>
+                <p style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
+                  Momentos especiales del evento
+                </p>
+              </div>
+              <svg
+                width={16}
+                height={16}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={col.texto}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
             </Link>
           </div>
         </div>
@@ -1593,6 +2108,7 @@ export default function ConfirmarInvitacion() {
         padding: 20,
       }}
     >
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;600;700;800&display=swap'); *{box-sizing:border-box;margin:0;padding:0} body{font-family:'DM Sans',sans-serif}`}</style>
       <div style={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
         <div
           style={{
@@ -1627,6 +2143,7 @@ export default function ConfirmarInvitacion() {
               fontWeight: 800,
               color: "#134e4a",
               marginBottom: 8,
+              fontFamily: "'Cormorant Garamond',serif",
             }}
           >
             Entendemos

@@ -269,14 +269,6 @@ const Icon = {
       <circle cx="10" cy="8" r="2" />
     </svg>
   ),
-  star: () => (
-    <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor">
-      <path
-        d="M10 1l2.4 6.8H19l-5.5 4 2.1 6.6L10 14.3l-5.6 4.1 2.1-6.6L1 8.8h6.6z"
-        opacity=".85"
-      />
-    </svg>
-  ),
   link: () => (
     <svg
       width="13"
@@ -289,6 +281,22 @@ const Icon = {
     >
       <path d="M8 11a4 4 0 005.66 0l2-2a4 4 0 000-5.66 4 4 0 00-5.66 0l-1 1" />
       <path d="M12 9a4 4 0 00-5.66 0l-2 2a4 4 0 000 5.66 4 4 0 005.66 0l1-1" />
+    </svg>
+  ),
+  ticket: () => (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 9a3 3 0 010-6h20a3 3 0 010 6" />
+      <path d="M2 15a3 3 0 000 6h20a3 3 0 000-6" />
+      <path d="M2 9h20M2 15h20" />
     </svg>
   ),
 };
@@ -332,9 +340,10 @@ const T = {
     paso1: "Abre el link de confirmación",
     paso2: "Confirma cuántas personas asistirán",
     paso3: "¡Listo! Recibirás la información del evento",
-    confirmarAsistencia: "Confirmar asistencia →",
+    confirmarAsistencia: "Ver mi invitación →",
     invitadoEliminado: "Invitado eliminado",
     linkCopiado: "Link copiado al portapapeles",
+    tarjeta: "Tarjeta",
   },
   en: {
     invitados: "Guests",
@@ -373,13 +382,14 @@ const T = {
     paso1: "Open the confirmation link",
     paso2: "Confirm how many people will attend",
     paso3: "Done! You'll receive the event details",
-    confirmarAsistencia: "Confirm attendance →",
+    confirmarAsistencia: "View my invitation →",
     invitadoEliminado: "Guest removed",
     linkCopiado: "Link copied to clipboard",
+    tarjeta: "Card",
   },
 };
 
-// ─── TIPO emojis y labels ─────────────────────────────────────────────────────
+// ─── TIPO emojis ─────────────────────────────────────────────────────────────
 const TIPO_EMOJI: Record<string, string> = {
   quinceañera: "👑",
   boda: "💍",
@@ -387,6 +397,17 @@ const TIPO_EMOJI: Record<string, string> = {
   cumpleaños: "🎂",
   otro: "✨",
 };
+
+// ─── Número de tarjeta a partir del token ────────────────────────────────────
+function tokenToCardNumber(token: string): string {
+  // Toma los últimos 4 caracteres del token y los convierte a número
+  const suffix = token
+    .slice(-8)
+    .replace(/[^a-f0-9]/gi, "")
+    .slice(-4);
+  const num = parseInt(suffix, 16) % 9999;
+  return String(num + 1).padStart(4, "0");
+}
 
 // ─── Formulario nuevo invitado ────────────────────────────────────────────────
 type FormData = {
@@ -479,7 +500,6 @@ function FormNuevoInvitado({
           </div>
         ))}
 
-        {/* Personas counter */}
         <div>
           <label className="field-label">{t.numPersonas}</label>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -519,7 +539,6 @@ function FormNuevoInvitado({
           </div>
         </div>
 
-        {/* Acciones */}
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn-secondary" onClick={() => setExpandido(false)}>
             {t.cancelar}
@@ -582,6 +601,7 @@ function ModalInvitacion({
 }) {
   const link = `${window.location.origin}/confirmar/${invitado.token}`;
   const emoji = TIPO_EMOJI[evento.tipo] || "✨";
+  const cardNumber = tokenToCardNumber(invitado.token);
 
   const fechaFmt = evento.fecha
     ? new Date(evento.fecha).toLocaleDateString("es-ES", {
@@ -595,7 +615,6 @@ function ModalInvitacion({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
-        {/* Handle */}
         <div
           style={{
             width: 40,
@@ -615,8 +634,15 @@ function ModalInvitacion({
 
         {/* ── TARJETA ── */}
         <div className="inv-card-preview">
-          {/* Fondo decorativo */}
           <div className="inv-card-bg" />
+
+          {/* Número de tarjeta */}
+          <div className="inv-card-number">
+            <Icon.ticket />
+            <span>
+              {t.tarjeta} #{cardNumber}
+            </span>
+          </div>
 
           {/* Header tarjeta */}
           <div className="inv-card-header">
@@ -768,27 +794,21 @@ export default function InvitadosPage() {
     setModalInv(invitado);
   }
 
+  // ── MEJORA CLAVE: WhatsApp envía solo el link limpio ──────────────────────
   function enviarWhatsApp() {
     if (!modalInv || !evento) return;
     const link = `${window.location.origin}/confirmar/${modalInv.token}`;
     const emoji = TIPO_EMOJI[evento.tipo] || "✨";
-    const fecha = evento.fecha
-      ? new Date(evento.fecha).toLocaleDateString("es-ES", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })
-      : "";
+
+    // Mensaje corto y limpio — WhatsApp generará preview de la tarjeta automáticamente
     const msg =
       `${emoji} *${evento.nombre}*\n\n` +
-      `¡Hola *${modalInv.nombre}*! 👋\n\n` +
-      `*${evento.anfitriones}* te invita a este evento especial.\n\n` +
-      (fecha ? `📅 *Fecha:* ${fecha}\n` : "") +
-      (evento.lugar ? `📍 *Lugar:* ${evento.lugar}\n` : "") +
-      `\n🔗 Confirma tu asistencia aquí:\n${link}\n\n` +
-      `_¡Te esperamos! — Events_`;
+      `¡Hola *${modalInv.nombre}*! 🎉\n\n` +
+      `Tienes una invitación especial. Ábrela aquí:\n${link}`;
+
+    const telefono = modalInv.telefono?.replace(/\D/g, "") || "";
     window.open(
-      `https://wa.me/${modalInv.telefono?.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`,
+      `https://wa.me/${telefono}?text=${encodeURIComponent(msg)}`,
       "_blank",
     );
     setModalInv(null);
@@ -831,12 +851,12 @@ export default function InvitadosPage() {
     return (
       <>
         <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap');
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'DM Sans',sans-serif}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-      `}</style>
+          @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap');
+          *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+          body{font-family:'DM Sans',sans-serif}
+          @keyframes spin{to{transform:rotate(360deg)}}
+          @keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        `}</style>
         <main
           style={{
             minHeight: "100vh",
@@ -912,16 +932,13 @@ export default function InvitadosPage() {
         .page::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
           background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"); opacity:.3; }
         .glow { position:fixed; pointer-events:none; z-index:0; border-radius:50%; filter:blur(80px); }
-        .glow-1 { width:300px; height:300px; top:-80px; right:-60px;
-          background:radial-gradient(circle,rgba(58,173,160,0.13) 0%,transparent 70%); animation:gd1 9s ease-in-out infinite; }
-        .glow-2 { width:240px; height:240px; bottom:80px; left:-70px;
-          background:radial-gradient(circle,rgba(45,196,168,0.09) 0%,transparent 70%); animation:gd2 11s ease-in-out infinite; }
+        .glow-1 { width:300px; height:300px; top:-80px; right:-60px; background:radial-gradient(circle,rgba(58,173,160,0.13) 0%,transparent 70%); animation:gd1 9s ease-in-out infinite; }
+        .glow-2 { width:240px; height:240px; bottom:80px; left:-70px; background:radial-gradient(circle,rgba(45,196,168,0.09) 0%,transparent 70%); animation:gd2 11s ease-in-out infinite; }
         .dark .glow-1{background:radial-gradient(circle,rgba(58,173,160,0.18) 0%,transparent 70%)}
         .dark .glow-2{background:radial-gradient(circle,rgba(45,196,168,0.12) 0%,transparent 70%)}
         @keyframes gd1{0%,100%{transform:translate(0,0)}40%{transform:translate(-14px,22px)}70%{transform:translate(10px,-14px)}}
         @keyframes gd2{0%,100%{transform:translate(0,0)}35%{transform:translate(18px,-24px)}65%{transform:translate(-8px,14px)}}
 
-        /* NAV */
         .nav { position:sticky; top:0; z-index:30; height:58px; padding:0 14px;
           display:flex; align-items:center; justify-content:space-between;
           background:var(--nav-bg); backdrop-filter:blur(18px);
@@ -934,10 +951,8 @@ export default function InvitadosPage() {
           transition:var(--transition); text-decoration:none; }
         .nav-back:hover { background:var(--accent-soft2); }
         .nav-brand { display:flex; align-items:center; gap:8px; }
-        .nav-brand-name { font-family:'Cormorant Garamond',serif; font-size:19px; font-weight:600;
-          color:var(--accent); letter-spacing:-.4px; line-height:1; }
-        .nav-brand-sub { font-size:10px; color:var(--text3); font-weight:600;
-          letter-spacing:.3px; text-transform:uppercase; margin-top:2px; }
+        .nav-brand-name { font-family:'Cormorant Garamond',serif; font-size:19px; font-weight:600; color:var(--accent); letter-spacing:-.4px; line-height:1; }
+        .nav-brand-sub { font-size:10px; color:var(--text3); font-weight:600; letter-spacing:.3px; text-transform:uppercase; margin-top:2px; }
         .nav-right { display:flex; align-items:center; gap:6px; }
         .ctrl-btn { width:33px; height:33px; border-radius:50%; background:var(--surface);
           border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
@@ -945,39 +960,25 @@ export default function InvitadosPage() {
         .ctrl-btn:hover { background:var(--accent-soft2); color:var(--accent); border-color:var(--accent2); }
         .ctrl-lang { width:auto; padding:0 10px; border-radius:20px; letter-spacing:.4px; text-transform:uppercase; }
 
-        /* CONTENT */
         .content { max-width:500px; margin:0 auto; padding:18px 14px 0; position:relative; z-index:1; display:flex; flex-direction:column; gap:12px; }
 
-        /* STATS */
         .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-        .stat-pill { background:var(--surface); border:1px solid var(--border); border-radius:14px;
-          padding:12px 6px; text-align:center; box-shadow:var(--shadow-sm); }
+        .stat-pill { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 6px; text-align:center; box-shadow:var(--shadow-sm); }
         .stat-pill-val { font-weight:800; font-size:20px; color:var(--accent); line-height:1; }
-        .stat-pill-label { font-size:9px; color:var(--text3); font-weight:700; margin-top:3px;
-          letter-spacing:.4px; text-transform:uppercase; }
-        .stat-conf .stat-pill-val  { color:var(--accent); }
-        .stat-decl .stat-pill-val  { color:var(--danger); }
+        .stat-pill-label { font-size:9px; color:var(--text3); font-weight:700; margin-top:3px; letter-spacing:.4px; text-transform:uppercase; }
+        .stat-conf .stat-pill-val { color:var(--accent); }
+        .stat-decl .stat-pill-val { color:var(--danger); }
 
-        /* CARDS */
-        .section-card { background:var(--surface); border-radius:var(--radius);
-          padding:16px; border:1px solid var(--border); box-shadow:var(--shadow); }
-        .section-title { font-size:10px; font-weight:700; text-transform:uppercase;
-          letter-spacing:1.3px; color:var(--accent2); margin-bottom:12px; }
+        .section-card { background:var(--surface); border-radius:var(--radius); padding:16px; border:1px solid var(--border); box-shadow:var(--shadow); }
+        .section-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.3px; color:var(--accent2); margin-bottom:12px; }
         .fields-group { display:flex; flex-direction:column; gap:12px; }
-        .field-label { font-size:11px; font-weight:700; color:var(--accent2); display:block;
-          margin-bottom:5px; letter-spacing:.2px; text-transform:uppercase; }
-        .field-input { width:100%; border:2px solid var(--border-mid); border-radius:11px;
-          padding:10px 13px; font-size:14px; background:var(--accent-soft); color:var(--text);
-          outline:none; transition:border-color .2s,box-shadow .2s; font-family:'DM Sans',sans-serif; }
+        .field-label { font-size:11px; font-weight:700; color:var(--accent2); display:block; margin-bottom:5px; letter-spacing:.2px; text-transform:uppercase; }
+        .field-input { width:100%; border:2px solid var(--border-mid); border-radius:11px; padding:10px 13px; font-size:14px; background:var(--accent-soft); color:var(--text); outline:none; transition:border-color .2s,box-shadow .2s; font-family:'DM Sans',sans-serif; }
         .field-input::placeholder { color:var(--text3); }
         .field-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(58,173,160,0.11); background:var(--surface); }
-        .counter-btn { width:36px; height:36px; border-radius:50%;
-          border:2px solid var(--border-mid); background:var(--surface2); color:var(--text2);
-          font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;
-          font-weight:700; transition:var(--transition); }
+        .counter-btn { width:36px; height:36px; border-radius:50%; border:2px solid var(--border-mid); background:var(--surface2); color:var(--text2); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:700; transition:var(--transition); }
         .counter-btn:hover { border-color:var(--accent2); color:var(--accent); background:var(--accent-soft2); }
 
-        /* BUTTONS */
         .btn-cta { width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
           background:linear-gradient(135deg,var(--accent) 0%,var(--accent3) 100%);
           color:#fff; border:none; border-radius:var(--radius); padding:15px;
@@ -989,13 +990,8 @@ export default function InvitadosPage() {
           background-size:200% 100%; animation:shimmer 3.5s ease-in-out infinite; }
         .btn-cta:hover { transform:translateY(-1px); box-shadow:0 8px 26px rgba(58,173,160,0.44); }
         @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
-        .btn-primary { flex:2; background:linear-gradient(135deg,var(--accent),var(--accent3));
-          color:#fff; border:none; border-radius:var(--radius-sm); padding:12px;
-          font-size:13px; font-weight:700; font-family:'DM Sans',sans-serif; cursor:pointer;
-          box-shadow:0 3px 12px rgba(58,173,160,0.28); transition:var(--transition); }
-        .btn-secondary { flex:1; background:var(--surface2); color:var(--text2);
-          border:1px solid var(--border-mid); border-radius:var(--radius-sm); padding:12px;
-          font-size:13px; font-weight:700; font-family:'DM Sans',sans-serif; cursor:pointer; transition:var(--transition); }
+        .btn-primary { flex:2; background:linear-gradient(135deg,var(--accent),var(--accent3)); color:#fff; border:none; border-radius:var(--radius-sm); padding:12px; font-size:13px; font-weight:700; font-family:'DM Sans',sans-serif; cursor:pointer; box-shadow:0 3px 12px rgba(58,173,160,0.28); transition:var(--transition); }
+        .btn-secondary { flex:1; background:var(--surface2); color:var(--text2); border:1px solid var(--border-mid); border-radius:var(--radius-sm); padding:12px; font-size:13px; font-weight:700; font-family:'DM Sans',sans-serif; cursor:pointer; transition:var(--transition); }
         .btn-secondary:hover { background:var(--accent-soft2); color:var(--accent); }
         .btn-whatsapp { flex:2; display:flex; align-items:center; justify-content:center; gap:7px;
           background:#16a34a; color:#fff; border:none; border-radius:var(--radius-sm); padding:13px;
@@ -1003,51 +999,36 @@ export default function InvitadosPage() {
           box-shadow:0 4px 14px rgba(22,163,74,0.30); transition:var(--transition); }
         .btn-whatsapp:hover { background:#15803d; }
 
-        /* SEARCH */
         .search-wrap { position:relative; }
         .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text3); pointer-events:none; }
-        .search-input { width:100%; border:1.5px solid var(--border-mid); border-radius:13px;
-          padding:10px 36px; font-size:13px; outline:none; font-family:'DM Sans',sans-serif;
-          background:var(--surface); color:var(--text); box-shadow:var(--shadow-sm);
-          transition:border-color .2s; }
+        .search-input { width:100%; border:1.5px solid var(--border-mid); border-radius:13px; padding:10px 36px; font-size:13px; outline:none; font-family:'DM Sans',sans-serif; background:var(--surface); color:var(--text); box-shadow:var(--shadow-sm); transition:border-color .2s; }
         .search-input::placeholder { color:var(--text3); }
         .search-input:focus { border-color:var(--accent); }
-        .search-clear { position:absolute; right:10px; top:50%; transform:translateY(-50%);
-          background:var(--accent-soft2); border:none; border-radius:50%; width:20px; height:20px;
-          font-size:10px; cursor:pointer; color:var(--accent); display:flex; align-items:center;
-          justify-content:center; font-weight:800; }
+        .search-clear { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:var(--accent-soft2); border:none; border-radius:50%; width:20px; height:20px; font-size:10px; cursor:pointer; color:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:800; }
 
-        /* FILTROS */
         .filtros { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; }
         .filtros::-webkit-scrollbar { display:none; }
-        .filtro-btn { flex-shrink:0; padding:7px 14px; border-radius:99px; font-size:12px;
-          font-weight:700; cursor:pointer; border:none; background:var(--surface); color:var(--text3);
-          box-shadow:var(--shadow-sm); transition:var(--transition); font-family:'DM Sans',sans-serif; }
-        .filtro-btn.active { background:linear-gradient(135deg,var(--accent),var(--accent3));
-          color:#fff; box-shadow:0 3px 12px rgba(58,173,160,0.30); }
+        .filtro-btn { flex-shrink:0; padding:7px 14px; border-radius:99px; font-size:12px; font-weight:700; cursor:pointer; border:none; background:var(--surface); color:var(--text3); box-shadow:var(--shadow-sm); transition:var(--transition); font-family:'DM Sans',sans-serif; }
+        .filtro-btn.active { background:linear-gradient(135deg,var(--accent),var(--accent3)); color:#fff; box-shadow:0 3px 12px rgba(58,173,160,0.30); }
 
-        /* GUEST CARDS */
         .guest-list { display:flex; flex-direction:column; gap:9px; }
-        .guest-card { background:var(--surface); border-radius:var(--radius);
-          padding:14px; border:1px solid var(--border); box-shadow:var(--shadow-sm);
-          animation:fadeIn .22s ease both; transition:var(--transition); }
+        .guest-card { background:var(--surface); border-radius:var(--radius); padding:14px; border:1px solid var(--border); box-shadow:var(--shadow-sm); animation:fadeIn .22s ease both; transition:var(--transition); }
         .guest-card:hover { box-shadow:var(--shadow); }
         @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-        .guest-avatar { width:40px; height:40px; border-radius:50%; background:var(--accent-soft2);
-          border:2px solid var(--border-mid); display:flex; align-items:center; justify-content:center;
-          color:var(--accent); font-weight:800; font-size:16px; flex-shrink:0; }
-        .guest-name { font-weight:700; color:var(--text); font-size:14px;
-          white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
-        .guest-sub  { font-size:11px; color:var(--text3); margin-top:2px; }
+        .guest-avatar { width:40px; height:40px; border-radius:50%; background:var(--accent-soft2); border:2px solid var(--border-mid); display:flex; align-items:center; justify-content:center; color:var(--accent); font-weight:800; font-size:16px; flex-shrink:0; }
+        .guest-name { font-weight:700; color:var(--text); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+        .guest-sub { font-size:11px; color:var(--text3); margin-top:2px; }
+
+        /* Número de tarjeta en guest card */
+        .guest-card-num { font-size:9px; color:var(--text3); font-weight:700; letter-spacing:.5px; margin-top:1px; display:flex; align-items:center; gap:3px; }
+
         .badge { font-size:11px; padding:4px 10px; border-radius:99px; font-weight:700; flex-shrink:0; }
         .badge-pend { background:var(--accent-soft); color:var(--accent); border:1px solid var(--border-mid); }
         .badge-conf { background:rgba(22,163,74,0.10); color:#16a34a; border:1px solid rgba(22,163,74,0.22); }
         .badge-decl { background:var(--danger-bg); color:var(--danger); border:1px solid var(--danger-border); }
         .guest-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:11px; }
-        .action-btn { display:flex; align-items:center; justify-content:center; gap:6px;
-          border-radius:var(--radius-sm); padding:9px; font-size:12px; font-weight:700;
-          cursor:pointer; border:none; transition:var(--transition); font-family:'DM Sans',sans-serif; }
-        .action-wa  { background:#16a34a; color:#fff; box-shadow:0 2px 8px rgba(22,163,74,0.22); }
+        .action-btn { display:flex; align-items:center; justify-content:center; gap:6px; border-radius:var(--radius-sm); padding:9px; font-size:12px; font-weight:700; cursor:pointer; border:none; transition:var(--transition); font-family:'DM Sans',sans-serif; }
+        .action-wa { background:#16a34a; color:#fff; box-shadow:0 2px 8px rgba(22,163,74,0.22); }
         .action-wa:hover { background:#15803d; }
         .action-copy { background:var(--accent-soft); color:var(--accent); border:1px solid var(--border-mid) !important; border:none; }
         .action-copy:hover { background:var(--accent-soft2); }
@@ -1055,77 +1036,48 @@ export default function InvitadosPage() {
         .action-del { background:var(--danger-bg); color:var(--danger); border:1px solid var(--danger-border) !important; border:none; }
         .action-del:hover { opacity:.75; }
 
-        /* EMPTY */
-        .empty { background:var(--surface); border-radius:var(--radius); padding:44px 24px;
-          text-align:center; border:1.5px dashed var(--border-mid); }
+        .empty { background:var(--surface); border-radius:var(--radius); padding:44px 24px; text-align:center; border:1.5px dashed var(--border-mid); }
         .empty-emoji { font-size:30px; margin-bottom:10px; }
         .empty-text { color:var(--accent); font-size:14px; font-weight:700; }
 
-        /* ── MODAL ── */
-        .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.55);
-          backdrop-filter:blur(6px); z-index:50; display:flex; align-items:flex-end;
-          justify-content:center; animation:bdin .2s ease; }
+        .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:50; display:flex; align-items:flex-end; justify-content:center; animation:bdin .2s ease; }
         @keyframes bdin{from{opacity:0}to{opacity:1}}
-        .modal-sheet { background:var(--surface); border-radius:26px 26px 0 0;
-          padding:16px 16px 32px; width:100%; max-width:480px; max-height:92vh;
-          overflow-y:auto; animation:sheetin .3s cubic-bezier(.22,1,.36,1); }
+        .modal-sheet { background:var(--surface); border-radius:26px 26px 0 0; padding:16px 16px 32px; width:100%; max-width:480px; max-height:92vh; overflow-y:auto; animation:sheetin .3s cubic-bezier(.22,1,.36,1); }
         @keyframes sheetin{from{transform:translateY(100%)}to{transform:translateY(0)}}
 
-        /* ── TARJETA INVITACIÓN ── */
-        .inv-card-preview { position:relative; border-radius:20px; overflow:hidden;
-          border:1px solid var(--border-mid); background:var(--surface2);
-          padding:22px 20px 20px; margin-bottom:4px; }
-        .inv-card-bg { position:absolute; inset:0; pointer-events:none; z-index:0;
-          background:linear-gradient(135deg,rgba(58,173,160,0.06) 0%,rgba(45,196,168,0.03) 50%,transparent 100%); }
-        .inv-card-bg::before { content:''; position:absolute; top:-60px; right:-60px;
-          width:180px; height:180px; border-radius:50%;
-          background:radial-gradient(circle,rgba(58,173,160,0.12) 0%,transparent 70%); }
-        .inv-card-bg::after { content:''; position:absolute; bottom:-40px; left:-40px;
-          width:120px; height:120px; border-radius:50%;
-          background:radial-gradient(circle,rgba(45,196,168,0.08) 0%,transparent 70%); }
-        .inv-card-header { position:relative; z-index:1; display:flex; align-items:center;
-          gap:10px; margin-bottom:18px; }
+        /* ── NÚMERO DE TARJETA en modal ── */
+        .inv-card-number {
+          position:relative; z-index:2;
+          display:flex; align-items:center; gap:5px;
+          font-size:10px; font-weight:800; color:var(--accent2);
+          letter-spacing:1.2px; text-transform:uppercase;
+          background:var(--accent-soft2); border:1px solid var(--border-mid);
+          border-radius:99px; padding:4px 10px; width:fit-content;
+          margin-bottom:12px;
+        }
+
+        .inv-card-preview { position:relative; border-radius:20px; overflow:hidden; border:1px solid var(--border-mid); background:var(--surface2); padding:22px 20px 20px; margin-bottom:4px; }
+        .inv-card-bg { position:absolute; inset:0; pointer-events:none; z-index:0; background:linear-gradient(135deg,rgba(58,173,160,0.06) 0%,rgba(45,196,168,0.03) 50%,transparent 100%); }
+        .inv-card-bg::before { content:''; position:absolute; top:-60px; right:-60px; width:180px; height:180px; border-radius:50%; background:radial-gradient(circle,rgba(58,173,160,0.12) 0%,transparent 70%); }
+        .inv-card-bg::after { content:''; position:absolute; bottom:-40px; left:-40px; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,rgba(45,196,168,0.08) 0%,transparent 70%); }
+        .inv-card-header { position:relative; z-index:1; display:flex; align-items:center; gap:10px; margin-bottom:18px; }
         .inv-card-logo-wrap { flex-shrink:0; filter:drop-shadow(0 2px 8px rgba(58,173,160,0.30)); }
-        .inv-card-appname { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:600;
-          color:var(--accent); letter-spacing:-.4px; line-height:1; }
-        .inv-card-appsub { font-size:10px; color:var(--text3); font-weight:600;
-          letter-spacing:.3px; text-transform:uppercase; margin-top:2px; }
-        .inv-card-emoji { position:relative; z-index:1; font-size:36px; text-align:center;
-          margin-bottom:10px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.1)); }
-        .inv-card-guest { position:relative; z-index:1; font-family:'Cormorant Garamond',serif;
-          font-size:22px; font-weight:600; color:var(--text); text-align:center;
-          letter-spacing:-.3px; line-height:1.2; margin-bottom:4px; }
-        .inv-card-body { position:relative; z-index:1; text-align:center; color:var(--text2);
-          font-size:13px; margin-bottom:14px; line-height:1.5; }
-        .inv-card-event-name { position:relative; z-index:1;
-          background:linear-gradient(135deg,var(--accent),var(--accent3));
-          color:#fff; border-radius:12px; padding:10px 16px; text-align:center;
-          font-weight:800; font-size:15px; margin-bottom:14px;
-          box-shadow:0 3px 14px rgba(58,173,160,0.28); letter-spacing:-.2px; }
-        .inv-card-details { position:relative; z-index:1; background:var(--surface);
-          border-radius:12px; padding:12px 14px; margin-bottom:14px;
-          border:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
-        .inv-card-detail-item { display:flex; align-items:center; gap:8px;
-          font-size:12px; color:var(--text2); font-weight:500; }
-        .inv-card-steps { position:relative; z-index:1; background:var(--accent-soft);
-          border:1px solid var(--border-mid); border-radius:12px; padding:12px 14px; margin-bottom:14px; }
-        .inv-card-steps-title { font-size:10px; font-weight:800; color:var(--accent2);
-          text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; }
-        .inv-card-step { display:flex; align-items:flex-start; gap:10px;
-          font-size:12px; color:var(--text2); margin-bottom:7px; }
+        .inv-card-appname { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:600; color:var(--accent); letter-spacing:-.4px; line-height:1; }
+        .inv-card-appsub { font-size:10px; color:var(--text3); font-weight:600; letter-spacing:.3px; text-transform:uppercase; margin-top:2px; }
+        .inv-card-emoji { position:relative; z-index:1; font-size:36px; text-align:center; margin-bottom:10px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.1)); }
+        .inv-card-guest { position:relative; z-index:1; font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:600; color:var(--text); text-align:center; letter-spacing:-.3px; line-height:1.2; margin-bottom:4px; }
+        .inv-card-body { position:relative; z-index:1; text-align:center; color:var(--text2); font-size:13px; margin-bottom:14px; line-height:1.5; }
+        .inv-card-event-name { position:relative; z-index:1; background:linear-gradient(135deg,var(--accent),var(--accent3)); color:#fff; border-radius:12px; padding:10px 16px; text-align:center; font-weight:800; font-size:15px; margin-bottom:14px; box-shadow:0 3px 14px rgba(58,173,160,0.28); letter-spacing:-.2px; }
+        .inv-card-details { position:relative; z-index:1; background:var(--surface); border-radius:12px; padding:12px 14px; margin-bottom:14px; border:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+        .inv-card-detail-item { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text2); font-weight:500; }
+        .inv-card-steps { position:relative; z-index:1; background:var(--accent-soft); border:1px solid var(--border-mid); border-radius:12px; padding:12px 14px; margin-bottom:14px; }
+        .inv-card-steps-title { font-size:10px; font-weight:800; color:var(--accent2); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; }
+        .inv-card-step { display:flex; align-items:flex-start; gap:10px; font-size:12px; color:var(--text2); margin-bottom:7px; }
         .inv-card-step:last-child { margin-bottom:0; }
-        .inv-card-step-num { width:20px; height:20px; border-radius:50%;
-          background:var(--accent); color:#fff; font-size:10px; font-weight:800;
-          display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
-        .inv-card-cta { position:relative; z-index:1; display:flex; align-items:center;
-          justify-content:center; gap:8px;
-          background:linear-gradient(135deg,var(--accent),var(--accent3));
-          color:#fff; border-radius:12px; padding:13px 18px; font-size:14px; font-weight:800;
-          text-decoration:none; box-shadow:0 4px 16px rgba(58,173,160,0.36);
-          transition:transform .2s; margin-bottom:10px; }
+        .inv-card-step-num { width:20px; height:20px; border-radius:50%; background:var(--accent); color:#fff; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+        .inv-card-cta { position:relative; z-index:1; display:flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(135deg,var(--accent),var(--accent3)); color:#fff; border-radius:12px; padding:13px 18px; font-size:14px; font-weight:800; text-decoration:none; box-shadow:0 4px 16px rgba(58,173,160,0.36); transition:transform .2s; margin-bottom:10px; }
         .inv-card-cta:hover { transform:translateY(-1px); }
-        .inv-card-url { position:relative; z-index:1; text-align:center; font-size:10px;
-          color:var(--text3); word-break:break-all; }
+        .inv-card-url { position:relative; z-index:1; text-align:center; font-size:10px; color:var(--text3); word-break:break-all; }
 
         @keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
@@ -1265,7 +1217,6 @@ export default function InvitadosPage() {
                   className="guest-card"
                   style={{ animationDelay: `${idx * 0.04}s` }}
                 >
-                  {/* Info */}
                   <div
                     style={{
                       display: "flex",
@@ -1285,16 +1236,14 @@ export default function InvitadosPage() {
                         <p className="guest-sub">
                           {inv.telefono || inv.email || "—"}
                         </p>
+                        {/* Número de tarjeta visible en la lista */}
+                        <p className="guest-card-num">
+                          🎫 #{tokenToCardNumber(inv.token)}
+                        </p>
                       </div>
                     </div>
                     <span
-                      className={`badge ${
-                        inv.estado === "confirmado"
-                          ? "badge-conf"
-                          : inv.estado === "rechazado"
-                            ? "badge-decl"
-                            : "badge-pend"
-                      }`}
+                      className={`badge ${inv.estado === "confirmado" ? "badge-conf" : inv.estado === "rechazado" ? "badge-decl" : "badge-pend"}`}
                     >
                       {inv.estado === "confirmado"
                         ? `${inv.num_personas} pers.`
@@ -1304,7 +1253,6 @@ export default function InvitadosPage() {
                     </span>
                   </div>
 
-                  {/* Acciones */}
                   <div className="guest-actions">
                     <button
                       className="action-btn action-wa"
@@ -1337,7 +1285,6 @@ export default function InvitadosPage() {
 
         <Toast msg={toastMsg} visible={toastVisible} />
 
-        {/* ── MODAL TARJETA ── */}
         {modalInv && evento && (
           <ModalInvitacion
             invitado={modalInv}
