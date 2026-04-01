@@ -5,221 +5,458 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
-// ── Logo SVG ───────────────────────────────────────────────────────────────
-function EventsLogo({ size = 30 }: { size?: number }) {
+// ── Logo SVG (mismo que login/dashboard) ──────────────────────────────────
+function AppLogo({ size = 34 }: { size?: number }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 56 56"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <rect width="32" height="32" rx="9" fill="#0d9488" />
-      <path
-        d="M22 6 L23 9 L26 10 L23 11 L22 14 L21 11 L18 10 L21 9 Z"
-        fill="white"
-        opacity="0.9"
+      <defs>
+        <linearGradient
+          id="lg-new"
+          x1="0"
+          y1="0"
+          x2="56"
+          y2="56"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="#1A3A38" />
+          <stop offset="100%" stopColor="#0F2422" />
+        </linearGradient>
+        <linearGradient
+          id="lg2-new"
+          x1="10"
+          y1="28"
+          x2="46"
+          y2="28"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="#3AADA0" />
+          <stop offset="100%" stopColor="#2DC4A8" />
+        </linearGradient>
+        <filter id="lg3-new" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+      <rect width="56" height="56" rx="16" fill="url(#lg-new)" />
+      <rect
+        x="3"
+        y="3"
+        width="50"
+        height="50"
+        rx="14"
+        fill="none"
+        stroke="rgba(58,173,160,0.18)"
+        strokeWidth="1"
       />
       <rect
-        x="5"
-        y="13"
-        width="16"
-        height="11"
-        rx="2"
-        stroke="white"
+        x="9"
+        y="17"
+        width="38"
+        height="26"
+        rx="3.5"
+        fill="rgba(58,173,160,0.10)"
+        stroke="rgba(58,173,160,0.6)"
         strokeWidth="1.4"
-        fill="none"
       />
       <path
-        d="M5 15.5 L13 20 L21 15.5"
-        stroke="white"
-        strokeWidth="1.4"
+        d="M9 20.5 L28 31 L47 20.5"
+        stroke="url(#lg2-new)"
+        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
-        fill="none"
+      />
+      <circle cx="14" cy="11" r="1.6" fill="#3AADA0" opacity="0.9" />
+      <circle cx="20" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7" />
+      <circle cx="42" cy="11" r="1.6" fill="#3AADA0" opacity="0.9" />
+      <circle cx="36" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7" />
+      <path
+        d="M28 7 L29 10.2 L32.4 10.2 L29.8 12.2 L30.8 15.4 L28 13.4 L25.2 15.4 L26.2 12.2 L23.6 10.2 L27 10.2 Z"
+        fill="#3AADA0"
+        opacity="0.95"
+        filter="url(#lg3-new)"
       />
       <path
-        d="M13 12 C13 10.5 14 10 15 11 C16 10 17 10.5 17 12 C17 13.5 15 15 15 15 C15 15 13 13.5 13 12Z"
-        fill="white"
-        opacity="0.9"
+        d="M24 17 Q28 14 32 17"
+        stroke="#2DC4A8"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.8"
       />
+      <circle cx="28" cy="17" r="1.3" fill="#3AADA0" />
     </svg>
   );
 }
 
-// ── Íconos SVG por tipo ────────────────────────────────────────────────────
-function IconoCrown() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path
-        d="M2 13h14M3 13L2 6l4 3 3-5 3 5 4-3-1 7H3z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
-function IconoRings() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <circle
-        cx="6.5"
-        cy="9"
-        r="4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      <circle
-        cx="11.5"
-        cy="9"
-        r="4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-      />
-    </svg>
-  );
-}
-function IconoCap() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path
-        d="M9 4L2 8l7 4 7-4-7-4z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M5 10v4c0 1 1.8 2 4 2s4-1 4-2v-4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d="M16 8v4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-function IconoCake() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <rect
-        x="2"
-        y="9"
-        width="14"
-        height="7"
-        rx="1.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      <path
-        d="M5 9V7M9 9V7M13 9V7"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M5 7c0-1 1-2 0-3M9 7c0-1 1-2 0-3M13 7c0-1 1-2 0-3"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-function IconoStar() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path
-        d="M9 2l1.8 5h5.2l-4.2 3 1.6 5L9 12l-4.4 3 1.6-5L2 7h5.2L9 2z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
+// ── Íconos tipo evento ────────────────────────────────────────────────────
+const IconoCrown = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <path
+      d="M2 13h14M3 13L2 6l4 3 3-5 3 5 4-3-1 7H3z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      fill="none"
+    />
+  </svg>
+);
+const IconoRings = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <circle
+      cx="6.5"
+      cy="9"
+      r="4"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
+    <circle
+      cx="11.5"
+      cy="9"
+      r="4"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
+  </svg>
+);
+const IconoCap = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <path
+      d="M9 4L2 8l7 4 7-4-7-4z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      fill="none"
+    />
+    <path
+      d="M5 10v4c0 1 1.8 2 4 2s4-1 4-2v-4"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <path
+      d="M16 8v4"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+const IconoCake = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <rect
+      x="2"
+      y="9"
+      width="14"
+      height="7"
+      rx="1.5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
+    <path
+      d="M5 9V7M9 9V7M13 9V7"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <path
+      d="M5 7c0-1 1-2 0-3M9 7c0-1 1-2 0-3M13 7c0-1 1-2 0-3"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+const IconoStar = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <path
+      d="M9 2l1.8 5h5.2l-4.2 3 1.6 5L9 12l-4.4 3 1.6-5L2 7h5.2L9 2z"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+      fill="none"
+    />
+  </svg>
+);
+const IconoCamera = () => (
+  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+    <path
+      d="M2 8.5h1.5l2-3h11l2 3H20a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1v-8a1 1 0 011-1z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
+    <circle
+      cx="11"
+      cy="13"
+      r="3.2"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
+  </svg>
+);
+const IconoBack = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <path
+      d="M13 4l-6 6 6 6"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+const IconoSun = () => (
+  <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.4" />
+    <path
+      d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+const IconoMoon = () => (
+  <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+    <path
+      d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 100 11 6 6 0 007-4z"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
-// ── Config dinámica por tipo ───────────────────────────────────────────────
+// ── Traducciones ──────────────────────────────────────────────────────────
+const translations = {
+  es: {
+    title: "Nuevo evento",
+    sub: "Events — invitaciones digitales",
+    tipoEvento: "Tipo de evento",
+    fotoPortada: "Foto de portada",
+    cambiarFoto: "Cambiar foto",
+    fmtFoto: "JPG, PNG — máx 5 MB",
+    infoEvento: "Información del evento",
+    nombreEvento: "Nombre del evento *",
+    anfitriones: "Anfitriones / Organizadores *",
+    mensaje: "Mensaje para los invitados",
+    fechaLugar: "Fecha y lugar",
+    fecha: "Fecha *",
+    hora: "Hora *",
+    lugarNombre: "Nombre del lugar *",
+    mapsLink: "Link de Google Maps",
+    mapsHint: "Abre Google Maps → busca el lugar → Compartir → Copiar enlace",
+    fotoLugar: "Foto del lugar",
+    confirmacion: "Confirmación de asistencia",
+    fechaLimite: "Fecha límite para confirmar *",
+    fechaLimiteHint: "Después de esta fecha los invitados no podrán confirmar",
+    crear: "Crear evento",
+    creando: "Creando evento...",
+    footer: "Podrás editar los detalles del evento después de crearlo",
+    errorCampos: "Por favor llena todos los campos obligatorios",
+    errorCrear: "Error al crear el evento: ",
+    darkMode: "Modo oscuro",
+    lightMode: "Modo claro",
+    tipos: {
+      quinceañera: "Quinceañera",
+      boda: "Boda",
+      graduacion: "Graduación",
+      cumpleaños: "Cumpleaños",
+      otro: "Otro",
+    },
+  },
+  en: {
+    title: "New event",
+    sub: "Events — digital invitations",
+    tipoEvento: "Event type",
+    fotoPortada: "Cover photo",
+    cambiarFoto: "Change photo",
+    fmtFoto: "JPG, PNG — max 5 MB",
+    infoEvento: "Event information",
+    nombreEvento: "Event name *",
+    anfitriones: "Hosts / Organizers *",
+    mensaje: "Message for guests",
+    fechaLugar: "Date & venue",
+    fecha: "Date *",
+    hora: "Time *",
+    lugarNombre: "Venue name *",
+    mapsLink: "Google Maps link",
+    mapsHint: "Open Google Maps → search venue → Share → Copy link",
+    fotoLugar: "Venue photo",
+    confirmacion: "RSVP",
+    fechaLimite: "RSVP deadline *",
+    fechaLimiteHint:
+      "After this date guests won't be able to confirm attendance",
+    crear: "Create event",
+    creando: "Creating event...",
+    footer: "You can edit the event details after creating it",
+    errorCampos: "Please fill in all required fields",
+    errorCrear: "Error creating event: ",
+    darkMode: "Dark mode",
+    lightMode: "Light mode",
+    tipos: {
+      quinceañera: "Quinceañera",
+      boda: "Wedding",
+      graduacion: "Graduation",
+      cumpleaños: "Birthday",
+      otro: "Other",
+    },
+  },
+};
+
 const CONFIG_TIPO: Record<
   string,
   {
-    placeholderNombre: string;
-    placeholderAnfitriones: string;
-    placeholderLugar: string;
-    placeholderMensaje: string;
-    labelFotoPortada: string;
-    labelFotoLugar: string;
+    es: {
+      placeholderNombre: string;
+      placeholderAnfitriones: string;
+      placeholderLugar: string;
+      placeholderMensaje: string;
+      labelFotoPortada: string;
+      labelFotoLugar: string;
+    };
+    en: {
+      placeholderNombre: string;
+      placeholderAnfitriones: string;
+      placeholderLugar: string;
+      placeholderMensaje: string;
+      labelFotoPortada: string;
+      labelFotoLugar: string;
+    };
   }
 > = {
   quinceañera: {
-    placeholderNombre: "Ej: XV Años de Sofía",
-    placeholderAnfitriones: "Ej: Familia García López",
-    placeholderLugar: "Ej: Salón Versalles, San Salvador",
-    placeholderMensaje:
-      "Ej: Con mucha alegría los invitamos a celebrar los XV años de Sofía...",
-    labelFotoPortada: "Foto de la festejada",
-    labelFotoLugar: "Foto del salón o lugar",
+    es: {
+      placeholderNombre: "Ej: XV Años de Sofía",
+      placeholderAnfitriones: "Ej: Familia García López",
+      placeholderLugar: "Ej: Salón Versalles, San Salvador",
+      placeholderMensaje:
+        "Ej: Con mucha alegría los invitamos a celebrar los XV años de Sofía...",
+      labelFotoPortada: "Foto de la festejada",
+      labelFotoLugar: "Foto del salón o lugar",
+    },
+    en: {
+      placeholderNombre: "Ex: Sofia's XV",
+      placeholderAnfitriones: "Ex: García López Family",
+      placeholderLugar: "Ex: Versailles Hall, San Salvador",
+      placeholderMensaje:
+        "Ex: With great joy we invite you to celebrate Sofia's XV...",
+      labelFotoPortada: "Photo of the honoree",
+      labelFotoLugar: "Photo of the venue",
+    },
   },
   boda: {
-    placeholderNombre: "Ej: Boda de Ana & Carlos",
-    placeholderAnfitriones: "Ej: Familias Martínez y López",
-    placeholderLugar: "Ej: Hacienda El Paraíso, Santa Ana",
-    placeholderMensaje:
-      "Ej: Con amor y alegría los invitamos a compartir el día más especial de nuestras vidas...",
-    labelFotoPortada: "Foto de la pareja",
-    labelFotoLugar: "Foto de la iglesia o hacienda",
+    es: {
+      placeholderNombre: "Ej: Boda de Ana & Carlos",
+      placeholderAnfitriones: "Ej: Familias Martínez y López",
+      placeholderLugar: "Ej: Hacienda El Paraíso, Santa Ana",
+      placeholderMensaje:
+        "Ej: Con amor los invitamos a compartir el día más especial...",
+      labelFotoPortada: "Foto de la pareja",
+      labelFotoLugar: "Foto de la iglesia o hacienda",
+    },
+    en: {
+      placeholderNombre: "Ex: Ana & Carlos' Wedding",
+      placeholderAnfitriones: "Ex: Martínez and López Families",
+      placeholderLugar: "Ex: Hacienda El Paraíso, Santa Ana",
+      placeholderMensaje:
+        "Ex: With love we invite you to share our most special day...",
+      labelFotoPortada: "Photo of the couple",
+      labelFotoLugar: "Photo of the church or venue",
+    },
   },
   graduacion: {
-    placeholderNombre: "Ej: Graduación de Luis — Ingeniería 2025",
-    placeholderAnfitriones: "Ej: Familia Ramírez",
-    placeholderLugar: "Ej: Centro de Convenciones UCA, San Salvador",
-    placeholderMensaje:
-      "Ej: Con gran orgullo los invitamos a celebrar este logro que tanto nos costó...",
-    labelFotoPortada: "Foto del graduado",
-    labelFotoLugar: "Foto del auditorio o recinto",
+    es: {
+      placeholderNombre: "Ej: Graduación de Luis — Ingeniería 2025",
+      placeholderAnfitriones: "Ej: Familia Ramírez",
+      placeholderLugar: "Ej: Centro de Convenciones UCA",
+      placeholderMensaje:
+        "Ej: Con gran orgullo los invitamos a celebrar este logro...",
+      labelFotoPortada: "Foto del graduado",
+      labelFotoLugar: "Foto del auditorio o recinto",
+    },
+    en: {
+      placeholderNombre: "Ex: Luis' Graduation — Engineering 2025",
+      placeholderAnfitriones: "Ex: Ramírez Family",
+      placeholderLugar: "Ex: UCA Convention Center",
+      placeholderMensaje:
+        "Ex: With great pride we invite you to celebrate this achievement...",
+      labelFotoPortada: "Photo of the graduate",
+      labelFotoLugar: "Photo of the auditorium",
+    },
   },
   cumpleaños: {
-    placeholderNombre: "Ej: 30 Años de María — Una nueva era",
-    placeholderAnfitriones: "Ej: Diego Hernández",
-    placeholderLugar: "Ej: Restaurante La Terraza, Santa Tecla",
-    placeholderMensaje:
-      "Ej: ¡Ven a celebrar conmigo este nuevo capítulo! Habrá música, comida y mucha alegría...",
-    labelFotoPortada: "Foto del festejado",
-    labelFotoLugar: "Foto del salón o restaurante",
+    es: {
+      placeholderNombre: "Ej: 30 Años de María",
+      placeholderAnfitriones: "Ej: Diego Hernández",
+      placeholderLugar: "Ej: Restaurante La Terraza, Santa Tecla",
+      placeholderMensaje: "Ej: ¡Ven a celebrar conmigo este nuevo capítulo!",
+      labelFotoPortada: "Foto del festejado",
+      labelFotoLugar: "Foto del salón o restaurante",
+    },
+    en: {
+      placeholderNombre: "Ex: María's 30th Birthday",
+      placeholderAnfitriones: "Ex: Diego Hernández",
+      placeholderLugar: "Ex: La Terraza Restaurant, Santa Tecla",
+      placeholderMensaje: "Ex: Come celebrate this new chapter with me!",
+      labelFotoPortada: "Photo of the birthday person",
+      labelFotoLugar: "Photo of the venue",
+    },
   },
   otro: {
-    placeholderNombre: "Ej: Reunión Familiar Navidad 2025",
-    placeholderAnfitriones: "Ej: Familia Pérez",
-    placeholderLugar: "Ej: Casa de la abuela, Soyapango",
-    placeholderMensaje:
-      "Ej: Los esperamos para compartir un momento especial juntos...",
-    labelFotoPortada: "Foto del evento",
-    labelFotoLugar: "Foto del lugar",
+    es: {
+      placeholderNombre: "Ej: Reunión Familiar Navidad 2025",
+      placeholderAnfitriones: "Ej: Familia Pérez",
+      placeholderLugar: "Ej: Casa de la abuela, Soyapango",
+      placeholderMensaje:
+        "Ej: Los esperamos para compartir un momento especial juntos...",
+      labelFotoPortada: "Foto del evento",
+      labelFotoLugar: "Foto del lugar",
+    },
+    en: {
+      placeholderNombre: "Ex: Family Christmas Reunion 2025",
+      placeholderAnfitriones: "Ex: Pérez Family",
+      placeholderLugar: "Ex: Grandma's house, Soyapango",
+      placeholderMensaje:
+        "Ex: We look forward to sharing a special moment together...",
+      labelFotoPortada: "Event photo",
+      labelFotoLugar: "Venue photo",
+    },
   },
 };
 
 const TIPOS = [
-  { value: "quinceañera", label: "Quinceañera", Icono: IconoCrown },
-  { value: "boda", label: "Boda", Icono: IconoRings },
-  { value: "graduacion", label: "Graduación", Icono: IconoCap },
-  { value: "cumpleaños", label: "Cumpleaños", Icono: IconoCake },
-  { value: "otro", label: "Otro", Icono: IconoStar },
+  { value: "quinceañera", Icono: IconoCrown },
+  { value: "boda", Icono: IconoRings },
+  { value: "graduacion", Icono: IconoCap },
+  { value: "cumpleaños", Icono: IconoCake },
+  { value: "otro", Icono: IconoStar },
 ];
 
-// ── Campo reutilizable ─────────────────────────────────────────────────────
+// ── Particles (mismo que login/dashboard) ─────────────────────────────────
+function Particles() {
+  return (
+    <div className="particles" aria-hidden="true">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className={`particle particle-${i + 1}`} />
+      ))}
+    </div>
+  );
+}
+
+// ── Campo reutilizable ────────────────────────────────────────────────────
 function Campo({
   label,
   hint,
@@ -231,21 +468,14 @@ function Campo({
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-gray-500 block mb-2">
-        {label}
-      </label>
+      <label className="field-label">{label}</label>
       {children}
-      {hint && (
-        <p className="text-[11px] text-gray-400 mt-1.5 px-0.5">{hint}</p>
-      )}
+      {hint && <p className="field-hint">{hint}</p>}
     </div>
   );
 }
 
-const inputCls =
-  "w-full border-2 border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-teal-400 bg-gray-50 transition-colors placeholder:text-gray-300 text-gray-700";
-
-// ── Página principal ───────────────────────────────────────────────────────
+// ── Página ────────────────────────────────────────────────────────────────
 export default function NuevoEvento() {
   const router = useRouter();
 
@@ -264,8 +494,12 @@ export default function NuevoEvento() {
   const [previewLugar, setPreviewLugar] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dark, setDark] = useState(false);
+  const [lang, setLang] = useState<"es" | "en">("es");
+  const [mounted] = useState(true);
 
-  const cfg = CONFIG_TIPO[tipo];
+  const t = translations[lang];
+  const cfg = CONFIG_TIPO[tipo][lang];
 
   function handleImagen(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -296,13 +530,11 @@ export default function NuevoEvento() {
   async function handleCrear() {
     setLoading(true);
     setError("");
-
     if (!nombre || !fecha || !hora || !lugar || !fechaLimite || !anfitriones) {
-      setError("Por favor llena todos los campos obligatorios");
+      setError(t.errorCampos);
       setLoading(false);
       return;
     }
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -331,402 +563,507 @@ export default function NuevoEvento() {
       foto_lugar_url,
     });
 
-    if (insertError)
-      setError("Error al crear el evento: " + insertError.message);
+    if (insertError) setError(t.errorCrear + insertError.message);
     else router.push("/dashboard");
-
     setLoading(false);
   }
 
   return (
-    <main
-      className="min-h-screen pb-16"
-      style={{
-        background:
-          "linear-gradient(160deg, #f0fdfa 0%, #d1fae5 50%, #ccfbf1 100%)",
-      }}
-    >
-      {/* ── Header ── */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-teal-100 px-5 py-3.5 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
-        <Link
-          href="/dashboard"
-          className="text-gray-400 hover:text-teal-600 transition-colors p-1 -ml-1 rounded-lg hover:bg-teal-50"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path
-              d="M13 4l-6 6 6 6"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </Link>
-        <div className="flex items-center gap-2.5">
-          <EventsLogo size={30} />
-          <div>
-            <span className="font-bold text-gray-800 text-sm leading-none block">
-              Nuevo evento
-            </span>
-            <span className="text-[10px] text-teal-500 font-medium leading-none">
-              Events — invitaciones digitales
-            </span>
-          </div>
-        </div>
-      </header>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'DM Sans',sans-serif}
 
-      <div className="px-4 pt-5 max-w-lg mx-auto space-y-4">
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="7" stroke="#ef4444" strokeWidth="1.4" />
-              <path
-                d="M8 5v3M8 10v1"
-                stroke="#ef4444"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-            </svg>
-            {error}
-          </div>
-        )}
+        :root {
+          --bg:#F0FAF8; --bg2:#E8F6F3;
+          --surface:#FFFFFF; --surface2:#F7FDFB;
+          --border:rgba(58,173,160,0.15); --border-mid:rgba(58,173,160,0.25);
+          --accent:#1FA896; --accent2:#3AADA0; --accent3:#0f766e;
+          --accent-soft:rgba(58,173,160,0.09); --accent-soft2:rgba(58,173,160,0.17);
+          --text:#0A1E1C; --text2:#3D6E6A; --text3:#85B5B0;
+          --danger:#dc2626; --danger-bg:#fef2f2; --danger-border:#fecaca;
+          --shadow:0 4px 24px rgba(58,173,160,0.13); --shadow-sm:0 2px 10px rgba(58,173,160,0.09);
+          --nav-bg:rgba(240,250,248,0.95);
+          --transition:all 0.35s cubic-bezier(.4,0,.2,1);
+          --radius:18px; --radius-sm:12px;
+        }
+        .dark {
+          --bg:#0C1A19; --bg2:#0A1614;
+          --surface:#162422; --surface2:#1C2E2B;
+          --border:rgba(58,173,160,0.13); --border-mid:rgba(58,173,160,0.24);
+          --accent:#3AADA0; --accent2:#2DC4A8; --accent3:#5eead4;
+          --accent-soft:rgba(58,173,160,0.10); --accent-soft2:rgba(58,173,160,0.19);
+          --text:#E8F8F5; --text2:#7ABFBA; --text3:#3D7070;
+          --danger:#f87171; --danger-bg:rgba(220,38,38,0.10); --danger-border:rgba(220,38,38,0.22);
+          --shadow:0 4px 24px rgba(0,0,0,0.42); --shadow-sm:0 2px 10px rgba(0,0,0,0.28);
+          --nav-bg:rgba(12,26,25,0.97);
+        }
 
-        {/* ── Sección 1: Tipo de evento ── */}
-        <section className="bg-white rounded-3xl p-5 shadow-sm border border-teal-100">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500 mb-4">
-            Tipo de evento
-          </p>
-          <div className="grid grid-cols-5 gap-2">
-            {TIPOS.map(({ value, label, Icono }) => {
-              const activo = tipo === value;
-              return (
+        .page { min-height:100vh; background:var(--bg); transition:background 0.5s ease; position:relative; overflow-x:hidden; padding-bottom:56px; }
+        .page::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+          background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); opacity:0.35; }
+
+        .glow { position:fixed; pointer-events:none; z-index:0; border-radius:50%; filter:blur(90px); }
+        .glow-1 { width:320px; height:320px; top:-100px; right:-80px;
+          background:radial-gradient(circle,rgba(58,173,160,0.14) 0%,transparent 70%);
+          animation:gd1 9s ease-in-out infinite; }
+        .glow-2 { width:260px; height:260px; bottom:100px; left:-80px;
+          background:radial-gradient(circle,rgba(45,196,168,0.09) 0%,transparent 70%);
+          animation:gd2 11s ease-in-out infinite; }
+        .dark .glow-1{background:radial-gradient(circle,rgba(58,173,160,0.19) 0%,transparent 70%)}
+        .dark .glow-2{background:radial-gradient(circle,rgba(45,196,168,0.12) 0%,transparent 70%)}
+        @keyframes gd1{0%,100%{transform:translate(0,0)}40%{transform:translate(-16px,24px)}70%{transform:translate(12px,-16px)}}
+        @keyframes gd2{0%,100%{transform:translate(0,0)}35%{transform:translate(20px,-26px)}65%{transform:translate(-10px,16px)}}
+
+        .particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+        .particle{position:absolute;border-radius:50%;background:var(--accent2);opacity:0;animation:pf linear infinite}
+        .particle-1{width:3px;height:3px;left:12%;animation-duration:14s;animation-delay:0s}
+        .particle-2{width:2px;height:2px;left:35%;animation-duration:17s;animation-delay:3s}
+        .particle-3{width:3px;height:3px;left:58%;animation-duration:12s;animation-delay:1s}
+        .particle-4{width:2px;height:2px;left:72%;animation-duration:15s;animation-delay:4s}
+        .particle-5{width:3px;height:3px;left:82%;animation-duration:13s;animation-delay:.5s}
+        .particle-6{width:2px;height:2px;left:92%;animation-duration:18s;animation-delay:5s}
+        @keyframes pf{0%{transform:translateY(110vh);opacity:0}5%{opacity:.12}90%{opacity:.12}100%{transform:translateY(-10vh) translateX(16px);opacity:0}}
+
+        /* ── NAV ── */
+        .nav { position:sticky; top:0; z-index:30; height:58px; padding:0 16px;
+          display:flex; align-items:center; justify-content:space-between;
+          background:var(--nav-bg); backdrop-filter:blur(18px);
+          border-bottom:1px solid var(--border); box-shadow:var(--shadow-sm);
+          transition:background 0.5s ease; }
+        .nav-left { display:flex; align-items:center; gap:10px; }
+        .nav-back { width:34px; height:34px; border-radius:10px; background:var(--surface);
+          border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+          color:var(--text3); cursor:pointer; transition:var(--transition); text-decoration:none; }
+        .nav-back:hover { color:var(--accent); background:var(--accent-soft2); border-color:var(--accent2); }
+        .nav-brand { display:flex; align-items:center; gap:9px; }
+        .nav-brand-name { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:600;
+          color:var(--accent); letter-spacing:-0.5px; line-height:1; }
+        .nav-brand-sub { font-size:10px; color:var(--text3); font-weight:600;
+          letter-spacing:.4px; text-transform:uppercase; margin-top:2px; }
+        .nav-right { display:flex; align-items:center; gap:6px; }
+        .ctrl-btn { width:34px; height:34px; border-radius:50%; background:var(--surface);
+          border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+          cursor:pointer; transition:var(--transition); color:var(--text2);
+          font-size:11px; font-weight:700; }
+        .ctrl-btn:hover { background:var(--accent-soft2); color:var(--accent); border-color:var(--accent2); }
+        .ctrl-lang { width:auto; padding:0 11px; border-radius:20px; letter-spacing:.5px; text-transform:uppercase; }
+
+        /* ── CONTENT ── */
+        .content { max-width:520px; margin:0 auto; padding:18px 14px 0; position:relative; z-index:1; display:flex; flex-direction:column; gap:12px; }
+
+        /* ── SECTION CARD ── */
+        .section-card { background:var(--surface); border-radius:var(--radius); padding:18px 16px;
+          border:1px solid var(--border); box-shadow:var(--shadow); transition:background 0.5s ease; }
+        .section-title { font-size:10px; font-weight:700; text-transform:uppercase;
+          letter-spacing:1.4px; color:var(--accent2); margin-bottom:14px; }
+
+        /* ── TIPO BUTTONS ── */
+        .tipos-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:7px; }
+        .tipo-btn { display:flex; flex-direction:column; align-items:center; gap:6px;
+          padding:12px 4px; border-radius:14px; font-size:10px; font-weight:700;
+          border:2px solid var(--border); background:var(--surface2); color:var(--text2);
+          cursor:pointer; transition:var(--transition); font-family:'DM Sans',sans-serif; }
+        .tipo-btn:hover { border-color:var(--accent2); color:var(--accent); background:var(--accent-soft); }
+        .tipo-btn.active { background:var(--accent); color:#fff; border-color:var(--accent);
+          box-shadow:0 4px 16px rgba(58,173,160,0.38); }
+
+        /* ── PHOTO UPLOAD ── */
+        .photo-upload { cursor:pointer; display:block; border-radius:14px; overflow:hidden;
+          border:2px dashed var(--border-mid); transition:var(--transition); }
+        .photo-upload:hover { border-color:var(--accent2); background:var(--accent-soft); }
+        .photo-empty { display:flex; flex-direction:column; align-items:center; justify-content:center;
+          gap:10px; background:var(--accent-soft); padding:28px 16px; text-align:center; }
+        .photo-empty-icon { width:56px; height:56px; border-radius:14px; background:var(--surface);
+          border:1px solid var(--border-mid); display:flex; align-items:center; justify-content:center;
+          color:var(--accent); box-shadow:var(--shadow-sm); }
+        .photo-empty-title { font-size:13px; font-weight:700; color:var(--accent); }
+        .photo-empty-sub { font-size:11px; color:var(--text3); margin-top:2px; }
+
+        /* Cover photo — tall */
+        .photo-cover .photo-empty { min-height:200px; }
+        /* Venue photo — shorter */
+        .photo-venue .photo-empty { min-height:140px; }
+
+        /* Photo preview overlay */
+        .photo-preview { position:relative; width:100%; }
+        .photo-cover .photo-preview { height:200px; }
+        .photo-venue .photo-preview { height:140px; }
+        .photo-preview-img { width:100%; height:100%; object-fit:cover; display:block; }
+        .photo-preview-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.38);
+          display:flex; flex-direction:column; align-items:center; justify-content:center;
+          gap:6px; opacity:0; transition:opacity .25s ease; }
+        .photo-preview:hover .photo-preview-overlay { opacity:1; }
+        .photo-preview-overlay-icon { color:white; }
+        .photo-preview-overlay-text { color:white; font-size:12px; font-weight:700; }
+
+        /* ── FIELDS ── */
+        .fields-group { display:flex; flex-direction:column; gap:14px; }
+        .field-label { font-size:11px; font-weight:700; color:var(--accent2); display:block;
+          margin-bottom:6px; letter-spacing:.2px; text-transform:uppercase; }
+        .field-input { width:100%; border:2px solid var(--border-mid); border-radius:12px;
+          padding:11px 13px; font-size:14px; background:var(--accent-soft); color:var(--text);
+          outline:none; transition:border-color .2s,box-shadow .2s,background .2s;
+          font-family:'DM Sans',sans-serif; }
+        .field-input::placeholder { color:var(--text3); }
+        .field-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(58,173,160,0.12); background:var(--surface); }
+        .field-hint { font-size:11px; color:var(--text3); margin-top:5px; padding:0 2px; line-height:1.4; }
+        .field-textarea { resize:none; }
+        .input-icon-wrap { position:relative; }
+        .input-icon-wrap .input-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text3); pointer-events:none; }
+        .input-icon-wrap .field-input { padding-left:34px; }
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+        /* ── ERROR ── */
+        .error-box { background:var(--danger-bg); border:1px solid var(--danger-border);
+          color:var(--danger); font-size:13px; padding:11px 14px; border-radius:12px;
+          display:flex; align-items:center; gap:8px; }
+
+        /* ── SUBMIT ── */
+        .btn-submit { width:100%; padding:15px; border-radius:var(--radius); border:none;
+          background:linear-gradient(135deg,var(--accent) 0%,var(--accent3) 100%);
+          color:#fff; font-size:15px; font-weight:800; font-family:'DM Sans',sans-serif;
+          cursor:pointer; box-shadow:0 6px 22px rgba(58,173,160,0.36);
+          transition:transform .2s,box-shadow .2s,opacity .2s; position:relative; overflow:hidden;
+          display:flex; align-items:center; justify-content:center; gap:8px; }
+        .btn-submit::after { content:''; position:absolute; inset:0;
+          background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.15) 50%,transparent 60%);
+          background-size:200% 100%; animation:shimmer 3.5s ease-in-out infinite; }
+        .btn-submit:not(:disabled):hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(58,173,160,0.46); }
+        .btn-submit:not(:disabled):active { transform:scale(0.98); }
+        .btn-submit:disabled { opacity:.55; cursor:not-allowed; }
+        @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
+
+        .footer-note { text-align:center; font-size:11px; color:var(--text3); padding-bottom:8px; }
+
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .spin{animation:spin .75s linear infinite}
+      `}</style>
+
+      <div className={`page${dark ? " dark" : ""}`}>
+        <div className="glow glow-1" />
+        <div className="glow glow-2" />
+        <Particles />
+
+        {/* ── NAV ─────────────────────────────────────────────────── */}
+        <nav className="nav">
+          <div className="nav-left">
+            <Link href="/dashboard" className="nav-back">
+              <IconoBack />
+            </Link>
+            <div className="nav-brand">
+              <AppLogo size={32} />
+              <div>
+                <div className="nav-brand-name">Events</div>
+                <div className="nav-brand-sub">{t.title}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="nav-right">
+            <button
+              className="ctrl-btn ctrl-lang"
+              onClick={() => setLang(lang === "es" ? "en" : "es")}
+              title={lang === "es" ? "Switch to English" : "Cambiar a Español"}
+            >
+              {lang === "es" ? "EN" : "ES"}
+            </button>
+            <button
+              className="ctrl-btn"
+              onClick={() => setDark(!dark)}
+              title={dark ? t.lightMode : t.darkMode}
+            >
+              {dark ? <IconoSun /> : <IconoMoon />}
+            </button>
+          </div>
+        </nav>
+
+        {/* ── CONTENT ─────────────────────────────────────────────── */}
+        <div className="content">
+          {/* Error */}
+          {error && (
+            <div className="error-box">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <circle
+                  cx="8"
+                  cy="8"
+                  r="7"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                />
+                <path
+                  d="M8 5v3M8 10v1"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+              {error}
+            </div>
+          )}
+
+          {/* ── Sección 1: Tipo ── */}
+          <div className="section-card">
+            <p className="section-title">{t.tipoEvento}</p>
+            <div className="tipos-grid">
+              {TIPOS.map(({ value, Icono }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setTipo(value)}
-                  className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl text-[10px] font-semibold transition-all border-2 ${
-                    activo
-                      ? "bg-teal-500 text-white border-teal-500 shadow-md shadow-teal-200"
-                      : "bg-gray-50 text-gray-500 border-gray-100 hover:border-teal-200 hover:text-teal-600 hover:bg-teal-50"
-                  }`}
+                  className={`tipo-btn${tipo === value ? " active" : ""}`}
                 >
                   <Icono />
-                  <span className="leading-tight text-center">{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Sección 2: Foto portada ── */}
-        <section className="bg-white rounded-3xl p-5 shadow-sm border border-teal-100">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500 mb-4">
-            Foto de portada
-          </p>
-          <label className="cursor-pointer block">
-            {preview ? (
-              <div className="relative w-full h-52 rounded-2xl overflow-hidden">
-                <Image
-                  src={preview}
-                  alt="preview"
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center gap-1">
-                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <path
-                      d="M11 15a4 4 0 100-8 4 4 0 000 8z"
-                      stroke="white"
-                      strokeWidth="1.5"
-                      fill="none"
-                    />
-                    <path
-                      d="M2 8.5h1.5l2-3h11l2 3H20a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1v-8a1 1 0 011-1z"
-                      stroke="white"
-                      strokeWidth="1.5"
-                      fill="none"
-                    />
-                  </svg>
-                  <span className="text-white text-xs font-semibold">
-                    Cambiar foto
+                  <span style={{ lineHeight: 1.2, textAlign: "center" }}>
+                    {t.tipos[value as keyof typeof t.tipos]}
                   </span>
-                </div>
-              </div>
-            ) : (
-              <div className="w-full h-52 rounded-2xl border-2 border-dashed border-teal-200 bg-gradient-to-br from-teal-50 to-emerald-50 flex flex-col items-center justify-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-teal-100 flex items-center justify-center">
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                    <path
-                      d="M5 23l5.5-5.5 3.5 3.5 4.5-6 5 8H5z"
-                      stroke="#0d9488"
-                      strokeWidth="1.4"
-                      strokeLinejoin="round"
-                      fill="none"
-                    />
-                    <circle
-                      cx="10"
-                      cy="11"
-                      r="2.5"
-                      stroke="#0d9488"
-                      strokeWidth="1.4"
-                      fill="none"
-                    />
-                    <rect
-                      x="2"
-                      y="4"
-                      width="24"
-                      height="20"
-                      rx="3"
-                      stroke="#0d9488"
-                      strokeWidth="1.4"
-                      fill="none"
-                    />
-                  </svg>
-                </div>
-                <div className="text-center">
-                  {/* Label dinámico por tipo */}
-                  <p className="text-sm font-semibold text-teal-600">
-                    {cfg.labelFotoPortada}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    JPG, PNG — máx 5 MB
-                  </p>
-                </div>
-              </div>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImagen(e, "evento")}
-              className="hidden"
-            />
-          </label>
-        </section>
-
-        {/* ── Sección 3: Info del evento ── */}
-        <section className="bg-white rounded-3xl p-5 shadow-sm border border-teal-100 space-y-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500">
-            Información del evento
-          </p>
-
-          <Campo label="Nombre del evento *">
-            <input
-              type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder={cfg.placeholderNombre}
-              className={inputCls}
-            />
-          </Campo>
-
-          <Campo label="Anfitriones / Organizadores *">
-            <input
-              type="text"
-              value={anfitriones}
-              onChange={(e) => setAnfitriones(e.target.value)}
-              placeholder={cfg.placeholderAnfitriones}
-              className={inputCls}
-            />
-          </Campo>
-
-          <Campo label="Mensaje para los invitados">
-            <textarea
-              value={mensajeInvitacion}
-              onChange={(e) => setMensajeInvitacion(e.target.value)}
-              placeholder={cfg.placeholderMensaje}
-              rows={3}
-              className={`${inputCls} resize-none`}
-            />
-          </Campo>
-        </section>
-
-        {/* ── Sección 4: Fecha, hora y lugar ── */}
-        <section className="bg-white rounded-3xl p-5 shadow-sm border border-teal-100 space-y-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500">
-            Fecha y lugar
-          </p>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Campo label="Fecha *">
-              <input
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className={inputCls}
-              />
-            </Campo>
-            <Campo label="Hora *">
-              <input
-                type="time"
-                value={hora}
-                onChange={(e) => setHora(e.target.value)}
-                className={inputCls}
-              />
-            </Campo>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <Campo label="Nombre del lugar *">
-            <input
-              type="text"
-              value={lugar}
-              onChange={(e) => setLugar(e.target.value)}
-              placeholder={cfg.placeholderLugar}
-              className={inputCls}
-            />
-          </Campo>
-
-          <Campo
-            label="Link de Google Maps"
-            hint="Abre Google Maps → busca el lugar → Compartir → Copiar enlace"
-          >
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                  <path
-                    d="M7.5 1A5 5 0 002.5 6c0 3.5 5 8 5 8s5-4.5 5-8a5 5 0 00-5-5z"
-                    stroke="#9ca3af"
-                    strokeWidth="1.3"
-                    fill="none"
+          {/* ── Sección 2: Foto portada ── */}
+          <div className="section-card">
+            <p className="section-title">{t.fotoPortada}</p>
+            <label className="photo-upload photo-cover">
+              {preview ? (
+                <div className="photo-preview">
+                  <img
+                    src={preview}
+                    alt="preview"
+                    className="photo-preview-img"
                   />
-                  <circle
-                    cx="7.5"
-                    cy="6"
-                    r="1.7"
-                    stroke="#9ca3af"
-                    strokeWidth="1.3"
-                    fill="none"
-                  />
-                </svg>
-              </span>
-              <input
-                type="url"
-                value={mapsUrl}
-                onChange={(e) => setMapsUrl(e.target.value)}
-                placeholder="https://maps.google.com/..."
-                className={`${inputCls} pl-9`}
-              />
-            </div>
-          </Campo>
-
-          {/* Foto del lugar — label dinámico */}
-          <Campo label="Foto del lugar">
-            <label className="cursor-pointer block">
-              {previewLugar ? (
-                <div className="relative w-full h-36 rounded-2xl overflow-hidden">
-                  <Image
-                    src={previewLugar}
-                    alt="lugar"
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                    <span className="text-white text-xs font-semibold">
-                      Cambiar foto
+                  <div className="photo-preview-overlay">
+                    <div className="photo-preview-overlay-icon">
+                      <IconoCamera />
+                    </div>
+                    <span className="photo-preview-overlay-text">
+                      {t.cambiarFoto}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-36 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2">
-                  <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-                    <path
-                      d="M3 20l5-5 3 3 4-5.5 6 7.5H3z"
-                      stroke="#d1d5db"
-                      strokeWidth="1.4"
-                      strokeLinejoin="round"
-                      fill="none"
-                    />
-                    <rect
-                      x="1"
-                      y="3"
-                      width="24"
-                      height="20"
-                      rx="3"
-                      stroke="#d1d5db"
-                      strokeWidth="1.4"
-                      fill="none"
-                    />
-                  </svg>
-                  {/* Label dinámico */}
-                  <span className="text-xs text-gray-400 font-medium">
-                    {cfg.labelFotoLugar}
-                  </span>
+                <div className="photo-empty">
+                  <div className="photo-empty-icon">
+                    <IconoCamera />
+                  </div>
+                  <div>
+                    <p className="photo-empty-title">{cfg.labelFotoPortada}</p>
+                    <p className="photo-empty-sub">{t.fmtFoto}</p>
+                  </div>
                 </div>
               )}
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => handleImagen(e, "lugar")}
-                className="hidden"
+                onChange={(e) => handleImagen(e, "evento")}
+                style={{ display: "none" }}
               />
             </label>
-          </Campo>
-        </section>
+          </div>
 
-        {/* ── Sección 5: Confirmación ── */}
-        <section className="bg-white rounded-3xl p-5 shadow-sm border border-teal-100">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500 mb-4">
-            Confirmación de asistencia
-          </p>
-          <Campo
-            label="Fecha límite para confirmar *"
-            hint="Después de esta fecha los invitados no podrán confirmar su asistencia"
+          {/* ── Sección 3: Info ── */}
+          <div className="section-card">
+            <p className="section-title">{t.infoEvento}</p>
+            <div className="fields-group">
+              <Campo label={t.nombreEvento}>
+                <input
+                  className="field-input"
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder={cfg.placeholderNombre}
+                />
+              </Campo>
+              <Campo label={t.anfitriones}>
+                <input
+                  className="field-input"
+                  type="text"
+                  value={anfitriones}
+                  onChange={(e) => setAnfitriones(e.target.value)}
+                  placeholder={cfg.placeholderAnfitriones}
+                />
+              </Campo>
+              <Campo label={t.mensaje}>
+                <textarea
+                  className="field-input field-textarea"
+                  value={mensajeInvitacion}
+                  onChange={(e) => setMensajeInvitacion(e.target.value)}
+                  placeholder={cfg.placeholderMensaje}
+                  rows={3}
+                />
+              </Campo>
+            </div>
+          </div>
+
+          {/* ── Sección 4: Fecha y lugar ── */}
+          <div className="section-card">
+            <p className="section-title">{t.fechaLugar}</p>
+            <div className="fields-group">
+              <div className="grid-2">
+                <Campo label={t.fecha}>
+                  <input
+                    className="field-input"
+                    type="date"
+                    value={fecha}
+                    onChange={(e) => setFecha(e.target.value)}
+                  />
+                </Campo>
+                <Campo label={t.hora}>
+                  <input
+                    className="field-input"
+                    type="time"
+                    value={hora}
+                    onChange={(e) => setHora(e.target.value)}
+                  />
+                </Campo>
+              </div>
+
+              <Campo label={t.lugarNombre}>
+                <input
+                  className="field-input"
+                  type="text"
+                  value={lugar}
+                  onChange={(e) => setLugar(e.target.value)}
+                  placeholder={cfg.placeholderLugar}
+                />
+              </Campo>
+
+              <Campo label={t.mapsLink} hint={t.mapsHint}>
+                <div className="input-icon-wrap">
+                  <span className="input-icon">
+                    <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
+                      <path
+                        d="M7.5 1A5 5 0 002.5 6c0 3.5 5 8 5 8s5-4.5 5-8a5 5 0 00-5-5z"
+                        stroke="currentColor"
+                        strokeWidth="1.3"
+                        fill="none"
+                      />
+                      <circle
+                        cx="7.5"
+                        cy="6"
+                        r="1.7"
+                        stroke="currentColor"
+                        strokeWidth="1.3"
+                        fill="none"
+                      />
+                    </svg>
+                  </span>
+                  <input
+                    className="field-input"
+                    type="url"
+                    value={mapsUrl}
+                    onChange={(e) => setMapsUrl(e.target.value)}
+                    placeholder="https://maps.google.com/..."
+                  />
+                </div>
+              </Campo>
+
+              {/* Foto del lugar */}
+              <Campo label={t.fotoLugar}>
+                <label
+                  className="photo-upload photo-venue"
+                  style={{ display: "block" }}
+                >
+                  {previewLugar ? (
+                    <div className="photo-preview">
+                      <img
+                        src={previewLugar}
+                        alt="lugar"
+                        className="photo-preview-img"
+                      />
+                      <div className="photo-preview-overlay">
+                        <div className="photo-preview-overlay-icon">
+                          <IconoCamera />
+                        </div>
+                        <span className="photo-preview-overlay-text">
+                          {t.cambiarFoto}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="photo-empty">
+                      <div className="photo-empty-icon">
+                        <IconoCamera />
+                      </div>
+                      <div>
+                        <p className="photo-empty-title">
+                          {cfg.labelFotoLugar}
+                        </p>
+                        <p className="photo-empty-sub">{t.fmtFoto}</p>
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImagen(e, "lugar")}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              </Campo>
+            </div>
+          </div>
+
+          {/* ── Sección 5: Confirmación ── */}
+          <div className="section-card">
+            <p className="section-title">{t.confirmacion}</p>
+            <Campo label={t.fechaLimite} hint={t.fechaLimiteHint}>
+              <input
+                className="field-input"
+                type="date"
+                value={fechaLimite}
+                onChange={(e) => setFechaLimite(e.target.value)}
+              />
+            </Campo>
+          </div>
+
+          {/* ── Botón crear ── */}
+          <button
+            className="btn-submit"
+            onClick={handleCrear}
+            disabled={loading}
           >
-            <input
-              type="date"
-              value={fechaLimite}
-              onChange={(e) => setFechaLimite(e.target.value)}
-              className={inputCls}
-            />
-          </Campo>
-        </section>
+            {loading ? (
+              <>
+                <svg
+                  className="spin"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                >
+                  <circle
+                    cx="8"
+                    cy="8"
+                    r="6"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeDasharray="28"
+                    strokeDashoffset="10"
+                  />
+                </svg>
+                {t.creando}
+              </>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                  <path
+                    d="M7.5 2v11M2 7.5h11"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                {t.crear}
+              </>
+            )}
+          </button>
 
-        {/* ── Botón crear ── */}
-        <button
-          onClick={handleCrear}
-          disabled={loading}
-          className="w-full bg-teal-500 hover:bg-teal-600 active:scale-[0.98] text-white py-4 rounded-2xl font-bold text-sm transition-all disabled:opacity-50 shadow-lg shadow-teal-200 flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <svg
-                className="animate-spin"
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-              >
-                <circle
-                  cx="8"
-                  cy="8"
-                  r="6"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeDasharray="28"
-                  strokeDashoffset="10"
-                />
-              </svg>
-              Creando evento...
-            </>
-          ) : (
-            <>
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <path
-                  d="M7.5 2v11M2 7.5h11"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-              Crear evento
-            </>
-          )}
-        </button>
-
-        <p className="text-center text-[11px] text-gray-400 pb-2">
-          Podrás editar los detalles del evento después de crearlo
-        </p>
+          <p className="footer-note">{t.footer}</p>
+        </div>
       </div>
-    </main>
+    </>
   );
 }

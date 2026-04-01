@@ -298,15 +298,13 @@ function SubirFotoSection({
     const { data: urlData } = supabase.storage
       .from("fotos-eventos")
       .getPublicUrl(path);
-    await supabase
-      .from("fotos")
-      .insert({
-        evento_id: eventoId,
-        invitado_id: invitado.id,
-        url: urlData.publicUrl,
-        path,
-        caption: caption.trim() || null,
-      });
+    await supabase.from("fotos").insert({
+      evento_id: eventoId,
+      invitado_id: invitado.id,
+      url: urlData.publicUrl,
+      path,
+      caption: caption.trim() || null,
+    });
     setYaSubio(true);
     setSubiendo(false);
   };

@@ -1,427 +1,906 @@
+"use client";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
-export const metadata = {
-  title: "Events — Tu evento, tu historia",
-  description:
-    "Invitaciones digitales, fotos en vivo y libro de recuerdos para tus eventos",
-  icons: { icon: "/icon" },
+// ─── i18n ───────────────────────────────────────────────────────────────────
+const translations = {
+  es: {
+    tagline: "Invitaciones · Fotos · Recuerdos",
+    headline1: "Cada evento,",
+    headline2: "una",
+    headline3: "historia",
+    headline4: "especial",
+    sub: "Invitaciones digitales, confirmación de asistencia, muro de fotos en vivo y libro de recuerdos.",
+    cta: "Continuar",
+    login: "Iniciar sesión",
+    register: "Crear cuenta",
+    features: [
+      "Invitaciones",
+      "Confirmación",
+      "Muro de fotos",
+      "Libro digital",
+    ],
+    featDescs: [
+      "Link único por WhatsApp",
+      "Un clic, sin registro",
+      "Fotos en tiempo real",
+      "Recuerdo para siempre",
+    ],
+    ctaBlock: "Empieza hoy, gratis",
+    ctaSub: "Tu primer evento listo en 5 minutos",
+    ctaBtn: "Crear mi evento",
+    trust: [
+      "Sin registro para invitados",
+      "Funciona en cualquier dispositivo",
+      "Fotos en tiempo real",
+      "Álbum digital al finalizar",
+    ],
+    copy: "© 2026 · Tu evento, tu historia",
+    darkMode: "Modo oscuro",
+    lightMode: "Modo claro",
+    back: "Volver",
+    chooseAction: "¿Qué deseas hacer?",
+    or: "o",
+  },
+  en: {
+    tagline: "Invitations · Photos · Memories",
+    headline1: "Every event,",
+    headline2: "a",
+    headline3: "special",
+    headline4: "story",
+    sub: "Digital invitations, RSVP confirmation, live photo wall and memory book.",
+    cta: "Get Started",
+    login: "Sign in",
+    register: "Create account",
+    features: ["Invitations", "Confirmation", "Photo Wall", "Memory Book"],
+    featDescs: [
+      "Unique link via WhatsApp",
+      "One click, no sign-up",
+      "Real-time photos",
+      "Forever keepsake",
+    ],
+    ctaBlock: "Start today, free",
+    ctaSub: "Your first event ready in 5 minutes",
+    ctaBtn: "Create my event",
+    trust: [
+      "No sign-up required for guests",
+      "Works on any device",
+      "Photos in real time",
+      "Digital album at the end",
+    ],
+    copy: "© 2026 · Your event, your story",
+    darkMode: "Dark mode",
+    lightMode: "Light mode",
+    back: "Back",
+    chooseAction: "What would you like to do?",
+    or: "or",
+  },
 };
 
-function AppLogo({ size = 34 }: { size?: number }) {
+// ─── Favicon SVG ─────────────────────────────────────────────────────────────
+function FaviconInjector() {
+  useEffect(() => {
+    const existingLinks = document.querySelectorAll(
+      "link[rel~='icon'], link[rel~='shortcut']",
+    );
+    existingLinks.forEach((el) => el.parentNode?.removeChild(el));
+    const svgFavicon = `
+<svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="f-bg" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1A3A38"/>
+      <stop offset="100%" stop-color="#0F2422"/>
+    </linearGradient>
+    <linearGradient id="f-rib" x1="10" y1="28" x2="46" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3AADA0"/>
+      <stop offset="100%" stop-color="#2DC4A8"/>
+    </linearGradient>
+  </defs>
+  <rect width="56" height="56" rx="16" fill="url(#f-bg)"/>
+  <rect x="3" y="3" width="50" height="50" rx="14" fill="none" stroke="rgba(58,173,160,0.18)" stroke-width="1"/>
+  <rect x="9" y="17" width="38" height="26" rx="3.5" fill="rgba(58,173,160,0.10)" stroke="rgba(58,173,160,0.6)" stroke-width="1.4"/>
+  <path d="M9 20.5 L28 31 L47 20.5" stroke="url(#f-rib)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="14" cy="11" r="1.6" fill="#3AADA0" opacity="0.9"/>
+  <circle cx="20" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7"/>
+  <circle cx="11" cy="15" r="0.9" fill="#3AADA0" opacity="0.5"/>
+  <circle cx="42" cy="11" r="1.6" fill="#3AADA0" opacity="0.9"/>
+  <circle cx="36" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7"/>
+  <circle cx="45" cy="15" r="0.9" fill="#3AADA0" opacity="0.5"/>
+  <path d="M28 7 L29 10.2 L32.4 10.2 L29.8 12.2 L30.8 15.4 L28 13.4 L25.2 15.4 L26.2 12.2 L23.6 10.2 L27 10.2 Z" fill="#3AADA0" opacity="0.95"/>
+  <path d="M24 17 Q28 14 32 17" stroke="#2DC4A8" stroke-width="1.3" stroke-linecap="round" fill="none" opacity="0.8"/>
+  <circle cx="28" cy="17" r="1.3" fill="#3AADA0"/>
+</svg>`.trim();
+    const encoded = encodeURIComponent(svgFavicon);
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.type = "image/svg+xml";
+    link.href = `data:image/svg+xml,${encoded}`;
+    document.head.appendChild(link);
+  }, []);
+  return null;
+}
+
+// ─── Logo ────────────────────────────────────────────────────────────────────
+function AppLogo({
+  size = 44,
+  dark = false,
+}: {
+  size?: number;
+  dark?: boolean;
+}) {
+  const id = dark ? "lg-d" : "lg-l";
+  const id2 = dark ? "lg2-d" : "lg2-l";
+  const id3 = dark ? "lg3-d" : "lg3-l";
   return (
-    <svg width={size} height={size} viewBox="0 0 34 34" fill="none">
-      <rect width="34" height="34" rx="10" fill="#3AADA0" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 56 56"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient
+          id={id}
+          x1="0"
+          y1="0"
+          x2="56"
+          y2="56"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor={dark ? "#1A3A38" : "#0D2E2B"} />
+          <stop offset="100%" stopColor={dark ? "#0F2422" : "#061918"} />
+        </linearGradient>
+        <linearGradient
+          id={id2}
+          x1="10"
+          y1="28"
+          x2="46"
+          y2="28"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="#3AADA0" />
+          <stop offset="100%" stopColor="#2DC4A8" />
+        </linearGradient>
+        <filter id={id3} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+      <rect width="56" height="56" rx="16" fill={`url(#${id})`} />
       <rect
-        x="5"
-        y="10"
-        width="24"
-        height="16"
-        rx="2.5"
-        stroke="white"
-        strokeWidth="1.4"
+        x="3"
+        y="3"
+        width="50"
+        height="50"
+        rx="14"
         fill="none"
+        stroke="rgba(58,173,160,0.18)"
+        strokeWidth="1"
+      />
+      <rect
+        x="9"
+        y="17"
+        width="38"
+        height="26"
+        rx="3.5"
+        fill="rgba(58,173,160,0.10)"
+        stroke="rgba(58,173,160,0.6)"
+        strokeWidth="1.4"
       />
       <path
-        d="M5 14.5l12 8 12-8"
-        stroke="white"
-        strokeWidth="1.4"
+        d="M9 20.5 L28 31 L47 20.5"
+        stroke={`url(#${id2})`}
+        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      <circle cx="14" cy="11" r="1.6" fill="#3AADA0" opacity="0.9" />
+      <circle cx="20" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7" />
+      <circle cx="11" cy="15" r="0.9" fill="#3AADA0" opacity="0.5" />
+      <circle cx="42" cy="11" r="1.6" fill="#3AADA0" opacity="0.9" />
+      <circle cx="36" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7" />
+      <circle cx="45" cy="15" r="0.9" fill="#3AADA0" opacity="0.5" />
       <path
-        d="M17 10c0 0-4-2.8-4 1 0 2.1 4 4.6 4 4.6s4-2.5 4-4.6C21 7.2 17 10 17 10z"
-        fill="white"
+        d="M28 7 L29 10.2 L32.4 10.2 L29.8 12.2 L30.8 15.4 L28 13.4 L25.2 15.4 L26.2 12.2 L23.6 10.2 L27 10.2 Z"
+        fill="#3AADA0"
+        opacity="0.95"
+        filter={`url(#${id3})`}
       />
+      <path
+        d="M24 17 Q28 14 32 17"
+        stroke="#2DC4A8"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.8"
+      />
+      <circle cx="28" cy="17" r="1.3" fill="#3AADA0" />
     </svg>
   );
 }
 
-const features = [
-  {
-    title: "Invitaciones",
-    desc: "Link único por WhatsApp",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <rect
-          x="1"
-          y="4"
-          width="16"
-          height="11"
-          rx="2.5"
-          stroke="#3AADA0"
-          strokeWidth="1.3"
-        />
-        <path
-          d="M1 8l8 5 8-5"
-          stroke="#3AADA0"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Confirmación",
-    desc: "Un clic, sin registro",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <rect
-          x="2"
-          y="2"
-          width="14"
-          height="14"
-          rx="2.5"
-          stroke="#3AADA0"
-          strokeWidth="1.3"
-        />
-        <path
-          d="M6 2v2M12 2v2M2 7h14"
-          stroke="#3AADA0"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
-        <path
-          d="M6 11l2.5 2.5 4.5-4"
-          stroke="#3AADA0"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Muro de fotos",
-    desc: "Fotos en tiempo real",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <rect
-          x="1"
-          y="4"
-          width="16"
-          height="12"
-          rx="2.5"
-          stroke="#3AADA0"
-          strokeWidth="1.3"
-        />
-        <circle cx="6.5" cy="10" r="2.2" stroke="#3AADA0" strokeWidth="1.2" />
-        <path
-          d="M11 8h4M11 11h2.5"
-          stroke="#3AADA0"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M5 4l1.2-1.5h5.6L13 4"
-          stroke="#3AADA0"
-          strokeWidth="1.1"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Libro digital",
-    desc: "Recuerdo para siempre",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <path
-          d="M3 15A2 2 0 015 13H15"
-          stroke="#3AADA0"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
-        <path
-          d="M5 1H15v17H5A2 2 0 013 16V3A2 2 0 015 1z"
-          stroke="#3AADA0"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
-];
+// ─── Floating Particles ───────────────────────────────────────────────────────
+function Particles() {
+  return (
+    <div className="particles" aria-hidden="true">
+      {[...Array(12)].map((_, i) => (
+        <div key={i} className={`particle particle-${i + 1}`} />
+      ))}
+    </div>
+  );
+}
 
-const steps = [
-  { n: "1", label: "Invita" },
-  { n: "2", label: "Confirma" },
-  { n: "3", label: "Fotos" },
-  { n: "4", label: "Recuerdo" },
-];
+// ─── Footer ──────────────────────────────────────────────────────────────────
+function Footer() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 18,
+        left: 0,
+        right: 0,
+        textAlign: "center",
+        zIndex: 10,
+        pointerEvents: "none",
+      }}
+    >
+      <span
+        style={{
+          fontSize: "10px",
+          fontWeight: 600,
+          letterSpacing: "1.8px",
+          textTransform: "uppercase",
+          color: "var(--text3)",
+          opacity: 0.7,
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        Humb3rsec 2026
+      </span>
+    </div>
+  );
+}
 
+// ─── Main component ──────────────────────────────────────────────────────────
 export default function Home() {
+  const [dark, setDark] = useState(false);
+  const [lang, setLang] = useState<"es" | "en">("es");
+  const [screen, setScreen] = useState<"splash" | "auth">("splash");
+  const [transitioning, setTransitioning] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  const t = translations[lang];
+
+  useEffect(() => {
+    // Trigger mount animations
+    setTimeout(() => setMounted(true), 50);
+    // Mostrar claro primero, luego cambiar a oscuro
+    setTimeout(() => setDark(true), 1800);
+  }, []);
+
+  const handleContinue = () => {
+    setTransitioning(true);
+    setTimeout(() => {
+      setScreen("auth");
+      setTransitioning(false);
+    }, 420);
+  };
+
+  const handleBack = () => {
+    setTransitioning(true);
+    setTimeout(() => {
+      setScreen("splash");
+      setTransitioning(false);
+    }, 420);
+  };
+
   return (
     <>
+      <FaviconInjector />
+
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
+
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: #f0faf8; }
 
-        .wrap { max-width: 420px; margin: 0 auto; min-height: 100vh; background: #f0faf8; }
+        :root {
+          --bg: #F0FAF8;
+          --bg2: #E4F5F2;
+          --surface: #FFFFFF;
+          --surface2: #F0FAF8;
+          --border: rgba(58,173,160,0.15);
+          --accent: #1FA896;
+          --accent2: #3AADA0;
+          --accent-soft: rgba(58,173,160,0.09);
+          --accent-soft2: rgba(58,173,160,0.16);
+          --text: #0A1E1C;
+          --text2: #3D6E6A;
+          --text3: #85B5B0;
+          --shadow: 0 4px 32px rgba(58,173,160,0.16);
+          --shadow-sm: 0 2px 12px rgba(58,173,160,0.11);
+          --radius: 20px;
+          --radius-sm: 14px;
+          --transition: all 0.38s cubic-bezier(.4,0,.2,1);
+        }
+        .dark {
+          --bg: #0C1A19;
+          --bg2: #111F1E;
+          --surface: #162422;
+          --surface2: #1C2E2C;
+          --border: rgba(58,173,160,0.15);
+          --accent: #3AADA0;
+          --accent2: #2DC4A8;
+          --accent-soft: rgba(58,173,160,0.12);
+          --accent-soft2: rgba(58,173,160,0.20);
+          --text: #E8F8F5;
+          --text2: #7ABFBA;
+          --text3: #3D7070;
+          --shadow: 0 4px 32px rgba(0,0,0,0.48);
+          --shadow-sm: 0 2px 12px rgba(0,0,0,0.32);
+        }
 
-        /* NAV */
-        .nav {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 16px 22px;
-          background: rgba(240,250,248,0.9);
-          backdrop-filter: blur(10px);
-          border-bottom: 1px solid #cce8e4;
-          position: sticky; top: 0; z-index: 10;
-        }
-        .nav-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; }
-        .nav-name { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; color: #0f2422; letter-spacing: -.3px; }
-        .btn-nav {
-          background: #3AADA0; color: white;
-          font-size: 13px; font-weight: 600;
-          padding: 9px 18px; border-radius: 10px;
-          text-decoration: none;
-          transition: background .15s, transform .12s;
-        }
-        .btn-nav:hover { background: #2e948a; transform: translateY(-1px); }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
 
-        /* HERO */
-        .hero { padding: 36px 22px 28px; }
-        .hero-tag {
-          display: inline-flex; align-items: center; gap: 6px;
-          background: #ddf5f1; color: #267d75;
-          font-size: 10.5px; font-weight: 600; letter-spacing: .7px; text-transform: uppercase;
-          padding: 5px 12px; border-radius: 100px;
-          border: 1px solid #b0ddd9; margin-bottom: 18px;
+        .app {
+          max-width: 420px; margin: 0 auto; min-height: 100vh;
+          background: var(--bg); position: relative; overflow: hidden;
         }
-        .hero-dot { width: 6px; height: 6px; border-radius: 50%; background: #3AADA0; }
-        .hero h1 {
-          font-family: 'Playfair Display', serif;
-          font-size: clamp(34px, 9vw, 42px);
-          line-height: 1.12; letter-spacing: -.6px;
-          color: #0a1e1c; margin-bottom: 14px;
+
+        .app::before {
+          content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+          opacity: 0.4;
         }
-        .hero h1 em { font-style: italic; color: #3AADA0; }
-        .hero-sub { font-size: 14px; color: #4e8880; line-height: 1.65; margin-bottom: 24px; }
-        .hero-ctas { display: flex; gap: 10px; }
-        .btn-primary {
-          flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-          background: #3AADA0; color: white;
-          font-size: 14px; font-weight: 600; text-decoration: none;
-          padding: 13px 20px; border-radius: 13px;
-          transition: background .15s, transform .12s, box-shadow .15s;
-          box-shadow: 0 3px 16px rgba(58,173,160,.28);
+
+        /* ── GLOWS ── */
+        .glow {
+          position: fixed; pointer-events: none; z-index: 0;
+          border-radius: 50%; filter: blur(80px);
+          transition: var(--transition);
         }
-        .btn-primary:hover { background: #2e948a; transform: translateY(-2px); box-shadow: 0 6px 22px rgba(58,173,160,.36); }
-        .btn-secondary {
+        .glow-1 {
+          width: 340px; height: 340px;
+          top: -100px; right: -80px;
+          background: radial-gradient(circle, rgba(58,173,160,0.18) 0%, transparent 70%);
+          animation: glowDrift1 8s ease-in-out infinite;
+        }
+        .glow-2 {
+          width: 280px; height: 280px;
+          bottom: 60px; left: -100px;
+          background: radial-gradient(circle, rgba(45,196,168,0.12) 0%, transparent 70%);
+          animation: glowDrift2 10s ease-in-out infinite;
+        }
+        .dark .glow-1 { background: radial-gradient(circle, rgba(58,173,160,0.20) 0%, transparent 70%); }
+        .dark .glow-2 { background: radial-gradient(circle, rgba(45,196,168,0.13) 0%, transparent 70%); }
+
+        @keyframes glowDrift1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33%       { transform: translate(-20px, 30px) scale(1.08); }
+          66%       { transform: translate(15px, -20px) scale(0.95); }
+        }
+        @keyframes glowDrift2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          40%       { transform: translate(25px, -35px) scale(1.1); }
+          70%       { transform: translate(-10px, 20px) scale(0.92); }
+        }
+
+        /* ── CONTROLS ── */
+        .controls {
+          position: absolute; top: 18px; right: 18px; z-index: 20;
+          display: flex; gap: 8px; align-items: center;
+        }
+        .ctrl-btn {
+          width: 36px; height: 36px; border-radius: 50%;
+          background: var(--surface); border: 1px solid var(--border);
           display: flex; align-items: center; justify-content: center;
-          background: white; color: #3AADA0;
-          font-size: 14px; font-weight: 500; text-decoration: none;
-          padding: 13px 18px; border-radius: 13px;
-          border: 1.5px solid #b0ddd9;
-          transition: border-color .15s, background .15s;
+          cursor: pointer; transition: var(--transition);
+          box-shadow: var(--shadow-sm); color: var(--text2);
+          font-size: 14px; font-weight: 600;
         }
-        .btn-secondary:hover { border-color: #3AADA0; background: #f0faf8; }
+        .ctrl-btn:hover { background: var(--accent-soft2); color: var(--accent); border-color: var(--accent); }
+        .ctrl-lang {
+          width: auto; padding: 0 12px;
+          border-radius: 20px; font-size: 11px; font-weight: 600;
+          letter-spacing: .5px; text-transform: uppercase;
+        }
 
-        /* STEPS */
-        .steps {
-          display: flex; align-items: flex-start;
-          padding: 20px 22px 24px; gap: 0;
+        /* ── SCREEN TRANSITIONS ── */
+        .screen {
+          position: absolute; inset: 0;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          transition: opacity 0.38s ease, transform 0.38s cubic-bezier(.4,0,.2,1);
+          z-index: 1;
         }
-        .step-wrap { flex: 1; display: flex; align-items: flex-start; }
-        .step-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-        .step-circle {
-          width: 32px; height: 32px; border-radius: 50%;
-          background: white; border: 1.5px solid #b0ddd9;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 12px; font-weight: 700; color: #3AADA0;
-        }
-        .step-label { font-size: 10px; color: #7ab5b0; font-weight: 500; text-align: center; }
-        .step-line { flex: 1; height: 1.5px; background: #b0ddd9; margin-top: 15px; }
+        .screen.exit    { opacity: 0; transform: scale(0.96) translateY(-16px); pointer-events: none; }
+        .screen.enter   { opacity: 1; transform: scale(1) translateY(0); }
+        .screen.hidden  { opacity: 0; transform: scale(1.04) translateY(16px); pointer-events: none; }
 
-        /* FEATURES */
-        .features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px 24px; }
-        .feat-card {
-          background: white; border-radius: 16px;
-          border: 1px solid #ddf0ed; padding: 16px 14px;
-          transition: border-color .18s, transform .18s;
-        }
-        .feat-card:hover { border-color: #8dd4cf; transform: translateY(-2px); }
-        .feat-icon {
-          width: 36px; height: 36px; background: #e8f8f5;
-          border-radius: 10px; display: flex; align-items: center; justify-content: center;
-          margin-bottom: 10px;
-        }
-        .feat-title { font-size: 13px; font-weight: 600; color: #0f2422; margin-bottom: 4px; }
-        .feat-desc { font-size: 11.5px; color: #7aada8; line-height: 1.4; }
+        /* ── SPLASH ── */
+        .splash { padding: 40px 32px; text-align: center; }
 
-        /* CTA BLOCK */
-        .cta-block {
-          margin: 4px 16px 24px;
-          background: #0f2422; border-radius: 22px; padding: 30px 22px;
-          text-align: center; position: relative; overflow: hidden;
+        /* ── LOGO ── */
+        .logo-wrap {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 16px; margin-bottom: 48px;
         }
-        .cta-block::before {
-          content: ''; position: absolute;
-          top: -60px; right: -60px; width: 180px; height: 180px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(58,173,160,.18) 0%, transparent 65%);
+        .logo-name {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 38px; font-weight: 600; letter-spacing: -1px;
+          color: var(--text); line-height: 1;
+        }
+        .logo-tag {
+          font-size: 11px; font-weight: 500; letter-spacing: 2px;
+          text-transform: uppercase; color: var(--text3);
+        }
+
+        /* ── MOUNT ANIMATIONS ── */
+        .anim-logo    { opacity: 0; transform: translateY(28px) scale(0.92); }
+        .anim-name    { opacity: 0; transform: translateY(18px); }
+        .anim-tag     { opacity: 0; transform: translateY(12px); }
+        .anim-btn     { opacity: 0; transform: translateY(16px); }
+        .anim-features { opacity: 0; transform: translateY(12px); }
+
+        .mounted .anim-logo {
+          animation: mountUp 0.7s cubic-bezier(.22,1,.36,1) 0.1s both;
+        }
+        .mounted .anim-name {
+          animation: mountUp 0.6s cubic-bezier(.22,1,.36,1) 0.28s both;
+        }
+        .mounted .anim-tag {
+          animation: mountUp 0.5s cubic-bezier(.22,1,.36,1) 0.4s both;
+        }
+        .mounted .anim-btn {
+          animation: mountUp 0.6s cubic-bezier(.22,1,.36,1) 0.54s both;
+        }
+        .mounted .anim-features {
+          animation: mountUp 0.5s cubic-bezier(.22,1,.36,1) 0.68s both;
+        }
+
+        @keyframes mountUp {
+          from { opacity: 0; transform: translateY(24px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ── LOGO ANIMATIONS ── */
+        .logo-ring {
+          position: absolute; border-radius: 50%;
+          border: 1.5px solid rgba(58,173,160,0.22);
+          animation: ringExpand 2.8s ease-out infinite;
           pointer-events: none;
         }
-        .cta-block h2 {
-          font-family: 'Playfair Display', serif;
-          font-size: 22px; color: white; letter-spacing: -.3px;
-          margin-bottom: 8px; position: relative; z-index: 1;
-        }
-        .cta-block p { font-size: 13px; color: #6aada8; margin-bottom: 18px; position: relative; z-index: 1; }
-        .btn-cta {
-          display: inline-flex; align-items: center; gap: 7px;
-          background: #3AADA0; color: white;
-          font-size: 14px; font-weight: 600; text-decoration: none;
-          padding: 13px 28px; border-radius: 12px;
-          transition: background .15s; position: relative; z-index: 1;
-        }
-        .btn-cta:hover { background: #2e948a; }
+        .logo-ring-2 { animation-delay: 0.9s; }
+        .logo-ring-3 { animation-delay: 1.8s; }
 
-        /* TRUST */
-        .trust { display: flex; flex-direction: column; gap: 10px; padding: 0 22px 28px; }
-        .trust-item { display: flex; align-items: center; gap: 9px; }
-        .trust-check {
-          width: 18px; height: 18px; border-radius: 50%;
-          border: 1.5px solid #3AADA0; flex-shrink: 0;
+        @keyframes ringExpand {
+          0%   { transform: scale(0.85); opacity: 0.7; }
+          100% { transform: scale(1.9);  opacity: 0; }
+        }
+
+        .logo-container {
+          position: relative;
           display: flex; align-items: center; justify-content: center;
+          width: 96px; height: 96px;
         }
-        .trust-text { font-size: 13px; color: #4e8880; font-weight: 400; }
 
-        /* FOOTER */
-        .footer {
-          border-top: 1px solid #cce8e4;
-          padding: 16px 22px 28px;
-          display: flex; align-items: center; justify-content: space-between;
+        .logo-pulse {
+          animation: logoPulse 3.5s ease-in-out infinite;
+          position: relative; z-index: 2;
+          filter: drop-shadow(0 0 18px rgba(58,173,160,0.35));
         }
-        .footer-brand { display: flex; align-items: center; gap: 7px; text-decoration: none; }
-        .footer-name { font-family: 'Playfair Display', serif; font-size: 14px; color: #0f2422; }
-        .footer-copy { font-size: 11px; color: #9ac8c4; }
+        .dark .logo-pulse {
+          filter: drop-shadow(0 0 22px rgba(58,173,160,0.45));
+        }
+
+        @keyframes logoPulse {
+          0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 18px rgba(58,173,160,0.35)); }
+          50%       { transform: scale(1.05); filter: drop-shadow(0 0 28px rgba(58,173,160,0.55)); }
+        }
+
+        /* ── FLOATING PARTICLES ── */
+        .particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .particle {
+          position: absolute;
+          border-radius: 50%;
+          background: var(--accent2);
+          opacity: 0;
+          animation: particleFloat linear infinite;
+        }
+
+        .particle-1  { width:4px;  height:4px;  left:12%;  animation-duration:12s; animation-delay:0s;    opacity:0.18; }
+        .particle-2  { width:3px;  height:3px;  left:28%;  animation-duration:15s; animation-delay:2s;    opacity:0.12; }
+        .particle-3  { width:5px;  height:5px;  left:45%;  animation-duration:10s; animation-delay:0.5s;  opacity:0.20; }
+        .particle-4  { width:2px;  height:2px;  left:60%;  animation-duration:14s; animation-delay:3s;    opacity:0.15; }
+        .particle-5  { width:4px;  height:4px;  left:75%;  animation-duration:11s; animation-delay:1s;    opacity:0.18; }
+        .particle-6  { width:3px;  height:3px;  left:88%;  animation-duration:16s; animation-delay:4s;    opacity:0.10; }
+        .particle-7  { width:5px;  height:5px;  left:20%;  animation-duration:13s; animation-delay:1.5s;  opacity:0.16; }
+        .particle-8  { width:2px;  height:2px;  left:38%;  animation-duration:9s;  animation-delay:2.5s;  opacity:0.22; }
+        .particle-9  { width:4px;  height:4px;  left:55%;  animation-duration:17s; animation-delay:0.8s;  opacity:0.14; }
+        .particle-10 { width:3px;  height:3px;  left:70%;  animation-duration:12s; animation-delay:3.5s;  opacity:0.18; }
+        .particle-11 { width:5px;  height:5px;  left:5%;   animation-duration:14s; animation-delay:1.2s;  opacity:0.12; }
+        .particle-12 { width:2px;  height:2px;  left:92%;  animation-duration:10s; animation-delay:2.2s;  opacity:0.20; }
+
+        @keyframes particleFloat {
+          0%   { transform: translateY(110vh) translateX(0);      opacity: 0; }
+          5%   { opacity: 1; }
+          90%  { opacity: 1; }
+          100% { transform: translateY(-10vh) translateX(30px);   opacity: 0; }
+        }
+
+        /* ── FEATURES STRIP ── */
+        .features-strip {
+          display: flex; gap: 10px; margin-bottom: 36px;
+          justify-content: center; flex-wrap: wrap;
+        }
+        .feat-pill {
+          display: flex; align-items: center; gap: 6px;
+          background: var(--surface); border: 1px solid var(--border);
+          border-radius: 100px; padding: 7px 13px;
+          font-size: 11px; font-weight: 500; color: var(--text2);
+          box-shadow: var(--shadow-sm);
+          transition: var(--transition);
+          animation: pillAppear 0.5s cubic-bezier(.22,1,.36,1) both;
+        }
+        .feat-pill:nth-child(1) { animation-delay: 0.72s; }
+        .feat-pill:nth-child(2) { animation-delay: 0.80s; }
+        .feat-pill:nth-child(3) { animation-delay: 0.88s; }
+        .feat-pill:nth-child(4) { animation-delay: 0.96s; }
+
+        .feat-pill:hover {
+          background: var(--accent-soft2);
+          border-color: var(--accent);
+          color: var(--accent);
+          transform: translateY(-2px);
+        }
+        .feat-dot {
+          width: 6px; height: 6px; border-radius: 50%;
+          background: var(--accent2); flex-shrink: 0;
+          animation: dotPulse 2s ease-in-out infinite;
+        }
+        .feat-pill:nth-child(2) .feat-dot { animation-delay: 0.5s; }
+        .feat-pill:nth-child(3) .feat-dot { animation-delay: 1s; }
+        .feat-pill:nth-child(4) .feat-dot { animation-delay: 1.5s; }
+
+        @keyframes dotPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.5; transform: scale(0.7); }
+        }
+        @keyframes pillAppear {
+          from { opacity: 0; transform: translateY(10px) scale(0.94); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ── BUTTON ── */
+        .btn-main {
+          display: inline-flex; align-items: center; gap: 10px;
+          background: var(--accent);
+          color: white; font-family: 'DM Sans', sans-serif;
+          font-size: 15px; font-weight: 600; text-decoration: none;
+          padding: 16px 44px; border-radius: 100px; cursor: pointer; border: none;
+          box-shadow: 0 6px 32px rgba(58,173,160,0.40);
+          transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+          position: relative; overflow: hidden; letter-spacing: .2px;
+        }
+        .btn-main::after {
+          content: '';
+          position: absolute; inset: 0; border-radius: inherit;
+          background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 60%);
+          pointer-events: none;
+        }
+        .btn-main::before {
+          content: '';
+          position: absolute; inset: -2px; border-radius: inherit;
+          background: linear-gradient(135deg, rgba(58,173,160,0.6), rgba(45,196,168,0.3));
+          z-index: -1; opacity: 0;
+          transition: opacity 0.3s ease;
+          filter: blur(8px);
+        }
+        .btn-main:hover::before { opacity: 1; }
+        .btn-main:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 14px 44px rgba(58,173,160,0.55); }
+        .btn-main:active { transform: scale(0.97); }
+
+        /* Shimmer on button */
+        .btn-shimmer {
+          position: absolute; inset: 0; border-radius: inherit;
+          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%);
+          background-size: 200% 100%;
+          animation: shimmer 3s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+          0%   { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+
+        .btn-arrow {
+          width: 20px; height: 20px; background: rgba(255,255,255,0.22);
+          border-radius: 50%; display: flex; align-items: center; justify-content: center;
+          transition: transform 0.22s ease;
+        }
+        .btn-main:hover .btn-arrow { transform: translateX(3px); }
+
+        /* ── AUTH SCREEN ── */
+        .auth { padding: 48px 32px; width: 100%; }
+        .auth-header {
+          display: flex; flex-direction: column; align-items: center;
+          margin-bottom: 40px; gap: 10px;
+          animation: fadeUp .4s ease both;
+        }
+        .auth-title {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 26px; font-weight: 600; color: var(--text);
+          text-align: center; letter-spacing: -.4px;
+        }
+
+        .auth-cards {
+          display: flex; flex-direction: column; gap: 14px;
+          animation: fadeUp .4s .08s ease both;
+        }
+        .auth-card {
+          display: flex; align-items: center; justify-content: space-between;
+          background: var(--surface); border: 1.5px solid var(--border);
+          border-radius: var(--radius); padding: 22px 24px;
+          text-decoration: none; transition: var(--transition);
+          box-shadow: var(--shadow-sm);
+        }
+        .auth-card:hover {
+          border-color: var(--accent); transform: translateY(-2px);
+          box-shadow: 0 8px 28px rgba(58,173,160,0.18);
+        }
+        .auth-card.primary {
+          background: var(--accent);
+          border-color: transparent;
+          box-shadow: 0 6px 28px rgba(58,173,160,0.38);
+        }
+        .auth-card.primary:hover {
+          background: var(--accent2); border-color: transparent;
+          box-shadow: 0 10px 36px rgba(58,173,160,0.48);
+        }
+        .auth-card-left { display: flex; flex-direction: column; gap: 3px; }
+        .auth-card-label { font-size: 15px; font-weight: 600; color: var(--text); }
+        .auth-card.primary .auth-card-label,
+        .auth-card.primary .auth-card-sub { color: white; }
+        .auth-card-sub { font-size: 12px; color: var(--text3); font-weight: 400; }
+        .auth-card-icon {
+          width: 38px; height: 38px; border-radius: 12px;
+          background: var(--accent-soft2); display: flex; align-items: center;
+          justify-content: center; color: var(--accent); flex-shrink: 0;
+        }
+        .auth-card.primary .auth-card-icon { background: rgba(255,255,255,0.2); color: white; }
+
+        .back-btn {
+          display: flex; align-items: center; gap: 6px;
+          background: none; border: none; cursor: pointer;
+          font-size: 13px; font-weight: 500; color: var(--text2);
+          margin-top: 28px; padding: 8px 0; text-decoration: none;
+          transition: color .2s;
+          animation: fadeUp .4s .16s ease both;
+        }
+        .back-btn:hover { color: var(--accent); }
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
 
-      <div className="wrap">
-        {/* NAV */}
-        <nav className="nav">
-          <Link href="/" className="nav-brand">
-            <AppLogo size={32} />
-            <span className="nav-name">Events</span>
-          </Link>
-          <Link href="/auth/registro" className="btn-nav">
-            Crear evento
-          </Link>
-        </nav>
+      <div className={`app${dark ? " dark" : ""}${mounted ? " mounted" : ""}`}>
+        {/* Ambient glows */}
+        <div className="glow glow-1" />
+        <div className="glow glow-2" />
 
-        {/* HERO */}
-        <section className="hero">
-          <div className="hero-tag">
-            <span className="hero-dot" />
-            Invitaciones · Fotos · Recuerdos
-          </div>
-          <h1>
-            Cada evento,
-            <br />
-            una <em>historia</em>
-            <br />
-            especial
-          </h1>
-          <p className="hero-sub">
-            Invitaciones digitales, confirmación de asistencia, muro de fotos en
-            vivo y libro de recuerdos.
-          </p>
-          <div className="hero-ctas">
-            <Link href="/auth/registro" className="btn-primary">
-              Crear gratis
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        {/* Floating particles */}
+        <Particles />
+
+        {/* Controls */}
+        <div className="controls">
+          <button
+            className="ctrl-btn ctrl-lang"
+            onClick={() => setLang(lang === "es" ? "en" : "es")}
+            title={lang === "es" ? "Switch to English" : "Cambiar a Español"}
+          >
+            {lang === "es" ? "EN" : "ES"}
+          </button>
+          <button
+            className="ctrl-btn"
+            onClick={() => setDark(!dark)}
+            title={dark ? t.lightMode : t.darkMode}
+          >
+            {dark ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle
+                  cx="8"
+                  cy="8"
+                  r="3.2"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                />
                 <path
-                  d="M2 7h10M8 3l4 4-4 4"
-                  stroke="white"
-                  strokeWidth="1.5"
+                  d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 100 11 6 6 0 007-4z"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </svg>
+            )}
+          </button>
+        </div>
+
+        {/* ── SPLASH SCREEN ── */}
+        <div
+          className={`screen splash ${screen === "splash" ? (transitioning ? "exit" : "enter") : "hidden"}`}
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+          }}
+        >
+          {/* Logo con anillos + glow */}
+          <div className="logo-wrap">
+            <div className="logo-container anim-logo">
+              {/* Ripple rings */}
+              <div
+                className="logo-ring"
+                style={{ width: "80px", height: "80px" }}
+              />
+              <div
+                className="logo-ring logo-ring-2"
+                style={{ width: "80px", height: "80px" }}
+              />
+              <div
+                className="logo-ring logo-ring-3"
+                style={{ width: "80px", height: "80px" }}
+              />
+              {/* Logo pulsante */}
+              <div className="logo-pulse">
+                <AppLogo size={72} dark={dark} />
+              </div>
+            </div>
+
+            <div>
+              <div className="logo-name anim-name">Events</div>
+              <div className="logo-tag anim-tag">{t.tagline}</div>
+            </div>
+          </div>
+
+          {/* Feature pills */}
+          <div className="features-strip anim-features">
+            {t.features.map((f, i) => (
+              <div key={i} className="feat-pill">
+                <div className="feat-dot" />
+                {f}
+              </div>
+            ))}
+          </div>
+
+          {/* CTA button */}
+          <div className="anim-btn">
+            <button className="btn-main" onClick={handleContinue}>
+              <span className="btn-shimmer" />
+              {t.cta}
+              <span className="btn-arrow">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path
+                    d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"
+                    stroke="white"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <Footer />
+        </div>
+
+        {/* ── AUTH SCREEN ── */}
+        <div
+          className={`screen auth ${screen === "auth" ? (transitioning ? "exit" : "enter") : "hidden"}`}
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div className="auth-header">
+            <AppLogo size={44} dark={dark} />
+            <div className="auth-title">{t.chooseAction}</div>
+          </div>
+
+          <div className="auth-cards" style={{ width: "100%", maxWidth: 340 }}>
+            <Link href="/auth/registro" className="auth-card primary">
+              <div className="auth-card-left">
+                <span className="auth-card-label">{t.register}</span>
+                <span className="auth-card-sub">
+                  {lang === "es" ? "Nuevo en Events" : "New to Events"}
+                </span>
+              </div>
+              <div className="auth-card-icon">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <circle
+                    cx="9"
+                    cy="6"
+                    r="3.2"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                  />
+                  <path
+                    d="M2 16c0-3.314 3.134-6 7-6s7 2.686 7 6"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M13 3v4M11 5h4"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
             </Link>
-            <Link href="/auth/login" className="btn-secondary">
-              Iniciar sesión
+
+            <Link href="/auth/login" className="auth-card">
+              <div className="auth-card-left">
+                <span className="auth-card-label">{t.login}</span>
+                <span className="auth-card-sub">
+                  {lang === "es"
+                    ? "Ya tengo cuenta"
+                    : "I already have an account"}
+                </span>
+              </div>
+              <div className="auth-card-icon">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <circle
+                    cx="9"
+                    cy="6"
+                    r="3.2"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                  />
+                  <path
+                    d="M2 16c0-3.314 3.134-6 7-6s7 2.686 7 6"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
             </Link>
           </div>
-        </section>
 
-        {/* STEPS */}
-        <div className="steps">
-          {steps.map((s, i) => (
-            <div key={s.n} className="step-wrap">
-              <div className="step-item">
-                <div className="step-circle">{s.n}</div>
-                <span className="step-label">{s.label}</span>
-              </div>
-              {i < steps.length - 1 && <div className="step-line" />}
-            </div>
-          ))}
-        </div>
-
-        {/* FEATURES */}
-        <div className="features">
-          {features.map((f) => (
-            <div key={f.title} className="feat-card">
-              <div className="feat-icon">{f.icon}</div>
-              <div className="feat-title">{f.title}</div>
-              <p className="feat-desc">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* CTA */}
-        <div className="cta-block">
-          <h2>Empieza hoy, gratis</h2>
-          <p>Tu primer evento listo en 5 minutos</p>
-          <Link href="/auth/registro" className="btn-cta">
-            Crear mi evento
+          <button className="back-btn" onClick={handleBack}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path
-                d="M2 7h10M8 3l4 4-4 4"
-                stroke="white"
+                d="M9 2L4 7l5 5"
+                stroke="currentColor"
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             </svg>
-          </Link>
-        </div>
+            {t.back}
+          </button>
 
-        {/* TRUST */}
-        <div className="trust">
-          {[
-            "Sin registro para invitados",
-            "Funciona en cualquier dispositivo",
-            "Fotos en tiempo real",
-            "Álbum digital al finalizar",
-          ].map((t) => (
-            <div key={t} className="trust-item">
-              <div className="trust-check">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path
-                    d="M2 5l2 2 4-4"
-                    stroke="#3AADA0"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <span className="trust-text">{t}</span>
-            </div>
-          ))}
+          <Footer />
         </div>
-
-        {/* FOOTER */}
-        <footer className="footer">
-          <Link href="/" className="footer-brand">
-            <AppLogo size={24} />
-            <span className="footer-name">Events</span>
-          </Link>
-          <span className="footer-copy">© 2026 · Tu evento, tu historia</span>
-        </footer>
       </div>
     </>
   );
