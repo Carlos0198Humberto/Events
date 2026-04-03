@@ -1852,14 +1852,23 @@ export default function MuroPublico() {
     setLoading(false);
   }
 
+  // ── CORRECCIÓN: normalizar invitados de array a objeto ──────────────────────
   async function cargarFotos() {
     const { data } = await supabase
       .from("fotos")
       .select("id,url,created_at,invitado_id,caption,invitados(nombre)")
       .eq("evento_id", eventoId)
       .eq("estado", "aprobada")
-      .order("created_at", { ascending: true }); // orden cronológico de subida
-    if (data) setFotos(data as Foto[]);
+      .order("created_at", { ascending: true });
+    if (data)
+      setFotos(
+        data.map((f) => ({
+          ...f,
+          invitados: Array.isArray(f.invitados)
+            ? (f.invitados[0] ?? null)
+            : f.invitados,
+        })) as Foto[],
+      );
   }
 
   async function cargarDeseos() {
@@ -1868,7 +1877,7 @@ export default function MuroPublico() {
       .select("*")
       .eq("evento_id", eventoId)
       .eq("aprobado", true)
-      .order("created_at", { ascending: true }); // orden cronológico
+      .order("created_at", { ascending: true });
     if (data) setDeseos(data as Deseo[]);
   }
 
@@ -1945,7 +1954,6 @@ export default function MuroPublico() {
     canvas.height = 64;
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      // Fondo verde
       ctx.fillStyle = "#3AADA0";
       ctx.beginPath();
       ctx.roundRect(0, 0, 64, 64, 14);
@@ -2093,7 +2101,7 @@ export default function MuroPublico() {
           }}
         />
 
-        {/* Top bar: lang izq, dashboard der */}
+        {/* Top bar */}
         <div
           style={{
             position: "absolute",
@@ -2144,7 +2152,6 @@ export default function MuroPublico() {
 
         {/* Contenido hero */}
         <div style={{ position: "relative", zIndex: 1, marginBottom: 18 }}>
-          {/* Logo + nombre app */}
           <div
             style={{
               display: "flex",
@@ -2701,7 +2708,6 @@ export default function MuroPublico() {
                         </p>
                       </div>
                     </div>
-                    {/* Botón descargar álbum completo */}
                     <button
                       onClick={async () => {
                         for (let i = 0; i < album.fotos.length; i++) {
@@ -2759,7 +2765,6 @@ export default function MuroPublico() {
                             unoptimized
                             onClick={() => setFotoActiva(idx)}
                           />
-                          {/* mini botón descarga */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2987,7 +2992,7 @@ export default function MuroPublico() {
         />
       )}
 
-      {/* ══ FABs flotantes (solo invitado, vista contextual) ══════════════════ */}
+      {/* ══ FABs flotantes ════════════════════════════════════════════════════ */}
       {invId && (
         <div
           style={{
