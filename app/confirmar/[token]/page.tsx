@@ -1,18 +1,20 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import Link from "next/link";
+import { useParams } from "next/navigation";
 
-// ─── Tipos ─────────────────────────────────────────────────
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
   id: string;
   nombre: string;
+  telefono: string;
+  email: string;
   estado: string;
   num_personas: number;
-  mensaje: string | null;
   token: string;
+  numero_confirmacion?: number | null;
+  foto_url?: string | null;
+  deseo?: string | null;
   evento_id: string;
 };
 
@@ -20,140 +22,674 @@ type Evento = {
   id: string;
   nombre: string;
   tipo: string;
-  fecha: string;
-  hora: string;
-  lugar: string;
-  anfitriones: string | null;
-  frase_evento: string | null;
-  imagen_url: string | null;
-  foto_lugar_url: string | null;
-  mensaje_invitacion: string | null;
-  maps_url: string | null;
-  fecha_limite_confirmacion: string;
-  color_primario: string;
-  color_secundario: string;
+  anfitriones: string;
+  fecha?: string;
+  hora?: string;
+  lugar?: string;
+  organizador_telefono?: string;
 };
 
-// ─── Paletas por tipo ───────────────────────────────────────
-const PALETAS: Record<
-  string,
-  {
-    gradHero: string;
-    gradBg: string;
-    texto: string;
-    acento: string;
-    claro: string;
-    label: string;
-    emoji: string;
+// ─── Logo Eventix ─────────────────────────────────────────────────────────────
+function AppLogo({ size = 32 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 56 56"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient
+          id="lg-ev-c"
+          x1="0"
+          y1="0"
+          x2="56"
+          y2="56"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="#3AADA0" />
+          <stop offset="100%" stopColor="#0f766e" />
+        </linearGradient>
+      </defs>
+      <rect width="56" height="56" rx="16" fill="url(#lg-ev-c)" />
+      <circle cx="40" cy="10" r="3" fill="white" opacity="0.9" />
+      <circle cx="44" cy="14" r="1.5" fill="white" opacity="0.5" />
+      <rect
+        x="8"
+        y="20"
+        width="34"
+        height="22"
+        rx="4"
+        fill="white"
+        opacity="0.95"
+      />
+      <circle cx="25" cy="31" r="7" fill="#e0f5f2" />
+      <circle cx="25" cy="31" r="4.5" fill="#3AADA0" />
+      <circle cx="25" cy="31" r="2" fill="white" opacity="0.7" />
+      <path
+        d="M28 20 L32 20 L34 16 L22 16 L22 20Z"
+        fill="white"
+        opacity="0.95"
+      />
+      <line
+        x1="36"
+        y1="23"
+        x2="40"
+        y2="27"
+        stroke="#3AADA0"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <line
+        x1="40"
+        y1="23"
+        x2="36"
+        y2="27"
+        stroke="#3AADA0"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const TIPO_LABEL: Record<string, string> = {
+  quinceañera: "Quinceañera",
+  boda: "Boda",
+  graduacion: "Graduación",
+  cumpleaños: "Cumpleaños",
+  otro: "Evento especial",
+};
+
+function formatFecha(fecha: string) {
+  return new Date(fecha).toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatFechaCorta(fecha: string) {
+  return new Date(fecha).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// Guardar en Google Calendar
+function abrirGoogleCalendar(evento: Evento) {
+  const titulo = encodeURIComponent(evento.nombre);
+  const lugar = encodeURIComponent(evento.lugar || "");
+  const desc = encodeURIComponent(
+    `${TIPO_LABEL[evento.tipo] || "Evento"} de ${evento.anfitriones}`,
+  );
+
+  let fechaInicio = "";
+  let fechaFin = "";
+
+  if (evento.fecha) {
+    const [y, m, d] = evento.fecha.split("T")[0].split("-");
+    if (evento.hora) {
+      const [h, min] = evento.hora.replace(".", ":").split(":");
+      const hPad = String(parseInt(h)).padStart(2, "0");
+      const mPad = String(parseInt(min || "0")).padStart(2, "0");
+      // 2 horas de duración por defecto
+      const hFin = String(parseInt(hPad) + 2).padStart(2, "0");
+      fechaInicio = `${y}${m}${d}T${hPad}${mPad}00`;
+      fechaFin = `${y}${m}${d}T${hFin}${mPad}00`;
+    } else {
+      fechaInicio = `${y}${m}${d}`;
+      fechaFin = `${y}${m}${d}`;
+    }
   }
-> = {
-  boda: {
-    gradHero: "linear-gradient(135deg,#fce7f3 0%,#f3e8ff 50%,#fbcfe8 100%)",
-    gradBg: "linear-gradient(180deg,#fdf4ff,#fff)",
-    texto: "#6b21a8",
-    acento: "#d8b4fe",
-    claro: "#f3e8ff",
-    label: "Boda",
-    emoji: "💍",
-  },
-  quinceañera: {
-    gradHero: "linear-gradient(135deg,#fae8ff 0%,#f0abfc 40%,#e879f9 100%)",
-    gradBg: "linear-gradient(180deg,#fdf4ff,#fff)",
-    texto: "#86198f",
-    acento: "#f0abfc",
-    claro: "#fae8ff",
-    label: "Quinceañera",
-    emoji: "👑",
-  },
-  cumpleaños: {
-    gradHero: "linear-gradient(135deg,#fef3c7 0%,#fde68a 40%,#fbbf24 100%)",
-    gradBg: "linear-gradient(180deg,#fffbeb,#fff)",
-    texto: "#78350f",
-    acento: "#fcd34d",
-    claro: "#fef3c7",
-    label: "Cumpleaños",
-    emoji: "🎂",
-  },
-  graduacion: {
-    gradHero: "linear-gradient(135deg,#dbeafe 0%,#93c5fd 40%,#60a5fa 100%)",
-    gradBg: "linear-gradient(180deg,#eff6ff,#fff)",
-    texto: "#1e3a8a",
-    acento: "#93c5fd",
-    claro: "#dbeafe",
-    label: "Graduación",
-    emoji: "🎓",
-  },
-  otro: {
-    gradHero: "linear-gradient(135deg,#ccfbf1 0%,#5eead4 40%,#2dd4bf 100%)",
-    gradBg: "linear-gradient(180deg,#f0fdfa,#fff)",
-    texto: "#0f766e",
-    acento: "#5eead4",
-    claro: "#ccfbf1",
-    label: "Evento",
-    emoji: "✨",
-  },
-};
 
-// ─── Iconos SVG ─────────────────────────────────────────────
-function IconCheck({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${fechaInicio}/${fechaFin}&details=${desc}&location=${lugar}`;
+  window.open(url, "_blank");
+}
+
+// Partículas de confeti para la animación de destrucción
+function crearParticulas() {
+  const colores = [
+    "#3AADA0",
+    "#2DC4A8",
+    "#7DD4C8",
+    "#E0F5F2",
+    "#ffffff",
+    "#fbbf24",
+    "#f472b6",
+  ];
+  const particulas: {
+    x: number;
+    y: number;
+    color: string;
+    vx: number;
+    vy: number;
+    size: number;
+    rotation: number;
+  }[] = [];
+  for (let i = 0; i < 60; i++) {
+    particulas.push({
+      x: window.innerWidth / 2 + (Math.random() - 0.5) * 200,
+      y: window.innerHeight / 2 + (Math.random() - 0.5) * 100,
+      color: colores[Math.floor(Math.random() * colores.length)],
+      vx: (Math.random() - 0.5) * 12,
+      vy: Math.random() * -14 - 4,
+      size: Math.random() * 10 + 4,
+      rotation: Math.random() * 360,
+    });
+  }
+  return particulas;
+}
+
+// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
+export default function ConfirmarPage() {
+  const params = useParams();
+  const token = params.token as string;
+
+  const [invitado, setInvitado] = useState<Invitado | null>(null);
+  const [evento, setEvento] = useState<Evento | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [step, setStep] = useState<
+    "vista" | "form" | "confirmado" | "rechazado"
+  >("vista");
+  const [numPersonas, setNumPersonas] = useState(1);
+  const [confirmando, setConfirmando] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [destroying, setDestroying] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animRef = useRef<number>(0);
+
+  useEffect(() => {
+    setTimeout(() => setMounted(true), 80);
+    cargarDatos();
+  }, []);
+
+  async function cargarDatos() {
+    const { data: inv } = await supabase
+      .from("invitados")
+      .select("*")
+      .eq("token", token)
+      .single();
+    if (!inv) {
+      setLoading(false);
+      return;
+    }
+    const { data: ev } = await supabase
+      .from("eventos")
+      .select("*")
+      .eq("id", inv.evento_id)
+      .single();
+    setInvitado(inv);
+    if (ev) setEvento(ev);
+    setNumPersonas(inv.num_personas || 1);
+    if (inv.estado === "confirmado") setStep("confirmado");
+    if (inv.estado === "rechazado") setStep("rechazado");
+    setLoading(false);
+  }
+
+  async function confirmarAsistencia() {
+    if (!invitado) return;
+    setConfirmando(true);
+    const { data: lastConf } = await supabase
+      .from("invitados")
+      .select("numero_confirmacion")
+      .eq("evento_id", invitado.evento_id)
+      .eq("estado", "confirmado")
+      .order("numero_confirmacion", { ascending: false })
+      .limit(1);
+    const siguiente =
+      lastConf && lastConf.length > 0 && lastConf[0].numero_confirmacion
+        ? lastConf[0].numero_confirmacion + 1
+        : 1;
+    const { data: updated } = await supabase
+      .from("invitados")
+      .update({
+        estado: "confirmado",
+        num_personas: numPersonas,
+        numero_confirmacion: siguiente,
+      })
+      .eq("id", invitado.id)
+      .select()
+      .single();
+    if (updated) setInvitado(updated);
+    setConfirmando(false);
+    setStep("confirmado");
+  }
+
+  async function rechazarAsistencia() {
+    if (!invitado) return;
+    await supabase
+      .from("invitados")
+      .update({ estado: "rechazado" })
+      .eq("id", invitado.id);
+    setStep("rechazado");
+  }
+
+  // Animación de destrucción + redirigir a WhatsApp
+  function confirmarYCerrar() {
+    setDestroying(true);
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      redirigirWhatsApp();
+      return;
+    }
+    canvas.style.display = "block";
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      redirigirWhatsApp();
+      return;
+    }
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    let particulas = crearParticulas();
+    let frame = 0;
+    function animate() {
+      ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
+      particulas.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.5;
+        p.rotation += 6;
+        ctx!.save();
+        ctx!.translate(p.x, p.y);
+        ctx!.rotate((p.rotation * Math.PI) / 180);
+        ctx!.fillStyle = p.color;
+        ctx!.globalAlpha = Math.max(0, 1 - frame / 80);
+        ctx!.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        ctx!.restore();
+      });
+      frame++;
+      if (frame < 80) {
+        animRef.current = requestAnimationFrame(animate);
+      } else {
+        cancelAnimationFrame(animRef.current);
+        redirigirWhatsApp();
+      }
+    }
+    animate();
+  }
+
+  function redirigirWhatsApp() {
+    // Cerrar la pestaña / volver a WhatsApp
+    window.close();
+    // Si window.close() no funciona (algunos browsers), redirigir a WhatsApp
+    setTimeout(() => {
+      window.location.href = "whatsapp://";
+    }, 300);
+  }
+
+  const styles = `
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700;9..40,800&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}
+
+    :root{
+      --teal:#3AADA0;--teal-dark:#0f766e;--teal-mid:#1FA896;
+      --teal-soft:#e0f5f2;--teal-border:rgba(58,173,160,0.22);
+      --teal-border-mid:rgba(58,173,160,0.36);
+      --text:#0A1E1C;--text2:#2D5A56;--text3:#7AAFA9;
+      --surface:#FFFFFF;--bg:#F0FAF8;
+      --shadow:0 8px 32px rgba(58,173,160,0.14);
+      --shadow-lg:0 16px 48px rgba(58,173,160,0.22);
+      --r:22px;--r-sm:14px;
+    }
+
+    .page{
+      min-height:100dvh;
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse 90% 55% at 50% -5%, rgba(58,173,160,0.13) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 35% at 90% 95%, rgba(45,196,168,0.07) 0%, transparent 55%);
+      padding-bottom:80px;
+      opacity:0;transition:opacity .45s ease;
+    }
+    .page.vis{opacity:1}
+
+    /* Topbar */
+    .topbar{
+      display:flex;align-items:center;gap:10px;
+      padding:14px 18px;
+      background:rgba(240,250,248,0.95);
+      backdrop-filter:blur(18px);
+      border-bottom:1px solid var(--teal-border);
+      position:sticky;top:0;z-index:20;
+    }
+    .topbar-texts{display:flex;flex-direction:column;gap:1px}
+    .topbar-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--teal);letter-spacing:-.3px;line-height:1}
+    .topbar-sub{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px}
+
+    /* Wrap */
+    .wrap{max-width:430px;margin:0 auto;padding:22px 16px;display:flex;flex-direction:column;gap:18px}
+
+    /* TARJETA INVITACIÓN */
+    .inv-card{
+      background:var(--surface);border-radius:var(--r);
+      border:1px solid var(--teal-border-mid);
+      box-shadow:var(--shadow-lg);
+      overflow:hidden;
+      animation:riseUp .55s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes riseUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+    .inv-hero{
+      background:linear-gradient(135deg,var(--teal) 0%,var(--teal-dark) 100%);
+      padding:32px 24px 28px;
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+    }
+    .inv-hero::before{
+      content:'';position:absolute;inset:0;
+      background-image:radial-gradient(circle,rgba(255,255,255,0.07) 1px,transparent 1px);
+      background-size:22px 22px;
+    }
+    .inv-tipo-badge{
+      display:inline-block;
+      background:rgba(255,255,255,0.18);
+      border:1px solid rgba(255,255,255,0.28);
+      border-radius:99px;padding:5px 14px;
+      font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);
+      letter-spacing:.6px;text-transform:uppercase;
+      margin-bottom:16px;
+      position:relative;z-index:1;
+    }
+    .inv-saludo{
+      position:relative;z-index:1;
+      font-family:'Playfair Display',serif;
+      font-size:32px;font-weight:700;color:#fff;
+      letter-spacing:-.5px;line-height:1.15;
+      margin-bottom:6px;
+    }
+    .inv-anfitrion{
+      position:relative;z-index:1;
+      font-size:13px;color:rgba(255,255,255,0.78);font-weight:500;
+      margin-bottom:22px;
+    }
+    .inv-evento-nombre{
+      position:relative;z-index:1;
+      background:rgba(255,255,255,0.16);
+      border:1px solid rgba(255,255,255,0.28);
+      border-radius:var(--r-sm);
+      padding:13px 18px;
+      font-family:'Playfair Display',serif;
+      font-size:20px;font-weight:700;color:#fff;
+    }
+
+    .inv-body{padding:20px 22px}
+    .detalles{
+      display:flex;flex-direction:column;gap:11px;
+      background:var(--teal-soft);border:1px solid var(--teal-border-mid);
+      border-radius:var(--r-sm);padding:16px 18px;margin-bottom:18px;
+    }
+    .detalle-fila{display:flex;align-items:center;gap:12px}
+    .detalle-icono{
+      width:32px;height:32px;border-radius:9px;
+      background:var(--teal);
+      display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;
+    }
+    .detalle-texto{font-size:13px;color:var(--text2);font-weight:500;text-transform:capitalize;line-height:1.3}
+    .detalle-label{font-size:10px;color:var(--text3);font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+
+    /* Iconos SVG */
+    .svg-ico{display:block}
+
+    /* DECISIÓN */
+    .pregunta{text-align:center;font-size:15px;font-weight:700;color:var(--text2);padding:4px 0}
+    .grid-decision{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+    .btn-si{
+      background:linear-gradient(135deg,var(--teal),var(--teal-dark));
+      color:#fff;border:none;border-radius:var(--r-sm);
+      padding:16px 12px;font-size:14px;font-weight:800;
+      font-family:'DM Sans',sans-serif;cursor:pointer;
+      box-shadow:0 5px 18px rgba(58,173,160,0.38);
+      transition:transform .18s,box-shadow .18s;
+      animation:riseUp .5s .12s both;
+    }
+    .btn-si:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(58,173,160,0.46)}
+    .btn-si:active{transform:scale(.97)}
+    .btn-si:disabled{opacity:.65;cursor:wait}
+
+    .btn-no{
+      background:var(--surface);color:var(--text2);
+      border:1.5px solid var(--teal-border-mid);border-radius:var(--r-sm);
+      padding:16px 12px;font-size:13px;font-weight:700;
+      font-family:'DM Sans',sans-serif;cursor:pointer;
+      transition:all .18s;
+      animation:riseUp .5s .06s both;
+    }
+    .btn-no:hover{background:#fef2f2;color:#dc2626;border-color:#fca5a5}
+
+    /* FORMULARIO PERSONAS */
+    .form-card{
+      background:var(--surface);border-radius:var(--r);
+      border:1px solid var(--teal-border-mid);box-shadow:var(--shadow);
+      padding:26px 22px;
+      animation:riseUp .45s cubic-bezier(.22,1,.36,1) both;
+    }
+    .form-head{margin-bottom:22px}
+    .form-titulo{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--teal);letter-spacing:-.3px}
+    .form-sub{font-size:12px;color:var(--text3);font-weight:600;margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
+
+    .campo-label{font-size:11px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;display:block}
+
+    .counter-row{display:flex;align-items:center;gap:16px;padding:2px 0}
+    .cnt-btn{
+      width:44px;height:44px;border-radius:50%;
+      border:2px solid var(--teal-border-mid);background:var(--teal-soft);
+      color:var(--teal);font-size:22px;font-weight:700;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:all .15s;user-select:none;line-height:1;
+    }
+    .cnt-btn:hover{background:rgba(58,173,160,0.18);border-color:var(--teal)}
+    .cnt-val{font-size:32px;font-weight:800;color:var(--text);min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
+
+    .btn-confirmar-final{
+      width:100%;margin-top:8px;
+      background:linear-gradient(135deg,var(--teal),var(--teal-dark));
+      color:#fff;border:none;border-radius:var(--r-sm);
+      padding:16px;font-size:15px;font-weight:800;
+      font-family:'DM Sans',sans-serif;cursor:pointer;
+      box-shadow:0 5px 18px rgba(58,173,160,0.36);
+      transition:transform .18s,box-shadow .18s;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    }
+    .btn-confirmar-final:hover{transform:translateY(-1px);box-shadow:0 8px 26px rgba(58,173,160,0.44)}
+    .btn-confirmar-final:disabled{opacity:.65;cursor:wait}
+    .spinner{
+      width:18px;height:18px;border-radius:50%;
+      border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;
+      animation:spin .7s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* CONFIRMADO */
+    .conf-card{
+      background:var(--surface);border-radius:var(--r);
+      border:1px solid var(--teal-border-mid);box-shadow:var(--shadow-lg);
+      overflow:hidden;
+      animation:riseUp .5s cubic-bezier(.22,1,.36,1) both;
+    }
+    .conf-hero{
+      background:linear-gradient(135deg,var(--teal),var(--teal-dark));
+      padding:32px 22px 26px;text-align:center;
+      position:relative;overflow:hidden;
+    }
+    .conf-hero::before{
+      content:'';position:absolute;inset:0;
+      background-image:radial-gradient(circle,rgba(255,255,255,0.06) 1px,transparent 1px);
+      background-size:22px 22px;
+    }
+    .conf-check{
+      position:relative;z-index:1;
+      width:68px;height:68px;border-radius:50%;
+      background:rgba(255,255,255,0.18);border:2px solid rgba(255,255,255,0.36);
+      display:flex;align-items:center;justify-content:center;
+      margin:0 auto 16px;
+      animation:popIn .5s .1s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+    .conf-titulo{
+      position:relative;z-index:1;
+      font-family:'Playfair Display',serif;
+      font-size:30px;font-weight:700;color:#fff;
+      letter-spacing:-.4px;margin-bottom:6px;
+    }
+    .conf-sub{position:relative;z-index:1;font-size:13px;color:rgba(255,255,255,0.8);font-weight:500}
+
+    .conf-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+
+    .num-badge{
+      background:linear-gradient(135deg,var(--teal),var(--teal-dark));
+      border-radius:var(--r-sm);padding:14px 18px;
+      display:flex;align-items:center;gap:14px;
+      box-shadow:0 4px 14px rgba(58,173,160,0.28);
+    }
+    .num-icono{
+      width:44px;height:44px;border-radius:12px;
+      background:rgba(255,255,255,0.18);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
+    .num-label{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:rgba(255,255,255,0.75)}
+    .num-val{font-size:26px;font-weight:800;color:#fff;letter-spacing:-1px;line-height:1}
+
+    .resumen{
+      background:var(--teal-soft);border:1px solid var(--teal-border-mid);
+      border-radius:var(--r-sm);padding:15px 17px;
+      display:flex;flex-direction:column;gap:10px;
+    }
+    .res-fila{display:flex;align-items:center;gap:10px}
+    .res-icono{
+      width:30px;height:30px;border-radius:9px;
+      background:rgba(58,173,160,0.15);border:1px solid var(--teal-border-mid);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
+    .res-texto{font-size:13px;color:var(--text2);font-weight:500;text-transform:capitalize}
+
+    /* Acciones post-confirmación */
+    .acciones-titulo{font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+
+    .grid-acciones{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .btn-accion{
+      background:var(--surface);border:1.5px solid var(--teal-border-mid);
+      border-radius:var(--r-sm);padding:15px 12px;
+      display:flex;flex-direction:column;align-items:center;gap:8px;
+      cursor:pointer;transition:all .18s;font-family:'DM Sans',sans-serif;
+    }
+    .btn-accion:hover{background:var(--teal-soft);border-color:var(--teal);transform:translateY(-2px);box-shadow:0 4px 14px rgba(58,173,160,0.16)}
+    .btn-accion-icono{
+      width:42px;height:42px;border-radius:12px;
+      background:var(--teal-soft);border:1px solid var(--teal-border-mid);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .btn-accion-label{font-size:12px;font-weight:700;color:var(--text2);text-align:center;line-height:1.3}
+
+    .btn-accion-full{
+      width:100%;background:var(--surface);
+      border:1.5px solid var(--teal-border-mid);border-radius:var(--r-sm);
+      padding:14px 18px;
+      display:flex;align-items:center;gap:12px;
+      cursor:pointer;transition:all .18s;font-family:'DM Sans',sans-serif;
+    }
+    .btn-accion-full:hover{background:var(--teal-soft);border-color:var(--teal);box-shadow:0 3px 12px rgba(58,173,160,0.14)}
+
+    .btn-cerrar{
+      width:100%;
+      background:linear-gradient(135deg,var(--teal),var(--teal-dark));
+      color:#fff;border:none;border-radius:var(--r-sm);
+      padding:16px;font-size:15px;font-weight:800;
+      font-family:'DM Sans',sans-serif;cursor:pointer;
+      box-shadow:0 5px 18px rgba(58,173,160,0.36);
+      transition:transform .18s,box-shadow .18s;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    }
+    .btn-cerrar:hover{transform:translateY(-1px);box-shadow:0 8px 26px rgba(58,173,160,0.44)}
+
+    /* RECHAZADO */
+    .rech-card{
+      background:var(--surface);border-radius:var(--r);
+      border:1px solid var(--teal-border-mid);box-shadow:var(--shadow);
+      padding:36px 24px;text-align:center;
+      animation:riseUp .5s cubic-bezier(.22,1,.36,1) both;
+    }
+    .rech-titulo{font-family:'Playfair Display',serif;font-size:26px;color:var(--text);margin-bottom:10px}
+    .rech-sub{font-size:14px;color:var(--text2);line-height:1.6}
+
+    /* Loading */
+    .loading-screen{
+      min-height:100dvh;
+      background:linear-gradient(135deg,#0C1A19,#0F2422);
+      display:flex;flex-direction:column;align-items:center;
+      justify-content:center;gap:18px;
+    }
+    .loading-spinner{
+      width:38px;height:38px;border-radius:50%;
+      border:3px solid rgba(58,173,160,0.2);border-top-color:#3AADA0;
+      animation:spin .75s linear infinite;
+    }
+
+    /* Overlay destrucción */
+    .destroy-overlay{
+      position:fixed;inset:0;z-index:9999;
+      background:rgba(240,250,248,0.0);
+      pointer-events:none;
+    }
+    canvas#confetti-canvas{
+      position:fixed;inset:0;z-index:9999;
+      width:100%;height:100%;
+      display:none;pointer-events:none;
+    }
+    .page.destroying{
+      animation:shatter .6s ease forwards;
+    }
+    @keyframes shatter{
+      0%{opacity:1;transform:scale(1) rotate(0deg)}
+      30%{opacity:1;transform:scale(1.04) rotate(-.5deg)}
+      60%{opacity:.5;transform:scale(.95) rotate(.5deg)}
+      100%{opacity:0;transform:scale(.8) rotate(-1deg)}
+    }
+  `;
+
+  // ─── SVG Icons ──────────────────────────────────────────────────────────────
+  const CheckSvg = () => (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <path
+        d="M7 16l7 7 11-11"
+        stroke="white"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+  const CalSvg = () => (
     <svg
-      width={size}
-      height={size}
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
-      strokeWidth="2.5"
+      stroke="#3AADA0"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <polyline points="20 6 9 17 4 12" />
+      <rect x="3" y="4" width="18" height="18" rx="3" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+      <circle cx="12" cy="16" r="1.5" fill="#3AADA0" />
     </svg>
   );
-}
-function IconX({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  const CamSvg = () => (
     <svg
-      width={size}
-      height={size}
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-function IconCamera({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
+      stroke="#3AADA0"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -162,45 +698,13 @@ function IconCamera({
       <circle cx="12" cy="13" r="4" />
     </svg>
   );
-}
-function IconGallery({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  const HeartSvg = () => (
     <svg
-      width={size}
-      height={size}
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="8.5" cy="8.5" r="1.5" />
-      <polyline points="21 15 16 10 5 21" />
-    </svg>
-  );
-}
-function IconHeart({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
+      stroke="#3AADA0"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -208,1964 +712,524 @@ function IconHeart({
       <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
     </svg>
   );
-}
-function IconMap({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  const WaSvg = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#3AADA0">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+  const DateSvg = () => (
     <svg
-      width={size}
-      height={size}
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke="white"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
-      <line x1="9" y1="3" x2="9" y2="18" />
-      <line x1="15" y1="6" x2="15" y2="21" />
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
     </svg>
   );
-}
-function IconStar({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  const TimeSvg = () => (
     <svg
-      width={size}
-      height={size}
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
-      fill={color}
-      stroke="none"
-    >
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-    </svg>
-  );
-}
-
-// ─── Logo Events ─────────────────────────────────────────────
-function EventsLogo({ size = 28 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 40 40"
       fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+      stroke="white"
+      strokeWidth="2"
+      strokeLinecap="round"
     >
-      <defs>
-        <linearGradient
-          id="logoGradInv"
-          x1="0"
-          y1="0"
-          x2="40"
-          y2="40"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#0D9488" />
-          <stop offset="100%" stopColor="#0F766E" />
-        </linearGradient>
-      </defs>
-      <rect width="40" height="40" rx="12" fill="url(#logoGradInv)" />
-      <path
-        d="M20 9 L21.3 16.7 L28 18 L21.3 19.3 L20 27 L18.7 19.3 L12 18 L18.7 16.7 Z"
-        fill="white"
-        opacity="0.95"
-      />
-      <circle cx="28" cy="11" r="2" fill="white" opacity="0.55" />
-      <circle cx="12" cy="29" r="1.5" fill="white" opacity="0.35" />
-      <path
-        d="M13 30 Q20 33 27 30"
-        stroke="white"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        opacity="0.45"
-        fill="none"
-      />
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
     </svg>
   );
-}
-
-// ─── Número de tarjeta desde token ──────────────────────────
-function tokenToCardNumber(token: string): string {
-  const suffix = token
-    .slice(-8)
-    .replace(/[^a-f0-9]/gi, "")
-    .slice(-4);
-  const num = parseInt(suffix, 16) % 9999;
-  return String(num + 1).padStart(4, "0");
-}
-
-// ─── SubirFotoSection ────────────────────────────────────────
-function SubirFotoSection({
-  invitado,
-  eventoId,
-  col,
-}: {
-  invitado: Invitado;
-  eventoId: string;
-  col: (typeof PALETAS)[string];
-}) {
-  const [subiendo, setSubiendo] = useState(false);
-  const [yaSubio, setYaSubio] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [archivo, setArchivo] = useState<File | null>(null);
-  const [caption, setCaption] = useState("");
-
-  useEffect(() => {
-    supabase
-      .from("fotos")
-      .select("id")
-      .eq("invitado_id", invitado.id)
-      .then(({ data }) => {
-        if (data && data.length > 0) setYaSubio(true);
-      });
-  }, [invitado.id]);
-
-  const seleccionarArchivo = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setArchivo(f);
-    setPreview(URL.createObjectURL(f));
-  };
-
-  const subirFoto = async () => {
-    if (!archivo) return;
-    setSubiendo(true);
-    const ext = archivo.name.split(".").pop();
-    const path = `${eventoId}/${invitado.id}_${Date.now()}.${ext}`;
-    const { error: storageError } = await supabase.storage
-      .from("fotos-eventos")
-      .upload(path, archivo, { upsert: false });
-    if (storageError) {
-      alert("Error al subir. Intenta de nuevo.");
-      setSubiendo(false);
-      return;
-    }
-    const { data: urlData } = supabase.storage
-      .from("fotos-eventos")
-      .getPublicUrl(path);
-    await supabase
-      .from("fotos")
-      .insert({
-        evento_id: eventoId,
-        invitado_id: invitado.id,
-        url: urlData.publicUrl,
-        path,
-        caption: caption.trim() || null,
-      });
-    setYaSubio(true);
-    setSubiendo(false);
-  };
-
-  if (yaSubio) {
-    return (
-      <div
-        style={{
-          background: col.claro,
-          borderRadius: 18,
-          padding: "18px 22px",
-          border: `1.5px solid ${col.acento}`,
-          textAlign: "center",
-        }}
-      >
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: "50%",
-            background: col.texto,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 10px",
-          }}
-        >
-          <IconCheck size={24} color="white" />
-        </div>
-        <p style={{ fontWeight: 700, color: col.texto, fontSize: 15 }}>
-          Foto enviada al muro ✓
-        </p>
-        <p style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
-          Tu momento ya está en el álbum del evento
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        background: "white",
-        borderRadius: 20,
-        padding: 20,
-        border: `1px solid ${col.acento}50`,
-        boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
-      }}
+  const PlaceSvg = () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="white"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <p
-        style={{
-          fontWeight: 700,
-          color: col.texto,
-          fontSize: 15,
-          marginBottom: 14,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <IconCamera size={18} color={col.texto} /> Comparte una foto del evento
-      </p>
-      {preview ? (
-        <div style={{ marginBottom: 14 }}>
-          <img
-            src={preview}
-            alt="Vista previa"
-            style={{
-              width: "100%",
-              borderRadius: 14,
-              maxHeight: 220,
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-          <button
-            onClick={() => {
-              setPreview(null);
-              setArchivo(null);
-            }}
-            style={{
-              marginTop: 8,
-              background: "none",
-              border: "none",
-              color: "#9ca3af",
-              fontSize: 12,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <IconX size={14} color="#9ca3af" /> Cambiar foto
-          </button>
-        </div>
-      ) : (
-        <label
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            border: `2px dashed ${col.acento}`,
-            borderRadius: 16,
-            padding: "28px 20px",
-            cursor: "pointer",
-            background: col.claro,
-            marginBottom: 14,
-          }}
-        >
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: "50%",
-              background: col.acento,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconCamera size={22} color={col.texto} />
-          </div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: col.texto }}>
-            Toca para seleccionar una foto
-          </p>
-          <p style={{ fontSize: 12, color: "#94a3b8" }}>JPG, PNG · máx 10MB</p>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={seleccionarArchivo}
-            style={{ display: "none" }}
-          />
-        </label>
-      )}
-      {preview && (
-        <input
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="Añade una descripción (opcional)"
-          maxLength={120}
-          style={{
-            width: "100%",
-            border: `1.5px solid ${col.acento}`,
-            borderRadius: 12,
-            padding: "10px 14px",
-            fontSize: 13,
-            outline: "none",
-            fontFamily: "inherit",
-            boxSizing: "border-box",
-            background: col.claro,
-            marginBottom: 14,
-          }}
-        />
-      )}
-      {archivo && (
-        <button
-          onClick={subirFoto}
-          disabled={subiendo}
-          style={{
-            width: "100%",
-            background: `linear-gradient(135deg,#0D9488,#0F766E)`,
-            color: "white",
-            border: "none",
-            borderRadius: 14,
-            padding: "14px",
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: subiendo ? "wait" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            boxShadow: "0 4px 16px rgba(13,148,136,0.30)",
-          }}
-        >
-          <IconCamera size={18} color="white" />
-          {subiendo ? "Subiendo..." : "Publicar en el muro"}
-        </button>
-      )}
-    </div>
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
   );
-}
-
-// ─── Componente principal ────────────────────────────────────
-export default function ConfirmarInvitacion() {
-  const params = useParams();
-  const token = params.token as string;
-
-  const [invitado, setInvitado] = useState<Invitado | null>(null);
-  const [evento, setEvento] = useState<Evento | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [paso, setPaso] = useState<
-    "invitacion" | "formulario" | "confirmado" | "rechazado"
-  >("invitacion");
-  const [numPersonas, setNumPersonas] = useState(1);
-  const [mensaje, setMensaje] = useState("");
-  const [alergias, setAlergias] = useState("");
-  const [guardando, setGuardando] = useState(false);
-  const [yaRespondio, setYaRespondio] = useState(false);
-  const [menuAbierto, setMenuAbierto] = useState(false);
-
-  useEffect(() => {
-    async function cargar() {
-      const { data: inv } = await supabase
-        .from("invitados")
-        .select("*")
-        .eq("token", token)
-        .single();
-      if (!inv) {
-        setLoading(false);
-        return;
-      }
-      setInvitado(inv);
-      setNumPersonas(inv.num_personas || 1);
-      if (inv.estado !== "pendiente") {
-        setYaRespondio(true);
-        setPaso(inv.estado === "confirmado" ? "confirmado" : "rechazado");
-      }
-      const { data: ev } = await supabase
-        .from("eventos")
-        .select("*")
-        .eq("id", inv.evento_id)
-        .single();
-      if (ev) setEvento(ev);
-      setLoading(false);
-    }
-    cargar();
-  }, [token]);
-
-  const confirmar = async () => {
-    if (!invitado) return;
-    setGuardando(true);
-    await supabase
-      .from("invitados")
-      .update({
-        estado: "confirmado",
-        num_personas: numPersonas,
-        mensaje: mensaje.trim() || null,
-        alergias: alergias.trim() || null,
-        respondido_at: new Date().toISOString(),
-      })
-      .eq("id", invitado.id);
-    setPaso("confirmado");
-    setGuardando(false);
-  };
-
-  const rechazar = async () => {
-    if (!invitado) return;
-    setGuardando(true);
-    await supabase
-      .from("invitados")
-      .update({ estado: "rechazado", respondido_at: new Date().toISOString() })
-      .eq("id", invitado.id);
-    setPaso("rechazado");
-    setGuardando(false);
-  };
+  const PeopleSvg = () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#3AADA0"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+  const TicketSvg = () => (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="white"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 9a3 3 0 010-6h20a3 3 0 010 6" />
+      <path d="M2 15a3 3 0 000 6h20a3 3 0 000-6" />
+      <path d="M2 9h20M2 15h20" />
+    </svg>
+  );
 
   if (loading)
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f0fdfa",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: "50%",
-              border: "3px solid #ccfbf1",
-              borderTopColor: "#0D9488",
-              animation: "spin 0.8s linear infinite",
-              margin: "0 auto 14px",
-            }}
-          />
-          <EventsLogo size={24} />
+      <>
+        <style>{styles}</style>
+        <div className="loading-screen">
+          <AppLogo size={56} />
+          <div className="loading-spinner" />
           <p
             style={{
-              color: "#0f766e",
+              color: "#3AADA0",
               fontWeight: 600,
               fontSize: 13,
-              marginTop: 10,
+              letterSpacing: 1,
             }}
           >
             Cargando tu invitación...
           </p>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      </main>
+      </>
     );
 
   if (!invitado || !evento)
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f0fdfa",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: "50%",
-              background: "#ccfbf1",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-            }}
-          >
-            <IconX size={28} color="#0f766e" />
-          </div>
-          <p style={{ color: "#134e4a", fontWeight: 700, fontSize: 16 }}>
-            Invitación no encontrada
-          </p>
-          <p style={{ color: "#5eead4", fontSize: 13, marginTop: 4 }}>
-            Verifica el enlace que recibiste
-          </p>
-        </div>
-      </main>
-    );
-
-  const col = PALETAS[evento.tipo] || PALETAS.otro;
-  const cardNumber = tokenToCardNumber(invitado.token);
-  const fechaEvento = new Date(evento.fecha).toLocaleDateString("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  const fechaLimite = new Date(
-    evento.fecha_limite_confirmacion,
-  ).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
-  const muroUrl = `/muro/${evento.id}?token=${invitado.token}`;
-  const muroDeseosUrl = `/muro/${evento.id}?token=${invitado.token}&tab=deseos`;
-
-  // ── Menú flotante ──
-  const MenuFlotante = () => (
-    <div style={{ position: "fixed", bottom: 24, right: 20, zIndex: 100 }}>
-      {menuAbierto && (
+      <>
+        <style>{styles}</style>
         <div
           style={{
-            position: "absolute",
-            bottom: 64,
-            right: 0,
-            background: "white",
-            borderRadius: 18,
-            padding: "8px 0",
-            boxShadow: "0 8px 32px rgba(13,148,136,0.18)",
-            border: "1px solid #ccfbf1",
-            minWidth: 200,
-            overflow: "hidden",
+            minHeight: "100dvh",
+            background: "var(--bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
           }}
         >
-          <Link
-            href={muroUrl}
-            onClick={() => setMenuAbierto(false)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "12px 20px",
-              textDecoration: "none",
-              color: "#134e4a",
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
-            <IconGallery size={18} color="#0D9488" /> Ver muro del evento
-          </Link>
-          <div style={{ height: 1, background: "#f0fdfa", margin: "4px 0" }} />
-          <Link
-            href={`/libro/${evento.id}?token=${invitado.token}`}
-            onClick={() => setMenuAbierto(false)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "12px 20px",
-              textDecoration: "none",
-              color: "#134e4a",
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
-            <svg
-              width={18}
-              height={18}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#0D9488"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-            </svg>
-            Libro de recuerdos
-          </Link>
-        </div>
-      )}
-      <button
-        onClick={() => setMenuAbierto(!menuAbierto)}
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: "50%",
-          background: "linear-gradient(135deg,#0D9488,#0F766E)",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 6px 24px rgba(13,148,136,0.45)",
-          transition: "transform 0.2s",
-          transform: menuAbierto ? "rotate(45deg)" : "rotate(0deg)",
-        }}
-      >
-        {menuAbierto ? (
-          <IconX size={22} color="white" />
-        ) : (
-          <svg
-            width={22}
-            height={22}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          >
-            <circle cx="12" cy="5" r="1" fill="white" />
-            <circle cx="12" cy="12" r="1" fill="white" />
-            <circle cx="12" cy="19" r="1" fill="white" />
-          </svg>
-        )}
-      </button>
-    </div>
-  );
-
-  // ══════════ VISTA: INVITACIÓN ══════════
-  if (paso === "invitacion")
-    return (
-      <main
-        style={{
-          minHeight: "100vh",
-          background: col.gradBg,
-          paddingBottom: 100,
-        }}
-      >
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;600;700;800&display=swap');
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: 'DM Sans', sans-serif; }
-          @keyframes spin { to { transform: rotate(360deg) } }
-          @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-          @keyframes popIn { from { opacity:0; transform:scale(0.94); } to { opacity:1; transform:scale(1); } }
-          .card-badge-shine { background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.55) 50%, transparent 60%); background-size: 200% 100%; animation: shine 3s ease-in-out infinite; }
-          @keyframes shine { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
-        `}</style>
-
-        {/* ── HERO con número de tarjeta ── */}
-        <div
-          style={{
-            position: "relative",
-            background: col.gradHero,
-            overflow: "hidden",
-            paddingBottom: 40,
-          }}
-        >
-          {evento.imagen_url && (
-            <div
-              style={{ position: "relative", height: 240, overflow: "hidden" }}
-            >
-              <img
-                src={evento.imagen_url}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(to bottom,rgba(0,0,0,0.05),rgba(0,0,0,0.45))",
-                }}
-              />
-            </div>
-          )}
-
           <div
             style={{
+              background: "white",
+              borderRadius: 22,
+              border: "1px solid var(--teal-border-mid)",
+              padding: "40px 28px",
+              maxWidth: 340,
               textAlign: "center",
-              padding: "32px 24px 0",
-              position: "relative",
-              zIndex: 1,
             }}
           >
-            {/* Logo */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 7,
-                marginBottom: 14,
-              }}
-            >
-              <EventsLogo size={22} />
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: col.texto,
-                  opacity: 0.75,
-                  letterSpacing: 0.5,
-                }}
-              >
-                Events
-              </span>
-            </div>
-
-            {/* ── NÚMERO DE TARJETA ── */}
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                background: "rgba(255,255,255,0.85)",
-                borderRadius: 99,
-                padding: "5px 14px",
-                marginBottom: 14,
-                border: `1.5px solid ${col.acento}`,
-                boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                className="card-badge-shine"
-                style={{ position: "absolute", inset: 0 }}
-              />
-              <span style={{ fontSize: 16, position: "relative", zIndex: 1 }}>
-                🎫
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 800,
-                  color: col.texto,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  position: "relative",
-                  zIndex: 1,
-                }}
-              >
-                Tarjeta #{cardNumber}
-              </span>
-              <span
-                style={{
-                  fontSize: 9,
-                  fontWeight: 600,
-                  color: col.texto,
-                  opacity: 0.55,
-                  position: "relative",
-                  zIndex: 1,
-                }}
-              >
-                · {col.label}
-              </span>
-            </div>
-
+            <div style={{ fontSize: 44, marginBottom: 14 }}>🔍</div>
             <p
               style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: col.texto,
-                opacity: 0.7,
-                marginBottom: 6,
-                textTransform: "uppercase",
-                letterSpacing: 2,
-              }}
-            >
-              Tienes una invitación especial
-            </p>
-            <h1
-              style={{
-                fontSize: 30,
-                fontWeight: 900,
-                color: col.texto,
-                lineHeight: 1.15,
+                fontFamily: "'Playfair Display',serif",
+                fontSize: 22,
+                color: "var(--teal)",
                 marginBottom: 8,
-                fontFamily: "'Cormorant Garamond', serif",
               }}
             >
-              {col.emoji} {evento.nombre}
-            </h1>
-            {evento.anfitriones && (
-              <p
-                style={{
-                  fontSize: 15,
-                  color: col.texto,
-                  opacity: 0.85,
-                  fontWeight: 500,
-                  marginBottom: 8,
-                }}
-              >
-                {evento.anfitriones}
-              </p>
-            )}
-            {evento.frase_evento && (
-              <div
-                style={{
-                  display: "inline-block",
-                  background: "rgba(255,255,255,0.75)",
-                  borderRadius: 99,
-                  padding: "6px 20px",
-                  marginBottom: 16,
-                  border: `1px solid ${col.acento}`,
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 13,
-                    fontStyle: "italic",
-                    color: col.texto,
-                    fontWeight: 600,
-                  }}
-                >
-                  "{evento.frase_evento}"
-                </p>
-              </div>
-            )}
-
-            {/* Chip de invitado */}
-            <div
-              style={{
-                background: "rgba(255,255,255,0.92)",
-                borderRadius: 20,
-                padding: "16px 28px",
-                display: "inline-block",
-                marginTop: 8,
-                boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-                border: `2px solid ${col.acento}`,
-              }}
-            >
-              <p
-                style={{
-                  fontSize: 10,
-                  color: col.texto,
-                  fontWeight: 700,
-                  opacity: 0.7,
-                  marginBottom: 2,
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                }}
-              >
-                Para
-              </p>
-              <p
-                style={{
-                  fontSize: 22,
-                  fontWeight: 800,
-                  color: col.texto,
-                  fontFamily: "'Cormorant Garamond', serif",
-                }}
-              >
-                {invitado.nombre}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── DETALLES ── */}
-        <div style={{ maxWidth: 500, margin: "0 auto", padding: "24px 16px" }}>
-          <div
-            style={{
-              background: "white",
-              borderRadius: 24,
-              padding: 24,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
-              border: `1px solid ${col.acento}50`,
-              marginBottom: 16,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: col.texto,
-                marginBottom: 16,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-              }}
-            >
-              Detalles del evento
+              Invitación no encontrada
             </p>
-            {[
-              { label: "Fecha", valor: fechaEvento },
-              { label: "Hora", valor: evento.hora },
-              { label: "Lugar", valor: evento.lugar },
-              { label: "Confirmar antes del", valor: fechaLimite },
-            ].map(({ label, valor }) => (
-              <div
-                key={label}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  marginBottom: 10,
-                  padding: "10px 14px",
-                  borderRadius: 14,
-                  background: col.claro,
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <p
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: col.texto,
-                      opacity: 0.7,
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    {label}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "#111",
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {valor}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {evento.maps_url && (
-              <a
-                href={evento.maps_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  background: col.gradHero,
-                  color: col.texto,
-                  textDecoration: "none",
-                  borderRadius: 14,
-                  padding: "10px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  marginTop: 4,
-                  border: `1px solid ${col.acento}`,
-                }}
-              >
-                <IconMap size={16} color={col.texto} /> Ver en Google Maps
-              </a>
-            )}
-          </div>
-
-          {evento.foto_lugar_url && (
-            <div
-              style={{
-                borderRadius: 20,
-                overflow: "hidden",
-                marginBottom: 16,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-              }}
-            >
-              <img
-                src={evento.foto_lugar_url}
-                alt="Lugar del evento"
-                style={{ width: "100%", display: "block" }}
-              />
-            </div>
-          )}
-
-          {evento.mensaje_invitacion && (
-            <div
-              style={{
-                background: col.claro,
-                borderRadius: 20,
-                padding: "18px 22px",
-                borderLeft: `4px solid ${col.acento}`,
-                marginBottom: 16,
-              }}
-            >
-              <p
-                style={{
-                  fontSize: 13,
-                  color: col.texto,
-                  fontStyle: "italic",
-                  lineHeight: 1.7,
-                  fontWeight: 500,
-                }}
-              >
-                "{evento.mensaje_invitacion}"
-              </p>
-              {evento.anfitriones && (
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: col.texto,
-                    opacity: 0.7,
-                    marginTop: 8,
-                    fontWeight: 700,
-                  }}
-                >
-                  — {evento.anfitriones}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* ── BOTONES PRINCIPALES ── */}
-          {!yaRespondio ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-                marginTop: 8,
-              }}
-            >
-              <button
-                onClick={() => setPaso("formulario")}
-                style={{
-                  background: "linear-gradient(135deg,#0D9488,#0F766E)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 18,
-                  padding: "16px 24px",
-                  fontSize: 16,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  boxShadow: "0 6px 20px rgba(13,148,136,0.40)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                <IconCheck size={20} color="white" /> Confirmar mi asistencia
-              </button>
-              <button
-                onClick={rechazar}
-                disabled={guardando}
-                style={{
-                  background: "white",
-                  color: "#6b7280",
-                  border: "2px solid #e2e8f0",
-                  borderRadius: 18,
-                  padding: "14px 24px",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                <IconX size={18} color="#9ca3af" />{" "}
-                {guardando ? "Guardando..." : "No podré asistir"}
-              </button>
-            </div>
-          ) : (
-            <div
-              style={{
-                background:
-                  invitado.estado === "confirmado" ? "#f0fdf4" : "#fef9c3",
-                border: `2px solid ${invitado.estado === "confirmado" ? "#86efac" : "#fde047"}`,
-                borderRadius: 18,
-                padding: "16px 20px",
-                textAlign: "center",
-              }}
-            >
-              <p
-                style={{
-                  fontWeight: 800,
-                  color:
-                    invitado.estado === "confirmado" ? "#16a34a" : "#ca8a04",
-                  fontSize: 15,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                {invitado.estado === "confirmado" ? (
-                  <>
-                    <IconCheck size={18} color="#16a34a" /> Ya confirmaste tu
-                    asistencia
-                  </>
-                ) : (
-                  <>
-                    <IconX size={18} color="#ca8a04" /> Ya indicaste que no
-                    podrás asistir
-                  </>
-                )}
-              </p>
-              <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                Gracias por responder
-              </p>
-            </div>
-          )}
-
-          {/* ── VER MURO ── */}
-          <div
-            style={{
-              marginTop: 20,
-              background: col.claro,
-              borderRadius: 18,
-              border: `1px solid ${col.acento}`,
-              overflow: "hidden",
-            }}
-          >
-            <Link
-              href={muroUrl}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 20px",
-                textDecoration: "none",
-                color: col.texto,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 12,
-                    background: "linear-gradient(135deg,#0D9488,#0F766E)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <IconGallery size={20} color="white" />
-                </div>
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: 14 }}>
-                    Ver el muro del evento
-                  </p>
-                  <p style={{ fontSize: 11, opacity: 0.7 }}>
-                    Fotos, deseos y más
-                  </p>
-                </div>
-              </div>
-              <svg
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={col.texto}
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </Link>
+            <p style={{ fontSize: 13, color: "var(--text2)" }}>
+              Este link no es válido o ya expiró.
+            </p>
           </div>
         </div>
-        <MenuFlotante />
-      </main>
+      </>
     );
 
-  // ══════════ VISTA: FORMULARIO ══════════
-  if (paso === "formulario")
-    return (
-      <main
-        style={{
-          minHeight: "100vh",
-          background: col.gradBg,
-          paddingBottom: 60,
-        }}
+  const tipoLabel = TIPO_LABEL[evento.tipo] || "Evento especial";
+  const fechaFmt = evento.fecha ? formatFecha(evento.fecha) : null;
+  const fechaCorta = evento.fecha ? formatFechaCorta(evento.fecha) : null;
+
+  return (
+    <>
+      <style>{styles}</style>
+      <canvas id="confetti-canvas" ref={canvasRef} />
+
+      <div
+        className={`page${mounted ? " vis" : ""}${destroying ? " destroying" : ""}`}
       >
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;600;700;800&display=swap'); *{box-sizing:border-box;margin:0;padding:0} body{font-family:'DM Sans',sans-serif}`}</style>
-        <div
-          style={{
-            background: col.gradHero,
-            padding: "32px 20px",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.92)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 12px",
-              border: `2px solid ${col.acento}`,
-            }}
-          >
-            <IconCheck size={30} color={col.texto} />
+        {/* Topbar */}
+        <div className="topbar">
+          <AppLogo size={30} />
+          <div className="topbar-texts">
+            <div className="topbar-name">Eventix</div>
+            <div className="topbar-sub">Invitaciones digitales</div>
           </div>
-          <h1
-            style={{
-              fontSize: 24,
-              fontWeight: 800,
-              color: col.texto,
-              fontFamily: "'Cormorant Garamond',serif",
-            }}
-          >
-            ¡Qué alegría!
-          </h1>
-          <p style={{ color: col.texto, opacity: 0.8, marginTop: 4 }}>
-            {invitado.nombre}, confirma los detalles de tu asistencia
-          </p>
         </div>
-        <div style={{ maxWidth: 480, margin: "0 auto", padding: "24px 16px" }}>
-          <div
-            style={{
-              background: "white",
-              borderRadius: 24,
-              padding: 24,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.07)",
-            }}
-          >
-            <div style={{ marginBottom: 22 }}>
-              <label
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: col.texto,
-                  display: "block",
-                  marginBottom: 10,
-                }}
-              >
-                ¿Cuántas personas asistirán? (incluido tú)
-              </label>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  justifyContent: "center",
-                }}
-              >
-                {[
-                  {
-                    op: "−",
-                    fn: () => setNumPersonas(Math.max(1, numPersonas - 1)),
-                  },
-                  {
-                    op: "+",
-                    fn: () => setNumPersonas(Math.min(10, numPersonas + 1)),
-                  },
-                ].map((btn, i) => (
+
+        {/* ─── PASO: VISTA INVITACIÓN ─────────────────────────────────────── */}
+        {step === "vista" && (
+          <div className="wrap">
+            <div className="inv-card">
+              {/* Hero */}
+              <div className="inv-hero">
+                <div className="inv-tipo-badge">{tipoLabel}</div>
+                <h1 className="inv-saludo">¡Hola, {invitado.nombre}!</h1>
+                <p className="inv-anfitrion">
+                  Invitación de{" "}
+                  <strong style={{ color: "white" }}>
+                    {evento.anfitriones}
+                  </strong>
+                </p>
+                <div className="inv-evento-nombre">{evento.nombre}</div>
+              </div>
+
+              {/* Detalles */}
+              <div className="inv-body">
+                {(fechaFmt || evento.hora || evento.lugar) && (
+                  <div className="detalles">
+                    {fechaFmt && (
+                      <div className="detalle-fila">
+                        <div className="detalle-icono">
+                          <DateSvg />
+                        </div>
+                        <div>
+                          <div className="detalle-label">Fecha</div>
+                          <div className="detalle-texto">{fechaFmt}</div>
+                        </div>
+                      </div>
+                    )}
+                    {evento.hora && (
+                      <div className="detalle-fila">
+                        <div className="detalle-icono">
+                          <TimeSvg />
+                        </div>
+                        <div>
+                          <div className="detalle-label">Hora</div>
+                          <div className="detalle-texto">{evento.hora}</div>
+                        </div>
+                      </div>
+                    )}
+                    {evento.lugar && (
+                      <div className="detalle-fila">
+                        <div className="detalle-icono">
+                          <PlaceSvg />
+                        </div>
+                        <div>
+                          <div className="detalle-label">Lugar</div>
+                          <div className="detalle-texto">{evento.lugar}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <p className="pregunta">¿Podrás asistir?</p>
+            <div className="grid-decision">
+              <button className="btn-no" onClick={rechazarAsistencia}>
+                No podré ir
+              </button>
+              <button className="btn-si" onClick={() => setStep("form")}>
+                Sí, voy
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── PASO: FORM PERSONAS ────────────────────────────────────────── */}
+        {step === "form" && (
+          <div className="wrap">
+            <div className="form-card">
+              <div className="form-head">
+                <div className="form-titulo">¡Qué alegría!</div>
+                <div className="form-sub">Un dato más para confirmar</div>
+              </div>
+
+              <div>
+                <span className="campo-label">
+                  ¿Cuántas personas asistirán?
+                </span>
+                <div className="counter-row">
                   <button
-                    key={i}
-                    onClick={btn.fn}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: "50%",
-                      border: `2px solid ${col.acento}`,
-                      background: col.claro,
-                      color: col.texto,
-                      fontSize: 22,
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
+                    className="cnt-btn"
+                    onClick={() => setNumPersonas(Math.max(1, numPersonas - 1))}
                   >
-                    {btn.op}
+                    −
                   </button>
-                ))}
+                  <span className="cnt-val">{numPersonas}</span>
+                  <button
+                    className="cnt-btn"
+                    onClick={() =>
+                      setNumPersonas(Math.min(20, numPersonas + 1))
+                    }
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-              <p
-                style={{
-                  textAlign: "center",
-                  fontSize: 32,
-                  fontWeight: 900,
-                  color: col.texto,
-                  marginTop: -36,
-                  pointerEvents: "none",
-                }}
-              >
-                {numPersonas}
-              </p>
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: col.texto,
-                  display: "block",
-                  marginBottom: 8,
-                }}
-              >
-                Un mensaje para los festejados (opcional)
-              </label>
-              <textarea
-                value={mensaje}
-                onChange={(e) => setMensaje(e.target.value)}
-                placeholder="Con mucho cariño estaré ahí..."
-                rows={3}
-                maxLength={200}
-                style={{
-                  width: "100%",
-                  border: `1.5px solid ${col.acento}`,
-                  borderRadius: 14,
-                  padding: "10px 14px",
-                  fontSize: 13,
-                  resize: "none",
-                  outline: "none",
-                  fontFamily: "inherit",
-                  lineHeight: 1.6,
-                  boxSizing: "border-box",
-                  background: col.claro,
-                }}
-              />
-            </div>
-            <div style={{ marginBottom: 22 }}>
-              <label
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: col.texto,
-                  display: "block",
-                  marginBottom: 8,
-                }}
-              >
-                Alergias o preferencias alimentarias (opcional)
-              </label>
-              <input
-                value={alergias}
-                onChange={(e) => setAlergias(e.target.value)}
-                placeholder="Ej: vegetariano, alérgico al marisco..."
-                style={{
-                  width: "100%",
-                  border: `1.5px solid ${col.acento}`,
-                  borderRadius: 14,
-                  padding: "10px 14px",
-                  fontSize: 13,
-                  outline: "none",
-                  fontFamily: "inherit",
-                  boxSizing: "border-box",
-                  background: col.claro,
-                }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
+
               <button
-                onClick={() => setPaso("invitacion")}
-                style={{
-                  flex: 1,
-                  background: col.claro,
-                  color: col.texto,
-                  border: `1px solid ${col.acento}`,
-                  borderRadius: 14,
-                  padding: "14px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "'DM Sans',sans-serif",
-                }}
+                className="btn-confirmar-final"
+                onClick={confirmarAsistencia}
+                disabled={confirmando}
               >
-                Volver
-              </button>
-              <button
-                onClick={confirmar}
-                disabled={guardando}
-                style={{
-                  flex: 2,
-                  background: "linear-gradient(135deg,#0D9488,#0F766E)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 14,
-                  padding: "14px",
-                  fontSize: 14,
-                  fontWeight: 800,
-                  cursor: guardando ? "wait" : "pointer",
-                  boxShadow: "0 4px 16px rgba(13,148,136,0.30)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  fontFamily: "'DM Sans',sans-serif",
-                }}
-              >
-                {guardando ? (
-                  "Guardando..."
-                ) : (
+                {confirmando ? (
                   <>
-                    <IconCheck size={18} color="white" /> Confirmar asistencia
+                    <div className="spinner" /> Confirmando...
                   </>
+                ) : (
+                  "Confirmar asistencia"
                 )}
               </button>
             </div>
           </div>
-        </div>
-      </main>
-    );
+        )}
 
-  // ══════════ VISTA: CONFIRMADO — tarjeta completa con botones de muro ══════════
-  if (paso === "confirmado")
-    return (
-      <main
-        style={{
-          minHeight: "100vh",
-          background: col.gradBg,
-          paddingBottom: 60,
-        }}
-      >
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;600;700;800&display=swap');
-          *{box-sizing:border-box;margin:0;padding:0} body{font-family:'DM Sans',sans-serif}
-          @keyframes confetti { 0%{transform:translateY(-10px) rotate(0deg);opacity:1} 100%{transform:translateY(80px) rotate(720deg);opacity:0} }
-          @keyframes fadeUp { from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)} }
-          @keyframes popIn { from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)} }
-          @keyframes shine { 0%{background-position:200% center}100%{background-position:-200% center} }
-          .btn-action { transition: transform 0.15s, box-shadow 0.15s; }
-          .btn-action:hover { transform: translateY(-2px); }
-          .btn-action:active { transform: scale(0.97); }
-        `}</style>
-
-        <div
-          style={{ maxWidth: 480, margin: "0 auto", padding: "32px 16px 60px" }}
-        >
-          {/* ── CABECERA ÉXITO ── */}
-          <div
-            style={{
-              textAlign: "center",
-              marginBottom: 24,
-              animation: "fadeUp 0.4s ease both",
-            }}
-          >
-            <div
-              style={{
-                position: "relative",
-                display: "inline-block",
-                marginBottom: 16,
-              }}
-            >
-              <div
-                style={{
-                  width: 90,
-                  height: 90,
-                  borderRadius: "50%",
-                  background: `linear-gradient(135deg,${col.acento},${col.texto})`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto",
-                  boxShadow: `0 12px 40px ${col.acento}60`,
-                }}
-              >
-                <IconCheck size={46} color="white" />
+        {/* ─── PASO: CONFIRMADO ───────────────────────────────────────────── */}
+        {step === "confirmado" && (
+          <div className="wrap">
+            <div className="conf-card">
+              {/* Hero */}
+              <div className="conf-hero">
+                <div className="conf-check">
+                  <CheckSvg />
+                </div>
+                <div className="conf-titulo">¡Confirmado!</div>
+                <p className="conf-sub">
+                  Nos vemos en{" "}
+                  <strong style={{ color: "white" }}>{evento.nombre}</strong>
+                </p>
               </div>
-              {/* Mini confetti dots */}
-              {["#fbbf24", "#34d399", "#60a5fa", "#f472b6"].map((c, i) => (
-                <div
-                  key={i}
-                  style={{
-                    position: "absolute",
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: c,
-                    top: `${[0, 0, 70, 70][i]}%`,
-                    left: `${[0, 100, 0, 100][i]}%`,
-                    animation: `confetti ${1.2 + i * 0.2}s ease ${i * 0.1}s both`,
-                    transform: "translate(-50%,-50%)",
-                  }}
-                />
-              ))}
-            </div>
-            <h2
-              style={{
-                fontSize: 28,
-                fontWeight: 900,
-                color: col.texto,
-                fontFamily: "'Cormorant Garamond',serif",
-                marginBottom: 6,
-              }}
-            >
-              ¡Confirmado!
-            </h2>
-            <p style={{ fontSize: 15, color: "#374151", lineHeight: 1.6 }}>
-              <strong>{invitado.nombre}</strong>, estamos muy felices de que
-              puedas acompañarnos.
-            </p>
-          </div>
 
-          {/* ── TARJETA DIGITAL ── */}
-          <div
-            style={{
-              background: "white",
-              borderRadius: 28,
-              overflow: "hidden",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.10)",
-              border: `2px solid ${col.acento}40`,
-              animation: "popIn 0.5s ease 0.1s both",
-              marginBottom: 20,
-            }}
-          >
-            {/* Header de tarjeta */}
-            <div
-              style={{
-                background: col.gradHero,
-                padding: "20px 24px",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              {/* Shine overlay */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.25) 50%,transparent 60%)",
-                  backgroundSize: "200% 100%",
-                  animation: "shine 4s ease-in-out infinite",
-                }}
-              />
-              <div
-                style={{
-                  position: "relative",
-                  zIndex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <EventsLogo size={32} />
-                  <div>
-                    <p
-                      style={{
-                        fontFamily: "'Cormorant Garamond',serif",
-                        fontSize: 18,
-                        fontWeight: 600,
-                        color: col.texto,
-                        lineHeight: 1,
-                      }}
-                    >
-                      Events
-                    </p>
-                    <p
-                      style={{
-                        fontSize: 10,
-                        color: col.texto,
-                        opacity: 0.65,
-                        fontWeight: 600,
-                        letterSpacing: 0.3,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Invitaciones digitales
-                    </p>
+              <div className="conf-body">
+                {/* Número de confirmación */}
+                {invitado.numero_confirmacion && (
+                  <div className="num-badge">
+                    <div className="num-icono">
+                      <TicketSvg />
+                    </div>
+                    <div>
+                      <div className="num-label">Número de confirmación</div>
+                      <div className="num-val">
+                        #{String(invitado.numero_confirmacion).padStart(3, "0")}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Resumen */}
+                <div className="resumen">
+                  {fechaCorta && (
+                    <div className="res-fila">
+                      <div className="res-icono">
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#3AADA0"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="3" y="4" width="18" height="18" rx="2" />
+                          <path d="M16 2v4M8 2v4M3 10h18" />
+                        </svg>
+                      </div>
+                      <span className="res-texto">{fechaCorta}</span>
+                    </div>
+                  )}
+                  {evento.hora && (
+                    <div className="res-fila">
+                      <div className="res-icono">
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#3AADA0"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 6v6l4 2" />
+                        </svg>
+                      </div>
+                      <span className="res-texto">{evento.hora}</span>
+                    </div>
+                  )}
+                  {evento.lugar && (
+                    <div className="res-fila">
+                      <div className="res-icono">
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#3AADA0"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                      </div>
+                      <span className="res-texto">{evento.lugar}</span>
+                    </div>
+                  )}
+                  <div className="res-fila">
+                    <div className="res-icono">
+                      <PeopleSvg />
+                    </div>
+                    <span className="res-texto">
+                      {invitado.num_personas}{" "}
+                      {invitado.num_personas === 1 ? "persona" : "personas"}
+                    </span>
                   </div>
                 </div>
-                {/* Número de tarjeta */}
-                <div style={{ textAlign: "right" }}>
-                  <p
-                    style={{
-                      fontSize: 9,
-                      fontWeight: 800,
-                      color: col.texto,
-                      opacity: 0.6,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Tarjeta
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 20,
-                      fontWeight: 900,
-                      color: col.texto,
-                      letterSpacing: 2,
-                      fontFamily: "'DM Sans',sans-serif",
-                    }}
-                  >
-                    #{cardNumber}
-                  </p>
+
+                {/* Acciones: foto y deseo */}
+                <div>
+                  <div className="acciones-titulo">Participa en el evento</div>
+                  <div className="grid-acciones">
+                    <button
+                      className="btn-accion"
+                      onClick={() => {
+                        // Navegar al muro del evento con token
+                        window.location.href = `/muro/${invitado.evento_id}?token=${invitado.token}&tab=fotos`;
+                      }}
+                    >
+                      <div className="btn-accion-icono">
+                        <CamSvg />
+                      </div>
+                      <span className="btn-accion-label">
+                        Subir mi foto al muro
+                      </span>
+                    </button>
+                    <button
+                      className="btn-accion"
+                      onClick={() => {
+                        window.location.href = `/muro/${invitado.evento_id}?token=${invitado.token}&tab=deseos`;
+                      }}
+                    >
+                      <div className="btn-accion-icono">
+                        <HeartSvg />
+                      </div>
+                      <span className="btn-accion-label">Dejar mi deseo</span>
+                    </button>
+                  </div>
                 </div>
+
+                {/* Guardar en Google Calendar */}
+                {evento.fecha && (
+                  <button
+                    className="btn-accion-full"
+                    onClick={() => abrirGoogleCalendar(evento)}
+                  >
+                    <div className="btn-accion-icono">
+                      <CalSvg />
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                        textAlign: "left",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "var(--text2)",
+                        }}
+                      >
+                        Guardar en Google Calendar
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--text3)" }}>
+                        No te olvides del evento
+                      </span>
+                    </div>
+                    <svg
+                      style={{ marginLeft: "auto" }}
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#3AADA0"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                    >
+                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </button>
+                )}
+
+                {/* Cerrar y volver a WhatsApp */}
+                <button className="btn-cerrar" onClick={confirmarYCerrar}>
+                  <WaSvg />
+                  Listo, cerrar esta ventana
+                </button>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Cuerpo tarjeta */}
-            <div style={{ padding: "20px 24px 24px" }}>
-              {/* Emoji + evento */}
-              <div style={{ textAlign: "center", marginBottom: 16 }}>
-                <div style={{ fontSize: 40, marginBottom: 8 }}>{col.emoji}</div>
-                <h3
-                  style={{
-                    fontFamily: "'Cormorant Garamond',serif",
-                    fontSize: 22,
-                    fontWeight: 700,
-                    color: "#111",
-                    marginBottom: 4,
-                  }}
-                >
-                  {evento.nombre}
-                </h3>
-                {evento.anfitriones && (
-                  <p style={{ fontSize: 13, color: "#6b7280" }}>
-                    {evento.anfitriones}
-                  </p>
-                )}
-              </div>
-
-              {/* Detalles compactos */}
-              <div
+        {/* ─── PASO: RECHAZADO ────────────────────────────────────────────── */}
+        {step === "rechazado" && (
+          <div className="wrap">
+            <div className="rech-card">
+              <div style={{ fontSize: 52, marginBottom: 16 }}>😔</div>
+              <div className="rech-titulo">Gracias por avisar</div>
+              <p className="rech-sub">
+                Lamentamos que no puedas asistir,{" "}
+                <strong>{invitado.nombre}</strong>.<br />
+                <br />
+                Esperamos verte en otra ocasión.
+              </p>
+              <button
+                onClick={confirmarYCerrar}
                 style={{
-                  background: col.claro,
-                  borderRadius: 16,
-                  padding: "12px 16px",
-                  marginBottom: 16,
+                  marginTop: 22,
+                  width: "100%",
+                  background: "var(--teal-soft)",
+                  color: "var(--teal)",
+                  border: "1.5px solid var(--teal-border-mid)",
+                  borderRadius: "var(--r-sm)",
+                  padding: "14px",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  fontFamily: "'DM Sans',sans-serif",
+                  cursor: "pointer",
                   display: "flex",
-                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
                   gap: 8,
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    fontSize: 13,
-                    color: "#374151",
-                  }}
-                >
-                  <span>📅</span>
-                  <span
-                    style={{ fontWeight: 600, textTransform: "capitalize" }}
-                  >
-                    {fechaEvento}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    fontSize: 13,
-                    color: "#374151",
-                  }}
-                >
-                  <span>📍</span>
-                  <span style={{ fontWeight: 600 }}>{evento.lugar}</span>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    fontSize: 13,
-                    color: "#374151",
-                  }}
-                >
-                  <span>👥</span>
-                  <span style={{ fontWeight: 600 }}>
-                    {numPersonas} persona{numPersonas > 1 ? "s" : ""} confirmada
-                    {numPersonas > 1 ? "s" : ""}
-                  </span>
-                </div>
-              </div>
-
-              {/* Chip de invitado con estrella */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  background: `linear-gradient(135deg,${col.acento}20,${col.acento}40)`,
-                  borderRadius: 14,
-                  padding: "10px 14px",
-                  border: `1px solid ${col.acento}60`,
-                }}
-              >
-                <div
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: "50%",
-                    background: col.texto,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <span
-                    style={{ color: "white", fontWeight: 800, fontSize: 16 }}
-                  >
-                    {invitado.nombre.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p
-                    style={{ fontWeight: 700, fontSize: 14, color: col.texto }}
-                  >
-                    {invitado.nombre}
-                  </p>
-                  <p style={{ fontSize: 11, color: col.texto, opacity: 0.7 }}>
-                    Invitado confirmado ✓
-                  </p>
-                </div>
-                <IconStar size={18} color={col.texto} />
-              </div>
+                <WaSvg /> Cerrar ventana
+              </button>
             </div>
           </div>
-
-          {/* ── SECCIÓN FOTO ── */}
-          <div
-            style={{
-              animation: "fadeUp 0.5s ease 0.25s both",
-              marginBottom: 16,
-            }}
-          >
-            <SubirFotoSection
-              invitado={invitado}
-              eventoId={evento.id}
-              col={col}
-            />
-          </div>
-
-          {/* ── BOTONES DE MURO ── */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              animation: "fadeUp 0.5s ease 0.35s both",
-            }}
-          >
-            {/* Botón: Foto al muro */}
-            <Link
-              href={muroUrl}
-              className="btn-action"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                background: "linear-gradient(135deg,#0D9488,#0F766E)",
-                color: "white",
-                textDecoration: "none",
-                borderRadius: 18,
-                padding: "16px 20px",
-                boxShadow: "0 6px 24px rgba(13,148,136,0.35)",
-              }}
-            >
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 14,
-                  background: "rgba(255,255,255,0.18)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <IconCamera size={22} color="white" />
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontWeight: 800, fontSize: 15 }}>
-                  Ver muro del evento
-                </p>
-                <p style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
-                  Fotos, reacciones y recuerdos
-                </p>
-              </div>
-              <svg
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </Link>
-
-            {/* Botón: Dejar un deseo */}
-            <Link
-              href={muroDeseosUrl}
-              className="btn-action"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                background: "white",
-                color: col.texto,
-                textDecoration: "none",
-                borderRadius: 18,
-                padding: "16px 20px",
-                border: `2px solid ${col.acento}`,
-                boxShadow: `0 4px 20px ${col.acento}30`,
-              }}
-            >
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 14,
-                  background: col.claro,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  border: `1px solid ${col.acento}`,
-                }}
-              >
-                <IconHeart size={22} color={col.texto} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontWeight: 800, fontSize: 15 }}>
-                  Dejar un deseo 💌
-                </p>
-                <p style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
-                  Escribe tu mensaje especial al muro
-                </p>
-              </div>
-              <svg
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={col.texto}
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </Link>
-
-            {/* Botón: Libro de recuerdos */}
-            <Link
-              href={`/libro/${evento.id}?token=${invitado.token}`}
-              className="btn-action"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                background: col.claro,
-                color: col.texto,
-                textDecoration: "none",
-                borderRadius: 18,
-                padding: "14px 20px",
-                border: `1px solid ${col.acento}50`,
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  background: col.acento + "40",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <svg
-                  width={20}
-                  height={20}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={col.texto}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-                </svg>
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontWeight: 700, fontSize: 14 }}>
-                  Libro de recuerdos
-                </p>
-                <p style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
-                  Momentos especiales del evento
-                </p>
-              </div>
-              <svg
-                width={16}
-                height={16}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={col.texto}
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-
-  // ══════════ VISTA: RECHAZADO ══════════
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#f0fdfa",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
-    >
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;600;700;800&display=swap'); *{box-sizing:border-box;margin:0;padding:0} body{font-family:'DM Sans',sans-serif}`}</style>
-      <div style={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
-        <div
-          style={{
-            background: "white",
-            borderRadius: 28,
-            padding: "40px 32px",
-            boxShadow: "0 8px 32px rgba(13,148,136,0.08)",
-            border: "1px solid #ccfbf1",
-          }}
-        >
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              background: "#f0fdfa",
-              border: "2px solid #ccfbf1",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 20px",
-            }}
-          >
-            <IconX size={36} color="#5eead4" />
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <EventsLogo size={32} />
-          </div>
-          <h2
-            style={{
-              fontSize: 22,
-              fontWeight: 800,
-              color: "#134e4a",
-              marginBottom: 8,
-              fontFamily: "'Cormorant Garamond',serif",
-            }}
-          >
-            Entendemos
-          </h2>
-          <p style={{ color: "#6b7280", lineHeight: 1.6, marginBottom: 20 }}>
-            <strong>{invitado.nombre}</strong>, lamentamos que no puedas
-            acompañarnos. ¡Estarás en nuestros pensamientos!
-          </p>
-          <div
-            style={{
-              background: "#f0fdfa",
-              borderRadius: 16,
-              padding: 16,
-              border: "1px solid #ccfbf1",
-            }}
-          >
-            <p style={{ fontSize: 13, color: "#0f766e", fontStyle: "italic" }}>
-              Que Dios te guarde y te bendiga siempre
-            </p>
-          </div>
-        </div>
+        )}
       </div>
-    </main>
+    </>
   );
 }

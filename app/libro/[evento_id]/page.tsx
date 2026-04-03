@@ -45,173 +45,75 @@ type Invitado = {
 };
 type Vista = "portada" | "fotos" | "deseos" | "asistentes";
 
-// ─── Logo ─────────────────────────────────────────────────────────────────────
-function EventsLogo({ size = 28 }: { size?: number }) {
+// ─── Eventix Logo (mismo que login) ───────────────────────────────────────────
+function AppLogo({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <rect width="32" height="32" rx="9" fill="#0d9488" />
-      <path
-        d="M22 6L23 9L26 10L23 11L22 14L21 11L18 10L21 9Z"
-        fill="white"
-        opacity="0.9"
-      />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient
+          id="evx-bg-lr"
+          x1="0"
+          y1="0"
+          x2="64"
+          y2="64"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="#0F766E" />
+          <stop offset="100%" stopColor="#0D9488" />
+        </linearGradient>
+        <linearGradient
+          id="evx-glow-lr"
+          x1="12"
+          y1="20"
+          x2="52"
+          y2="44"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="#5EEAD4" />
+          <stop offset="100%" stopColor="#2DD4BF" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="18" fill="url(#evx-bg-lr)" />
       <rect
-        x="5"
-        y="13"
-        width="16"
-        height="11"
-        rx="2"
-        stroke="white"
-        strokeWidth="1.4"
+        x="2.5"
+        y="2.5"
+        width="59"
+        height="59"
+        rx="16"
         fill="none"
+        stroke="rgba(255,255,255,0.14)"
+        strokeWidth="1.5"
       />
       <path
-        d="M5 15.5L13 20L21 15.5"
-        stroke="white"
-        strokeWidth="1.4"
+        d="M18 17 L30 32 L18 47"
+        stroke="url(#evx-glow-lr)"
+        strokeWidth="5"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
       />
       <path
-        d="M13 12C13 10.5 14 10 15 11C16 10 17 10.5 17 12C17 13.5 15 15 15 15C15 15 13 13.5 13 12Z"
-        fill="white"
-        opacity="0.9"
+        d="M46 17 L34 32 L46 47"
+        stroke="rgba(255,255,255,0.38)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
       />
+      <circle cx="32" cy="32" r="4" fill="white" opacity="0.95" />
+      <circle cx="17" cy="13" r="2" fill="#5EEAD4" opacity="0.8" />
+      <circle cx="47" cy="13" r="1.5" fill="#5EEAD4" opacity="0.5" />
+      <circle cx="47" cy="51" r="2" fill="#5EEAD4" opacity="0.8" />
+      <circle cx="17" cy="51" r="1.5" fill="#5EEAD4" opacity="0.5" />
     </svg>
   );
 }
-
-// ─── Íconos ───────────────────────────────────────────────────────────────────
-function IconBack() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
-function IconDownload() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
-  );
-}
-function IconLogout() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}
-
-// Íconos de tabs
-function IconPortada() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-    </svg>
-  );
-}
-function IconFotos() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="8.5" cy="8.5" r="1.5" />
-      <polyline points="21 15 16 10 5 21" />
-    </svg>
-  );
-}
-function IconDeseos() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-    </svg>
-  );
-}
-function IconAsistentes() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-    </svg>
-  );
-}
-
-const TAB_ICONS: Record<Vista, React.ReactElement> = {
-  portada: <IconPortada />,
-  fotos: <IconFotos />,
-  deseos: <IconDeseos />,
-  asistentes: <IconAsistentes />,
-};
 
 // ─── Temas por tipo de evento ──────────────────────────────────────────────────
 const TEMAS: Record<
@@ -267,7 +169,6 @@ const TEMAS: Record<
   },
 };
 
-// ─── Stickers elegantes ───────────────────────────────────────────────────────
 const STICKERS: Record<string, string> = {
   rosa: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="6" fill="#f9a8d4" opacity=".8"/><path d="M16 10Q18 6 22 8Q24 12 20 14Q22 18 18 18Q16 22 12 20Q8 18 10 14Q6 12 8 8Q12 6 16 10Z" fill="#ec4899" opacity=".6"/></svg>`,
   corazon: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 26C14 24 5 18 5 12A5.5 5.5 0 0116 9A5.5 5.5 0 0127 12C27 18 18 24 16 26Z" fill="#f43f5e"/></svg>`,
@@ -279,7 +180,6 @@ const STICKERS: Record<string, string> = {
   diamante: `<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M16 4L28 14L16 28L4 14Z" fill="#67e8f9" opacity=".8"/><path d="M4 14L16 14L28 14" stroke="white" strokeWidth="1"/><path d="M16 4L16 28" stroke="white" strokeWidth=".8"/></svg>`,
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function chunk<T>(arr: T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
     arr.slice(i * size, i * size + size),
@@ -330,27 +230,28 @@ function SeccionHeader({
       className="pagina"
       style={{
         borderRadius: 20,
-        padding: "40px 28px",
+        padding: "36px 24px",
         textAlign: "center",
         background: tema.portada,
         boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
       }}
     >
       <div
-        style={{ marginBottom: 12, opacity: 0.7 }}
+        style={{ marginBottom: 10, opacity: 0.7 }}
         dangerouslySetInnerHTML={{ __html: tema.ornSvg }}
       />
       <h2
         style={{
-          fontSize: 28,
+          fontSize: 26,
           fontWeight: 800,
           color: tema.titulo,
-          marginBottom: 6,
+          marginBottom: 5,
+          fontFamily: "'Cormorant Garamond',serif",
         }}
       >
         {titulo}
       </h2>
-      <p style={{ color: tema.subtitulo, opacity: 0.75, fontSize: 14 }}>
+      <p style={{ color: tema.subtitulo, opacity: 0.75, fontSize: 13 }}>
         {subtitulo}
       </p>
     </div>
@@ -374,12 +275,75 @@ function Vacia({ mensaje }: { mensaje: string }) {
   );
 }
 
+// ─── Tab Icons ────────────────────────────────────────────────────────────────
+const TabIcons: Record<Vista, React.ReactElement> = {
+  portada: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+    </svg>
+  ),
+  fotos: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  ),
+  deseos: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+    </svg>
+  ),
+  asistentes: (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  ),
+};
+
 // ─── Componente principal ──────────────────────────────────────────────────────
 export default function LibroRecuerdosPage() {
   const params = useParams();
   const router = useRouter();
   const eventoId = params.evento_id as string;
-  const libroRef = useRef<HTMLDivElement>(null);
 
   const [evento, setEvento] = useState<Evento | null>(null);
   const [fotos, setFotos] = useState<Foto[]>([]);
@@ -388,7 +352,21 @@ export default function LibroRecuerdosPage() {
   const [loading, setLoading] = useState(true);
   const [generando, setGenerando] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
+  const [descargandoFotos, setDescargandoFotos] = useState(false);
+  const [descargandoDeseos, setDescargandoDeseos] = useState(false);
+  const [descargandoAsistentes, setDescargandoAsistentes] = useState(false);
   const [vista, setVista] = useState<Vista>("portada");
+  const [mounted, setMounted] = useState(false);
+
+  const tokenParam =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("token")
+      : "";
+
+  useEffect(() => {
+    document.title = "Eventix — Libro de recuerdos";
+    setTimeout(() => setMounted(true), 50);
+  }, []);
 
   useEffect(() => {
     async function cargar() {
@@ -414,9 +392,7 @@ export default function LibroRecuerdosPage() {
           .eq("evento_id", eventoId)
           .eq("estado", "confirmado"),
       ]);
-
       if (ev.data) setEvento(ev.data);
-
       if (ft.data) {
         const fotosConR = ft.data.map((f: any) => {
           const c: Record<string, number> = {};
@@ -433,7 +409,6 @@ export default function LibroRecuerdosPage() {
         });
         setFotos(fotosConR);
       }
-
       if (ds.data) setDeseos(ds.data);
       if (inv.data) setInvitados(inv.data);
       setLoading(false);
@@ -441,10 +416,55 @@ export default function LibroRecuerdosPage() {
     cargar();
   }, [eventoId]);
 
+  // ── Descargar PDF (print) ──
   const generarPDF = () => {
     setGenerando(true);
     window.print();
     setTimeout(() => setGenerando(false), 1500);
+  };
+
+  // ── Descargar todas las fotos (zip simulado con links) ──
+  const descargarFotos = async () => {
+    if (!fotos.length) return;
+    setDescargandoFotos(true);
+    for (let i = 0; i < fotos.length; i++) {
+      try {
+        const res = await fetch(fotos[i].url);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `foto-${i + 1}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        await new Promise((r) => setTimeout(r, 400));
+      } catch {
+        /* skip failed */
+      }
+    }
+    setDescargandoFotos(false);
+  };
+
+  // ── Descargar deseos como PDF via print ──
+  const descargarDeseosPDF = () => {
+    setDescargandoDeseos(true);
+    setVista("deseos");
+    setTimeout(() => {
+      window.print();
+      setDescargandoDeseos(false);
+    }, 600);
+  };
+
+  // ── Descargar asistentes como PDF via print ──
+  const descargarAsistentesPDF = () => {
+    setDescargandoAsistentes(true);
+    setVista("asistentes");
+    setTimeout(() => {
+      window.print();
+      setDescargandoAsistentes(false);
+    }, 600);
   };
 
   const cerrarSesion = async () => {
@@ -453,12 +473,6 @@ export default function LibroRecuerdosPage() {
     router.push("/");
   };
 
-  const tokenParam =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("token")
-      : "";
-
-  // ── Loading ──
   if (loading)
     return (
       <div
@@ -467,22 +481,30 @@ export default function LibroRecuerdosPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#f0fdfa",
+          background: "#F0FAF9",
         }}
       >
         <div style={{ textAlign: "center" }}>
+          <AppLogo size={44} />
           <div
             style={{
-              width: 44,
-              height: 44,
-              border: "3px solid #0d9488",
-              borderTopColor: "transparent",
+              width: 36,
+              height: 36,
+              border: "3px solid #ccfbf1",
+              borderTopColor: "#0D9488",
               borderRadius: "50%",
-              margin: "0 auto 14px",
+              margin: "16px auto 12px",
               animation: "spin .8s linear infinite",
             }}
           />
-          <p style={{ color: "#0d9488", fontWeight: 600, fontSize: 14 }}>
+          <p
+            style={{
+              color: "#0f766e",
+              fontWeight: 600,
+              fontSize: 14,
+              fontFamily: "'DM Sans',sans-serif",
+            }}
+          >
             Preparando tu libro...
           </p>
         </div>
@@ -505,13 +527,13 @@ export default function LibroRecuerdosPage() {
     );
 
   const tema = TEMAS[evento.tipo] ?? TEMAS.otro;
-
   const fechaFormateada = new Date(evento.fecha).toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+  const totalPersonas = invitados.reduce((s, i) => s + i.num_personas, 0);
 
   const TABS: { key: Vista; label: string; count?: number }[] = [
     { key: "portada", label: "Portada" },
@@ -520,210 +542,251 @@ export default function LibroRecuerdosPage() {
     { key: "asistentes", label: "Asistentes", count: invitados.length },
   ];
 
-  const totalPersonas = invitados.reduce((s, i) => s + i.num_personas, 0);
-
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+          --bg:           #F0FAF9;
+          --surface:      #FFFFFF;
+          --surface2:     #F7FDFB;
+          --border:       rgba(13,148,136,0.14);
+          --border-hover: rgba(13,148,136,0.40);
+          --accent:       #0D9488;
+          --accent2:      #0F766E;
+          --accent-light: #5EEAD4;
+          --accent-soft:  rgba(13,148,136,0.06);
+          --accent-soft2: rgba(13,148,136,0.13);
+          --text:         #0C1A19;
+          --text2:        #2D6E68;
+          --text3:        #7ABFBA;
+          --shadow:       0 4px 28px rgba(13,148,136,0.13);
+          --shadow-sm:    0 2px 10px rgba(13,148,136,0.09);
+          --shadow-btn:   0 6px 28px rgba(13,148,136,0.38);
+          --transition:   all 0.3s cubic-bezier(.4,0,.2,1);
+        }
+
+        html, body {
+          font-family: 'DM Sans', sans-serif;
+          background: var(--bg);
+          color: var(--text);
+          -webkit-font-smoothing: antialiased;
+        }
+
+        body::before {
+          content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+          opacity: 0.5;
+        }
+
         @media print {
           .no-print { display: none !important; }
           .pagina   { page-break-after: always; }
           body      { margin: 0; padding: 0; }
           @page     { size: A4; margin: 0; }
         }
-        @keyframes spin    { to { transform: rotate(360deg); } }
-        @keyframes fadeUp  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin   { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* ── Header ── */
         .libro-header {
           position: sticky; top: 0; z-index: 20;
-          background: rgba(255,255,255,0.97);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-          border-bottom: 1px solid #e2e8f0;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+          background: rgba(240,250,249,0.94);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+          border-bottom: 1px solid var(--border);
+          box-shadow: var(--shadow-sm);
+          padding-top: env(safe-area-inset-top, 0px);
         }
         .header-top {
           display: flex; align-items: center; gap: 8px;
-          padding: 10px 14px 8px;
+          padding: 11px 14px 10px;
         }
-        .header-brand {
-          flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
-        }
-        .header-brand-text { min-width: 0; }
-        .header-brand-title {
-          font-weight: 800; font-size: 13px; color: #1e293b;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-          display: block; line-height: 1.2;
-        }
-        .header-brand-sub {
-          font-size: 10px; color: #0d9488; font-weight: 600; display: block;
-        }
+        .brand-block { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
+        .brand-name { font-family: 'Cormorant Garamond', serif; font-size: 19px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; line-height: 1; }
+        .brand-name span { color: var(--accent); }
+        .brand-sub { font-size: 9.5px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3); margin-top: 2px; display: block; }
+        .brand-event { font-size: 10.5px; color: var(--accent); font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
 
         /* ── Botones header ── */
-        .btn-back {
-          display: flex; align-items: center; gap: 5px;
-          background: #f1f5f9; color: #475569;
-          text-decoration: none; border-radius: 10px;
-          padding: 7px 11px; font-size: 12px; font-weight: 700;
-          flex-shrink: 0; transition: background 0.15s;
-          border: none; cursor: pointer; white-space: nowrap;
+        .hbtn {
+          display: flex; align-items: center; justify-content: center; gap: 5px;
+          border-radius: 11px; padding: 7px 11px;
+          font-size: 11.5px; font-weight: 700; cursor: pointer;
+          border: none; white-space: nowrap; flex-shrink: 0;
+          font-family: 'DM Sans', sans-serif;
+          transition: var(--transition);
+          -webkit-tap-highlight-color: transparent;
         }
-        .btn-back:hover { background: #e2e8f0; }
-
-        .btn-pdf {
-          display: flex; align-items: center; gap: 5px;
-          background: #0d9488; color: white;
-          border: none; border-radius: 10px;
-          padding: 7px 13px; font-size: 12px; font-weight: 700;
-          cursor: pointer; flex-shrink: 0;
-          box-shadow: 0 3px 10px rgba(13,148,136,0.35);
-          transition: opacity 0.15s, transform 0.15s; white-space: nowrap;
-        }
-        .btn-pdf:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
-        .btn-pdf:disabled { opacity: 0.6; cursor: not-allowed; }
-
-        .btn-salir {
-          display: flex; align-items: center; gap: 5px;
-          background: #fef2f2; color: #dc2626;
-          border: 1px solid #fecaca; border-radius: 10px;
-          padding: 7px 11px; font-size: 12px; font-weight: 700;
-          cursor: pointer; flex-shrink: 0;
-          transition: background 0.15s; white-space: nowrap;
-        }
-        .btn-salir:hover { background: #fee2e2; }
-        .btn-salir:disabled { opacity: 0.6; cursor: not-allowed; }
+        .hbtn-ghost { background: var(--surface); color: var(--text2); border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); }
+        .hbtn-ghost:hover { background: var(--accent-soft2); color: var(--accent); border-color: var(--border-hover); }
+        .hbtn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; box-shadow: var(--shadow-btn); }
+        .hbtn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(13,148,136,0.42); }
+        .hbtn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .hbtn-danger:hover { background: #fee2e2; }
+        .hbtn:disabled { opacity: 0.55; cursor: not-allowed; }
 
         /* ── Tabs ── */
         .tabs-row {
-          display: grid; grid-template-columns: repeat(4, 1fr);
-          border-top: 1px solid #f1f5f9;
+          display: grid; grid-template-columns: repeat(4,1fr);
+          border-top: 1px solid var(--border);
         }
         .tab-btn {
           display: flex; flex-direction: column; align-items: center;
           justify-content: center; gap: 2px; padding: 8px 4px;
           border: none; background: transparent; cursor: pointer;
-          position: relative; transition: background 0.15s;
-          border-right: 1px solid #f1f5f9;
+          position: relative; transition: background .15s;
+          border-right: 1px solid var(--border);
+          -webkit-tap-highlight-color: transparent;
         }
         .tab-btn:last-child { border-right: none; }
-        .tab-btn:hover     { background: #f8fafc; }
-        .tab-btn.active    { background: #fafafa; }
+        .tab-btn:hover { background: var(--accent-soft); }
+        .tab-btn.active { background: var(--surface2); }
         .tab-btn.active::after {
-          content: ''; position: absolute; bottom: 0;
-          left: 10%; right: 10%; height: 2.5px;
-          border-radius: 2px 2px 0 0;
-          background: linear-gradient(90deg, #0d9488, #059669);
+          content: ''; position: absolute; bottom: 0; left: 10%; right: 10%;
+          height: 2.5px; border-radius: 2px 2px 0 0;
+          background: linear-gradient(90deg, var(--accent), var(--accent-light));
         }
-        .tab-icon { line-height: 0; }
-        .tab-icon svg { display: block; }
-        .tab-btn:not(.active) .tab-icon { opacity: 0.35; }
-        .tab-btn.active .tab-icon       { opacity: 1; color: #0d9488; }
-        .tab-label {
-          font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em;
-          color: #94a3b8; white-space: nowrap;
-        }
-        .tab-btn.active .tab-label { color: #0d9488; }
-        .tab-badge {
-          font-size: 8.5px; font-weight: 800;
-          background: #f1f5f9; color: #94a3b8;
-          border-radius: 99px; padding: 1px 5px; line-height: 1.5;
-        }
-        .tab-btn.active .tab-badge { background: #ccfbf1; color: #0f766e; }
+        .tab-icon { line-height: 0; color: #94a3b8; }
+        .tab-btn.active .tab-icon { color: var(--accent); }
+        .tab-label { font-size: 9px; font-weight: 700; letter-spacing: 0.3px; color: #94a3b8; text-transform: uppercase; }
+        .tab-btn.active .tab-label { color: var(--accent); }
+        .tab-badge { font-size: 8px; font-weight: 800; background: #f1f5f9; color: #94a3b8; border-radius: 99px; padding: 1px 5px; line-height: 1.5; }
+        .tab-btn.active .tab-badge { background: #ccfbf1; color: var(--accent2); }
 
-        /* ── Body ── */
+        /* ── Barra de acciones de sección ── */
+        .section-actions {
+          display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+          padding: 10px 12px 0;
+          max-width: 640px; margin: 0 auto;
+        }
+        .btn-dl {
+          display: flex; align-items: center; gap: 6px;
+          background: var(--surface); color: var(--accent2);
+          border: 1.5px solid var(--border-hover); border-radius: 12px;
+          padding: 9px 16px; font-size: 12px; font-weight: 700;
+          font-family: 'DM Sans', sans-serif; cursor: pointer;
+          transition: var(--transition); box-shadow: var(--shadow-sm);
+          -webkit-tap-highlight-color: transparent;
+        }
+        .btn-dl:hover:not(:disabled) { background: var(--accent-soft2); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(13,148,136,0.18); }
+        .btn-dl:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── Cuerpo ── */
         .libro-body {
-          background: #dde1e7; min-height: 100vh; padding: 20px 12px 48px;
+          background: #dde1e7; min-height: 100vh;
+          padding: 16px 12px;
+          padding-bottom: calc(80px + env(safe-area-inset-bottom, 16px));
         }
         .libro-inner {
           max-width: 640px; margin: 0 auto;
-          display: flex; flex-direction: column; gap: 20px;
-          animation: fadeUp 0.25s ease;
+          display: flex; flex-direction: column; gap: 18px;
+          animation: fadeUp .25s ease;
         }
 
-        /* ── Tarjeta foto favorita ── */
+        /* ── Fotos ── */
         .foto-card { display: flex; flex-direction: column; }
-        .foto-img-wrap {
-          border-radius: 14px; overflow: hidden;
-          aspect-ratio: 1; position: relative;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-        }
-        .foto-favorita-badge {
-          position: absolute; top: 7px; left: 7px;
-          background: #fbbf24; color: white;
-          border-radius: 8px; padding: 2px 8px;
-          font-size: 10px; font-weight: 800;
-        }
-        .foto-meta { margin-top: 6px; padding: 0 2px; }
-        .foto-autor { font-size: 11px; color: #64748b; font-weight: 600; }
-        .foto-caption { font-size: 11px; color: #9ca3af; font-style: italic; }
+        .foto-img-wrap { border-radius: 13px; overflow: hidden; aspect-ratio: 1; position: relative; box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+        .foto-favorita-badge { position: absolute; top: 6px; left: 6px; background: #fbbf24; color: white; border-radius: 7px; padding: 2px 7px; font-size: 9px; font-weight: 800; }
+        .foto-meta { margin-top: 5px; padding: 0 2px; }
+        .foto-autor { font-size: 10.5px; color: #64748b; font-weight: 600; }
+        .foto-caption { font-size: 10.5px; color: #9ca3af; font-style: italic; }
 
-        /* ── Tarjeta deseo ── */
-        .deseo-card {
-          border-radius: 14px; padding: 14px; position: relative;
-          border: 1px solid rgba(255,255,255,0.9);
-          box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden;
-        }
-        .deseo-sticker {
-          position: absolute; top: 8px; right: 8px;
-          opacity: 0.45; width: 28px; height: 28px;
-        }
-        .deseo-mensaje {
-          font-size: 12px; color: #374151; line-height: 1.65;
-          margin-bottom: 10px; padding-right: 30px;
-        }
+        /* ── Deseos ── */
+        .deseo-card { border-radius: 14px; padding: 13px; position: relative; border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden; }
+        .deseo-sticker { position: absolute; top: 8px; right: 8px; opacity: 0.45; width: 26px; height: 26px; }
+        .deseo-mensaje { font-size: 12px; color: #374151; line-height: 1.65; margin-bottom: 9px; padding-right: 28px; }
         .deseo-autor { display: flex; align-items: center; gap: 7px; }
         .deseo-nombre { font-size: 11px; font-weight: 700; color: #4b5563; }
 
-        /* ── Tarjeta invitado ── */
-        .inv-card {
-          background: white; border-radius: 12px;
-          padding: 10px 12px; display: flex;
-          align-items: flex-start; gap: 9px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
+        /* ── Invitados ── */
+        .inv-card { background: white; border-radius: 12px; padding: 10px 12px; display: flex; align-items: flex-start; gap: 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
         .inv-nombre { font-weight: 700; color: #1e293b; font-size: 13px; line-height: 1.2; }
         .inv-acomp  { font-size: 10px; color: #9ca3af; margin-top: 1px; }
         .inv-msg    { font-size: 10px; color: #6b7280; font-style: italic; margin-top: 2px; }
+
+        /* ── Bottom bar ── */
+        .bottom-bar {
+          position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+          padding: 11px 14px;
+          padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px));
+          background: rgba(240,250,249,0.94);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+          border-top: 1px solid var(--border);
+          box-shadow: 0 -4px 20px rgba(13,148,136,0.09);
+        }
+        .bottom-inner { display: flex; gap: 10px; max-width: 640px; margin: 0 auto; }
+        .btn-back-bottom {
+          flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+          background: var(--surface); color: var(--text2);
+          border: 1.5px solid var(--border); border-radius: 14px;
+          padding: 13px; font-size: 14px; font-weight: 600;
+          font-family: 'DM Sans', sans-serif; text-decoration: none;
+          transition: var(--transition); box-shadow: var(--shadow-sm);
+          -webkit-tap-highlight-color: transparent;
+        }
+        .btn-back-bottom:hover { background: var(--accent-soft2); color: var(--accent); border-color: var(--border-hover); }
       `}</style>
 
       {/* ════ HEADER ════ */}
       <div className="libro-header no-print">
         <div className="header-top">
-          {/* Volver al muro */}
-          <Link
-            href={`/muro/${eventoId}${tokenParam ? `?token=${tokenParam}` : ""}`}
-            className="btn-back"
-          >
-            <IconBack />
-            Muro
-          </Link>
-
-          {/* Logo + título */}
-          <div className="header-brand">
-            <EventsLogo size={28} />
-            <div className="header-brand-text">
-              <span className="header-brand-title">Libro de recuerdos</span>
-              <span className="header-brand-sub">
-                Events — invitaciones digitales
-              </span>
+          {/* Marca */}
+          <div className="brand-block">
+            <AppLogo size={30} />
+            <div style={{ minWidth: 0 }}>
+              <div className="brand-name">
+                Event<span>ix</span>
+              </div>
+              <span className="brand-sub">Libro de recuerdos</span>
+              <span className="brand-event">{evento.nombre}</span>
             </div>
           </div>
 
           {/* PDF */}
-          <button className="btn-pdf" onClick={generarPDF} disabled={generando}>
-            <IconDownload />
+          <button
+            className="hbtn hbtn-primary"
+            onClick={generarPDF}
+            disabled={generando}
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
             {generando ? "..." : "PDF"}
           </button>
 
           {/* Salir */}
           <button
-            className="btn-salir"
+            className="hbtn hbtn-danger"
             onClick={cerrarSesion}
             disabled={saliendo}
           >
-            <IconLogout />
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
             {saliendo ? "..." : "Salir"}
           </button>
         </div>
@@ -736,7 +799,7 @@ export default function LibroRecuerdosPage() {
               className={`tab-btn${vista === t.key ? " active" : ""}`}
               onClick={() => setVista(t.key)}
             >
-              <span className="tab-icon">{TAB_ICONS[t.key]}</span>
+              <span className="tab-icon">{TabIcons[t.key]}</span>
               <span className="tab-label">{t.label}</span>
               {t.count !== undefined && (
                 <span className="tab-badge">{t.count}</span>
@@ -746,9 +809,92 @@ export default function LibroRecuerdosPage() {
         </div>
       </div>
 
+      {/* ── Acciones de sección (descargas) ── */}
+      {vista === "fotos" && fotos.length > 0 && (
+        <div className="section-actions no-print" style={{ marginTop: 14 }}>
+          <button
+            className="btn-dl"
+            onClick={descargarFotos}
+            disabled={descargandoFotos}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {descargandoFotos
+              ? `Descargando...`
+              : `Descargar ${fotos.length} fotos`}
+          </button>
+        </div>
+      )}
+      {vista === "deseos" && deseos.length > 0 && (
+        <div className="section-actions no-print" style={{ marginTop: 14 }}>
+          <button
+            className="btn-dl"
+            onClick={descargarDeseosPDF}
+            disabled={descargandoDeseos}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {descargandoDeseos
+              ? "Generando PDF..."
+              : `Descargar ${deseos.length} deseos (PDF)`}
+          </button>
+        </div>
+      )}
+      {vista === "asistentes" && invitados.length > 0 && (
+        <div className="section-actions no-print" style={{ marginTop: 14 }}>
+          <button
+            className="btn-dl"
+            onClick={descargarAsistentesPDF}
+            disabled={descargandoAsistentes}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {descargandoAsistentes
+              ? "Generando PDF..."
+              : `Descargar lista (${totalPersonas} personas)`}
+          </button>
+        </div>
+      )}
+
       {/* ════ LIBRO BODY ════ */}
       <div className="libro-body">
-        <div ref={libroRef} className="libro-inner">
+        <div className="libro-inner">
           {/* ══ PORTADA ══ */}
           {vista === "portada" && (
             <div
@@ -763,27 +909,25 @@ export default function LibroRecuerdosPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 textAlign: "center",
-                padding: "48px 36px",
-                minHeight: 520,
+                padding: "44px 32px",
+                minHeight: 500,
                 position: "relative",
               }}
             >
               <div
-                style={{ marginBottom: 12, opacity: 0.8 }}
+                style={{ marginBottom: 10, opacity: 0.8 }}
                 dangerouslySetInnerHTML={{ __html: tema.ornSvg }}
               />
-
-              {/* Foto del evento */}
               {evento.imagen_url ? (
                 <div
                   style={{
-                    width: 160,
-                    height: 160,
+                    width: 148,
+                    height: 148,
                     borderRadius: "50%",
                     overflow: "hidden",
                     border: "5px solid white",
                     boxShadow: "0 8px 28px rgba(0,0,0,0.15)",
-                    marginBottom: 24,
+                    marginBottom: 22,
                   }}
                 >
                   <img
@@ -799,62 +943,59 @@ export default function LibroRecuerdosPage() {
               ) : (
                 <div
                   style={{
-                    width: 80,
-                    height: 80,
+                    width: 72,
+                    height: 72,
                     borderRadius: "50%",
                     background: "rgba(255,255,255,0.6)",
-                    marginBottom: 24,
+                    marginBottom: 22,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-                    fontSize: 36,
+                    fontSize: 32,
                   }}
                 >
                   🎊
                 </div>
               )}
-
               <h1
                 style={{
-                  fontSize: 34,
+                  fontSize: 32,
                   fontWeight: 900,
                   color: tema.titulo,
-                  marginBottom: 8,
+                  marginBottom: 7,
                   lineHeight: 1.15,
                   letterSpacing: -0.5,
-                  fontFamily: "'Cormorant Garamond', serif",
+                  fontFamily: "'Cormorant Garamond',serif",
                 }}
               >
                 {evento.nombre}
               </h1>
-
               {evento.anfitriones && (
                 <p
                   style={{
-                    fontSize: 17,
+                    fontSize: 16,
                     color: tema.subtitulo,
-                    marginBottom: 10,
+                    marginBottom: 9,
                     fontWeight: 500,
                   }}
                 >
                   {evento.anfitriones}
                 </p>
               )}
-
               {evento.frase_evento && (
                 <div
                   style={{
                     background: "rgba(255,255,255,0.6)",
                     borderRadius: 12,
-                    padding: "8px 20px",
-                    marginBottom: 16,
+                    padding: "8px 18px",
+                    marginBottom: 14,
                     backdropFilter: "blur(4px)",
                   }}
                 >
                   <p
                     style={{
-                      fontSize: 14,
+                      fontSize: 13,
                       fontStyle: "italic",
                       color: tema.subtitulo,
                     }}
@@ -863,26 +1004,25 @@ export default function LibroRecuerdosPage() {
                   </p>
                 </div>
               )}
-
               <div
                 style={{
                   background: tema.acento,
                   borderRadius: 99,
-                  padding: "7px 22px",
-                  fontSize: 12,
+                  padding: "6px 20px",
+                  fontSize: 11.5,
                   fontWeight: 700,
                   color: tema.titulo,
-                  marginBottom: 6,
+                  marginBottom: 5,
                 }}
               >
                 {fechaFormateada}
               </div>
-              <p style={{ fontSize: 12, color: tema.subtitulo, opacity: 0.75 }}>
+              <p
+                style={{ fontSize: 11.5, color: tema.subtitulo, opacity: 0.75 }}
+              >
                 {evento.lugar}
               </p>
-
-              {/* Stats */}
-              <div style={{ display: "flex", gap: 32, marginTop: 28 }}>
+              <div style={{ display: "flex", gap: 28, marginTop: 26 }}>
                 {[
                   { val: fotos.length, label: "fotos" },
                   { val: deseos.length, label: "deseos" },
@@ -891,18 +1031,18 @@ export default function LibroRecuerdosPage() {
                   <div key={s.label} style={{ textAlign: "center" }}>
                     <p
                       style={{
-                        fontSize: 28,
+                        fontSize: 26,
                         fontWeight: 900,
                         color: tema.titulo,
                         lineHeight: 1,
-                        fontFamily: "'Cormorant Garamond', serif",
+                        fontFamily: "'Cormorant Garamond',serif",
                       }}
                     >
                       {s.val}
                     </p>
                     <p
                       style={{
-                        fontSize: 11,
+                        fontSize: 10.5,
                         color: tema.subtitulo,
                         opacity: 0.75,
                         marginTop: 2,
@@ -913,9 +1053,8 @@ export default function LibroRecuerdosPage() {
                   </div>
                 ))}
               </div>
-
               <div
-                style={{ marginTop: 28, opacity: 0.45 }}
+                style={{ marginTop: 26, opacity: 0.4 }}
                 dangerouslySetInnerHTML={{ __html: tema.ornSvg }}
               />
             </div>
@@ -939,7 +1078,7 @@ export default function LibroRecuerdosPage() {
                     style={{
                       background: tema.fondo,
                       borderRadius: 20,
-                      padding: 20,
+                      padding: 18,
                       boxShadow: "0 4px 16px rgba(0,0,0,0.07)",
                     }}
                   >
@@ -947,7 +1086,7 @@ export default function LibroRecuerdosPage() {
                       style={{
                         display: "grid",
                         gridTemplateColumns: "1fr 1fr",
-                        gap: 14,
+                        gap: 12,
                       }}
                     >
                       {grupo.map((foto) => (
@@ -979,7 +1118,7 @@ export default function LibroRecuerdosPage() {
                               <div
                                 style={{
                                   display: "flex",
-                                  gap: 4,
+                                  gap: 3,
                                   marginTop: 3,
                                   flexWrap: "wrap",
                                 }}
@@ -988,10 +1127,10 @@ export default function LibroRecuerdosPage() {
                                   <span
                                     key={r.emoji}
                                     style={{
-                                      fontSize: 12,
+                                      fontSize: 11,
                                       background: "#f1f5f9",
                                       borderRadius: 6,
-                                      padding: "1px 6px",
+                                      padding: "1px 5px",
                                     }}
                                   >
                                     {r.emoji}
@@ -1028,7 +1167,7 @@ export default function LibroRecuerdosPage() {
                     style={{
                       background: "white",
                       borderRadius: 20,
-                      padding: 20,
+                      padding: 18,
                       boxShadow: "0 4px 16px rgba(0,0,0,0.07)",
                     }}
                   >
@@ -1036,7 +1175,7 @@ export default function LibroRecuerdosPage() {
                       style={{
                         display: "grid",
                         gridTemplateColumns: "1fr 1fr",
-                        gap: 12,
+                        gap: 11,
                       }}
                     >
                       {grupo.map((deseo) => {
@@ -1054,7 +1193,7 @@ export default function LibroRecuerdosPage() {
                             {esEmoji ? (
                               <div
                                 className="deseo-sticker"
-                                style={{ fontSize: 22 }}
+                                style={{ fontSize: 20 }}
                               >
                                 {deseo.emoji_sticker}
                               </div>
@@ -1093,12 +1232,11 @@ export default function LibroRecuerdosPage() {
                 subtitulo={`${totalPersonas} personas compartieron este momento`}
                 tema={tema}
               />
-
               <div
                 className="pagina"
                 style={{
                   borderRadius: 20,
-                  padding: 20,
+                  padding: 18,
                   background: tema.fondo,
                   boxShadow: "0 4px 16px rgba(0,0,0,0.07)",
                 }}
@@ -1110,7 +1248,7 @@ export default function LibroRecuerdosPage() {
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
-                      gap: 10,
+                      gap: 9,
                     }}
                   >
                     {invitados.map((inv) => (
@@ -1142,41 +1280,45 @@ export default function LibroRecuerdosPage() {
                 className="pagina"
                 style={{
                   borderRadius: 20,
-                  padding: "44px 28px",
+                  padding: "40px 24px",
                   textAlign: "center",
                   background: tema.portada,
                   boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
                 }}
               >
                 <div
-                  style={{ marginBottom: 16, opacity: 0.7 }}
+                  style={{ marginBottom: 14, opacity: 0.7 }}
                   dangerouslySetInnerHTML={{ __html: tema.ornSvg }}
                 />
                 <p
                   style={{
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: 800,
                     color: tema.titulo,
-                    marginBottom: 8,
-                    fontFamily: "'Cormorant Garamond', serif",
+                    marginBottom: 7,
+                    fontFamily: "'Cormorant Garamond',serif",
                   }}
                 >
                   Gracias por ser parte de este día
                 </p>
                 <p
-                  style={{ fontSize: 13, color: tema.subtitulo, opacity: 0.75 }}
+                  style={{
+                    fontSize: 12.5,
+                    color: tema.subtitulo,
+                    opacity: 0.75,
+                  }}
                 >
                   {evento.nombre} · {fechaFormateada}
                 </p>
                 <div
-                  style={{ marginTop: 20, opacity: 0.4 }}
+                  style={{ marginTop: 18, opacity: 0.35 }}
                   dangerouslySetInnerHTML={{ __html: tema.ornSvg }}
                 />
                 <p
                   style={{
-                    fontSize: 12,
+                    fontSize: 11.5,
                     color: tema.subtitulo,
-                    marginTop: 20,
+                    marginTop: 16,
                     opacity: 0.55,
                     fontStyle: "italic",
                   }}
@@ -1186,6 +1328,34 @@ export default function LibroRecuerdosPage() {
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* ── Bottom bar: volver al muro / dashboard ── */}
+      <div className="bottom-bar no-print">
+        <div className="bottom-inner">
+          <Link
+            href={`/muro/${eventoId}${tokenParam ? `?token=${tokenParam}` : ""}`}
+            className="btn-back-bottom"
+          >
+            <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+              <path
+                d="M8 2L4 6l4 4"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Volver al Muro
+          </Link>
+          <Link
+            href="/dashboard"
+            className="btn-back-bottom"
+            style={{ flex: "0 0 auto", padding: "13px 18px" }}
+          >
+            Dashboard
+          </Link>
         </div>
       </div>
     </>

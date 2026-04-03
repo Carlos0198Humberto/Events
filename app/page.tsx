@@ -36,8 +36,6 @@ const translations = {
       "Álbum digital al finalizar",
     ],
     copy: "© 2026 · Tu evento, tu historia",
-    darkMode: "Modo oscuro",
-    lightMode: "Modo claro",
     back: "Volver",
     chooseAction: "¿Qué deseas hacer?",
     or: "o",
@@ -69,47 +67,41 @@ const translations = {
       "Digital album at the end",
     ],
     copy: "© 2026 · Your event, your story",
-    darkMode: "Dark mode",
-    lightMode: "Light mode",
     back: "Back",
     chooseAction: "What would you like to do?",
     or: "or",
   },
 };
 
-// ─── Favicon SVG ─────────────────────────────────────────────────────────────
+// ─── Favicon + Tab Title ──────────────────────────────────────────────────────
 function FaviconInjector() {
   useEffect(() => {
+    // Set tab title
+    document.title = "Eventix";
+
+    // Remove existing favicons
     const existingLinks = document.querySelectorAll(
       "link[rel~='icon'], link[rel~='shortcut']",
     );
     existingLinks.forEach((el) => el.parentNode?.removeChild(el));
+
+    // New Eventix favicon — teal "X" spark mark on dark teal background
     const svgFavicon = `
-<svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="f-bg" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1A3A38"/>
-      <stop offset="100%" stop-color="#0F2422"/>
-    </linearGradient>
-    <linearGradient id="f-rib" x1="10" y1="28" x2="46" y2="28" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#3AADA0"/>
-      <stop offset="100%" stop-color="#2DC4A8"/>
-    </linearGradient>
-  </defs>
-  <rect width="56" height="56" rx="16" fill="url(#f-bg)"/>
-  <rect x="3" y="3" width="50" height="50" rx="14" fill="none" stroke="rgba(58,173,160,0.18)" stroke-width="1"/>
-  <rect x="9" y="17" width="38" height="26" rx="3.5" fill="rgba(58,173,160,0.10)" stroke="rgba(58,173,160,0.6)" stroke-width="1.4"/>
-  <path d="M9 20.5 L28 31 L47 20.5" stroke="url(#f-rib)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="14" cy="11" r="1.6" fill="#3AADA0" opacity="0.9"/>
-  <circle cx="20" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7"/>
-  <circle cx="11" cy="15" r="0.9" fill="#3AADA0" opacity="0.5"/>
-  <circle cx="42" cy="11" r="1.6" fill="#3AADA0" opacity="0.9"/>
-  <circle cx="36" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7"/>
-  <circle cx="45" cy="15" r="0.9" fill="#3AADA0" opacity="0.5"/>
-  <path d="M28 7 L29 10.2 L32.4 10.2 L29.8 12.2 L30.8 15.4 L28 13.4 L25.2 15.4 L26.2 12.2 L23.6 10.2 L27 10.2 Z" fill="#3AADA0" opacity="0.95"/>
-  <path d="M24 17 Q28 14 32 17" stroke="#2DC4A8" stroke-width="1.3" stroke-linecap="round" fill="none" opacity="0.8"/>
-  <circle cx="28" cy="17" r="1.3" fill="#3AADA0"/>
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" rx="18" fill="#0D9488"/>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+  <!-- Spark / X mark -->
+  <path d="M20 18 L32 32 L20 46" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M44 18 L32 32 L44 46" stroke="rgba(255,255,255,0.45)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Center dot -->
+  <circle cx="32" cy="32" r="3.5" fill="white"/>
+  <!-- Subtle corner accents -->
+  <circle cx="18" cy="14" r="2" fill="rgba(255,255,255,0.35)"/>
+  <circle cx="46" cy="14" r="2" fill="rgba(255,255,255,0.25)"/>
+  <circle cx="18" cy="50" r="2" fill="rgba(255,255,255,0.25)"/>
+  <circle cx="46" cy="50" r="2" fill="rgba(255,255,255,0.35)"/>
 </svg>`.trim();
+
     const encoded = encodeURIComponent(svgFavicon);
     const link = document.createElement("link");
     link.rel = "icon";
@@ -120,102 +112,92 @@ function FaviconInjector() {
   return null;
 }
 
-// ─── Logo ────────────────────────────────────────────────────────────────────
-function AppLogo({
-  size = 44,
-  dark = false,
-}: {
-  size?: number;
-  dark?: boolean;
-}) {
-  const id = dark ? "lg-d" : "lg-l";
-  const id2 = dark ? "lg2-d" : "lg2-l";
-  const id3 = dark ? "lg3-d" : "lg3-l";
+// ─── New Eventix Logo ────────────────────────────────────────────────────────
+function AppLogo({ size = 44 }: { size?: number }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 56 56"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
         <linearGradient
-          id={id}
+          id="evx-bg"
           x1="0"
           y1="0"
-          x2="56"
-          y2="56"
+          x2="64"
+          y2="64"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0%" stopColor={dark ? "#1A3A38" : "#0D2E2B"} />
-          <stop offset="100%" stopColor={dark ? "#0F2422" : "#061918"} />
+          <stop offset="0%" stopColor="#0F766E" />
+          <stop offset="100%" stopColor="#0D9488" />
         </linearGradient>
         <linearGradient
-          id={id2}
-          x1="10"
-          y1="28"
-          x2="46"
-          y2="28"
+          id="evx-glow"
+          x1="12"
+          y1="20"
+          x2="52"
+          y2="44"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0%" stopColor="#3AADA0" />
-          <stop offset="100%" stopColor="#2DC4A8" />
+          <stop offset="0%" stopColor="#5EEAD4" />
+          <stop offset="100%" stopColor="#2DD4BF" />
         </linearGradient>
-        <filter id={id3} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        <filter id="evx-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow
+            dx="0"
+            dy="2"
+            stdDeviation="3"
+            floodColor="rgba(13,148,136,0.4)"
+          />
         </filter>
       </defs>
-      <rect width="56" height="56" rx="16" fill={`url(#${id})`} />
+      {/* Background */}
       <rect
-        x="3"
-        y="3"
-        width="50"
-        height="50"
-        rx="14"
+        width="64"
+        height="64"
+        rx="18"
+        fill="url(#evx-bg)"
+        filter="url(#evx-shadow)"
+      />
+      {/* Inner border */}
+      <rect
+        x="2.5"
+        y="2.5"
+        width="59"
+        height="59"
+        rx="16"
         fill="none"
-        stroke="rgba(58,173,160,0.18)"
-        strokeWidth="1"
+        stroke="rgba(255,255,255,0.14)"
+        strokeWidth="1.5"
       />
-      <rect
-        x="9"
-        y="17"
-        width="38"
-        height="26"
-        rx="3.5"
-        fill="rgba(58,173,160,0.10)"
-        stroke="rgba(58,173,160,0.6)"
-        strokeWidth="1.4"
-      />
+      {/* Left chevron / X left arm */}
       <path
-        d="M9 20.5 L28 31 L47 20.5"
-        stroke={`url(#${id2})`}
-        strokeWidth="1.8"
+        d="M18 17 L30 32 L18 47"
+        stroke="url(#evx-glow)"
+        strokeWidth="5"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-      <circle cx="14" cy="11" r="1.6" fill="#3AADA0" opacity="0.9" />
-      <circle cx="20" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7" />
-      <circle cx="11" cy="15" r="0.9" fill="#3AADA0" opacity="0.5" />
-      <circle cx="42" cy="11" r="1.6" fill="#3AADA0" opacity="0.9" />
-      <circle cx="36" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7" />
-      <circle cx="45" cy="15" r="0.9" fill="#3AADA0" opacity="0.5" />
-      <path
-        d="M28 7 L29 10.2 L32.4 10.2 L29.8 12.2 L30.8 15.4 L28 13.4 L25.2 15.4 L26.2 12.2 L23.6 10.2 L27 10.2 Z"
-        fill="#3AADA0"
-        opacity="0.95"
-        filter={`url(#${id3})`}
-      />
-      <path
-        d="M24 17 Q28 14 32 17"
-        stroke="#2DC4A8"
-        strokeWidth="1.3"
-        strokeLinecap="round"
         fill="none"
-        opacity="0.8"
       />
-      <circle cx="28" cy="17" r="1.3" fill="#3AADA0" />
+      {/* Right chevron / X right arm — muted */}
+      <path
+        d="M46 17 L34 32 L46 47"
+        stroke="rgba(255,255,255,0.38)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* Center spark dot */}
+      <circle cx="32" cy="32" r="4" fill="white" opacity="0.95" />
+      {/* Tiny star accents */}
+      <circle cx="17" cy="13" r="2" fill="#5EEAD4" opacity="0.8" />
+      <circle cx="47" cy="13" r="1.5" fill="#5EEAD4" opacity="0.5" />
+      <circle cx="47" cy="51" r="2" fill="#5EEAD4" opacity="0.8" />
+      <circle cx="17" cy="51" r="1.5" fill="#5EEAD4" opacity="0.5" />
     </svg>
   );
 }
@@ -224,7 +206,7 @@ function AppLogo({
 function Particles() {
   return (
     <div className="particles" aria-hidden="true">
-      {[...Array(12)].map((_, i) => (
+      {[...Array(10)].map((_, i) => (
         <div key={i} className={`particle particle-${i + 1}`} />
       ))}
     </div>
@@ -237,7 +219,7 @@ function Footer() {
     <div
       style={{
         position: "absolute",
-        bottom: 18,
+        bottom: 14,
         left: 0,
         right: 0,
         textAlign: "center",
@@ -249,10 +231,10 @@ function Footer() {
         style={{
           fontSize: "10px",
           fontWeight: 600,
-          letterSpacing: "1.8px",
+          letterSpacing: "1.6px",
           textTransform: "uppercase",
           color: "var(--text3)",
-          opacity: 0.7,
+          opacity: 0.65,
           fontFamily: "'DM Sans', sans-serif",
         }}
       >
@@ -264,7 +246,6 @@ function Footer() {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 export default function Home() {
-  const [dark, setDark] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
   const [screen, setScreen] = useState<"splash" | "auth">("splash");
   const [transitioning, setTransitioning] = useState(false);
@@ -273,10 +254,7 @@ export default function Home() {
   const t = translations[lang];
 
   useEffect(() => {
-    // Trigger mount animations
     setTimeout(() => setMounted(true), 50);
-    // Mostrar claro primero, luego cambiar a oscuro
-    setTimeout(() => setDark(true), 1800);
   }, []);
 
   const handleContinue = () => {
@@ -300,109 +278,116 @@ export default function Home() {
       <FaviconInjector />
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg: #F0FAF8;
-          --bg2: #E4F5F2;
-          --surface: #FFFFFF;
-          --surface2: #F0FAF8;
-          --border: rgba(58,173,160,0.15);
-          --accent: #1FA896;
-          --accent2: #3AADA0;
-          --accent-soft: rgba(58,173,160,0.09);
-          --accent-soft2: rgba(58,173,160,0.16);
-          --text: #0A1E1C;
-          --text2: #3D6E6A;
-          --text3: #85B5B0;
-          --shadow: 0 4px 32px rgba(58,173,160,0.16);
-          --shadow-sm: 0 2px 12px rgba(58,173,160,0.11);
-          --radius: 20px;
-          --radius-sm: 14px;
-          --transition: all 0.38s cubic-bezier(.4,0,.2,1);
-        }
-        .dark {
-          --bg: #0C1A19;
-          --bg2: #111F1E;
-          --surface: #162422;
-          --surface2: #1C2E2C;
-          --border: rgba(58,173,160,0.15);
-          --accent: #3AADA0;
-          --accent2: #2DC4A8;
-          --accent-soft: rgba(58,173,160,0.12);
-          --accent-soft2: rgba(58,173,160,0.20);
-          --text: #E8F8F5;
-          --text2: #7ABFBA;
-          --text3: #3D7070;
-          --shadow: 0 4px 32px rgba(0,0,0,0.48);
-          --shadow-sm: 0 2px 12px rgba(0,0,0,0.32);
+          --bg:           #F0FAF9;
+          --bg2:          #E0F5F2;
+          --surface:      #FFFFFF;
+          --surface2:     #F7FDFB;
+          --border:       rgba(13,148,136,0.14);
+          --border-hover: rgba(13,148,136,0.40);
+          --accent:       #0D9488;
+          --accent2:      #0F766E;
+          --accent-light: #5EEAD4;
+          --accent-soft:  rgba(13,148,136,0.08);
+          --accent-soft2: rgba(13,148,136,0.14);
+          --text:         #0C1A19;
+          --text2:        #2D6E68;
+          --text3:        #7ABFBA;
+          --shadow:       0 4px 28px rgba(13,148,136,0.13);
+          --shadow-sm:    0 2px 10px rgba(13,148,136,0.09);
+          --shadow-btn:   0 6px 28px rgba(13,148,136,0.38);
+          --radius:       20px;
+          --radius-sm:    14px;
+          --transition:   all 0.36s cubic-bezier(.4,0,.2,1);
         }
 
-        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+        html, body {
+          height: 100%;
+          background: var(--bg);
+          font-family: 'DM Sans', sans-serif;
+          color: var(--text);
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+          content: '';
+          position: fixed; inset: 0; pointer-events: none; z-index: 0;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+          opacity: 0.5;
+        }
 
         .app {
-          max-width: 420px; margin: 0 auto; min-height: 100vh;
-          background: var(--bg); position: relative; overflow: hidden;
-        }
-
-        .app::before {
-          content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-          opacity: 0.4;
+          width: 100%;
+          max-width: 430px;
+          margin: 0 auto;
+          min-height: 100vh;
+          min-height: 100dvh;
+          background: var(--bg);
+          position: relative;
+          overflow: hidden;
         }
 
         /* ── GLOWS ── */
         .glow {
           position: fixed; pointer-events: none; z-index: 0;
-          border-radius: 50%; filter: blur(80px);
-          transition: var(--transition);
+          border-radius: 50%; filter: blur(90px);
         }
         .glow-1 {
-          width: 340px; height: 340px;
-          top: -100px; right: -80px;
-          background: radial-gradient(circle, rgba(58,173,160,0.18) 0%, transparent 70%);
-          animation: glowDrift1 8s ease-in-out infinite;
+          width: 320px; height: 320px;
+          top: -80px; right: -60px;
+          background: radial-gradient(circle, rgba(13,148,136,0.16) 0%, transparent 70%);
+          animation: glowDrift1 9s ease-in-out infinite;
         }
         .glow-2 {
-          width: 280px; height: 280px;
-          bottom: 60px; left: -100px;
-          background: radial-gradient(circle, rgba(45,196,168,0.12) 0%, transparent 70%);
-          animation: glowDrift2 10s ease-in-out infinite;
+          width: 260px; height: 260px;
+          bottom: 80px; left: -80px;
+          background: radial-gradient(circle, rgba(94,234,212,0.11) 0%, transparent 70%);
+          animation: glowDrift2 11s ease-in-out infinite;
         }
-        .dark .glow-1 { background: radial-gradient(circle, rgba(58,173,160,0.20) 0%, transparent 70%); }
-        .dark .glow-2 { background: radial-gradient(circle, rgba(45,196,168,0.13) 0%, transparent 70%); }
+        .glow-3 {
+          width: 180px; height: 180px;
+          bottom: -40px; right: 20px;
+          background: radial-gradient(circle, rgba(13,148,136,0.08) 0%, transparent 70%);
+          animation: glowDrift1 13s ease-in-out infinite reverse;
+        }
 
         @keyframes glowDrift1 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33%       { transform: translate(-20px, 30px) scale(1.08); }
-          66%       { transform: translate(15px, -20px) scale(0.95); }
+          0%,100% { transform: translate(0,0) scale(1); }
+          33%      { transform: translate(-18px,28px) scale(1.07); }
+          66%      { transform: translate(14px,-18px) scale(0.95); }
         }
         @keyframes glowDrift2 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          40%       { transform: translate(25px, -35px) scale(1.1); }
-          70%       { transform: translate(-10px, 20px) scale(0.92); }
+          0%,100% { transform: translate(0,0) scale(1); }
+          40%      { transform: translate(22px,-30px) scale(1.09); }
+          70%      { transform: translate(-8px,18px) scale(0.93); }
         }
 
         /* ── CONTROLS ── */
         .controls {
-          position: absolute; top: 18px; right: 18px; z-index: 20;
+          position: absolute; top: 16px; right: 16px; z-index: 20;
           display: flex; gap: 8px; align-items: center;
         }
         .ctrl-btn {
-          width: 36px; height: 36px; border-radius: 50%;
-          background: var(--surface); border: 1px solid var(--border);
+          height: 36px; border-radius: 100px;
+          background: var(--surface);
+          border: 1px solid var(--border);
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; transition: var(--transition);
           box-shadow: var(--shadow-sm); color: var(--text2);
-          font-size: 14px; font-weight: 600;
+          font-size: 11px; font-weight: 600; letter-spacing: .5px;
+          text-transform: uppercase; padding: 0 14px;
+          font-family: 'DM Sans', sans-serif;
         }
-        .ctrl-btn:hover { background: var(--accent-soft2); color: var(--accent); border-color: var(--accent); }
-        .ctrl-lang {
-          width: auto; padding: 0 12px;
-          border-radius: 20px; font-size: 11px; font-weight: 600;
-          letter-spacing: .5px; text-transform: uppercase;
+        .ctrl-btn:hover {
+          background: var(--accent-soft2);
+          color: var(--accent);
+          border-color: var(--border-hover);
         }
 
         /* ── SCREEN TRANSITIONS ── */
@@ -412,150 +397,111 @@ export default function Home() {
           align-items: center; justify-content: center;
           transition: opacity 0.38s ease, transform 0.38s cubic-bezier(.4,0,.2,1);
           z-index: 1;
+          padding: 0 24px;
+          min-height: 100vh;
+          min-height: 100dvh;
         }
-        .screen.exit    { opacity: 0; transform: scale(0.96) translateY(-16px); pointer-events: none; }
-        .screen.enter   { opacity: 1; transform: scale(1) translateY(0); }
-        .screen.hidden  { opacity: 0; transform: scale(1.04) translateY(16px); pointer-events: none; }
-
-        /* ── SPLASH ── */
-        .splash { padding: 40px 32px; text-align: center; }
-
-        /* ── LOGO ── */
-        .logo-wrap {
-          display: flex; flex-direction: column; align-items: center;
-          gap: 16px; margin-bottom: 48px;
-        }
-        .logo-name {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 38px; font-weight: 600; letter-spacing: -1px;
-          color: var(--text); line-height: 1;
-        }
-        .logo-tag {
-          font-size: 11px; font-weight: 500; letter-spacing: 2px;
-          text-transform: uppercase; color: var(--text3);
-        }
+        .screen.exit   { opacity: 0; transform: scale(0.96) translateY(-14px); pointer-events: none; }
+        .screen.enter  { opacity: 1; transform: scale(1) translateY(0); }
+        .screen.hidden { opacity: 0; transform: scale(1.03) translateY(14px); pointer-events: none; }
 
         /* ── MOUNT ANIMATIONS ── */
-        .anim-logo    { opacity: 0; transform: translateY(28px) scale(0.92); }
-        .anim-name    { opacity: 0; transform: translateY(18px); }
-        .anim-tag     { opacity: 0; transform: translateY(12px); }
-        .anim-btn     { opacity: 0; transform: translateY(16px); }
+        .anim-logo     { opacity: 0; transform: translateY(30px) scale(0.9); }
+        .anim-name     { opacity: 0; transform: translateY(18px); }
+        .anim-tag      { opacity: 0; transform: translateY(12px); }
+        .anim-btn      { opacity: 0; transform: translateY(16px); }
         .anim-features { opacity: 0; transform: translateY(12px); }
 
-        .mounted .anim-logo {
-          animation: mountUp 0.7s cubic-bezier(.22,1,.36,1) 0.1s both;
-        }
-        .mounted .anim-name {
-          animation: mountUp 0.6s cubic-bezier(.22,1,.36,1) 0.28s both;
-        }
-        .mounted .anim-tag {
-          animation: mountUp 0.5s cubic-bezier(.22,1,.36,1) 0.4s both;
-        }
-        .mounted .anim-btn {
-          animation: mountUp 0.6s cubic-bezier(.22,1,.36,1) 0.54s both;
-        }
-        .mounted .anim-features {
-          animation: mountUp 0.5s cubic-bezier(.22,1,.36,1) 0.68s both;
-        }
+        .mounted .anim-logo     { animation: mountUp 0.7s cubic-bezier(.22,1,.36,1) 0.1s  both; }
+        .mounted .anim-name     { animation: mountUp 0.6s cubic-bezier(.22,1,.36,1) 0.26s both; }
+        .mounted .anim-tag      { animation: mountUp 0.5s cubic-bezier(.22,1,.36,1) 0.38s both; }
+        .mounted .anim-btn      { animation: mountUp 0.6s cubic-bezier(.22,1,.36,1) 0.52s both; }
+        .mounted .anim-features { animation: mountUp 0.5s cubic-bezier(.22,1,.36,1) 0.66s both; }
 
         @keyframes mountUp {
           from { opacity: 0; transform: translateY(24px) scale(0.96); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
+          to   { opacity: 1; transform: translateY(0)    scale(1); }
         }
 
-        /* ── LOGO ANIMATIONS ── */
-        .logo-ring {
-          position: absolute; border-radius: 50%;
-          border: 1.5px solid rgba(58,173,160,0.22);
-          animation: ringExpand 2.8s ease-out infinite;
-          pointer-events: none;
-        }
-        .logo-ring-2 { animation-delay: 0.9s; }
-        .logo-ring-3 { animation-delay: 1.8s; }
+        /* ── SPLASH ── */
+        .splash { text-align: center; gap: 0; }
 
-        @keyframes ringExpand {
-          0%   { transform: scale(0.85); opacity: 0.7; }
-          100% { transform: scale(1.9);  opacity: 0; }
+        /* ── LOGO SECTION ── */
+        .logo-wrap {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 18px; margin-bottom: 40px;
         }
-
         .logo-container {
           position: relative;
           display: flex; align-items: center; justify-content: center;
-          width: 96px; height: 96px;
+          width: 100px; height: 100px;
+        }
+        .logo-ring {
+          position: absolute; border-radius: 50%;
+          border: 1.5px solid rgba(13,148,136,0.18);
+          animation: ringExpand 3s ease-out infinite;
+          pointer-events: none;
+        }
+        .logo-ring-2 { animation-delay: 1s; }
+        .logo-ring-3 { animation-delay: 2s; }
+
+        @keyframes ringExpand {
+          0%   { transform: scale(0.82); opacity: 0.7; }
+          100% { transform: scale(2.0);  opacity: 0; }
         }
 
         .logo-pulse {
-          animation: logoPulse 3.5s ease-in-out infinite;
           position: relative; z-index: 2;
-          filter: drop-shadow(0 0 18px rgba(58,173,160,0.35));
+          animation: logoPulse 3.5s ease-in-out infinite;
+          filter: drop-shadow(0 4px 20px rgba(13,148,136,0.30));
         }
-        .dark .logo-pulse {
-          filter: drop-shadow(0 0 22px rgba(58,173,160,0.45));
-        }
-
         @keyframes logoPulse {
-          0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 18px rgba(58,173,160,0.35)); }
-          50%       { transform: scale(1.05); filter: drop-shadow(0 0 28px rgba(58,173,160,0.55)); }
+          0%,100% { transform: scale(1);    filter: drop-shadow(0 4px 20px rgba(13,148,136,0.30)); }
+          50%      { transform: scale(1.04); filter: drop-shadow(0 6px 28px rgba(13,148,136,0.48)); }
         }
 
-        /* ── FLOATING PARTICLES ── */
-        .particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-        .particle {
-          position: absolute;
-          border-radius: 50%;
-          background: var(--accent2);
-          opacity: 0;
-          animation: particleFloat linear infinite;
+        .logo-name {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 42px; font-weight: 600; letter-spacing: -1.5px;
+          color: var(--text); line-height: 1;
         }
-
-        .particle-1  { width:4px;  height:4px;  left:12%;  animation-duration:12s; animation-delay:0s;    opacity:0.18; }
-        .particle-2  { width:3px;  height:3px;  left:28%;  animation-duration:15s; animation-delay:2s;    opacity:0.12; }
-        .particle-3  { width:5px;  height:5px;  left:45%;  animation-duration:10s; animation-delay:0.5s;  opacity:0.20; }
-        .particle-4  { width:2px;  height:2px;  left:60%;  animation-duration:14s; animation-delay:3s;    opacity:0.15; }
-        .particle-5  { width:4px;  height:4px;  left:75%;  animation-duration:11s; animation-delay:1s;    opacity:0.18; }
-        .particle-6  { width:3px;  height:3px;  left:88%;  animation-duration:16s; animation-delay:4s;    opacity:0.10; }
-        .particle-7  { width:5px;  height:5px;  left:20%;  animation-duration:13s; animation-delay:1.5s;  opacity:0.16; }
-        .particle-8  { width:2px;  height:2px;  left:38%;  animation-duration:9s;  animation-delay:2.5s;  opacity:0.22; }
-        .particle-9  { width:4px;  height:4px;  left:55%;  animation-duration:17s; animation-delay:0.8s;  opacity:0.14; }
-        .particle-10 { width:3px;  height:3px;  left:70%;  animation-duration:12s; animation-delay:3.5s;  opacity:0.18; }
-        .particle-11 { width:5px;  height:5px;  left:5%;   animation-duration:14s; animation-delay:1.2s;  opacity:0.12; }
-        .particle-12 { width:2px;  height:2px;  left:92%;  animation-duration:10s; animation-delay:2.2s;  opacity:0.20; }
-
-        @keyframes particleFloat {
-          0%   { transform: translateY(110vh) translateX(0);      opacity: 0; }
-          5%   { opacity: 1; }
-          90%  { opacity: 1; }
-          100% { transform: translateY(-10vh) translateX(30px);   opacity: 0; }
+        .logo-name span {
+          color: var(--accent);
+        }
+        .logo-tag {
+          font-size: 10.5px; font-weight: 500; letter-spacing: 2.2px;
+          text-transform: uppercase; color: var(--text3);
+          margin-top: 4px;
         }
 
         /* ── FEATURES STRIP ── */
         .features-strip {
-          display: flex; gap: 10px; margin-bottom: 36px;
+          display: flex; gap: 8px; margin-bottom: 36px;
           justify-content: center; flex-wrap: wrap;
+          max-width: 340px;
         }
         .feat-pill {
           display: flex; align-items: center; gap: 6px;
-          background: var(--surface); border: 1px solid var(--border);
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 100px; padding: 7px 13px;
           font-size: 11px; font-weight: 500; color: var(--text2);
           box-shadow: var(--shadow-sm);
           transition: var(--transition);
-          animation: pillAppear 0.5s cubic-bezier(.22,1,.36,1) both;
         }
-        .feat-pill:nth-child(1) { animation-delay: 0.72s; }
-        .feat-pill:nth-child(2) { animation-delay: 0.80s; }
-        .feat-pill:nth-child(3) { animation-delay: 0.88s; }
-        .feat-pill:nth-child(4) { animation-delay: 0.96s; }
-
+        .feat-pill:nth-child(1) { animation: pillAppear .5s .72s both; }
+        .feat-pill:nth-child(2) { animation: pillAppear .5s .80s both; }
+        .feat-pill:nth-child(3) { animation: pillAppear .5s .88s both; }
+        .feat-pill:nth-child(4) { animation: pillAppear .5s .96s both; }
         .feat-pill:hover {
           background: var(--accent-soft2);
-          border-color: var(--accent);
+          border-color: var(--border-hover);
           color: var(--accent);
           transform: translateY(-2px);
         }
         .feat-dot {
-          width: 6px; height: 6px; border-radius: 50%;
-          background: var(--accent2); flex-shrink: 0;
+          width: 5px; height: 5px; border-radius: 50%;
+          background: var(--accent-light); flex-shrink: 0;
           animation: dotPulse 2s ease-in-out infinite;
         }
         .feat-pill:nth-child(2) .feat-dot { animation-delay: 0.5s; }
@@ -563,98 +509,129 @@ export default function Home() {
         .feat-pill:nth-child(4) .feat-dot { animation-delay: 1.5s; }
 
         @keyframes dotPulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50%       { opacity: 0.5; transform: scale(0.7); }
+          0%,100% { opacity: 1; transform: scale(1); }
+          50%      { opacity: 0.4; transform: scale(0.65); }
         }
         @keyframes pillAppear {
           from { opacity: 0; transform: translateY(10px) scale(0.94); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        /* ── BUTTON ── */
+        /* ── CTA BUTTON ── */
         .btn-main {
           display: inline-flex; align-items: center; gap: 10px;
           background: var(--accent);
           color: white; font-family: 'DM Sans', sans-serif;
-          font-size: 15px; font-weight: 600; text-decoration: none;
-          padding: 16px 44px; border-radius: 100px; cursor: pointer; border: none;
-          box-shadow: 0 6px 32px rgba(58,173,160,0.40);
-          transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
-          position: relative; overflow: hidden; letter-spacing: .2px;
+          font-size: 15px; font-weight: 600;
+          padding: 17px 48px; border-radius: 100px;
+          cursor: pointer; border: none;
+          box-shadow: var(--shadow-btn);
+          transition: transform 0.22s ease, box-shadow 0.22s ease;
+          position: relative; overflow: hidden;
+          letter-spacing: .3px;
+          -webkit-tap-highlight-color: transparent;
         }
         .btn-main::after {
           content: '';
           position: absolute; inset: 0; border-radius: inherit;
-          background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 60%);
+          background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 55%);
           pointer-events: none;
         }
-        .btn-main::before {
-          content: '';
-          position: absolute; inset: -2px; border-radius: inherit;
-          background: linear-gradient(135deg, rgba(58,173,160,0.6), rgba(45,196,168,0.3));
-          z-index: -1; opacity: 0;
-          transition: opacity 0.3s ease;
-          filter: blur(8px);
-        }
-        .btn-main:hover::before { opacity: 1; }
-        .btn-main:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 14px 44px rgba(58,173,160,0.55); }
-        .btn-main:active { transform: scale(0.97); }
-
-        /* Shimmer on button */
         .btn-shimmer {
           position: absolute; inset: 0; border-radius: inherit;
-          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%);
+          background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.22) 50%, transparent 62%);
           background-size: 200% 100%;
-          animation: shimmer 3s ease-in-out infinite;
+          animation: shimmer 3.5s ease-in-out infinite;
         }
         @keyframes shimmer {
           0%   { background-position: 200% center; }
           100% { background-position: -200% center; }
         }
+        .btn-main:hover  { transform: translateY(-2px) scale(1.02); box-shadow: 0 12px 40px rgba(13,148,136,0.48); }
+        .btn-main:active { transform: scale(0.97); }
 
         .btn-arrow {
-          width: 20px; height: 20px; background: rgba(255,255,255,0.22);
-          border-radius: 50%; display: flex; align-items: center; justify-content: center;
-          transition: transform 0.22s ease;
+          width: 22px; height: 22px;
+          background: rgba(255,255,255,0.22);
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          transition: transform 0.22s ease; flex-shrink: 0;
         }
         .btn-main:hover .btn-arrow { transform: translateX(3px); }
 
+        /* ── FLOATING PARTICLES ── */
+        .particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .particle {
+          position: absolute; border-radius: 50%;
+          background: var(--accent-light); opacity: 0;
+          animation: particleFloat linear infinite;
+        }
+        .particle-1  { width:4px;  height:4px;  left:10%;  animation-duration:13s; animation-delay:0s;   opacity:.15; }
+        .particle-2  { width:3px;  height:3px;  left:27%;  animation-duration:16s; animation-delay:2.2s; opacity:.10; }
+        .particle-3  { width:5px;  height:5px;  left:44%;  animation-duration:11s; animation-delay:0.6s; opacity:.18; }
+        .particle-4  { width:2px;  height:2px;  left:61%;  animation-duration:14s; animation-delay:3.1s; opacity:.13; }
+        .particle-5  { width:4px;  height:4px;  left:76%;  animation-duration:12s; animation-delay:1.1s; opacity:.15; }
+        .particle-6  { width:3px;  height:3px;  left:89%;  animation-duration:17s; animation-delay:4.0s; opacity:.09; }
+        .particle-7  { width:5px;  height:5px;  left:19%;  animation-duration:10s; animation-delay:1.7s; opacity:.14; }
+        .particle-8  { width:2px;  height:2px;  left:37%;  animation-duration:9s;  animation-delay:2.7s; opacity:.20; }
+        .particle-9  { width:4px;  height:4px;  left:54%;  animation-duration:15s; animation-delay:0.9s; opacity:.12; }
+        .particle-10 { width:3px;  height:3px;  left:71%;  animation-duration:11s; animation-delay:3.8s; opacity:.16; }
+
+        @keyframes particleFloat {
+          0%   { transform: translateY(105vh) translateX(0);    opacity: 0; }
+          5%   { opacity: 1; }
+          90%  { opacity: 1; }
+          100% { transform: translateY(-8vh) translateX(25px);  opacity: 0; }
+        }
+
         /* ── AUTH SCREEN ── */
-        .auth { padding: 48px 32px; width: 100%; }
+        .auth-inner {
+          width: 100%;
+          max-width: 360px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
         .auth-header {
           display: flex; flex-direction: column; align-items: center;
-          margin-bottom: 40px; gap: 10px;
+          margin-bottom: 36px; gap: 12px;
           animation: fadeUp .4s ease both;
         }
         .auth-title {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 26px; font-weight: 600; color: var(--text);
-          text-align: center; letter-spacing: -.4px;
+          font-size: 28px; font-weight: 600; color: var(--text);
+          text-align: center; letter-spacing: -.5px;
+          line-height: 1.15;
         }
 
         .auth-cards {
-          display: flex; flex-direction: column; gap: 14px;
+          display: flex; flex-direction: column; gap: 12px;
+          width: 100%;
           animation: fadeUp .4s .08s ease both;
         }
         .auth-card {
           display: flex; align-items: center; justify-content: space-between;
           background: var(--surface); border: 1.5px solid var(--border);
-          border-radius: var(--radius); padding: 22px 24px;
+          border-radius: var(--radius); padding: 20px 22px;
           text-decoration: none; transition: var(--transition);
           box-shadow: var(--shadow-sm);
+          -webkit-tap-highlight-color: transparent;
         }
         .auth-card:hover {
-          border-color: var(--accent); transform: translateY(-2px);
-          box-shadow: 0 8px 28px rgba(58,173,160,0.18);
+          border-color: var(--border-hover);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 28px rgba(13,148,136,0.16);
         }
         .auth-card.primary {
           background: var(--accent);
           border-color: transparent;
-          box-shadow: 0 6px 28px rgba(58,173,160,0.38);
+          box-shadow: var(--shadow-btn);
         }
         .auth-card.primary:hover {
-          background: var(--accent2); border-color: transparent;
-          box-shadow: 0 10px 36px rgba(58,173,160,0.48);
+          background: var(--accent2);
+          border-color: transparent;
+          box-shadow: 0 10px 36px rgba(13,148,136,0.48);
         }
         .auth-card-left { display: flex; flex-direction: column; gap: 3px; }
         .auth-card-label { font-size: 15px; font-weight: 600; color: var(--text); }
@@ -662,116 +639,94 @@ export default function Home() {
         .auth-card.primary .auth-card-sub { color: white; }
         .auth-card-sub { font-size: 12px; color: var(--text3); font-weight: 400; }
         .auth-card-icon {
-          width: 38px; height: 38px; border-radius: 12px;
-          background: var(--accent-soft2); display: flex; align-items: center;
-          justify-content: center; color: var(--accent); flex-shrink: 0;
+          width: 40px; height: 40px; border-radius: 13px;
+          background: var(--accent-soft2);
+          display: flex; align-items: center; justify-content: center;
+          color: var(--accent); flex-shrink: 0;
+          transition: var(--transition);
         }
         .auth-card.primary .auth-card-icon { background: rgba(255,255,255,0.2); color: white; }
+        .auth-card:hover .auth-card-icon { background: var(--accent-soft2); }
 
         .back-btn {
           display: flex; align-items: center; gap: 6px;
           background: none; border: none; cursor: pointer;
           font-size: 13px; font-weight: 500; color: var(--text2);
-          margin-top: 28px; padding: 8px 0; text-decoration: none;
+          margin-top: 26px; padding: 8px 4px; text-decoration: none;
           transition: color .2s;
           animation: fadeUp .4s .16s ease both;
+          font-family: 'DM Sans', sans-serif;
+          -webkit-tap-highlight-color: transparent;
         }
         .back-btn:hover { color: var(--accent); }
 
         @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(18px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── SAFE AREA (notch / home indicator) ── */
+        .screen { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+
+        @media (max-height: 680px) {
+          .logo-wrap     { margin-bottom: 28px; }
+          .features-strip { margin-bottom: 24px; }
+          .logo-name     { font-size: 36px; }
+          .logo-container { width: 84px; height: 84px; }
+          .auth-header   { margin-bottom: 26px; }
         }
       `}</style>
 
-      <div className={`app${dark ? " dark" : ""}${mounted ? " mounted" : ""}`}>
+      <div className={`app${mounted ? " mounted" : ""}`}>
         {/* Ambient glows */}
         <div className="glow glow-1" />
         <div className="glow glow-2" />
+        <div className="glow glow-3" />
 
         {/* Floating particles */}
         <Particles />
 
-        {/* Controls */}
+        {/* Language toggle */}
         <div className="controls">
           <button
-            className="ctrl-btn ctrl-lang"
+            className="ctrl-btn"
             onClick={() => setLang(lang === "es" ? "en" : "es")}
             title={lang === "es" ? "Switch to English" : "Cambiar a Español"}
           >
             {lang === "es" ? "EN" : "ES"}
           </button>
-          <button
-            className="ctrl-btn"
-            onClick={() => setDark(!dark)}
-            title={dark ? t.lightMode : t.darkMode}
-          >
-            {dark ? (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle
-                  cx="8"
-                  cy="8"
-                  r="3.2"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                />
-                <path
-                  d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 100 11 6 6 0 007-4z"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            )}
-          </button>
         </div>
 
         {/* ── SPLASH SCREEN ── */}
         <div
-          className={`screen splash ${screen === "splash" ? (transitioning ? "exit" : "enter") : "hidden"}`}
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-          }}
+          className={`screen splash ${
+            screen === "splash" ? (transitioning ? "exit" : "enter") : "hidden"
+          }`}
         >
-          {/* Logo con anillos + glow */}
+          {/* Logo */}
           <div className="logo-wrap">
             <div className="logo-container anim-logo">
-              {/* Ripple rings */}
               <div
                 className="logo-ring"
-                style={{ width: "80px", height: "80px" }}
+                style={{ width: "86px", height: "86px" }}
               />
               <div
                 className="logo-ring logo-ring-2"
-                style={{ width: "80px", height: "80px" }}
+                style={{ width: "86px", height: "86px" }}
               />
               <div
                 className="logo-ring logo-ring-3"
-                style={{ width: "80px", height: "80px" }}
+                style={{ width: "86px", height: "86px" }}
               />
-              {/* Logo pulsante */}
               <div className="logo-pulse">
-                <AppLogo size={72} dark={dark} />
+                <AppLogo size={76} />
               </div>
             </div>
 
             <div>
-              <div className="logo-name anim-name">Events</div>
+              <div className="logo-name anim-name">
+                Event<span>ix</span>
+              </div>
               <div className="logo-tag anim-tag">{t.tagline}</div>
             </div>
           </div>
@@ -796,7 +751,7 @@ export default function Home() {
                   <path
                     d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"
                     stroke="white"
-                    strokeWidth="1.5"
+                    strokeWidth="1.6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
@@ -810,94 +765,91 @@ export default function Home() {
 
         {/* ── AUTH SCREEN ── */}
         <div
-          className={`screen auth ${screen === "auth" ? (transitioning ? "exit" : "enter") : "hidden"}`}
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          className={`screen ${
+            screen === "auth" ? (transitioning ? "exit" : "enter") : "hidden"
+          }`}
         >
-          <div className="auth-header">
-            <AppLogo size={44} dark={dark} />
-            <div className="auth-title">{t.chooseAction}</div>
+          <div className="auth-inner">
+            <div className="auth-header">
+              <AppLogo size={48} />
+              <div className="auth-title">{t.chooseAction}</div>
+            </div>
+
+            <div className="auth-cards">
+              <Link href="/auth/registro" className="auth-card primary">
+                <div className="auth-card-left">
+                  <span className="auth-card-label">{t.register}</span>
+                  <span className="auth-card-sub">
+                    {lang === "es" ? "Nuevo en Eventix" : "New to Eventix"}
+                  </span>
+                </div>
+                <div className="auth-card-icon">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <circle
+                      cx="9"
+                      cy="6"
+                      r="3.2"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                    />
+                    <path
+                      d="M2 16c0-3.314 3.134-6 7-6s7 2.686 7 6"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M13 3v4M11 5h4"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+              </Link>
+
+              <Link href="/auth/login" className="auth-card">
+                <div className="auth-card-left">
+                  <span className="auth-card-label">{t.login}</span>
+                  <span className="auth-card-sub">
+                    {lang === "es"
+                      ? "Ya tengo cuenta"
+                      : "I already have an account"}
+                  </span>
+                </div>
+                <div className="auth-card-icon">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <circle
+                      cx="9"
+                      cy="6"
+                      r="3.2"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                    />
+                    <path
+                      d="M2 16c0-3.314 3.134-6 7-6s7 2.686 7 6"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+              </Link>
+            </div>
+
+            <button className="back-btn" onClick={handleBack}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path
+                  d="M9 2L4 7l5 5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {t.back}
+            </button>
           </div>
-
-          <div className="auth-cards" style={{ width: "100%", maxWidth: 340 }}>
-            <Link href="/auth/registro" className="auth-card primary">
-              <div className="auth-card-left">
-                <span className="auth-card-label">{t.register}</span>
-                <span className="auth-card-sub">
-                  {lang === "es" ? "Nuevo en Events" : "New to Events"}
-                </span>
-              </div>
-              <div className="auth-card-icon">
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <circle
-                    cx="9"
-                    cy="6"
-                    r="3.2"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                  />
-                  <path
-                    d="M2 16c0-3.314 3.134-6 7-6s7 2.686 7 6"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M13 3v4M11 5h4"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-            </Link>
-
-            <Link href="/auth/login" className="auth-card">
-              <div className="auth-card-left">
-                <span className="auth-card-label">{t.login}</span>
-                <span className="auth-card-sub">
-                  {lang === "es"
-                    ? "Ya tengo cuenta"
-                    : "I already have an account"}
-                </span>
-              </div>
-              <div className="auth-card-icon">
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <circle
-                    cx="9"
-                    cy="6"
-                    r="3.2"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                  />
-                  <path
-                    d="M2 16c0-3.314 3.134-6 7-6s7 2.686 7 6"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-            </Link>
-          </div>
-
-          <button className="back-btn" onClick={handleBack}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M9 2L4 7l5 5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            {t.back}
-          </button>
 
           <Footer />
         </div>

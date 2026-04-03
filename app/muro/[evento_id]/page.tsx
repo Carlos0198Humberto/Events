@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import Link from "next/link";
 
-// ─── Tipos ─────────────────────────────────────────────────
+// ─── Tipos ─────────────────────────────────────────────────────────────────────
 type Foto = {
   id: string;
   url: string;
@@ -13,14 +13,7 @@ type Foto = {
   invitado_id: string;
   caption: string | null;
   invitados: { nombre: string } | null;
-  reacciones?: ReaccionConteo[];
 };
-
-type ReaccionConteo = {
-  emoji: string;
-  count: number;
-};
-
 type Evento = {
   id: string;
   nombre: string;
@@ -32,7 +25,6 @@ type Evento = {
   frase_evento?: string | null;
   lugar?: string;
 };
-
 type Deseo = {
   id: string;
   evento_id: string;
@@ -45,13 +37,152 @@ type Deseo = {
   aprobado: boolean;
 };
 
-// ─── Constantes ────────────────────────────────────────────
-const EMOJIS_REACCION = [
-  { emoji: "🙏", label: "Bendiciones" },
-  { emoji: "❤️", label: "Con amor" },
-  { emoji: "🎉", label: "Felicidades" },
-];
+// ─── i18n ──────────────────────────────────────────────────────────────────────
+const T = {
+  es: {
+    cargando: "Cargando muro...",
+    eventoNoEncontrado: "Evento no encontrado",
+    atras: "Atrás",
+    dashboard: "Dashboard",
+    fotos: "Fotos",
+    albumes: "Álbumes",
+    deseos: "Deseos",
+    libro: "Libro",
+    sinFotos: "Aún no hay fotos",
+    sinFotosSub: "Sé el primero en compartir un momento",
+    sinFotos2: "Los invitados pueden subir sus fotos",
+    sinAlbumes: "Sin álbumes aún",
+    sinAlbumesSub: "Las fotos de cada invitado aparecerán aquí",
+    sinDeseos: "Aún no hay deseos",
+    sinDeseosSub: "¡Sé el primero en dejar un mensaje!",
+    sinDeseosSub2: "Sube tu foto primero, luego podrás dejar tu deseo",
+    sinDeseosSub3: "Los invitados pueden escribir sus deseos",
+    participantes: "participantes",
+    paso3: "Paso 3: Comparte tu foto del evento",
+    paso4: "Paso 4: Escribe tu deseo al anfitrión",
+    completaste: "¡Completaste tu journey! Gracias,",
+    modoOrganizador: "Modo organizador — puedes eliminar publicaciones",
+    cerrar: "Cerrar",
+    eliminar: "Eliminar",
+    bendiciones: "Bendiciones",
+    conAmor: "Con amor",
+    felicidades: "Felicidades",
+    comparteMomento: "Comparte un momento",
+    yaCompartiste: "Ya compartiste tu foto",
+    solamente1: "Solo 1 foto por invitado",
+    selFoto: "Seleccionar foto",
+    cambiarFoto: "Cambiar foto",
+    descOpcional: "Añade una descripción (opcional)",
+    publicarMuro: "Publicar en el muro",
+    subiendo: "Subiendo...",
+    tuFoto: "Tu foto ya está en el muro",
+    tuFotoSub: "Ahora puedes dejar tu deseo en la sección de Deseos",
+    escribirDeseo: "Escribir un deseo",
+    tuDeseoPub: "Tu deseo ya fue enviado",
+    solo1Deseo: "Solo se permite 1 deseo por invitado",
+    tuMensaje: "Tu mensaje aparecerá en el muro",
+    tuDeseoMuro: "Tu deseo ya está en el muro",
+    graciasMsg: "Gracias por compartir tu mensaje especial",
+    primeroFoto: "Primero sube tu foto",
+    primeroFotoSub:
+      "Para dejar un deseo, primero debes compartir tu foto del evento.",
+    irFoto: "Ir a subir mi foto",
+    tuMensajeLbl: "Tu mensaje *",
+    escribeDeseo: "Escribe tu deseo, dedicatoria o mensaje especial...",
+    elige: "Elige un sticker",
+    colorTarjeta: "Color de tarjeta",
+    publicarDeseo: "Publicar deseo",
+    publicando: "Publicando...",
+    deseosYDedicatorias: "Deseos & Dedicatorias",
+    mensajesAmor: "Mensajes de amor y buenos deseos",
+    deseoEnviado: "Deseo enviado",
+    subeFoto: "Sube tu foto primero",
+    escribirDeseoBtn: "Escribir deseo",
+    verMuro: "Ver muro",
+    subirMiFoto: "📸 Mi foto",
+    miDeseo: "💌 Mi deseo",
+    eliminarFoto: "¿Eliminar esta foto del muro?",
+    eliminarDeseo: "¿Eliminar este deseo?",
+    foto_s: "foto(s)",
+    descargar: "Descargar",
+    descargarDeseos: "Descargar deseos",
+    descargarFotos: "Descargar fotos",
+    descargarTodo: "Descargar todo",
+    descargando: "Descargando...",
+  },
+  en: {
+    cargando: "Loading wall...",
+    eventoNoEncontrado: "Event not found",
+    atras: "Back",
+    dashboard: "Dashboard",
+    fotos: "Photos",
+    albumes: "Albums",
+    deseos: "Wishes",
+    libro: "Book",
+    sinFotos: "No photos yet",
+    sinFotosSub: "Be the first to share a moment",
+    sinFotos2: "Guests can upload their photos",
+    sinAlbumes: "No albums yet",
+    sinAlbumesSub: "Each guest's photos will appear here",
+    sinDeseos: "No wishes yet",
+    sinDeseosSub: "Be the first to leave a message!",
+    sinDeseosSub2: "Upload your photo first, then you can leave a wish",
+    sinDeseosSub3: "Guests can write their wishes",
+    participantes: "participants",
+    paso3: "Step 3: Share your event photo",
+    paso4: "Step 4: Write your wish to the host",
+    completaste: "Journey complete! Thank you,",
+    modoOrganizador: "Organizer mode — you can delete posts",
+    cerrar: "Close",
+    eliminar: "Delete",
+    bendiciones: "Blessings",
+    conAmor: "With love",
+    felicidades: "Congratulations",
+    comparteMomento: "Share a moment",
+    yaCompartiste: "You already shared your photo",
+    solamente1: "Only 1 photo per guest",
+    selFoto: "Select photo",
+    cambiarFoto: "Change photo",
+    descOpcional: "Add a description (optional)",
+    publicarMuro: "Post to wall",
+    subiendo: "Uploading...",
+    tuFoto: "Your photo is on the wall",
+    tuFotoSub: "Now you can leave your wish in the Wishes section",
+    escribirDeseo: "Write a wish",
+    tuDeseoPub: "Your wish was sent",
+    solo1Deseo: "Only 1 wish per guest",
+    tuMensaje: "Your message will appear on the wall",
+    tuDeseoMuro: "Your wish is on the wall",
+    graciasMsg: "Thanks for sharing your special message",
+    primeroFoto: "Upload your photo first",
+    primeroFotoSub: "To leave a wish, you must first share your event photo.",
+    irFoto: "Go upload my photo",
+    tuMensajeLbl: "Your message *",
+    escribeDeseo: "Write your wish, dedication or special message...",
+    elige: "Choose a sticker",
+    colorTarjeta: "Card color",
+    publicarDeseo: "Publish wish",
+    publicando: "Publishing...",
+    deseosYDedicatorias: "Wishes & Dedications",
+    mensajesAmor: "Messages of love and good wishes",
+    deseoEnviado: "Wish sent",
+    subeFoto: "Upload photo first",
+    escribirDeseoBtn: "Write a wish",
+    verMuro: "View wall",
+    subirMiFoto: "📸 My photo",
+    miDeseo: "💌 My wish",
+    eliminarFoto: "Delete this photo from the wall?",
+    eliminarDeseo: "Delete this wish?",
+    foto_s: "photo(s)",
+    descargar: "Download",
+    descargarDeseos: "Download wishes",
+    descargarFotos: "Download photos",
+    descargarTodo: "Download all",
+    descargando: "Downloading...",
+  },
+};
 
+// ─── Constantes ────────────────────────────────────────────────────────────────
 const COLORES_DESEO = [
   "#e8f8f5",
   "#fff9c4",
@@ -62,122 +193,95 @@ const COLORES_DESEO = [
   "#fff3e0",
   "#fbe9e7",
 ];
-
 const STICKERS = ["🌸", "💖", "✨", "🌟", "🎊", "🦋", "🌹", "💫", "🎀", "🍀"];
-
-// ─── Paleta por tipo de evento — acento menta en todos ────
-const paleta: Record<
-  string,
-  {
-    bg: string;
-    texto: string;
-    acento: string;
-    claro: string;
-    gradHero: string;
-    gradHeroAlt: string;
-  }
-> = {
-  quinceañera: {
-    bg: "#f0faf8",
-    texto: "#3AADA0",
-    acento: "#7DD4C8",
-    claro: "#e0f5f2",
-    gradHero: "linear-gradient(135deg,#2e948a 0%,#3AADA0 100%)",
-    gradHeroAlt:
-      "linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.45) 100%)",
-  },
-  boda: {
-    bg: "#f0faf8",
-    texto: "#3AADA0",
-    acento: "#7DD4C8",
-    claro: "#e0f5f2",
-    gradHero: "linear-gradient(135deg,#2e948a 0%,#3AADA0 100%)",
-    gradHeroAlt:
-      "linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.45) 100%)",
-  },
-  graduacion: {
-    bg: "#f0faf8",
-    texto: "#3AADA0",
-    acento: "#7DD4C8",
-    claro: "#e0f5f2",
-    gradHero: "linear-gradient(135deg,#2e948a 0%,#3AADA0 100%)",
-    gradHeroAlt:
-      "linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.45) 100%)",
-  },
-  cumpleaños: {
-    bg: "#f0faf8",
-    texto: "#3AADA0",
-    acento: "#7DD4C8",
-    claro: "#e0f5f2",
-    gradHero: "linear-gradient(135deg,#2e948a 0%,#3AADA0 100%)",
-    gradHeroAlt:
-      "linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.45) 100%)",
-  },
-  otro: {
-    bg: "#f0faf8",
-    texto: "#3AADA0",
-    acento: "#7DD4C8",
-    claro: "#e0f5f2",
-    gradHero: "linear-gradient(135deg,#2e948a 0%,#3AADA0 100%)",
-    gradHeroAlt:
-      "linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0.45) 100%)",
-  },
+const TIPO_EMOJI: Record<string, string> = {
+  quinceañera: "👑",
+  boda: "💍",
+  graduacion: "🎓",
+  cumpleaños: "🎂",
+  otro: "✨",
 };
 
-// ─── Logo SVG de la app ───────────────────────────────────
-function AppLogo({
-  size = 28,
-  color = "white",
-}: {
-  size?: number;
-  color?: string;
-}) {
+// ─── Logo Eventix ──────────────────────────────────────────────────────────────
+function AppLogo({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 56 56"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient
+          id="lg-ev"
+          x1="0"
+          y1="0"
+          x2="56"
+          y2="56"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="#3AADA0" />
+          <stop offset="100%" stopColor="#0f766e" />
+        </linearGradient>
+      </defs>
+      {/* Fondo */}
+      <rect width="56" height="56" rx="16" fill="url(#lg-ev)" />
+      {/* Estrella / destello superior */}
+      <circle cx="40" cy="10" r="3" fill="white" opacity="0.9" />
+      <circle cx="44" cy="14" r="1.5" fill="white" opacity="0.5" />
+      {/* Cámara body */}
       <rect
-        x="3"
-        y="8"
-        width="26"
-        height="18"
-        rx="3"
-        fill={color}
-        fillOpacity="0.18"
-        stroke={color}
-        strokeWidth="1.6"
+        x="8"
+        y="20"
+        width="34"
+        height="22"
+        rx="4"
+        fill="white"
+        opacity="0.95"
       />
+      {/* Lente */}
+      <circle cx="25" cy="31" r="7" fill="#e0f5f2" />
+      <circle cx="25" cy="31" r="4.5" fill="#3AADA0" />
+      <circle cx="25" cy="31" r="2" fill="white" opacity="0.7" />
+      {/* Flash bump */}
       <path
-        d="M3 11l13 9 13-9"
-        stroke={color}
-        strokeWidth="1.6"
+        d="M28 20 L32 20 L34 16 L22 16 L22 20Z"
+        fill="white"
+        opacity="0.95"
+      />
+      {/* "X" de Eventix — esquina derecha cámara */}
+      <line
+        x1="36"
+        y1="23"
+        x2="40"
+        y2="27"
+        stroke="#3AADA0"
+        strokeWidth="2.2"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
-      <path
-        d="M16 7c0 0-5-3.5-5 1.2C11 11 16 14 16 14s5-3 5-5.8C21 3.5 16 7 16 7z"
-        fill={color}
-        stroke={color}
-        strokeWidth="0.5"
-        strokeLinejoin="round"
+      <line
+        x1="40"
+        y1="23"
+        x2="36"
+        y2="27"
+        stroke="#3AADA0"
+        strokeWidth="2.2"
+        strokeLinecap="round"
       />
     </svg>
   );
 }
 
-// ─── Íconos SVG ──────────────────────────────────────────
-function IconCamera({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+// ─── Íconos ────────────────────────────────────────────────────────────────────
+const Ico = {
+  camera: (s = 20, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -185,22 +289,14 @@ function IconCamera({
       <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
       <circle cx="12" cy="13" r="4" />
     </svg>
-  );
-}
-function IconGrid({
-  size = 18,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  grid: (s = 18, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -210,44 +306,28 @@ function IconGrid({
       <rect x="3" y="14" width="7" height="7" />
       <rect x="14" y="14" width="7" height="7" />
     </svg>
-  );
-}
-function IconFolder({
-  size = 18,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  folder: (s = 18, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
       <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
     </svg>
-  );
-}
-function IconBook({
-  size = 18,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  book: (s = 18, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -255,108 +335,68 @@ function IconBook({
       <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
     </svg>
-  );
-}
-function IconHeart({
-  size = 18,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  heart: (s = 18, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
       <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
     </svg>
-  );
-}
-function IconX({
-  size = 18,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  x: (s = 18, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2.5"
       strokeLinecap="round"
     >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
-  );
-}
-function IconChevronLeft({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  chevL: (s = 20, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2.5"
       strokeLinecap="round"
     >
       <polyline points="15 18 9 12 15 6" />
     </svg>
-  );
-}
-function IconChevronRight({
-  size = 20,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  chevR: (s = 20, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2.5"
       strokeLinecap="round"
     >
       <polyline points="9 18 15 12 9 6" />
     </svg>
-  );
-}
-function IconTrash({
-  size = 18,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  trash: (s = 18, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -365,85 +405,95 @@ function IconTrash({
       <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
       <path d="M10 11v6M14 11v6M9 6V4h6v2" />
     </svg>
-  );
-}
-function IconBack({
-  size = 16,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  lock: (s = 15, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
-function IconLock({
-  size = 15,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <rect x="3" y="11" width="18" height="11" rx="2" />
       <path d="M7 11V7a5 5 0 0110 0v4" />
     </svg>
-  );
-}
-function IconCheck({
-  size = 15,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
-  return (
+  ),
+  check: (s = 15, c = "currentColor") => (
     <svg
-      width={size}
-      height={size}
+      width={s}
+      height={s}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={c}
       strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
       <polyline points="20 6 9 17 4 12" />
     </svg>
-  );
-}
+  ),
+  download: (s = 16, c = "currentColor") => (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={c}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  ),
+  wall: (s = 16, c = "currentColor") => (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={c}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18M3 15h18M9 3v18" />
+    </svg>
+  ),
+  dashboard: (s = 16, c = "currentColor") => (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={c}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="7" height="9" rx="1" />
+      <rect x="14" y="3" width="7" height="5" rx="1" />
+      <rect x="14" y="12" width="7" height="9" rx="1" />
+      <rect x="3" y="16" width="7" height="5" rx="1" />
+    </svg>
+  ),
+};
 
-// ─── Avatar ──────────────────────────────────────────────
+// ─── Avatar ────────────────────────────────────────────────────────────────────
 function Avatar({
   nombre,
   size = 28,
-  bgColor,
+  bg,
 }: {
   nombre: string;
   size?: number;
-  bgColor: string;
+  bg: string;
 }) {
   return (
     <div
@@ -451,13 +501,13 @@ function Avatar({
         width: size,
         height: size,
         borderRadius: "50%",
-        background: bgColor,
+        background: bg,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
-        border: "2px solid white",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+        border: "2px solid rgba(255,255,255,0.6)",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
       }}
     >
       <span
@@ -474,72 +524,59 @@ function Avatar({
   );
 }
 
-function MedallaFotografo({
-  nombre,
-  bgColor,
-}: {
-  nombre: string;
-  bgColor: string;
-}) {
-  return (
-    <div
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        background: "rgba(255,255,255,0.95)",
-        borderRadius: 99,
-        padding: "4px 10px 4px 4px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-      }}
-    >
-      <Avatar nombre={nombre} size={22} bgColor={bgColor} />
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: "#374151",
-          maxWidth: 100,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {nombre}
-      </span>
-    </div>
-  );
+// ─── Helper descarga ───────────────────────────────────────────────────────────
+async function descargarImagen(url: string, nombre: string) {
+  try {
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nombre;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch {
+    window.open(url, "_blank");
+  }
 }
 
-// ─── Tarjeta de foto ──────────────────────────────────────
+function descargarDeseosTxt(deseos: Deseo[], nombreEvento: string) {
+  const lineas = deseos.map(
+    (d) =>
+      `${d.nombre_autor}\n"${d.mensaje}"\n${new Date(d.created_at).toLocaleDateString("es-ES")}\n`,
+  );
+  const contenido = `${nombreEvento}\nDeseos y dedicatorias\n${"─".repeat(40)}\n\n${lineas.join("\n")}`;
+  const blob = new Blob([contenido], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `deseos_${nombreEvento.replace(/\s/g, "_")}.txt`;
+  a.click();
+}
+
+// ─── FotoCard ──────────────────────────────────────────────────────────────────
 function FotoCard({
   foto,
-  col,
-  esOrganizador,
-  invitadoId,
+  acento,
+  esOrg,
   onDelete,
   onClick,
-  onReaccionar,
+  t,
 }: {
   foto: Foto;
-  col: (typeof paleta)[string];
-  esOrganizador: boolean;
-  invitadoId: string | null;
+  acento: string;
+  esOrg: boolean;
   onDelete: (id: string) => void;
   onClick: () => void;
-  onReaccionar: (fotoId: string, emoji: string) => void;
+  t: (typeof T)["es"];
 }) {
-  const [mostrarEmojis, setMostrarEmojis] = useState(false);
   const nombre = foto.invitados?.nombre ?? "Invitado";
-
   return (
     <div
-      className="break-inside-avoid mb-3"
+      className="foto-card break-inside-avoid mb-3"
       style={{
         position: "relative",
-        borderRadius: 18,
+        borderRadius: 16,
         overflow: "hidden",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+        boxShadow: "0 3px 14px rgba(0,0,0,0.10)",
       }}
     >
       <div
@@ -548,7 +585,7 @@ function FotoCard({
       >
         <Image
           src={foto.url}
-          alt={`Foto de ${nombre}`}
+          alt=""
           width={400}
           height={400}
           className="w-full h-auto object-cover block"
@@ -559,46 +596,46 @@ function FotoCard({
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 55%)",
+              "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 52%)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "flex-end",
-            padding: "10px 12px",
+            padding: "10px 10px",
           }}
         >
-          {foto.reacciones && foto.reacciones.length > 0 && (
-            <div
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              background: "rgba(255,255,255,0.96)",
+              borderRadius: 99,
+              padding: "3px 9px 3px 4px",
+              boxShadow: "0 1px 6px rgba(0,0,0,0.10)",
+              alignSelf: "flex-start",
+            }}
+          >
+            <Avatar nombre={nombre} size={20} bg={acento} />
+            <span
               style={{
-                display: "flex",
-                gap: 4,
-                flexWrap: "wrap",
-                marginBottom: 6,
+                fontSize: 10,
+                fontWeight: 700,
+                color: "#374151",
+                maxWidth: 90,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
-              {foto.reacciones.map((r) => (
-                <span
-                  key={r.emoji}
-                  style={{
-                    background: "rgba(58,173,160,0.55)",
-                    color: "white",
-                    borderRadius: 99,
-                    padding: "2px 7px",
-                    fontSize: 11,
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  {r.emoji} {r.count}
-                </span>
-              ))}
-            </div>
-          )}
-          <MedallaFotografo nombre={nombre} bgColor={col.texto} />
+              {nombre}
+            </span>
+          </div>
           {foto.caption && (
             <p
               style={{
                 color: "rgba(255,255,255,0.85)",
-                fontSize: 11,
-                marginTop: 5,
+                fontSize: 10,
+                marginTop: 4,
                 fontStyle: "italic",
               }}
             >
@@ -607,92 +644,34 @@ function FotoCard({
           )}
         </div>
       </div>
-
-      {invitadoId && (
-        <div style={{ position: "absolute", top: 8, left: 8, zIndex: 10 }}>
-          {mostrarEmojis ? (
-            <div
-              style={{
-                background: "rgba(255,255,255,0.97)",
-                borderRadius: 14,
-                padding: "8px",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 4,
-                minWidth: 155,
-              }}
-            >
-              {EMOJIS_REACCION.map(({ emoji, label }) => (
-                <button
-                  key={emoji}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onReaccionar(foto.id, emoji);
-                    setMostrarEmojis(false);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "5px 8px",
-                    borderRadius: 8,
-                    textAlign: "left",
-                    fontSize: 13,
-                    color: "#374151",
-                    fontWeight: 600,
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>{emoji}</span>
-                  {label}
-                </button>
-              ))}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMostrarEmojis(false);
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 11,
-                  color: "#9ca3af",
-                  textAlign: "center",
-                  paddingTop: 4,
-                }}
-              >
-                Cerrar
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setMostrarEmojis(true);
-              }}
-              style={{
-                background: "rgba(58,173,160,0.92)",
-                border: "none",
-                borderRadius: 99,
-                padding: "5px 12px",
-                fontSize: 12,
-                cursor: "pointer",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                fontWeight: 600,
-                color: "white",
-              }}
-            >
-              Reaccionar
-            </button>
-          )}
-        </div>
-      )}
-
-      {esOrganizador && (
+      {/* Botón descargar */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          descargarImagen(foto.url, `foto_${foto.id}.jpg`);
+        }}
+        title={t.descargar}
+        style={{
+          position: "absolute",
+          top: 8,
+          left: 8,
+          background: "rgba(255,255,255,0.92)",
+          color: acento,
+          border: "none",
+          borderRadius: 99,
+          width: 30,
+          height: 30,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 1px 6px rgba(0,0,0,0.12)",
+          zIndex: 10,
+        }}
+      >
+        {Ico.download(13, acento)}
+      </button>
+      {esOrg && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -702,55 +681,52 @@ function FotoCard({
             position: "absolute",
             top: 8,
             right: 8,
-            background: "rgba(220,38,38,0.9)",
+            background: "rgba(220,38,38,0.88)",
             color: "white",
             border: "none",
             borderRadius: 99,
-            padding: "5px 10px",
+            padding: "5px 9px",
             fontSize: 11,
             fontWeight: 700,
             cursor: "pointer",
             zIndex: 10,
             display: "flex",
             alignItems: "center",
-            gap: 4,
+            gap: 3,
           }}
         >
-          <IconTrash size={13} color="white" />
+          {Ico.trash(12, "white")}
         </button>
       )}
     </div>
   );
 }
 
-// ─── Lightbox ─────────────────────────────────────────────
+// ─── Lightbox ──────────────────────────────────────────────────────────────────
 function Lightbox({
   foto,
-  col,
-  esOrganizador,
-  invitadoId,
+  acento,
+  esOrg,
   onClose,
   onDelete,
   onPrev,
   onNext,
   hasPrev,
   hasNext,
-  onReaccionar,
+  t,
 }: {
   foto: Foto;
-  col: (typeof paleta)[string];
-  esOrganizador: boolean;
-  invitadoId: string | null;
+  acento: string;
+  esOrg: boolean;
   onClose: () => void;
   onDelete: () => void;
   onPrev: () => void;
   onNext: () => void;
   hasPrev: boolean;
   hasNext: boolean;
-  onReaccionar: (fotoId: string, emoji: string) => void;
+  t: (typeof T)["es"];
 }) {
   const nombre = foto.invitados?.nombre ?? "Invitado";
-
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -760,7 +736,6 @@ function Lightbox({
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
   }, [hasPrev, hasNext]);
-
   return (
     <div
       onClick={onClose}
@@ -768,8 +743,7 @@ function Lightbox({
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: "rgba(0,0,0,0.9)",
-        backdropFilter: "blur(12px)",
+        background: "rgba(0,0,0,0.90)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -780,17 +754,17 @@ function Lightbox({
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "white",
-          borderRadius: 24,
+          borderRadius: 22,
           overflow: "hidden",
           maxWidth: 440,
           width: "100%",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.45)",
         }}
       >
         <div style={{ position: "relative" }}>
           <Image
             src={foto.url}
-            alt="Foto ampliada"
+            alt=""
             width={600}
             height={600}
             className="w-full h-auto object-cover"
@@ -804,18 +778,18 @@ function Lightbox({
                 left: 10,
                 top: "50%",
                 transform: "translateY(-50%)",
-                background: "rgba(255,255,255,0.9)",
+                background: "rgba(255,255,255,0.94)",
                 border: "none",
                 borderRadius: "50%",
-                width: 38,
-                height: 38,
+                width: 36,
+                height: 36,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <IconChevronLeft size={20} color="#3AADA0" />
+              {Ico.chevL(18, "#3AADA0")}
             </button>
           )}
           {hasNext && (
@@ -826,33 +800,32 @@ function Lightbox({
                 right: 10,
                 top: "50%",
                 transform: "translateY(-50%)",
-                background: "rgba(255,255,255,0.9)",
+                background: "rgba(255,255,255,0.94)",
                 border: "none",
                 borderRadius: "50%",
-                width: 38,
-                height: 38,
+                width: 36,
+                height: 36,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <IconChevronRight size={20} color="#3AADA0" />
+              {Ico.chevR(18, "#3AADA0")}
             </button>
           )}
         </div>
-
-        <div style={{ padding: "14px 20px" }}>
+        <div style={{ padding: "14px 18px" }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: 12,
+              marginBottom: 10,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Avatar nombre={nombre} size={38} bgColor={col.texto} />
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <Avatar nombre={nombre} size={36} bg={acento} />
               <div>
                 <p style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>
                   {nombre}
@@ -867,34 +840,15 @@ function Lightbox({
                 </p>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {esOrganizador && (
-                <button
-                  onClick={onDelete}
-                  style={{
-                    background: "#fee2e2",
-                    color: "#dc2626",
-                    border: "none",
-                    borderRadius: 12,
-                    padding: "7px 14px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <IconTrash size={14} color="#dc2626" /> Eliminar
-                </button>
-              )}
+            <div style={{ display: "flex", gap: 7 }}>
               <button
-                onClick={onClose}
+                onClick={() => descargarImagen(foto.url, `foto_${foto.id}.jpg`)}
+                title={t.descargar}
                 style={{
                   background: "#e0f5f2",
                   color: "#3AADA0",
                   border: "none",
-                  borderRadius: 12,
+                  borderRadius: 10,
                   width: 34,
                   height: 34,
                   cursor: "pointer",
@@ -903,97 +857,50 @@ function Lightbox({
                   justifyContent: "center",
                 }}
               >
-                <IconX size={16} color="#3AADA0" />
+                {Ico.download(15, "#3AADA0")}
+              </button>
+              {esOrg && (
+                <button
+                  onClick={onDelete}
+                  style={{
+                    background: "#fee2e2",
+                    color: "#dc2626",
+                    border: "none",
+                    borderRadius: 10,
+                    width: 34,
+                    height: 34,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {Ico.trash(14, "#dc2626")}
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                style={{
+                  background: "#f1f5f9",
+                  color: "#64748b",
+                  border: "none",
+                  borderRadius: 10,
+                  width: 34,
+                  height: 34,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {Ico.x(15, "#64748b")}
               </button>
             </div>
           </div>
-
           {foto.caption && (
-            <p
-              style={{
-                fontSize: 13,
-                color: "#4b5563",
-                fontStyle: "italic",
-                marginBottom: 12,
-              }}
-            >
+            <p style={{ fontSize: 13, color: "#4b5563", fontStyle: "italic" }}>
               "{foto.caption}"
             </p>
-          )}
-
-          {invitadoId && (
-            <div style={{ borderTop: "1px solid #e0f5f2", paddingTop: 12 }}>
-              <p
-                style={{
-                  fontSize: 10,
-                  color: "#3AADA0",
-                  fontWeight: 700,
-                  marginBottom: 8,
-                  letterSpacing: "0.6px",
-                  textTransform: "uppercase",
-                }}
-              >
-                Reacciona a esta foto
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {EMOJIS_REACCION.map(({ emoji, label }) => (
-                  <button
-                    key={emoji}
-                    onClick={() => onReaccionar(foto.id, emoji)}
-                    style={{
-                      flex: 1,
-                      background: "#f0faf8",
-                      border: `1.5px solid #7DD4C8`,
-                      borderRadius: 12,
-                      padding: "8px 4px",
-                      cursor: "pointer",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 3,
-                      transition: "border-color 0.15s",
-                    }}
-                  >
-                    <span style={{ fontSize: 22 }}>{emoji}</span>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: "#3AADA0",
-                        fontWeight: 600,
-                        textAlign: "center",
-                      }}
-                    >
-                      {label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              {foto.reacciones && foto.reacciones.length > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 6,
-                    flexWrap: "wrap",
-                    marginTop: 8,
-                  }}
-                >
-                  {foto.reacciones.map((r) => (
-                    <span
-                      key={r.emoji}
-                      style={{
-                        background: "#e0f5f2",
-                        borderRadius: 99,
-                        padding: "3px 10px",
-                        fontSize: 12,
-                        color: "#2e948a",
-                      }}
-                    >
-                      {r.emoji} {r.count}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
           )}
         </div>
       </div>
@@ -1001,19 +908,19 @@ function Lightbox({
   );
 }
 
-// ─── Modal subir foto ─────────────────────────────────────
+// ─── Modal subir foto ──────────────────────────────────────────────────────────
 function ModalSubirFoto({
   eventoId,
   invitadoId,
-  col,
   onClose,
   onSubida,
+  t,
 }: {
   eventoId: string;
   invitadoId: string;
-  col: (typeof paleta)[string];
   onClose: () => void;
   onSubida: () => void;
+  t: (typeof T)["es"];
 }) {
   const [archivo, setArchivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -1073,7 +980,7 @@ function ModalSubirFoto({
         position: "fixed",
         inset: 0,
         zIndex: 9998,
-        background: "rgba(0,0,0,0.65)",
+        background: "rgba(0,0,0,0.60)",
         display: "flex",
         alignItems: "flex-end",
         justifyContent: "center",
@@ -1083,30 +990,28 @@ function ModalSubirFoto({
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "white",
-          borderRadius: "24px 24px 0 0",
+          borderRadius: "22px 22px 0 0",
           width: "100%",
           maxWidth: 480,
-          padding: 24,
-          paddingBottom: 40,
-          boxShadow: "0 -8px 40px rgba(0,0,0,0.22)",
+          padding: "20px 20px 40px",
+          boxShadow: "0 -6px 32px rgba(0,0,0,0.18)",
         }}
       >
         <div
           style={{
-            width: 36,
+            width: 32,
             height: 4,
             borderRadius: 2,
-            background: "#7DD4C8",
-            margin: "0 auto 20px",
+            background: "#CBD5E1",
+            margin: "0 auto 18px",
           }}
         />
-
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 20,
+            marginBottom: 18,
           }}
         >
           <div>
@@ -1115,14 +1020,14 @@ function ModalSubirFoto({
                 fontWeight: 800,
                 fontSize: 17,
                 color: "#0f2422",
-                fontFamily: "'Cormorant Garamond', serif",
+                fontFamily: "'Playfair Display',serif",
               }}
             >
-              {yaSubio ? "Ya compartiste tu foto" : "Comparte un momento"}
+              {yaSubio ? t.yaCompartiste : t.comparteMomento}
             </p>
             {!yaSubio && (
               <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
-                Solo 1 foto por invitado
+                {t.solamente1}
               </p>
             )}
           </div>
@@ -1140,59 +1045,51 @@ function ModalSubirFoto({
               justifyContent: "center",
             }}
           >
-            <IconX size={16} color="#3AADA0" />
+            {Ico.x(15, "#3AADA0")}
           </button>
         </div>
-
         {yaSubio ? (
-          <div style={{ textAlign: "center", padding: "24px 0" }}>
+          <div style={{ textAlign: "center", padding: "22px 0" }}>
             <div
               style={{
-                width: 64,
-                height: 64,
+                width: 60,
+                height: 60,
                 borderRadius: "50%",
-                background: col.claro,
-                border: `2px solid ${col.acento}`,
+                background: "#e0f5f2",
+                border: "2px solid #7DD4C8",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 14px",
+                margin: "0 auto 12px",
               }}
             >
-              <IconCheck size={28} color={col.texto} />
+              {Ico.check(26, "#3AADA0")}
             </div>
             <p
               style={{
                 fontWeight: 700,
-                color: col.texto,
-                fontSize: 16,
-                fontFamily: "'Cormorant Garamond', serif",
+                color: "#3AADA0",
+                fontSize: 15,
+                fontFamily: "'Playfair Display',serif",
               }}
             >
-              Tu foto ya está en el muro
+              {t.tuFoto}
             </p>
-            <p
-              style={{
-                fontSize: 13,
-                color: "#64748b",
-                marginTop: 6,
-                lineHeight: 1.5,
-              }}
-            >
-              Ahora puedes dejar tu deseo en la sección de Deseos
+            <p style={{ fontSize: 12, color: "#64748b", marginTop: 5 }}>
+              {t.tuFotoSub}
             </p>
           </div>
         ) : (
           <>
             {preview ? (
-              <div style={{ marginBottom: 14 }}>
+              <div style={{ marginBottom: 12 }}>
                 <img
                   src={preview}
-                  alt="Preview"
+                  alt=""
                   style={{
                     width: "100%",
-                    borderRadius: 16,
-                    maxHeight: 220,
+                    borderRadius: 14,
+                    maxHeight: 210,
                     objectFit: "cover",
                     display: "block",
                   }}
@@ -1203,7 +1100,7 @@ function ModalSubirFoto({
                     setArchivo(null);
                   }}
                   style={{
-                    marginTop: 8,
+                    marginTop: 7,
                     background: "none",
                     border: "none",
                     color: "#9ca3af",
@@ -1214,7 +1111,7 @@ function ModalSubirFoto({
                     gap: 4,
                   }}
                 >
-                  <IconX size={13} color="#9ca3af" /> Cambiar foto
+                  {Ico.x(12, "#9ca3af")} {t.cambiarFoto}
                 </button>
               </div>
             ) : (
@@ -1224,40 +1121,39 @@ function ModalSubirFoto({
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 10,
-                  border: `2px dashed ${col.acento}`,
-                  borderRadius: 18,
-                  padding: "32px 20px",
+                  gap: 9,
+                  border: "2px dashed #7DD4C8",
+                  borderRadius: 16,
+                  padding: "28px 16px",
                   cursor: "pointer",
-                  background: col.claro,
-                  marginBottom: 14,
-                  transition: "border-color 0.2s",
+                  background: "#f0faf8",
+                  marginBottom: 12,
                 }}
               >
                 <div
                   style={{
-                    width: 52,
-                    height: 52,
+                    width: 50,
+                    height: 50,
                     borderRadius: "50%",
-                    background: col.texto,
+                    background: "#3AADA0",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <IconCamera size={24} color="white" />
+                  {Ico.camera(22, "white")}
                 </div>
                 <p
                   style={{
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: 700,
-                    color: col.texto,
-                    fontFamily: "'Cormorant Garamond', serif",
+                    color: "#3AADA0",
+                    fontFamily: "'Playfair Display',serif",
                   }}
                 >
-                  Seleccionar foto
+                  {t.selFoto}
                 </p>
-                <p style={{ fontSize: 12, color: "#94a3b8" }}>
+                <p style={{ fontSize: 11, color: "#94a3b8" }}>
                   JPG, PNG · máx 10MB
                 </p>
                 <input
@@ -1269,35 +1165,34 @@ function ModalSubirFoto({
                 />
               </label>
             )}
-
             {preview && (
               <input
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
-                placeholder="Añade una descripción (opcional)"
+                placeholder={t.descOpcional}
                 maxLength={120}
                 style={{
                   width: "100%",
-                  border: `1.5px solid ${col.acento}`,
+                  border: "1.5px solid #7DD4C8",
                   borderRadius: 12,
-                  padding: "10px 14px",
+                  padding: "10px 13px",
                   fontSize: 13,
                   outline: "none",
                   fontFamily: "inherit",
                   boxSizing: "border-box",
-                  background: col.claro,
-                  marginBottom: 14,
+                  background: "#f0faf8",
+                  marginBottom: 12,
+                  color: "#0f2422",
                 }}
               />
             )}
-
             {archivo && (
               <button
                 onClick={subir}
                 disabled={subiendo}
                 style={{
                   width: "100%",
-                  background: subiendo ? col.acento : col.texto,
+                  background: subiendo ? "#7DD4C8" : "#3AADA0",
                   color: "white",
                   border: "none",
                   borderRadius: 14,
@@ -1309,12 +1204,11 @@ function ModalSubirFoto({
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
-                  fontFamily: "'Cormorant Garamond', serif",
-                  letterSpacing: "0.3px",
+                  fontFamily: "'Playfair Display',serif",
                 }}
               >
-                <IconCamera size={18} color="white" />
-                {subiendo ? "Subiendo..." : "Publicar en el muro"}
+                {Ico.camera(17, "white")}{" "}
+                {subiendo ? t.subiendo : t.publicarMuro}
               </button>
             )}
           </>
@@ -1324,120 +1218,25 @@ function ModalSubirFoto({
   );
 }
 
-// ─── Tarjeta de Deseo ─────────────────────────────────────
-function DeseoCard({
-  deseo,
-  col,
-  esOrganizador,
-  onDelete,
-}: {
-  deseo: Deseo;
-  col: (typeof paleta)[string];
-  esOrganizador: boolean;
-  onDelete: (id: string) => void;
-}) {
-  const fechaCorta = new Date(deseo.created_at).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-  });
-  return (
-    <div
-      style={{
-        background: deseo.color_fondo,
-        borderRadius: 20,
-        padding: "18px 16px 14px",
-        boxShadow: "0 4px 18px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
-        position: "relative",
-        border: "1px solid rgba(255,255,255,0.9)",
-        animation: "popIn 0.3s ease",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        breakInside: "avoid",
-        marginBottom: 12,
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: -12,
-          right: 14,
-          fontSize: 26,
-          filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))",
-        }}
-      >
-        {deseo.emoji_sticker}
-      </div>
-      <p
-        style={{
-          fontSize: 14,
-          color: "#2d3748",
-          lineHeight: 1.65,
-          fontStyle: "italic",
-          paddingRight: 24,
-          fontFamily: "'Cormorant Garamond', serif",
-        }}
-      >
-        "{deseo.mensaje}"
-      </p>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 4,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <Avatar nombre={deseo.nombre_autor} size={26} bgColor={col.texto} />
-          <div>
-            <p style={{ fontWeight: 700, fontSize: 12, color: "#374151" }}>
-              {deseo.nombre_autor}
-            </p>
-            <p style={{ fontSize: 10, color: "#9ca3af" }}>{fechaCorta}</p>
-          </div>
-        </div>
-        {esOrganizador && (
-          <button
-            onClick={() => onDelete(deseo.id)}
-            style={{
-              background: "rgba(220,38,38,0.1)",
-              color: "#dc2626",
-              border: "none",
-              borderRadius: 8,
-              padding: "5px 9px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <IconTrash size={12} color="#dc2626" />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Modal publicar Deseo ─────────────────────────────────
+// ─── Modal deseo ───────────────────────────────────────────────────────────────
 function ModalDeseo({
-  col,
   invitadoNombre,
   yaDejoDeseo,
   yaSubioFoto,
   onClose,
   onPublicado,
+  t,
 }: {
-  col: (typeof paleta)[string];
   invitadoNombre: string;
   yaDejoDeseo: boolean;
   yaSubioFoto: boolean;
   onClose: () => void;
-  onPublicado: (deseo: Partial<Deseo>) => void;
+  onPublicado: (d: Partial<Deseo>) => void;
+  t: (typeof T)["es"];
 }) {
   const [mensaje, setMensaje] = useState("");
-  const [stickerSel, setStickerSel] = useState(STICKERS[0]);
-  const [colorSel, setColorSel] = useState(COLORES_DESEO[0]);
+  const [sticker, setSticker] = useState(STICKERS[0]);
+  const [color, setColor] = useState(COLORES_DESEO[0]);
   const [enviando, setEnviando] = useState(false);
 
   const publicar = async () => {
@@ -1445,8 +1244,8 @@ function ModalDeseo({
     setEnviando(true);
     onPublicado({
       mensaje: mensaje.trim(),
-      emoji_sticker: stickerSel,
-      color_fondo: colorSel,
+      emoji_sticker: sticker,
+      color_fondo: color,
     });
     setEnviando(false);
   };
@@ -1458,7 +1257,7 @@ function ModalDeseo({
         position: "fixed",
         inset: 0,
         zIndex: 9998,
-        background: "rgba(0,0,0,0.65)",
+        background: "rgba(0,0,0,0.60)",
         display: "flex",
         alignItems: "flex-end",
         justifyContent: "center",
@@ -1468,32 +1267,30 @@ function ModalDeseo({
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "white",
-          borderRadius: "24px 24px 0 0",
+          borderRadius: "22px 22px 0 0",
           width: "100%",
           maxWidth: 480,
-          padding: 24,
-          paddingBottom: 40,
-          boxShadow: "0 -8px 40px rgba(0,0,0,0.22)",
+          padding: "20px 20px 40px",
+          boxShadow: "0 -6px 32px rgba(0,0,0,0.18)",
           maxHeight: "92vh",
           overflowY: "auto",
         }}
       >
         <div
           style={{
-            width: 36,
+            width: 32,
             height: 4,
             borderRadius: 2,
-            background: "#7DD4C8",
-            margin: "0 auto 20px",
+            background: "#CBD5E1",
+            margin: "0 auto 18px",
           }}
         />
-
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 20,
+            marginBottom: 18,
           }}
         >
           <div>
@@ -1502,15 +1299,13 @@ function ModalDeseo({
                 fontWeight: 800,
                 fontSize: 17,
                 color: "#0f2422",
-                fontFamily: "'Cormorant Garamond', serif",
+                fontFamily: "'Playfair Display',serif",
               }}
             >
-              {yaDejoDeseo ? "Tu deseo ya fue enviado" : "Escribir un deseo"}
+              {yaDejoDeseo ? t.tuDeseoPub : t.escribirDeseo}
             </p>
             <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
-              {yaDejoDeseo
-                ? "Solo se permite 1 deseo por invitado"
-                : "Tu mensaje aparecerá en el muro"}
+              {yaDejoDeseo ? t.solo1Deseo : t.tuMensaje}
             </p>
           </div>
           <button
@@ -1527,111 +1322,111 @@ function ModalDeseo({
               justifyContent: "center",
             }}
           >
-            <IconX size={16} color="#3AADA0" />
+            {Ico.x(15, "#3AADA0")}
           </button>
         </div>
-
         {yaDejoDeseo ? (
-          <div style={{ textAlign: "center", padding: "24px 0" }}>
+          <div style={{ textAlign: "center", padding: "22px 0" }}>
             <div
               style={{
-                width: 64,
-                height: 64,
+                width: 60,
+                height: 60,
                 borderRadius: "50%",
-                background: col.claro,
-                border: `2px solid ${col.acento}`,
+                background: "#e0f5f2",
+                border: "2px solid #7DD4C8",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 12px",
+              }}
+            >
+              {Ico.heart(26, "#3AADA0")}
+            </div>
+            <p
+              style={{
+                fontWeight: 700,
+                color: "#3AADA0",
+                fontSize: 15,
+                fontFamily: "'Playfair Display',serif",
+              }}
+            >
+              {t.tuDeseoMuro}
+            </p>
+            <p style={{ fontSize: 12, color: "#64748b", marginTop: 5 }}>
+              {t.graciasMsg}
+            </p>
+          </div>
+        ) : !yaSubioFoto ? (
+          <div style={{ textAlign: "center", padding: "24px 14px" }}>
+            <div
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: "50%",
+                background: "#e0f5f2",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 14px",
               }}
             >
-              <IconHeart size={28} color={col.texto} />
+              {Ico.lock(26, "#3AADA0")}
             </div>
             <p
               style={{
                 fontWeight: 700,
-                color: col.texto,
-                fontSize: 16,
-                fontFamily: "'Cormorant Garamond', serif",
+                color: "#0f2422",
+                fontSize: 15,
+                fontFamily: "'Playfair Display',serif",
+                marginBottom: 7,
               }}
             >
-              Tu deseo ya está en el muro
-            </p>
-            <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
-              Gracias por compartir tu mensaje especial
-            </p>
-          </div>
-        ) : !yaSubioFoto ? (
-          <div style={{ textAlign: "center", padding: "28px 16px" }}>
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                background: col.claro,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 16px",
-              }}
-            >
-              <IconLock size={28} color={col.texto} />
-            </div>
-            <p
-              style={{
-                fontWeight: 700,
-                color: "#374151",
-                fontSize: 16,
-                fontFamily: "'Cormorant Garamond', serif",
-                marginBottom: 8,
-              }}
-            >
-              Primero sube tu foto
+              {t.primeroFoto}
             </p>
             <p style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
-              Para dejar un deseo, primero debes compartir tu foto del evento.
+              {t.primeroFotoSub}
             </p>
             <button
               onClick={onClose}
               style={{
-                marginTop: 20,
-                background: col.texto,
+                marginTop: 18,
+                background: "#3AADA0",
                 color: "white",
                 border: "none",
                 borderRadius: 14,
-                padding: "12px 24px",
+                padding: "11px 22px",
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: "pointer",
-                fontFamily: "'Cormorant Garamond', serif",
+                fontFamily: "'Playfair Display',serif",
               }}
             >
-              Ir a subir mi foto
+              {t.irFoto}
             </button>
           </div>
         ) : (
           <>
+            {/* Preview */}
             <div
               style={{
-                background: colorSel,
-                borderRadius: 18,
-                padding: "16px 14px 12px",
-                marginBottom: 18,
+                background: color,
+                borderRadius: 16,
+                padding: "15px 13px 11px",
+                marginBottom: 16,
                 position: "relative",
                 border: "1px solid rgba(0,0,0,0.05)",
-                boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
               }}
             >
               <div
                 style={{
                   position: "absolute",
                   top: -10,
-                  right: 14,
+                  right: 13,
                   fontSize: 24,
                 }}
               >
-                {stickerSel}
+                {sticker}
               </div>
               <p
                 style={{
@@ -1639,9 +1434,9 @@ function ModalDeseo({
                   color: mensaje ? "#2d3748" : "#cbd5e1",
                   fontStyle: "italic",
                   lineHeight: 1.6,
-                  minHeight: 40,
-                  paddingRight: 20,
-                  fontFamily: "'Cormorant Garamond', serif",
+                  minHeight: 38,
+                  paddingRight: 18,
+                  fontFamily: "'Playfair Display',serif",
                 }}
               >
                 {mensaje ? `"${mensaje}"` : "Tu mensaje aparecerá aquí..."}
@@ -1650,11 +1445,11 @@ function ModalDeseo({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 7,
-                  marginTop: 10,
+                  gap: 6,
+                  marginTop: 9,
                 }}
               >
-                <Avatar nombre={invitadoNombre} size={22} bgColor={col.texto} />
+                <Avatar nombre={invitadoNombre} size={20} bg="#3AADA0" />
                 <span
                   style={{ fontSize: 11, fontWeight: 700, color: "#374151" }}
                 >
@@ -1662,83 +1457,84 @@ function ModalDeseo({
                 </span>
               </div>
             </div>
-
-            <div style={{ marginBottom: 16 }}>
+            {/* Textarea */}
+            <div style={{ marginBottom: 14 }}>
               <label
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
                   color: "#3AADA0",
                   display: "block",
-                  marginBottom: 6,
+                  marginBottom: 5,
                   letterSpacing: "0.5px",
                   textTransform: "uppercase",
                 }}
               >
-                Tu mensaje *
+                {t.tuMensajeLbl}
               </label>
               <textarea
                 value={mensaje}
                 onChange={(e) => setMensaje(e.target.value)}
-                placeholder="Escribe tu deseo, dedicatoria o mensaje especial..."
+                placeholder={t.escribeDeseo}
                 maxLength={280}
                 rows={3}
                 style={{
                   width: "100%",
-                  border: `1.5px solid ${col.acento}`,
-                  borderRadius: 14,
-                  padding: "12px 14px",
+                  border: "1.5px solid #7DD4C8",
+                  borderRadius: 12,
+                  padding: "11px 13px",
                   fontSize: 14,
                   outline: "none",
-                  fontFamily: "'Cormorant Garamond', serif",
+                  fontFamily: "'Playfair Display',serif",
                   boxSizing: "border-box",
-                  background: col.claro,
+                  background: "#f0faf8",
                   resize: "none",
                   lineHeight: 1.6,
+                  color: "#0f2422",
                 }}
               />
               <p
                 style={{
                   fontSize: 11,
                   color: "#9ca3af",
-                  marginTop: 4,
+                  marginTop: 3,
                   textAlign: "right",
                 }}
               >
                 {mensaje.length}/280
               </p>
             </div>
-
-            <div style={{ marginBottom: 16 }}>
+            {/* Stickers */}
+            <div style={{ marginBottom: 14 }}>
               <label
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
                   color: "#3AADA0",
                   display: "block",
-                  marginBottom: 8,
+                  marginBottom: 7,
                   letterSpacing: "0.5px",
                   textTransform: "uppercase",
                 }}
               >
-                Elige un sticker
+                {t.elige}
               </label>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                 {STICKERS.map((s) => (
                   <button
                     key={s}
-                    onClick={() => setStickerSel(s)}
+                    onClick={() => setSticker(s)}
                     style={{
-                      fontSize: 22,
-                      background: stickerSel === s ? col.claro : "#f9fafb",
+                      fontSize: 20,
+                      background:
+                        sticker === s ? "#e0f5f2" : "rgba(0,0,0,0.03)",
                       border:
-                        stickerSel === s
-                          ? `2px solid ${col.acento}`
+                        sticker === s
+                          ? "2px solid #7DD4C8"
                           : "2px solid transparent",
-                      borderRadius: 10,
-                      padding: "4px 8px",
+                      borderRadius: 9,
+                      padding: "3px 7px",
                       cursor: "pointer",
-                      transition: "all 0.15s",
                     }}
                   >
                     {s}
@@ -1746,51 +1542,50 @@ function ModalDeseo({
                 ))}
               </div>
             </div>
-
-            <div style={{ marginBottom: 22 }}>
+            {/* Colores */}
+            <div style={{ marginBottom: 20 }}>
               <label
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
                   color: "#3AADA0",
                   display: "block",
-                  marginBottom: 8,
+                  marginBottom: 7,
                   letterSpacing: "0.5px",
                   textTransform: "uppercase",
                 }}
               >
-                Color de tarjeta
+                {t.colorTarjeta}
               </label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {COLORES_DESEO.map((c) => (
                   <button
                     key={c}
-                    onClick={() => setColorSel(c)}
+                    onClick={() => setColor(c)}
                     style={{
-                      width: 30,
-                      height: 30,
+                      width: 28,
+                      height: 28,
                       borderRadius: "50%",
                       background: c,
                       border:
-                        colorSel === c
-                          ? `3px solid #3AADA0`
+                        color === c
+                          ? "3px solid #3AADA0"
                           : "3px solid transparent",
                       cursor: "pointer",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.13)",
+                      transform: color === c ? "scale(1.2)" : "scale(1)",
                       transition: "transform 0.15s",
-                      transform: colorSel === c ? "scale(1.2)" : "scale(1)",
                     }}
                   />
                 ))}
               </div>
             </div>
-
             <button
               onClick={publicar}
               disabled={enviando || !mensaje.trim()}
               style={{
                 width: "100%",
-                background: mensaje.trim() ? col.texto : "#e2e8f0",
+                background: mensaje.trim() ? "#3AADA0" : "#e2e8f0",
                 color: mensaje.trim() ? "white" : "#9ca3af",
                 border: "none",
                 borderRadius: 14,
@@ -1802,15 +1597,11 @@ function ModalDeseo({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
-                transition: "background 0.2s",
-                fontFamily: "'Cormorant Garamond', serif",
+                fontFamily: "'Playfair Display',serif",
               }}
             >
-              <IconHeart
-                size={18}
-                color={mensaje.trim() ? "white" : "#9ca3af"}
-              />
-              {enviando ? "Publicando..." : "Publicar deseo"}
+              {Ico.heart(17, mensaje.trim() ? "white" : "#9ca3af")}{" "}
+              {enviando ? t.publicando : t.publicarDeseo}
             </button>
           </>
         )}
@@ -1819,7 +1610,123 @@ function ModalDeseo({
   );
 }
 
-// ─── Componente principal ─────────────────────────────────
+// ─── DeseoCard ─────────────────────────────────────────────────────────────────
+function DeseoCard({
+  deseo,
+  esOrg,
+  onDelete,
+  onDescargar,
+}: {
+  deseo: Deseo;
+  esOrg: boolean;
+  onDelete: (id: string) => void;
+  onDescargar: (deseo: Deseo) => void;
+}) {
+  const fecha = new Date(deseo.created_at).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "short",
+  });
+  return (
+    <div
+      style={{
+        background: deseo.color_fondo,
+        borderRadius: 18,
+        padding: "17px 14px 13px",
+        boxShadow: "0 3px 14px rgba(0,0,0,0.06)",
+        position: "relative",
+        border: "1px solid rgba(255,255,255,0.9)",
+        animation: "popIn 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
+        gap: 9,
+        breakInside: "avoid",
+        marginBottom: 12,
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: -11,
+          right: 13,
+          fontSize: 24,
+          filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.12))",
+        }}
+      >
+        {deseo.emoji_sticker}
+      </div>
+      <p
+        style={{
+          fontSize: 13,
+          color: "#2d3748",
+          lineHeight: 1.65,
+          fontStyle: "italic",
+          paddingRight: 22,
+          fontFamily: "'Playfair Display',serif",
+        }}
+      >
+        "{deseo.mensaje}"
+      </p>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginTop: 3,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Avatar nombre={deseo.nombre_autor} size={24} bg="#3AADA0" />
+          <div>
+            <p style={{ fontWeight: 700, fontSize: 11, color: "#374151" }}>
+              {deseo.nombre_autor}
+            </p>
+            <p style={{ fontSize: 10, color: "#9ca3af" }}>{fecha}</p>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 5 }}>
+          <button
+            onClick={() => onDescargar(deseo)}
+            style={{
+              background: "rgba(58,173,160,0.12)",
+              color: "#3AADA0",
+              border: "none",
+              borderRadius: 8,
+              width: 28,
+              height: 28,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {Ico.download(13, "#3AADA0")}
+          </button>
+          {esOrg && (
+            <button
+              onClick={() => onDelete(deseo.id)}
+              style={{
+                background: "rgba(220,38,38,0.10)",
+                color: "#dc2626",
+                border: "none",
+                borderRadius: 8,
+                width: 28,
+                height: 28,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {Ico.trash(12, "#dc2626")}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
 type Vista = "fotos" | "albumes" | "deseos";
 
 export default function MuroPublico() {
@@ -1832,35 +1739,40 @@ export default function MuroPublico() {
   const [deseos, setDeseos] = useState<Deseo[]>([]);
   const [fotoActiva, setFotoActiva] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [esOrganizador, setEsOrganizador] = useState(false);
+  const [esOrg, setEsOrg] = useState(false);
   const [vista, setVista] = useState<Vista>("fotos");
-  const [invitadoId, setInvitadoId] = useState<string | null>(null);
-  const [invitadoNombre, setInvitadoNombre] = useState<string>("");
+  const [invId, setInvId] = useState<string | null>(null);
+  const [invNombre, setInvNombre] = useState("");
   const [modalSubir, setModalSubir] = useState(false);
   const [modalDeseo, setModalDeseo] = useState(false);
-  const [yaSubioFoto, setYaSubioFoto] = useState(false);
-  const [yaDejoDeseo, setYaDejoDeseo] = useState(false);
+  const [yaFoto, setYaFoto] = useState(false);
+  const [yaDeseo, setYaDeseo] = useState(false);
+  const [lang, setLang] = useState<"es" | "en">("es");
+  const [mounted, setMounted] = useState(false);
+
+  const t = T[lang];
 
   useEffect(() => {
+    setTimeout(() => setMounted(true), 60);
     const token = new URLSearchParams(window.location.search).get("token");
     if (token) {
       supabase
         .from("invitados")
-        .select("id, nombre")
+        .select("id,nombre")
         .eq("token", token)
         .single()
         .then(({ data }) => {
           if (data) {
-            setInvitadoId(data.id);
-            setInvitadoNombre(data.nombre);
+            setInvId(data.id);
+            setInvNombre(data.nombre);
           }
         });
     }
     cargarDatos();
-    verificarOrganizador();
+    verificarOrg();
 
-    const canal = supabase
-      .channel("muro-fotos")
+    const cF = supabase
+      .channel("muro-f")
       .on(
         "postgres_changes",
         {
@@ -1882,18 +1794,8 @@ export default function MuroPublico() {
         cargarFotos,
       )
       .subscribe();
-
-    const canalReacciones = supabase
-      .channel("muro-reacciones")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "reacciones" },
-        cargarFotos,
-      )
-      .subscribe();
-
-    const canalDeseos = supabase
-      .channel("muro-deseos")
+    const cD = supabase
+      .channel("muro-d")
       .on(
         "postgres_changes",
         {
@@ -1905,29 +1807,26 @@ export default function MuroPublico() {
         cargarDeseos,
       )
       .subscribe();
-
     return () => {
-      supabase.removeChannel(canal);
-      supabase.removeChannel(canalReacciones);
-      supabase.removeChannel(canalDeseos);
+      supabase.removeChannel(cF);
+      supabase.removeChannel(cD);
     };
   }, []);
 
   useEffect(() => {
-    if (!invitadoId) return;
-    verificarJourney(invitadoId);
-  }, [invitadoId]);
+    if (invId) verificarJourney(invId);
+  }, [invId]);
 
-  async function verificarJourney(iId: string) {
-    const [{ data: fotosData }, { data: deseosData }] = await Promise.all([
-      supabase.from("fotos").select("id").eq("invitado_id", iId),
-      supabase.from("deseos").select("id").eq("invitado_id", iId),
+  async function verificarJourney(id: string) {
+    const [{ data: fData }, { data: dData }] = await Promise.all([
+      supabase.from("fotos").select("id").eq("invitado_id", id),
+      supabase.from("deseos").select("id").eq("invitado_id", id),
     ]);
-    if (fotosData && fotosData.length > 0) setYaSubioFoto(true);
-    if (deseosData && deseosData.length > 0) setYaDejoDeseo(true);
+    if (fData && fData.length > 0) setYaFoto(true);
+    if (dData && dData.length > 0) setYaDeseo(true);
   }
 
-  async function verificarOrganizador() {
+  async function verificarOrg() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -1937,14 +1836,14 @@ export default function MuroPublico() {
       .select("organizador_id")
       .eq("id", eventoId)
       .single();
-    if (ev && ev.organizador_id === user.id) setEsOrganizador(true);
+    if (ev && ev.organizador_id === user.id) setEsOrg(true);
   }
 
   async function cargarDatos() {
     const { data: ev } = await supabase
       .from("eventos")
       .select(
-        "id, nombre, tipo, fecha, anfitriones, organizador_id, imagen_url, frase_evento, lugar",
+        "id,nombre,tipo,fecha,anfitriones,organizador_id,imagen_url,frase_evento,lugar",
       )
       .eq("id", eventoId)
       .single();
@@ -1956,27 +1855,11 @@ export default function MuroPublico() {
   async function cargarFotos() {
     const { data } = await supabase
       .from("fotos")
-      .select(
-        "id, url, created_at, invitado_id, caption, invitados(nombre), reacciones(emoji)",
-      )
+      .select("id,url,created_at,invitado_id,caption,invitados(nombre)")
       .eq("evento_id", eventoId)
       .eq("estado", "aprobada")
-      .order("created_at", { ascending: false });
-    if (!data) return;
-    const fotosConR = data.map((f: any) => {
-      const conteo: Record<string, number> = {};
-      (f.reacciones ?? []).forEach((r: { emoji: string }) => {
-        conteo[r.emoji] = (conteo[r.emoji] || 0) + 1;
-      });
-      return {
-        ...f,
-        reacciones: Object.entries(conteo).map(([emoji, count]) => ({
-          emoji,
-          count,
-        })),
-      };
-    });
-    setFotos(fotosConR as Foto[]);
+      .order("created_at", { ascending: true }); // orden cronológico de subida
+    if (data) setFotos(data as Foto[]);
   }
 
   async function cargarDeseos() {
@@ -1985,41 +1868,29 @@ export default function MuroPublico() {
       .select("*")
       .eq("evento_id", eventoId)
       .eq("aprobado", true)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: true }); // orden cronológico
     if (data) setDeseos(data as Deseo[]);
   }
 
   async function eliminarFoto(id: string) {
-    if (!confirm("¿Eliminar esta foto del muro?")) return;
+    if (!confirm(t.eliminarFoto)) return;
     await supabase.from("fotos").delete().eq("id", id);
     setFotos((prev) => prev.filter((f) => f.id !== id));
     if (fotoActiva !== null) setFotoActiva(null);
   }
 
   async function eliminarDeseo(id: string) {
-    if (!confirm("¿Eliminar este deseo?")) return;
+    if (!confirm(t.eliminarDeseo)) return;
     await supabase.from("deseos").delete().eq("id", id);
     setDeseos((prev) => prev.filter((d) => d.id !== id));
   }
 
-  async function reaccionar(fotoId: string, emoji: string) {
-    if (!invitadoId) return;
-    await supabase
-      .from("reacciones")
-      .upsert(
-        { foto_id: fotoId, invitado_id: invitadoId, emoji },
-        { onConflict: "foto_id,invitado_id" },
-      );
-    cargarFotos();
-  }
-
   async function publicarDeseo(parcial: Partial<Deseo>) {
-    if (!invitadoId) return;
-    if (!yaSubioFoto) return;
+    if (!invId || !yaFoto) return;
     const nuevo = {
       evento_id: eventoId,
-      invitado_id: invitadoId,
-      nombre_autor: invitadoNombre || "Anónimo",
+      invitado_id: invId,
+      nombre_autor: invNombre || "Anónimo",
       mensaje: parcial.mensaje!,
       emoji_sticker: parcial.emoji_sticker!,
       color_fondo: parcial.color_fondo!,
@@ -2031,15 +1902,19 @@ export default function MuroPublico() {
       .select()
       .single();
     if (data) {
-      setDeseos((prev) => [data as Deseo, ...prev]);
-      setYaDejoDeseo(true);
+      setDeseos((prev) => [...prev, data as Deseo]);
+      setYaDeseo(true);
     }
     setModalDeseo(false);
   }
 
-  async function alSubirFoto() {
-    await cargarFotos();
-    setYaSubioFoto(true);
+  function descargarDeseoIndividual(deseo: Deseo) {
+    const texto = `${deseo.nombre_autor}\n"${deseo.mensaje}"\n${new Date(deseo.created_at).toLocaleDateString("es-ES")}`;
+    const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `deseo_${deseo.nombre_autor.replace(/\s/g, "_")}.txt`;
+    a.click();
   }
 
   const albumes = (() => {
@@ -2059,14 +1934,37 @@ export default function MuroPublico() {
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("token")
       : "";
+  const pasoJourney = !invId ? null : !yaFoto ? 3 : !yaDeseo ? 4 : 5;
 
-  const pasoJourney = !invitadoId
-    ? null
-    : !yaSubioFoto
-      ? 3
-      : !yaDejoDeseo
-        ? 4
-        : 5;
+  // ── Favicon dinámico ──
+  useEffect(() => {
+    if (!evento) return;
+    const emoji = TIPO_EMOJI[evento.tipo] ?? "✨";
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      // Fondo verde
+      ctx.fillStyle = "#3AADA0";
+      ctx.beginPath();
+      ctx.roundRect(0, 0, 64, 64, 14);
+      ctx.fill();
+      ctx.font = "36px serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(emoji, 32, 32);
+    }
+    const link =
+      document.querySelector<HTMLLinkElement>("link[rel~='icon']") ||
+      document.createElement("link");
+    link.rel = "icon";
+    link.href = canvas.toDataURL();
+    document.head.appendChild(link);
+    document.title = evento.nombre ? `${evento.nombre} · Eventix` : "Eventix";
+  }, [evento]);
+
+  const acento = "#3AADA0";
 
   if (loading)
     return (
@@ -2076,33 +1974,36 @@ export default function MuroPublico() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#f0faf8",
+          background: "#F0FAF8",
         }}
       >
         <div style={{ textAlign: "center" }}>
+          <div style={{ marginBottom: 16 }}>
+            <AppLogo size={52} />
+          </div>
           <div
             style={{
-              width: 52,
-              height: 52,
+              width: 34,
+              height: 34,
               borderRadius: "50%",
-              border: "3px solid #7DD4C8",
+              border: "3px solid rgba(58,173,160,0.2)",
               borderTopColor: "#3AADA0",
               animation: "spin 0.8s linear infinite",
-              margin: "0 auto 16px",
+              margin: "0 auto 12px",
             }}
           />
           <p
             style={{
               color: "#3AADA0",
               fontWeight: 600,
-              fontSize: 15,
-              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 13,
+              letterSpacing: 1,
             }}
           >
-            Cargando muro...
+            {t.cargando}
           </p>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        <style>{`@keyframes spin { to { transform:rotate(360deg) } }`}</style>
       </main>
     );
 
@@ -2116,12 +2017,11 @@ export default function MuroPublico() {
           justifyContent: "center",
         }}
       >
-        <p style={{ color: "#6b7280" }}>Evento no encontrado</p>
+        <p style={{ color: "#6b7280" }}>{t.eventoNoEncontrado}</p>
       </main>
     );
 
-  const col = paleta[evento.tipo] || paleta.otro;
-  const fechaFormateada = new Date(evento.fecha).toLocaleDateString("es-ES", {
+  const fechaFmt = new Date(evento.fecha).toLocaleDateString("es-ES", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -2131,32 +2031,34 @@ export default function MuroPublico() {
     <main
       style={{
         minHeight: "100vh",
-        background: col.bg,
-        paddingBottom: 110,
-        fontFamily: "'Inter', sans-serif",
+        background: "#F0FAF8",
+        paddingBottom: 100,
+        fontFamily: "'DM Sans',sans-serif",
+        opacity: mounted ? 1 : 0,
+        transition: "opacity 0.3s ease",
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-        @keyframes spin { to { transform: rotate(360deg) } }
-        @keyframes popIn { from { opacity: 0; transform: scale(0.93) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .tab-nav-btn { transition: background 0.18s, color 0.18s; }
-        .tab-nav-btn:active { transform: scale(0.95); }
-        .foto-card-wrap:hover { transform: translateY(-2px); transition: transform 0.2s; }
-        .btn-flotante { transition: transform 0.15s, box-shadow 0.15s; }
-        .btn-flotante:hover { transform: scale(1.07); }
-        .btn-flotante:active { transform: scale(0.95); }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'DM Sans',sans-serif;background:#F0FAF8}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes popIn{from{opacity:0;transform:scale(0.93) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        .foto-card{transition:transform 0.18s;} .foto-card:hover{transform:translateY(-2px)}
+        .tab-btn{transition:all 0.16s;} .tab-btn:active{transform:scale(0.95)}
+        .fab{transition:transform 0.14s,box-shadow 0.14s;} .fab:hover{transform:scale(1.06)} .fab:active{transform:scale(0.95)}
+        .quick-bar{animation:fadeUp 0.4s 0.1s both}
       `}</style>
 
-      {/* ══ HERO ══ */}
+      {/* ══ HERO ══════════════════════════════════════════════════════════════ */}
       <div
         style={{
           position: "relative",
           overflow: "hidden",
-          background: col.gradHero,
+          background: "linear-gradient(135deg,#2e948a 0%,#3AADA0 100%)",
           color: "white",
-          padding: "48px 20px 36px",
+          padding: "48px 20px 32px",
           textAlign: "center",
         }}
       >
@@ -2168,7 +2070,7 @@ export default function MuroPublico() {
               backgroundImage: `url(${evento.imagen_url})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
-              opacity: 0.18,
+              opacity: 0.13,
             }}
           />
         )}
@@ -2177,59 +2079,72 @@ export default function MuroPublico() {
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.3) 100%)",
+              "linear-gradient(180deg,rgba(0,0,0,0.06) 0%,rgba(0,0,0,0.32) 100%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage:
+              "radial-gradient(circle,rgba(255,255,255,0.07) 1px,transparent 1px)",
+            backgroundSize: "26px 26px",
+            pointerEvents: "none",
           }}
         />
 
-        <button
-          onClick={() => router.back()}
+        {/* Top bar: lang izq, dashboard der */}
+        <div
           style={{
             position: "absolute",
             top: 14,
-            left: 14,
-            zIndex: 5,
+            left: 0,
+            right: 0,
             display: "flex",
-            alignItems: "center",
-            gap: 5,
-            background: "rgba(255,255,255,0.18)",
-            color: "white",
-            border: "1px solid rgba(255,255,255,0.3)",
-            borderRadius: 10,
-            padding: "7px 13px",
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: "pointer",
-            backdropFilter: "blur(8px)",
+            justifyContent: "space-between",
+            padding: "0 14px",
+            zIndex: 5,
           }}
         >
-          <IconBack size={15} color="white" /> Atrás
-        </button>
+          <button
+            onClick={() => setLang(lang === "es" ? "en" : "es")}
+            style={{
+              background: "rgba(255,255,255,0.18)",
+              color: "white",
+              border: "1px solid rgba(255,255,255,0.28)",
+              borderRadius: 10,
+              padding: "6px 11px",
+              fontSize: 11,
+              fontWeight: 800,
+              cursor: "pointer",
+              letterSpacing: 1,
+            }}
+          >
+            {lang === "es" ? "EN" : "ES"}
+          </button>
+          <Link
+            href="/dashboard"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              background: "rgba(255,255,255,0.18)",
+              color: "white",
+              border: "1px solid rgba(255,255,255,0.28)",
+              borderRadius: 10,
+              padding: "6px 13px",
+              fontSize: 12,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            {Ico.dashboard(14, "white")} {t.dashboard}
+          </Link>
+        </div>
 
-        <Link
-          href="/dashboard"
-          style={{
-            position: "absolute",
-            top: 14,
-            right: 14,
-            zIndex: 5,
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            background: "rgba(255,255,255,0.18)",
-            color: "white",
-            border: "1px solid rgba(255,255,255,0.3)",
-            borderRadius: 10,
-            padding: "7px 13px",
-            fontSize: 12,
-            fontWeight: 600,
-            textDecoration: "none",
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          Dashboard
-        </Link>
-
-        <div style={{ position: "relative", zIndex: 1, marginBottom: 20 }}>
+        {/* Contenido hero */}
+        <div style={{ position: "relative", zIndex: 1, marginBottom: 18 }}>
+          {/* Logo + nombre app */}
           <div
             style={{
               display: "flex",
@@ -2239,98 +2154,87 @@ export default function MuroPublico() {
               marginBottom: 16,
             }}
           >
-            <AppLogo size={26} color="white" />
+            <AppLogo size={32} />
             <span
               style={{
-                fontSize: 13,
-                fontWeight: 600,
-                letterSpacing: "1.5px",
+                fontSize: 15,
+                fontWeight: 800,
+                letterSpacing: "2px",
                 textTransform: "uppercase",
-                opacity: 0.85,
-                fontFamily: "'Cormorant Garamond', serif",
+                opacity: 0.95,
+                fontFamily: "'DM Sans',sans-serif",
               }}
             >
-              Events
+              Eventix
             </span>
           </div>
 
           <h1
             style={{
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: 700,
-              marginBottom: 6,
+              marginBottom: 5,
               lineHeight: 1.2,
-              fontFamily: "'Cormorant Garamond', serif",
-              letterSpacing: "-0.3px",
+              fontFamily: "'Playfair Display',serif",
+              letterSpacing: "-0.2px",
             }}
           >
             {evento.nombre}
           </h1>
-
           {evento.anfitriones && (
-            <p
-              style={{
-                fontSize: 14,
-                opacity: 0.88,
-                marginBottom: 4,
-                fontWeight: 400,
-                letterSpacing: "0.2px",
-              }}
-            >
+            <p style={{ fontSize: 14, opacity: 0.88, marginBottom: 4 }}>
               {evento.anfitriones}
             </p>
           )}
-
           {evento.frase_evento && (
             <p
               style={{
                 fontSize: 13,
                 fontStyle: "italic",
                 opacity: 0.75,
-                marginBottom: 6,
-                fontFamily: "'Cormorant Garamond', serif",
+                marginBottom: 5,
+                fontFamily: "'Playfair Display',serif",
               }}
             >
               "{evento.frase_evento}"
             </p>
           )}
-
           <p style={{ fontSize: 11, opacity: 0.65, letterSpacing: "0.3px" }}>
-            {fechaFormateada}
+            {fechaFmt}
             {evento.lugar ? ` · ${evento.lugar}` : ""}
           </p>
 
+          {/* Stats */}
           <div
             style={{
               display: "flex",
               justifyContent: "center",
-              gap: 10,
-              marginTop: 22,
+              gap: 9,
+              marginTop: 20,
               flexWrap: "wrap",
             }}
           >
             {[
-              { num: fotos.length, label: "fotos" },
-              { num: deseos.length, label: "deseos" },
-              { num: albumes.length, label: "participantes" },
+              { num: fotos.length, label: t.fotos },
+              { num: deseos.length, label: t.deseos },
+              { num: albumes.length, label: t.participantes },
             ].map((s) => (
               <div
                 key={s.label}
                 style={{
                   background: "rgba(255,255,255,0.18)",
                   borderRadius: 14,
-                  padding: "8px 18px",
-                  backdropFilter: "blur(8px)",
+                  padding: "7px 16px",
                   textAlign: "center",
                   border: "1px solid rgba(255,255,255,0.25)",
                 }}
               >
                 <div
                   style={{
-                    fontSize: 20,
+                    fontSize: 19,
                     fontWeight: 700,
                     lineHeight: 1,
-                    fontFamily: "'Cormorant Garamond', serif",
+                    fontFamily: "'Playfair Display',serif",
                   }}
                 >
                   {s.num}
@@ -2349,68 +2253,216 @@ export default function MuroPublico() {
             ))}
           </div>
 
-          {invitadoId && pasoJourney !== null && pasoJourney < 5 && (
+          {/* Journey badge */}
+          {invId && pasoJourney !== null && pasoJourney < 5 && (
             <div
               style={{
-                marginTop: 18,
+                marginTop: 16,
                 background: "rgba(255,255,255,0.18)",
-                backdropFilter: "blur(10px)",
                 border: "1px solid rgba(255,255,255,0.28)",
-                borderRadius: 14,
-                padding: "10px 16px",
+                borderRadius: 12,
+                padding: "9px 15px",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 8,
+                gap: 7,
                 fontSize: 12,
                 fontWeight: 600,
               }}
             >
               {pasoJourney === 3 ? (
                 <>
-                  <IconCamera size={14} color="white" />
-                  <span>Paso 3: Comparte tu foto del evento</span>
+                  {Ico.camera(13, "white")} <span>{t.paso3}</span>
                 </>
               ) : (
                 <>
-                  <IconHeart size={14} color="white" />
-                  <span>Paso 4: Escribe tu deseo al anfitrión</span>
+                  {Ico.heart(13, "white")} <span>{t.paso4}</span>
                 </>
               )}
             </div>
           )}
-          {invitadoId && pasoJourney === 5 && (
+          {invId && pasoJourney === 5 && (
             <div
               style={{
-                marginTop: 18,
+                marginTop: 16,
                 background: "rgba(255,255,255,0.18)",
-                backdropFilter: "blur(10px)",
                 border: "1px solid rgba(255,255,255,0.28)",
-                borderRadius: 14,
-                padding: "10px 16px",
+                borderRadius: 12,
+                padding: "9px 15px",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 8,
+                gap: 7,
                 fontSize: 12,
                 fontWeight: 600,
               }}
             >
-              <IconCheck size={14} color="white" />
-              <span>¡Completaste tu journey! Gracias, {invitadoNombre}</span>
+              {Ico.check(13, "white")}{" "}
+              <span>
+                {t.completaste} {invNombre}
+              </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* ══ Tabs ══ */}
+      {/* ══ BARRA RÁPIDA DEL INVITADO ══════════════════════════════════════════ */}
+      {invId && (
+        <div
+          className="quick-bar"
+          style={{
+            background: "white",
+            borderBottom: "1px solid rgba(58,173,160,0.20)",
+            padding: "11px 14px",
+            display: "flex",
+            gap: 8,
+            justifyContent: "center",
+            flexWrap: "wrap",
+            boxShadow: "0 2px 12px rgba(58,173,160,0.08)",
+          }}
+        >
+          {/* Subir foto */}
+          <button
+            onClick={() => setModalSubir(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: yaFoto
+                ? "rgba(34,197,94,0.09)"
+                : "linear-gradient(135deg,#3AADA0,#0f766e)",
+              color: yaFoto ? "#16a34a" : "white",
+              border: yaFoto ? "1.5px solid rgba(34,197,94,0.28)" : "none",
+              borderRadius: 11,
+              padding: "9px 16px",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: yaFoto ? "none" : "0 3px 12px rgba(58,173,160,0.30)",
+              position: "relative",
+            }}
+          >
+            {yaFoto ? (
+              <>
+                {Ico.check(13, "#16a34a")} {t.subirMiFoto}
+              </>
+            ) : (
+              <>
+                {Ico.camera(13, "white")} {t.subirMiFoto}
+              </>
+            )}
+            {yaFoto && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -5,
+                  right: -5,
+                  width: 15,
+                  height: 15,
+                  borderRadius: "50%",
+                  background: "#22c55e",
+                  border: "2px solid white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {Ico.check(8, "white")}
+              </span>
+            )}
+          </button>
+          {/* Escribir deseo */}
+          <button
+            onClick={() => {
+              setModalDeseo(true);
+              if (!yaFoto) setVista("fotos");
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: yaDeseo
+                ? "rgba(34,197,94,0.09)"
+                : yaFoto
+                  ? "linear-gradient(135deg,#3AADA0,#0f766e)"
+                  : "#f0faf8",
+              color: yaDeseo ? "#16a34a" : yaFoto ? "white" : acento,
+              border: yaDeseo
+                ? "1.5px solid rgba(34,197,94,0.28)"
+                : yaFoto
+                  ? "none"
+                  : "1.5px solid rgba(58,173,160,0.28)",
+              borderRadius: 11,
+              padding: "9px 16px",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow:
+                yaFoto && !yaDeseo
+                  ? "0 3px 12px rgba(58,173,160,0.30)"
+                  : "none",
+              position: "relative",
+            }}
+          >
+            {yaDeseo ? (
+              <>
+                {Ico.check(13, "#16a34a")} {t.miDeseo}
+              </>
+            ) : (
+              <>
+                {Ico.heart(13, yaFoto ? "white" : acento)} {t.miDeseo}
+              </>
+            )}
+            {yaDeseo && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -5,
+                  right: -5,
+                  width: 15,
+                  height: 15,
+                  borderRadius: "50%",
+                  background: "#22c55e",
+                  border: "2px solid white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {Ico.check(8, "white")}
+              </span>
+            )}
+          </button>
+          {/* Ver muro */}
+          <button
+            onClick={() => setVista("fotos")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#f0faf8",
+              color: acento,
+              border: "1.5px solid rgba(58,173,160,0.28)",
+              borderRadius: 11,
+              padding: "9px 14px",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {Ico.wall(13, acento)} {t.verMuro}
+          </button>
+        </div>
+      )}
+
+      {/* ══ TABS ══════════════════════════════════════════════════════════════ */}
       <div
         style={{
           background: "rgba(255,255,255,0.98)",
-          backdropFilter: "blur(14px)",
-          borderBottom: `1px solid #7DD4C860`,
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(58,173,160,0.20)",
           position: "sticky",
           top: 0,
           zIndex: 50,
-          boxShadow: "0 2px 16px rgba(58,173,160,0.08)",
+          boxShadow: "0 1px 12px rgba(58,173,160,0.07)",
         }}
       >
         <div
@@ -2424,152 +2476,134 @@ export default function MuroPublico() {
           {[
             {
               key: "fotos" as Vista,
-              icon: (
-                <IconGrid
-                  size={14}
-                  color={vista === "fotos" ? "white" : "#3AADA0"}
-                />
-              ),
-              label: `Fotos (${fotos.length})`,
+              icon: Ico.grid(13, vista === "fotos" ? "white" : acento),
+              label: `${t.fotos} (${fotos.length})`,
             },
             {
               key: "albumes" as Vista,
-              icon: (
-                <IconFolder
-                  size={14}
-                  color={vista === "albumes" ? "white" : "#3AADA0"}
-                />
-              ),
-              label: `Álbumes (${albumes.length})`,
+              icon: Ico.folder(13, vista === "albumes" ? "white" : acento),
+              label: `${t.albumes} (${albumes.length})`,
             },
             {
               key: "deseos" as Vista,
-              icon: (
-                <IconHeart
-                  size={14}
-                  color={vista === "deseos" ? "white" : "#3AADA0"}
-                />
-              ),
-              label: `Deseos (${deseos.length})`,
+              icon: Ico.heart(13, vista === "deseos" ? "white" : acento),
+              label: `${t.deseos} (${deseos.length})`,
             },
           ].map((tab) => (
             <button
               key={tab.key}
-              className="tab-nav-btn"
+              className="tab-btn"
               onClick={() => setVista(tab.key)}
               style={{
                 flex: 1,
                 background: vista === tab.key ? "#3AADA0" : "transparent",
-                color: vista === tab.key ? "white" : "#3AADA0",
+                color: vista === tab.key ? "white" : acento,
                 border: "none",
-                padding: "12px 6px",
+                padding: "12px 5px",
                 fontSize: 11,
                 fontWeight: 700,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 5,
+                gap: 4,
                 borderBottom:
                   vista === tab.key
-                    ? `3px solid #2e948a`
+                    ? "3px solid #2e948a"
                     : "3px solid transparent",
-                letterSpacing: "0.2px",
+                letterSpacing: "0.1px",
+                fontFamily: "'DM Sans',sans-serif",
               }}
             >
-              {tab.icon}
+              {tab.icon}{" "}
               <span style={{ whiteSpace: "nowrap" }}>{tab.label}</span>
             </button>
           ))}
-
           <Link
             href={`/libro/${eventoId}${tokenParam ? `?token=${tokenParam}` : ""}`}
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 5,
-              background: "#e0f5f2",
-              color: "#3AADA0",
+              gap: 4,
+              background: "#f0faf8",
+              color: acento,
               border: "none",
-              borderLeft: `1px solid #7DD4C850`,
-              padding: "12px 14px",
+              borderLeft: "1px solid rgba(58,173,160,0.2)",
+              padding: "12px 13px",
               fontSize: 11,
               fontWeight: 700,
               textDecoration: "none",
               whiteSpace: "nowrap",
             }}
           >
-            <IconBook size={14} color="#3AADA0" /> Libro
+            {Ico.book(13, acento)} {t.libro}
           </Link>
         </div>
       </div>
 
-      {esOrganizador && (
+      {/* Banner organizador */}
+      {esOrg && (
         <div
           style={{ padding: "10px 16px 0", maxWidth: 640, margin: "0 auto" }}
         >
           <div
             style={{
               background: "#e0f5f2",
-              border: `1px solid #7DD4C8`,
+              border: "1px solid rgba(58,173,160,0.28)",
               borderRadius: 10,
-              padding: "7px 14px",
+              padding: "7px 13px",
               fontSize: 11,
               fontWeight: 700,
-              color: "#3AADA0",
+              color: acento,
               display: "inline-flex",
               alignItems: "center",
-              gap: 7,
-              letterSpacing: "0.3px",
+              gap: 6,
             }}
           >
-            <IconCheck size={13} color="#3AADA0" /> Modo organizador — puedes
-            eliminar publicaciones
+            {Ico.check(12, acento)} {t.modoOrganizador}
           </div>
         </div>
       )}
 
-      {/* ══ Contenido ══ */}
-      <div style={{ padding: "16px", maxWidth: 640, margin: "0 auto" }}>
+      {/* ══ CONTENIDO ═════════════════════════════════════════════════════════ */}
+      <div style={{ padding: "14px 14px 0", maxWidth: 640, margin: "0 auto" }}>
         {/* ── FOTOS ── */}
         {vista === "fotos" &&
           (fotos.length === 0 ? (
             <div
               style={{
                 textAlign: "center",
-                padding: "64px 0",
+                padding: "60px 0",
                 animation: "fadeUp 0.4s ease",
               }}
             >
               <div
                 style={{
-                  width: 80,
-                  height: 80,
+                  width: 76,
+                  height: 76,
                   borderRadius: "50%",
                   background: "#e0f5f2",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  margin: "0 auto 18px",
+                  margin: "0 auto 16px",
                 }}
               >
-                <IconCamera size={36} color="#7DD4C8" />
+                {Ico.camera(34, "#7DD4C8")}
               </div>
               <p
                 style={{
                   fontWeight: 700,
-                  color: "#374151",
-                  fontSize: 18,
-                  fontFamily: "'Cormorant Garamond', serif",
+                  color: "#0f2422",
+                  fontSize: 17,
+                  fontFamily: "'Playfair Display',serif",
                 }}
               >
-                Aún no hay fotos
+                {t.sinFotos}
               </p>
-              <p style={{ color: "#9ca3af", fontSize: 13, marginTop: 6 }}>
-                {invitadoId
-                  ? "Sé el primero en compartir un momento"
-                  : "Los invitados pueden subir sus fotos"}
+              <p style={{ color: "#85B5B0", fontSize: 13, marginTop: 5 }}>
+                {invId ? t.sinFotosSub : t.sinFotos2}
               </p>
             </div>
           ) : (
@@ -2578,12 +2612,11 @@ export default function MuroPublico() {
                 <FotoCard
                   key={foto.id}
                   foto={foto}
-                  col={col}
-                  esOrganizador={esOrganizador}
-                  invitadoId={invitadoId}
+                  acento={acento}
+                  esOrg={esOrg}
                   onDelete={eliminarFoto}
                   onClick={() => setFotoActiva(idx)}
-                  onReaccionar={reaccionar}
+                  t={t}
                 />
               ))}
             </div>
@@ -2595,75 +2628,112 @@ export default function MuroPublico() {
             <div
               style={{
                 textAlign: "center",
-                padding: "64px 0",
+                padding: "60px 0",
                 animation: "fadeUp 0.4s ease",
               }}
             >
               <div
                 style={{
-                  width: 80,
-                  height: 80,
+                  width: 76,
+                  height: 76,
                   borderRadius: "50%",
                   background: "#e0f5f2",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  margin: "0 auto 18px",
+                  margin: "0 auto 16px",
                 }}
               >
-                <IconFolder size={36} color="#7DD4C8" />
+                {Ico.folder(34, "#7DD4C8")}
               </div>
               <p
                 style={{
                   fontWeight: 700,
-                  color: "#374151",
-                  fontSize: 18,
-                  fontFamily: "'Cormorant Garamond', serif",
+                  color: "#0f2422",
+                  fontSize: 17,
+                  fontFamily: "'Playfair Display',serif",
                 }}
               >
-                Sin álbumes aún
+                {t.sinAlbumes}
               </p>
-              <p style={{ color: "#9ca3af", fontSize: 13, marginTop: 6 }}>
-                Las fotos de cada invitado aparecerán aquí
+              <p style={{ color: "#85B5B0", fontSize: 13, marginTop: 5 }}>
+                {t.sinAlbumesSub}
               </p>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {albumes.map((album) => (
-                <div key={album.id}>
+                <div
+                  key={album.id}
+                  style={{
+                    background: "white",
+                    borderRadius: 18,
+                    padding: 14,
+                    border: "1px solid rgba(58,173,160,0.15)",
+                    boxShadow: "0 2px 10px rgba(58,173,160,0.07)",
+                  }}
+                >
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
-                      marginBottom: 10,
+                      justifyContent: "space-between",
+                      marginBottom: 12,
                     }}
                   >
-                    <Avatar
-                      nombre={album.label}
-                      size={38}
-                      bgColor={col.texto}
-                    />
-                    <div>
-                      <p
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 15,
-                          color: "#111",
-                          fontFamily: "'Cormorant Garamond', serif",
-                        }}
-                      >
-                        {album.label}
-                      </p>
-                      <p style={{ fontSize: 11, color: "#9ca3af" }}>
-                        {album.fotos.length} foto(s)
-                      </p>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 9 }}
+                    >
+                      <Avatar nombre={album.label} size={40} bg={acento} />
+                      <div>
+                        <p
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 15,
+                            color: "#0f2422",
+                            fontFamily: "'Playfair Display',serif",
+                          }}
+                        >
+                          {album.label}
+                        </p>
+                        <p style={{ fontSize: 11, color: "#85B5B0" }}>
+                          {album.fotos.length} {t.foto_s}
+                        </p>
+                      </div>
                     </div>
+                    {/* Botón descargar álbum completo */}
+                    <button
+                      onClick={async () => {
+                        for (let i = 0; i < album.fotos.length; i++) {
+                          await descargarImagen(
+                            album.fotos[i].url,
+                            `${album.label}_foto${i + 1}.jpg`,
+                          );
+                          await new Promise((r) => setTimeout(r, 400));
+                        }
+                      }}
+                      title={t.descargarFotos}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        background: "#e0f5f2",
+                        color: acento,
+                        border: "none",
+                        borderRadius: 10,
+                        padding: "7px 12px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {Ico.download(13, acento)} {t.descargar}
+                    </button>
                   </div>
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(3, 1fr)",
+                      gridTemplateColumns: "repeat(3,1fr)",
                       gap: 6,
                     }}
                   >
@@ -2672,14 +2742,13 @@ export default function MuroPublico() {
                       return (
                         <div
                           key={foto.id}
-                          onClick={() => setFotoActiva(idx)}
                           style={{
                             position: "relative",
-                            borderRadius: 12,
+                            borderRadius: 11,
                             overflow: "hidden",
                             aspectRatio: "1",
                             cursor: "pointer",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                            boxShadow: "0 2px 7px rgba(0,0,0,0.09)",
                           }}
                         >
                           <Image
@@ -2688,8 +2757,33 @@ export default function MuroPublico() {
                             fill
                             className="object-cover"
                             unoptimized
+                            onClick={() => setFotoActiva(idx)}
                           />
-                          {esOrganizador && (
+                          {/* mini botón descarga */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              descargarImagen(foto.url, `foto_${foto.id}.jpg`);
+                            }}
+                            style={{
+                              position: "absolute",
+                              bottom: 4,
+                              right: 4,
+                              background: "rgba(255,255,255,0.92)",
+                              color: acento,
+                              border: "none",
+                              borderRadius: "50%",
+                              width: 24,
+                              height: 24,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {Ico.download(11, acento)}
+                          </button>
+                          {esOrg && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2699,7 +2793,7 @@ export default function MuroPublico() {
                                 position: "absolute",
                                 top: 4,
                                 right: 4,
-                                background: "rgba(220,38,38,0.9)",
+                                background: "rgba(220,38,38,0.88)",
                                 color: "white",
                                 border: "none",
                                 borderRadius: "50%",
@@ -2711,7 +2805,7 @@ export default function MuroPublico() {
                                 justifyContent: "center",
                               }}
                             >
-                              <IconX size={12} color="white" />
+                              {Ico.x(11, "white")}
                             </button>
                           )}
                         </div>
@@ -2726,35 +2820,71 @@ export default function MuroPublico() {
         {/* ── DESEOS ── */}
         {vista === "deseos" && (
           <div>
-            <div style={{ textAlign: "center", marginBottom: 22 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 18,
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
               <div
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 8,
+                  gap: 7,
                   background: "#e0f5f2",
                   borderRadius: 99,
-                  padding: "8px 18px",
-                  border: `1px solid #7DD4C8`,
+                  padding: "8px 16px",
+                  border: "1px solid rgba(58,173,160,0.28)",
                 }}
               >
-                <IconHeart size={15} color="#3AADA0" />
+                {Ico.heart(14, acento)}
                 <span
                   style={{
                     fontSize: 13,
                     fontWeight: 700,
-                    color: "#3AADA0",
-                    fontFamily: "'Cormorant Garamond', serif",
+                    color: acento,
+                    fontFamily: "'Playfair Display',serif",
                     letterSpacing: "0.3px",
                   }}
                 >
-                  Deseos & Dedicatorias
+                  {t.deseosYDedicatorias}
                 </span>
               </div>
-              <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 8 }}>
-                Mensajes de amor y buenos deseos
-              </p>
+              {deseos.length > 0 && (
+                <button
+                  onClick={() => descargarDeseosTxt(deseos, evento.nombre)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: "#e0f5f2",
+                    color: acento,
+                    border: "1px solid rgba(58,173,160,0.28)",
+                    borderRadius: 10,
+                    padding: "8px 14px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {Ico.download(13, acento)} {t.descargarDeseos}
+                </button>
+              )}
             </div>
+            <p
+              style={{
+                fontSize: 13,
+                color: "#85B5B0",
+                marginBottom: 16,
+                marginTop: -8,
+              }}
+            >
+              {t.mensajesAmor}
+            </p>
 
             {deseos.length === 0 ? (
               <div
@@ -2766,34 +2896,34 @@ export default function MuroPublico() {
               >
                 <div
                   style={{
-                    width: 80,
-                    height: 80,
+                    width: 76,
+                    height: 76,
                     borderRadius: "50%",
                     background: "#e0f5f2",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    margin: "0 auto 18px",
+                    margin: "0 auto 16px",
                   }}
                 >
-                  <IconHeart size={36} color="#7DD4C8" />
+                  {Ico.heart(34, "#7DD4C8")}
                 </div>
                 <p
                   style={{
                     fontWeight: 700,
-                    color: "#374151",
-                    fontSize: 18,
-                    fontFamily: "'Cormorant Garamond', serif",
+                    color: "#0f2422",
+                    fontSize: 17,
+                    fontFamily: "'Playfair Display',serif",
                   }}
                 >
-                  Aún no hay deseos
+                  {t.sinDeseos}
                 </p>
-                <p style={{ color: "#9ca3af", fontSize: 13, marginTop: 6 }}>
-                  {invitadoId
-                    ? yaSubioFoto
-                      ? "¡Sé el primero en dejar un mensaje!"
-                      : "Sube tu foto primero, luego podrás dejar tu deseo"
-                    : "Los invitados pueden escribir sus deseos"}
+                <p style={{ color: "#85B5B0", fontSize: 13, marginTop: 5 }}>
+                  {invId
+                    ? yaFoto
+                      ? t.sinDeseosSub
+                      : t.sinDeseosSub2
+                    : t.sinDeseosSub3}
                 </p>
               </div>
             ) : (
@@ -2802,9 +2932,9 @@ export default function MuroPublico() {
                   <DeseoCard
                     key={deseo.id}
                     deseo={deseo}
-                    col={col}
-                    esOrganizador={esOrganizador}
+                    esOrg={esOrg}
                     onDelete={eliminarDeseo}
+                    onDescargar={descargarDeseoIndividual}
                   />
                 ))}
               </div>
@@ -2813,12 +2943,12 @@ export default function MuroPublico() {
         )}
       </div>
 
+      {/* ══ Lightbox ══════════════════════════════════════════════════════════ */}
       {fotoActiva !== null && fotos[fotoActiva] && (
         <Lightbox
           foto={fotos[fotoActiva]}
-          col={col}
-          esOrganizador={esOrganizador}
-          invitadoId={invitadoId}
+          acento={acento}
+          esOrg={esOrg}
           onClose={() => setFotoActiva(null)}
           onDelete={() => eliminarFoto(fotos[fotoActiva].id)}
           onPrev={() => setFotoActiva((i) => (i !== null && i > 0 ? i - 1 : i))}
@@ -2829,126 +2959,109 @@ export default function MuroPublico() {
           }
           hasPrev={fotoActiva > 0}
           hasNext={fotoActiva < fotos.length - 1}
-          onReaccionar={reaccionar}
+          t={t}
         />
       )}
 
-      {modalSubir && invitadoId && (
+      {/* ══ Modales ═══════════════════════════════════════════════════════════ */}
+      {modalSubir && invId && (
         <ModalSubirFoto
           eventoId={eventoId}
-          invitadoId={invitadoId}
-          col={col}
+          invitadoId={invId}
           onClose={() => setModalSubir(false)}
-          onSubida={alSubirFoto}
+          onSubida={async () => {
+            await cargarFotos();
+            setYaFoto(true);
+          }}
+          t={t}
         />
       )}
-
-      {modalDeseo && invitadoId && (
+      {modalDeseo && invId && (
         <ModalDeseo
-          col={col}
-          invitadoNombre={invitadoNombre}
-          yaDejoDeseo={yaDejoDeseo}
-          yaSubioFoto={yaSubioFoto}
+          invitadoNombre={invNombre}
+          yaDejoDeseo={yaDeseo}
+          yaSubioFoto={yaFoto}
           onClose={() => setModalDeseo(false)}
           onPublicado={publicarDeseo}
+          t={t}
         />
       )}
 
-      {invitadoId && (
+      {/* ══ FABs flotantes (solo invitado, vista contextual) ══════════════════ */}
+      {invId && (
         <div
           style={{
             position: "fixed",
-            bottom: 28,
-            right: 20,
+            bottom: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
             zIndex: 100,
             display: "flex",
-            flexDirection: "column",
-            gap: 10,
-            alignItems: "flex-end",
+            gap: 8,
           }}
         >
-          {vista === "deseos" && (
+          {vista === "fotos" && !yaFoto && (
             <button
-              onClick={() => setModalDeseo(true)}
-              className="btn-flotante"
+              onClick={() => setModalSubir(true)}
+              className="fab"
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
-                background: yaDejoDeseo
-                  ? "#9ca3af"
-                  : !yaSubioFoto
-                    ? "#d1d5db"
-                    : "#3AADA0",
+                gap: 6,
+                background: "linear-gradient(135deg,#3AADA0,#0f766e)",
                 color: "white",
                 border: "none",
                 borderRadius: 99,
-                padding: "13px 22px",
+                padding: "12px 20px",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 5px 20px rgba(58,173,160,0.42)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {Ico.camera(15, "white")} {t.subirMiFoto}
+            </button>
+          )}
+          {vista === "deseos" && (
+            <button
+              onClick={() => setModalDeseo(true)}
+              className="fab"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: yaDeseo
+                  ? "#9ca3af"
+                  : !yaFoto
+                    ? "#d1d5db"
+                    : "linear-gradient(135deg,#3AADA0,#0f766e)",
+                color: "white",
+                border: "none",
+                borderRadius: 99,
+                padding: "12px 20px",
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: "pointer",
                 boxShadow:
-                  yaDejoDeseo || !yaSubioFoto
-                    ? "0 4px 12px rgba(0,0,0,0.12)"
-                    : `0 6px 24px rgba(58,173,160,0.45)`,
+                  yaDeseo || !yaFoto
+                    ? "0 3px 10px rgba(0,0,0,0.10)"
+                    : "0 5px 20px rgba(58,173,160,0.42)",
                 whiteSpace: "nowrap",
               }}
             >
-              {yaDejoDeseo ? (
+              {yaDeseo ? (
                 <>
-                  <IconCheck size={16} color="white" /> Deseo enviado
+                  {Ico.check(15, "white")} {t.deseoEnviado}
                 </>
-              ) : !yaSubioFoto ? (
+              ) : !yaFoto ? (
                 <>
-                  <IconLock size={15} color="white" /> Sube tu foto primero
+                  {Ico.lock(13, "white")} {t.subeFoto}
                 </>
               ) : (
                 <>
-                  <IconHeart size={16} color="white" /> Escribir deseo
+                  {Ico.heart(15, "white")} {t.escribirDeseoBtn}
                 </>
-              )}
-            </button>
-          )}
-
-          {vista !== "deseos" && (
-            <button
-              onClick={() => setModalSubir(true)}
-              className="btn-flotante"
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: "50%",
-                background: yaSubioFoto ? "#9ca3af" : "#3AADA0",
-                border: yaSubioFoto ? "none" : `3px solid #e0f5f2`,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: yaSubioFoto
-                  ? "0 4px 12px rgba(0,0,0,0.12)"
-                  : `0 6px 28px rgba(58,173,160,0.50)`,
-                position: "relative",
-              }}
-            >
-              <IconCamera size={26} color="white" />
-              {yaSubioFoto && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: -2,
-                    right: -2,
-                    width: 18,
-                    height: 18,
-                    borderRadius: "50%",
-                    background: "#22c55e",
-                    border: "2px solid white",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <IconCheck size={10} color="white" />
-                </div>
               )}
             </button>
           )}
