@@ -1,100 +1,80 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 
-// ── Logo SVG (mismo que login/dashboard) ──────────────────────────────────
+// ─── Logo ─────────────────────────────────────────────────────────────────────
 function AppLogo({ size = 34 }: { size?: number }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 56 56"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
         <linearGradient
-          id="lg-new"
+          id="evx-bg-ne"
           x1="0"
           y1="0"
-          x2="56"
-          y2="56"
+          x2="64"
+          y2="64"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0%" stopColor="#1A3A38" />
-          <stop offset="100%" stopColor="#0F2422" />
+          <stop offset="0%" stopColor="#0F766E" />
+          <stop offset="100%" stopColor="#0D9488" />
         </linearGradient>
         <linearGradient
-          id="lg2-new"
-          x1="10"
-          y1="28"
-          x2="46"
-          y2="28"
+          id="evx-glow-ne"
+          x1="12"
+          y1="20"
+          x2="52"
+          y2="44"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0%" stopColor="#3AADA0" />
-          <stop offset="100%" stopColor="#2DC4A8" />
+          <stop offset="0%" stopColor="#5EEAD4" />
+          <stop offset="100%" stopColor="#2DD4BF" />
         </linearGradient>
-        <filter id="lg3-new" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
       </defs>
-      <rect width="56" height="56" rx="16" fill="url(#lg-new)" />
+      <rect width="64" height="64" rx="18" fill="url(#evx-bg-ne)" />
       <rect
-        x="3"
-        y="3"
-        width="50"
-        height="50"
-        rx="14"
+        x="2.5"
+        y="2.5"
+        width="59"
+        height="59"
+        rx="16"
         fill="none"
-        stroke="rgba(58,173,160,0.18)"
-        strokeWidth="1"
-      />
-      <rect
-        x="9"
-        y="17"
-        width="38"
-        height="26"
-        rx="3.5"
-        fill="rgba(58,173,160,0.10)"
-        stroke="rgba(58,173,160,0.6)"
-        strokeWidth="1.4"
+        stroke="rgba(255,255,255,0.14)"
+        strokeWidth="1.5"
       />
       <path
-        d="M9 20.5 L28 31 L47 20.5"
-        stroke="url(#lg2-new)"
-        strokeWidth="1.8"
+        d="M18 17 L30 32 L18 47"
+        stroke="url(#evx-glow-ne)"
+        strokeWidth="5"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-      <circle cx="14" cy="11" r="1.6" fill="#3AADA0" opacity="0.9" />
-      <circle cx="20" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7" />
-      <circle cx="42" cy="11" r="1.6" fill="#3AADA0" opacity="0.9" />
-      <circle cx="36" cy="9" r="1.1" fill="#2DC4A8" opacity="0.7" />
-      <path
-        d="M28 7 L29 10.2 L32.4 10.2 L29.8 12.2 L30.8 15.4 L28 13.4 L25.2 15.4 L26.2 12.2 L23.6 10.2 L27 10.2 Z"
-        fill="#3AADA0"
-        opacity="0.95"
-        filter="url(#lg3-new)"
-      />
-      <path
-        d="M24 17 Q28 14 32 17"
-        stroke="#2DC4A8"
-        strokeWidth="1.3"
-        strokeLinecap="round"
         fill="none"
-        opacity="0.8"
       />
-      <circle cx="28" cy="17" r="1.3" fill="#3AADA0" />
+      <path
+        d="M46 17 L34 32 L46 47"
+        stroke="rgba(255,255,255,0.38)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <circle cx="32" cy="32" r="4" fill="white" opacity="0.95" />
+      <circle cx="17" cy="13" r="2" fill="#5EEAD4" opacity="0.8" />
+      <circle cx="47" cy="13" r="1.5" fill="#5EEAD4" opacity="0.5" />
+      <circle cx="47" cy="51" r="2" fill="#5EEAD4" opacity="0.8" />
+      <circle cx="17" cy="51" r="1.5" fill="#5EEAD4" opacity="0.5" />
     </svg>
   );
 }
 
-// ── Íconos tipo evento ────────────────────────────────────────────────────
+// ─── Íconos ───────────────────────────────────────────────────────────────────
 const IconoCrown = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
     <path
@@ -188,19 +168,19 @@ const IconoStar = () => (
   </svg>
 );
 const IconoCamera = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
     <path
-      d="M2 8.5h1.5l2-3h11l2 3H20a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1v-8a1 1 0 011-1z"
+      d="M2 7.5h1.4l1.8-2.8h10l1.8 2.8H19a.9.9 0 01.9.9v7.2a.9.9 0 01-.9.9H2a.9.9 0 01-.9-.9V8.4A.9.9 0 012 7.5z"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.4"
       fill="none"
     />
     <circle
-      cx="11"
-      cy="13"
-      r="3.2"
+      cx="10.5"
+      cy="11.5"
+      r="2.8"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.4"
       fill="none"
     />
   </svg>
@@ -216,236 +196,119 @@ const IconoBack = () => (
     />
   </svg>
 );
-const IconoSun = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-    <circle cx="8" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.4" />
+const IconoMusic = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
     <path
-      d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-const IconoMoon = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-    <path
-      d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 100 11 6 6 0 007-4z"
+      d="M7 14V5l8-2v9"
       stroke="currentColor"
       strokeWidth="1.4"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
+    <circle
+      cx="5"
+      cy="14"
+      r="2"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      fill="none"
+    />
+    <circle
+      cx="13"
+      cy="12"
+      r="2"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      fill="none"
+    />
+  </svg>
+);
+const IconoVideo = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <rect
+      x="1"
+      y="4"
+      width="11"
+      height="10"
+      rx="2"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      fill="none"
+    />
+    <path
+      d="M12 7.5l5-2.5v8l-5-2.5V7.5z"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+      fill="none"
+    />
+  </svg>
+);
+const IconoPeople = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <circle
+      cx="6.5"
+      cy="6.5"
+      r="2.5"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      fill="none"
+    />
+    <path
+      d="M1 16c0-3 2.5-5.5 5.5-5.5S12 13 12 16"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <circle
+      cx="13"
+      cy="6"
+      r="2"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      fill="none"
+    />
+    <path
+      d="M15.5 16c0-2.2-1.3-4-3-4.8"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      fill="none"
+    />
+  </svg>
+);
+const IconoMap = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <path
+      d="M9 1a5 5 0 00-5 5c0 4 5 11 5 11s5-7 5-11a5 5 0 00-5-5z"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      fill="none"
+    />
+    <circle
+      cx="9"
+      cy="6.5"
+      r="1.8"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      fill="none"
+    />
+  </svg>
+);
+const IconoQuote = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <path
+      d="M2 9h4V5H2v4zm0 0c0 2.2 1.8 4 4 4M9 9h4V5H9v4zm0 0c0 2.2 1.8 4 4 4"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
   </svg>
 );
 
-// ── Traducciones ──────────────────────────────────────────────────────────
-const translations = {
-  es: {
-    title: "Nuevo evento",
-    sub: "Events — invitaciones digitales",
-    tipoEvento: "Tipo de evento",
-    fotoPortada: "Foto de portada",
-    cambiarFoto: "Cambiar foto",
-    fmtFoto: "JPG, PNG — máx 5 MB",
-    infoEvento: "Información del evento",
-    nombreEvento: "Nombre del evento *",
-    anfitriones: "Anfitriones / Organizadores *",
-    mensaje: "Mensaje para los invitados",
-    fechaLugar: "Fecha y lugar",
-    fecha: "Fecha *",
-    hora: "Hora *",
-    lugarNombre: "Nombre del lugar *",
-    mapsLink: "Link de Google Maps",
-    mapsHint: "Abre Google Maps → busca el lugar → Compartir → Copiar enlace",
-    fotoLugar: "Foto del lugar",
-    confirmacion: "Confirmación de asistencia",
-    fechaLimite: "Fecha límite para confirmar *",
-    fechaLimiteHint: "Después de esta fecha los invitados no podrán confirmar",
-    crear: "Crear evento",
-    creando: "Creando evento...",
-    footer: "Podrás editar los detalles del evento después de crearlo",
-    errorCampos: "Por favor llena todos los campos obligatorios",
-    errorCrear: "Error al crear el evento: ",
-    darkMode: "Modo oscuro",
-    lightMode: "Modo claro",
-    tipos: {
-      quinceañera: "Quinceañera",
-      boda: "Boda",
-      graduacion: "Graduación",
-      cumpleaños: "Cumpleaños",
-      otro: "Otro",
-    },
-  },
-  en: {
-    title: "New event",
-    sub: "Events — digital invitations",
-    tipoEvento: "Event type",
-    fotoPortada: "Cover photo",
-    cambiarFoto: "Change photo",
-    fmtFoto: "JPG, PNG — max 5 MB",
-    infoEvento: "Event information",
-    nombreEvento: "Event name *",
-    anfitriones: "Hosts / Organizers *",
-    mensaje: "Message for guests",
-    fechaLugar: "Date & venue",
-    fecha: "Date *",
-    hora: "Time *",
-    lugarNombre: "Venue name *",
-    mapsLink: "Google Maps link",
-    mapsHint: "Open Google Maps → search venue → Share → Copy link",
-    fotoLugar: "Venue photo",
-    confirmacion: "RSVP",
-    fechaLimite: "RSVP deadline *",
-    fechaLimiteHint:
-      "After this date guests won't be able to confirm attendance",
-    crear: "Create event",
-    creando: "Creating event...",
-    footer: "You can edit the event details after creating it",
-    errorCampos: "Please fill in all required fields",
-    errorCrear: "Error creating event: ",
-    darkMode: "Dark mode",
-    lightMode: "Light mode",
-    tipos: {
-      quinceañera: "Quinceañera",
-      boda: "Wedding",
-      graduacion: "Graduation",
-      cumpleaños: "Birthday",
-      otro: "Other",
-    },
-  },
-};
-
-const CONFIG_TIPO: Record<
-  string,
-  {
-    es: {
-      placeholderNombre: string;
-      placeholderAnfitriones: string;
-      placeholderLugar: string;
-      placeholderMensaje: string;
-      labelFotoPortada: string;
-      labelFotoLugar: string;
-    };
-    en: {
-      placeholderNombre: string;
-      placeholderAnfitriones: string;
-      placeholderLugar: string;
-      placeholderMensaje: string;
-      labelFotoPortada: string;
-      labelFotoLugar: string;
-    };
-  }
-> = {
-  quinceañera: {
-    es: {
-      placeholderNombre: "Ej: XV Años de Sofía",
-      placeholderAnfitriones: "Ej: Familia García López",
-      placeholderLugar: "Ej: Salón Versalles, San Salvador",
-      placeholderMensaje:
-        "Ej: Con mucha alegría los invitamos a celebrar los XV años de Sofía...",
-      labelFotoPortada: "Foto de la festejada",
-      labelFotoLugar: "Foto del salón o lugar",
-    },
-    en: {
-      placeholderNombre: "Ex: Sofia's XV",
-      placeholderAnfitriones: "Ex: García López Family",
-      placeholderLugar: "Ex: Versailles Hall, San Salvador",
-      placeholderMensaje:
-        "Ex: With great joy we invite you to celebrate Sofia's XV...",
-      labelFotoPortada: "Photo of the honoree",
-      labelFotoLugar: "Photo of the venue",
-    },
-  },
-  boda: {
-    es: {
-      placeholderNombre: "Ej: Boda de Ana & Carlos",
-      placeholderAnfitriones: "Ej: Familias Martínez y López",
-      placeholderLugar: "Ej: Hacienda El Paraíso, Santa Ana",
-      placeholderMensaje:
-        "Ej: Con amor los invitamos a compartir el día más especial...",
-      labelFotoPortada: "Foto de la pareja",
-      labelFotoLugar: "Foto de la iglesia o hacienda",
-    },
-    en: {
-      placeholderNombre: "Ex: Ana & Carlos' Wedding",
-      placeholderAnfitriones: "Ex: Martínez and López Families",
-      placeholderLugar: "Ex: Hacienda El Paraíso, Santa Ana",
-      placeholderMensaje:
-        "Ex: With love we invite you to share our most special day...",
-      labelFotoPortada: "Photo of the couple",
-      labelFotoLugar: "Photo of the church or venue",
-    },
-  },
-  graduacion: {
-    es: {
-      placeholderNombre: "Ej: Graduación de Luis — Ingeniería 2025",
-      placeholderAnfitriones: "Ej: Familia Ramírez",
-      placeholderLugar: "Ej: Centro de Convenciones UCA",
-      placeholderMensaje:
-        "Ej: Con gran orgullo los invitamos a celebrar este logro...",
-      labelFotoPortada: "Foto del graduado",
-      labelFotoLugar: "Foto del auditorio o recinto",
-    },
-    en: {
-      placeholderNombre: "Ex: Luis' Graduation — Engineering 2025",
-      placeholderAnfitriones: "Ex: Ramírez Family",
-      placeholderLugar: "Ex: UCA Convention Center",
-      placeholderMensaje:
-        "Ex: With great pride we invite you to celebrate this achievement...",
-      labelFotoPortada: "Photo of the graduate",
-      labelFotoLugar: "Photo of the auditorium",
-    },
-  },
-  cumpleaños: {
-    es: {
-      placeholderNombre: "Ej: 30 Años de María",
-      placeholderAnfitriones: "Ej: Diego Hernández",
-      placeholderLugar: "Ej: Restaurante La Terraza, Santa Tecla",
-      placeholderMensaje: "Ej: ¡Ven a celebrar conmigo este nuevo capítulo!",
-      labelFotoPortada: "Foto del festejado",
-      labelFotoLugar: "Foto del salón o restaurante",
-    },
-    en: {
-      placeholderNombre: "Ex: María's 30th Birthday",
-      placeholderAnfitriones: "Ex: Diego Hernández",
-      placeholderLugar: "Ex: La Terraza Restaurant, Santa Tecla",
-      placeholderMensaje: "Ex: Come celebrate this new chapter with me!",
-      labelFotoPortada: "Photo of the birthday person",
-      labelFotoLugar: "Photo of the venue",
-    },
-  },
-  otro: {
-    es: {
-      placeholderNombre: "Ej: Reunión Familiar Navidad 2025",
-      placeholderAnfitriones: "Ej: Familia Pérez",
-      placeholderLugar: "Ej: Casa de la abuela, Soyapango",
-      placeholderMensaje:
-        "Ej: Los esperamos para compartir un momento especial juntos...",
-      labelFotoPortada: "Foto del evento",
-      labelFotoLugar: "Foto del lugar",
-    },
-    en: {
-      placeholderNombre: "Ex: Family Christmas Reunion 2025",
-      placeholderAnfitriones: "Ex: Pérez Family",
-      placeholderLugar: "Ex: Grandma's house, Soyapango",
-      placeholderMensaje:
-        "Ex: We look forward to sharing a special moment together...",
-      labelFotoPortada: "Event photo",
-      labelFotoLugar: "Venue photo",
-    },
-  },
-};
-
-const TIPOS = [
-  { value: "quinceañera", Icono: IconoCrown },
-  { value: "boda", Icono: IconoRings },
-  { value: "graduacion", Icono: IconoCap },
-  { value: "cumpleaños", Icono: IconoCake },
-  { value: "otro", Icono: IconoStar },
-];
-
-// ── Particles (mismo que login/dashboard) ─────────────────────────────────
 function Particles() {
   return (
     <div className="particles" aria-hidden="true">
@@ -456,7 +319,6 @@ function Particles() {
   );
 }
 
-// ── Campo reutilizable ────────────────────────────────────────────────────
 function Campo({
   label,
   hint,
@@ -475,31 +337,331 @@ function Campo({
   );
 }
 
-// ── Página ────────────────────────────────────────────────────────────────
+// ─── Traducciones ─────────────────────────────────────────────────────────────
+const T = {
+  es: {
+    title: "Nuevo evento",
+    sub: "Events — invitaciones digitales",
+    tipoEvento: "Tipo de evento",
+    fotoPortada: "Foto de portada",
+    cambiarFoto: "Cambiar foto",
+    fmtFoto: "JPG, PNG — máx 5 MB",
+    infoEvento: "Información del evento",
+    nombreEvento: "Nombre del evento *",
+    anfitriones: "Anfitriones / Organizadores *",
+    frase: "Frase especial del evento",
+    frasePlaceholder:
+      "Ej: Para siempre juntos · El comienzo de una nueva etapa",
+    mensaje: "Mensaje para los invitados",
+    fechaLugar: "Fecha y lugar",
+    fecha: "Fecha *",
+    hora: "Hora *",
+    lugarNombre: "Nombre del lugar *",
+    mapsLink: "Link de Google Maps",
+    mapsHint: "Abre Google Maps → busca el lugar → Compartir → Copiar enlace",
+    comoLlegar: "Cómo llegar (instrucciones)",
+    comoLlegarPH:
+      "Ej: Al llegar al semáforo de la 5a Av., doblar a la derecha...",
+    fotoLugar: "Foto del lugar (se muestra destacada en la tarjeta)",
+    fotoLugarHint: "Aparecerá primero en la invitación con botón «Cómo llegar»",
+    videoLugar: "Video corto del lugar",
+    videoLugarHint: "MP4 — máx 30 MB",
+    videoBtn: "Seleccionar video",
+    videoCambiar: "Cambiar",
+    musica: "Música del evento",
+    musicaArchivo: "Pista de audio",
+    musicaArchivoHint: "MP3 u OGG — máx 15 MB",
+    musicaNombre: "Nombre de la canción",
+    musicaNombrePH: "Ej: Perfect — Ed Sheeran",
+    musicaBtn: "Seleccionar audio",
+    musicaCambiar: "Cambiar",
+    cupo: "Cupo de personas",
+    cupoLabel: "Número máximo de personas",
+    cupoHint: "Déjalo vacío si no hay límite de cupo",
+    cupoPH: "Ej: 150",
+    cupoDesc: "Si se llena el cupo, los invitados no podrán confirmar.",
+    confirmacion: "Confirmación de asistencia",
+    fechaLimite: "Fecha límite para confirmar *",
+    fechaLimiteHint: "Después de esta fecha los invitados no podrán confirmar",
+    crear: "Crear evento",
+    creando: "Creando evento...",
+    footer: "Podrás editar los detalles del evento después de crearlo",
+    errorCampos: "Por favor llena todos los campos obligatorios",
+    errorCrear: "Error al crear el evento: ",
+    tipos: {
+      quinceañera: "Quinceañera",
+      boda: "Boda",
+      graduacion: "Graduación",
+      cumpleaños: "Cumpleaños",
+      otro: "Otro",
+    },
+  },
+  en: {
+    title: "New event",
+    sub: "Events — digital invitations",
+    tipoEvento: "Event type",
+    fotoPortada: "Cover photo",
+    cambiarFoto: "Change photo",
+    fmtFoto: "JPG, PNG — max 5 MB",
+    infoEvento: "Event information",
+    nombreEvento: "Event name *",
+    anfitriones: "Hosts / Organizers *",
+    frase: "Special event phrase",
+    frasePlaceholder: "Ex: Forever together · The beginning of a new chapter",
+    mensaje: "Message for guests",
+    fechaLugar: "Date & venue",
+    fecha: "Date *",
+    hora: "Time *",
+    lugarNombre: "Venue name *",
+    mapsLink: "Google Maps link",
+    mapsHint: "Open Google Maps → search venue → Share → Copy link",
+    comoLlegar: "How to get there",
+    comoLlegarPH:
+      "Ex: When you reach the traffic light on 5th Ave., turn right...",
+    fotoLugar: "Venue photo (featured on the card)",
+    fotoLugarHint:
+      "Appears first on the invitation with a «How to get there» button",
+    videoLugar: "Short venue video",
+    videoLugarHint: "MP4 — max 30 MB",
+    videoBtn: "Select video",
+    videoCambiar: "Change",
+    musica: "Event music",
+    musicaArchivo: "Audio track",
+    musicaArchivoHint: "MP3 or OGG — max 15 MB",
+    musicaNombre: "Song name",
+    musicaNombrePH: "Ex: Perfect — Ed Sheeran",
+    musicaBtn: "Select audio",
+    musicaCambiar: "Change",
+    cupo: "Guest capacity",
+    cupoLabel: "Maximum number of people",
+    cupoHint: "Leave empty if there's no capacity limit",
+    cupoPH: "Ex: 150",
+    cupoDesc: "Once capacity is reached, guests won't be able to confirm.",
+    confirmacion: "RSVP",
+    fechaLimite: "RSVP deadline *",
+    fechaLimiteHint: "After this date guests won't be able to confirm",
+    crear: "Create event",
+    creando: "Creating event...",
+    footer: "You can edit the event details after creating it",
+    errorCampos: "Please fill in all required fields",
+    errorCrear: "Error creating event: ",
+    tipos: {
+      quinceañera: "Quinceañera",
+      boda: "Wedding",
+      graduacion: "Graduation",
+      cumpleaños: "Birthday",
+      otro: "Other",
+    },
+  },
+};
+
+const CONFIG_TIPO: Record<string, { es: any; en: any }> = {
+  quinceañera: {
+    es: {
+      pNombre: "Ej: XV Años de Sofía",
+      pAnf: "Ej: Familia García López",
+      pLugar: "Ej: Salón Versalles, San Salvador",
+      pMensaje:
+        "Ej: Con mucha alegría los invitamos a celebrar los XV años de Sofía...",
+      lPortada: "Foto de la festejada",
+      lLugar: "Foto del salón o lugar",
+    },
+    en: {
+      pNombre: "Ex: Sofia's XV",
+      pAnf: "Ex: García López Family",
+      pLugar: "Ex: Versailles Hall, San Salvador",
+      pMensaje: "Ex: With great joy we invite you to celebrate Sofia's XV...",
+      lPortada: "Photo of the honoree",
+      lLugar: "Photo of the venue",
+    },
+  },
+  boda: {
+    es: {
+      pNombre: "Ej: Boda de Ana & Carlos",
+      pAnf: "Ej: Familias Martínez y López",
+      pLugar: "Ej: Hacienda El Paraíso, Santa Ana",
+      pMensaje: "Ej: Con amor los invitamos a compartir el día más especial...",
+      lPortada: "Foto de la pareja",
+      lLugar: "Foto de la iglesia o hacienda",
+    },
+    en: {
+      pNombre: "Ex: Ana & Carlos' Wedding",
+      pAnf: "Ex: Martínez and López Families",
+      pLugar: "Ex: Hacienda El Paraíso, Santa Ana",
+      pMensaje: "Ex: With love we invite you to share our most special day...",
+      lPortada: "Photo of the couple",
+      lLugar: "Photo of the church or venue",
+    },
+  },
+  graduacion: {
+    es: {
+      pNombre: "Ej: Graduación de Luis — Ingeniería 2025",
+      pAnf: "Ej: Familia Ramírez",
+      pLugar: "Ej: Centro de Convenciones UCA",
+      pMensaje: "Ej: Con gran orgullo los invitamos a celebrar este logro...",
+      lPortada: "Foto del graduado",
+      lLugar: "Foto del auditorio",
+    },
+    en: {
+      pNombre: "Ex: Luis' Graduation — Engineering 2025",
+      pAnf: "Ex: Ramírez Family",
+      pLugar: "Ex: UCA Convention Center",
+      pMensaje:
+        "Ex: With great pride we invite you to celebrate this achievement...",
+      lPortada: "Photo of the graduate",
+      lLugar: "Photo of the auditorium",
+    },
+  },
+  cumpleaños: {
+    es: {
+      pNombre: "Ej: 30 Años de María",
+      pAnf: "Ej: Diego Hernández",
+      pLugar: "Ej: Restaurante La Terraza, Santa Tecla",
+      pMensaje: "Ej: ¡Ven a celebrar conmigo este nuevo capítulo!",
+      lPortada: "Foto del festejado",
+      lLugar: "Foto del salón o restaurante",
+    },
+    en: {
+      pNombre: "Ex: María's 30th Birthday",
+      pAnf: "Ex: Diego Hernández",
+      pLugar: "Ex: La Terraza Restaurant, Santa Tecla",
+      pMensaje: "Ex: Come celebrate this new chapter with me!",
+      lPortada: "Photo of the birthday person",
+      lLugar: "Photo of the venue",
+    },
+  },
+  otro: {
+    es: {
+      pNombre: "Ej: Reunión Familiar Navidad 2025",
+      pAnf: "Ej: Familia Pérez",
+      pLugar: "Ej: Casa de la abuela, Soyapango",
+      pMensaje:
+        "Ej: Los esperamos para compartir un momento especial juntos...",
+      lPortada: "Foto del evento",
+      lLugar: "Foto del lugar",
+    },
+    en: {
+      pNombre: "Ex: Family Christmas Reunion 2025",
+      pAnf: "Ex: Pérez Family",
+      pLugar: "Ex: Grandma's house, Soyapango",
+      pMensaje: "Ex: We look forward to sharing a special moment together...",
+      lPortada: "Event photo",
+      lLugar: "Venue photo",
+    },
+  },
+};
+
+const TIPOS = [
+  { value: "quinceañera", Icono: IconoCrown },
+  { value: "boda", Icono: IconoRings },
+  { value: "graduacion", Icono: IconoCap },
+  { value: "cumpleaños", Icono: IconoCake },
+  { value: "otro", Icono: IconoStar },
+];
+
+// ─── Upload helper ─────────────────────────────────────────────────────────────
+async function subirArchivo(file: File, bucket: string, prefijo: string) {
+  const ext = file.name.split(".").pop();
+  const fileName = `${prefijo}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from(bucket).upload(fileName, file, {
+    cacheControl: "3600",
+    upsert: false,
+  });
+  if (error) {
+    console.error(`Error subiendo a ${bucket}:`, error.message);
+    return null;
+  }
+  const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+  return data.publicUrl;
+}
+
+// ─── FilePickRow ───────────────────────────────────────────────────────────────
+function FilePickRow({
+  icon,
+  label,
+  hint,
+  accept,
+  file,
+  onChange,
+  btnLabel,
+  btnCambiar,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  accept: string;
+  file: File | null;
+  onChange: (f: File) => void;
+  btnLabel: string;
+  btnCambiar: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <Campo label={label} hint={hint}>
+      <div className="file-pick-row" onClick={() => inputRef.current?.click()}>
+        <div className="file-pick-icon">{icon}</div>
+        <div className="file-pick-info">
+          {file ? (
+            <>
+              <span className="file-name">{file.name}</span>
+              <span className="file-size">
+                {(file.size / 1024 / 1024).toFixed(1)} MB
+              </span>
+            </>
+          ) : (
+            <span className="file-empty">{btnLabel}</span>
+          )}
+        </div>
+        <div className={`file-pick-btn${file ? " file-pick-btn-change" : ""}`}>
+          {file ? btnCambiar : "+"}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onChange(f);
+          }}
+          style={{ display: "none" }}
+        />
+      </div>
+    </Campo>
+  );
+}
+
+// ─── Main ──────────────────────────────────────────────────────────────────────
 export default function NuevoEvento() {
   const router = useRouter();
-
+  const [lang, setLang] = useState<"es" | "en">("es");
+  const t = T[lang];
   const [tipo, setTipo] = useState("quinceañera");
+  const cfg = CONFIG_TIPO[tipo][lang];
+
   const [nombre, setNombre] = useState("");
   const [anfitriones, setAnfitriones] = useState("");
+  const [frase, setFrase] = useState("");
+  const [mensajeInvitacion, setMensajeInvitacion] = useState("");
   const [fecha, setFecha] = useState("");
   const [hora, setHora] = useState("");
   const [lugar, setLugar] = useState("");
   const [mapsUrl, setMapsUrl] = useState("");
-  const [mensajeInvitacion, setMensajeInvitacion] = useState("");
+  const [comoLlegar, setComoLlegar] = useState("");
   const [fechaLimite, setFechaLimite] = useState("");
   const [imagen, setImagen] = useState<File | null>(null);
   const [imagenLugar, setImagenLugar] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewLugar, setPreviewLugar] = useState<string | null>(null);
+  const [videoLugar, setVideoLugar] = useState<File | null>(null);
+  const [musicaFile, setMusicaFile] = useState<File | null>(null);
+  const [musicaNombre, setMusicaNombre] = useState("");
+  const [cupo, setCupo] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [dark, setDark] = useState(false);
-  const [lang, setLang] = useState<"es" | "en">("es");
-  const [mounted] = useState(true);
 
-  const t = translations[lang];
-  const cfg = CONFIG_TIPO[tipo][lang];
+  useEffect(() => {
+    document.title = "Eventix — Nuevo evento";
+  }, []);
 
   function handleImagen(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -514,17 +676,6 @@ export default function NuevoEvento() {
       setImagenLugar(file);
       setPreviewLugar(URL.createObjectURL(file));
     }
-  }
-
-  async function subirImagen(file: File, clave: string) {
-    const ext = file.name.split(".").pop();
-    const fileName = `${clave}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage
-      .from("eventos")
-      .upload(fileName, file);
-    if (error) return null;
-    const { data } = supabase.storage.from("eventos").getPublicUrl(fileName);
-    return data.publicUrl;
   }
 
   async function handleCrear() {
@@ -543,24 +694,41 @@ export default function NuevoEvento() {
       return;
     }
 
-    const imagen_url = imagen ? await subirImagen(imagen, user.id) : null;
-    const foto_lugar_url = imagenLugar
-      ? await subirImagen(imagenLugar, `lugar-${user.id}`)
-      : null;
+    const [imagen_url, foto_lugar_url, musica_url, video_lugar_url] =
+      await Promise.all([
+        imagen
+          ? subirArchivo(imagen, "eventos", user.id)
+          : Promise.resolve(null),
+        imagenLugar
+          ? subirArchivo(imagenLugar, "eventos", `lugar-${user.id}`)
+          : Promise.resolve(null),
+        musicaFile
+          ? subirArchivo(musicaFile, "musica-eventos", `musica-${user.id}`)
+          : Promise.resolve(null),
+        videoLugar
+          ? subirArchivo(videoLugar, "videos-lugar", `video-${user.id}`)
+          : Promise.resolve(null),
+      ]);
 
     const { error: insertError } = await supabase.from("eventos").insert({
       organizador_id: user.id,
       nombre,
       tipo,
       anfitriones,
+      frase_evento: frase || null,
+      mensaje_invitacion: mensajeInvitacion || null,
       fecha,
       hora,
       lugar,
-      maps_url: mapsUrl,
+      maps_url: mapsUrl || null,
+      como_llegar: comoLlegar || null,
       fecha_limite_confirmacion: fechaLimite,
-      mensaje_invitacion: mensajeInvitacion,
       imagen_url,
       foto_lugar_url,
+      musica_url,
+      musica_nombre: musicaNombre || null,
+      video_lugar_url,
+      cupo_personas: cupo ? parseInt(cupo) : null,
     });
 
     if (insertError) setError(t.errorCrear + insertError.message);
@@ -573,51 +741,29 @@ export default function NuevoEvento() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'DM Sans',sans-serif}
+        html,body{font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;background:#F0FAF9}
 
-        :root {
-          --bg:#F0FAF8; --bg2:#E8F6F3;
-          --surface:#FFFFFF; --surface2:#F7FDFB;
-          --border:rgba(58,173,160,0.15); --border-mid:rgba(58,173,160,0.25);
-          --accent:#1FA896; --accent2:#3AADA0; --accent3:#0f766e;
-          --accent-soft:rgba(58,173,160,0.09); --accent-soft2:rgba(58,173,160,0.17);
-          --text:#0A1E1C; --text2:#3D6E6A; --text3:#85B5B0;
-          --danger:#dc2626; --danger-bg:#fef2f2; --danger-border:#fecaca;
-          --shadow:0 4px 24px rgba(58,173,160,0.13); --shadow-sm:0 2px 10px rgba(58,173,160,0.09);
-          --nav-bg:rgba(240,250,248,0.95);
-          --transition:all 0.35s cubic-bezier(.4,0,.2,1);
-          --radius:18px; --radius-sm:12px;
-        }
-        .dark {
-          --bg:#0C1A19; --bg2:#0A1614;
-          --surface:#162422; --surface2:#1C2E2B;
-          --border:rgba(58,173,160,0.13); --border-mid:rgba(58,173,160,0.24);
-          --accent:#3AADA0; --accent2:#2DC4A8; --accent3:#5eead4;
-          --accent-soft:rgba(58,173,160,0.10); --accent-soft2:rgba(58,173,160,0.19);
-          --text:#E8F8F5; --text2:#7ABFBA; --text3:#3D7070;
-          --danger:#f87171; --danger-bg:rgba(220,38,38,0.10); --danger-border:rgba(220,38,38,0.22);
-          --shadow:0 4px 24px rgba(0,0,0,0.42); --shadow-sm:0 2px 10px rgba(0,0,0,0.28);
-          --nav-bg:rgba(12,26,25,0.97);
+        :root{
+          --bg:#F0FAF9;--surface:#FFFFFF;--surface2:#F7FDFB;
+          --border:rgba(13,148,136,0.14);--border-mid:rgba(13,148,136,0.24);
+          --accent:#0D9488;--accent2:#0F766E;--accent3:#0a5c55;
+          --accent-soft:rgba(13,148,136,0.06);--accent-soft2:rgba(13,148,136,0.14);
+          --text:#0A1E1C;--text2:#2D6E68;--text3:#7ABFBA;
+          --danger:#dc2626;--danger-bg:#fef2f2;--danger-border:#fecaca;
+          --shadow:0 4px 24px rgba(13,148,136,0.13);--shadow-sm:0 2px 10px rgba(13,148,136,0.09);
+          --nav-bg:rgba(240,250,249,0.95);--transition:all 0.35s cubic-bezier(.4,0,.2,1);
+          --radius:18px;
         }
 
-        .page { min-height:100vh; background:var(--bg); transition:background 0.5s ease; position:relative; overflow-x:hidden; padding-bottom:56px; }
-        .page::before { content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
-          background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); opacity:0.35; }
-
-        .glow { position:fixed; pointer-events:none; z-index:0; border-radius:50%; filter:blur(90px); }
-        .glow-1 { width:320px; height:320px; top:-100px; right:-80px;
-          background:radial-gradient(circle,rgba(58,173,160,0.14) 0%,transparent 70%);
-          animation:gd1 9s ease-in-out infinite; }
-        .glow-2 { width:260px; height:260px; bottom:100px; left:-80px;
-          background:radial-gradient(circle,rgba(45,196,168,0.09) 0%,transparent 70%);
-          animation:gd2 11s ease-in-out infinite; }
-        .dark .glow-1{background:radial-gradient(circle,rgba(58,173,160,0.19) 0%,transparent 70%)}
-        .dark .glow-2{background:radial-gradient(circle,rgba(45,196,168,0.12) 0%,transparent 70%)}
+        .page{min-height:100vh;background:var(--bg);position:relative;overflow-x:hidden;padding-bottom:60px}
+        .glow{position:fixed;pointer-events:none;z-index:0;border-radius:50%;filter:blur(90px)}
+        .glow-1{width:320px;height:320px;top:-100px;right:-80px;background:radial-gradient(circle,rgba(13,148,136,0.14) 0%,transparent 70%);animation:gd1 9s ease-in-out infinite}
+        .glow-2{width:260px;height:260px;bottom:100px;left:-80px;background:radial-gradient(circle,rgba(94,234,212,0.09) 0%,transparent 70%);animation:gd2 11s ease-in-out infinite}
         @keyframes gd1{0%,100%{transform:translate(0,0)}40%{transform:translate(-16px,24px)}70%{transform:translate(12px,-16px)}}
         @keyframes gd2{0%,100%{transform:translate(0,0)}35%{transform:translate(20px,-26px)}65%{transform:translate(-10px,16px)}}
 
         .particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-        .particle{position:absolute;border-radius:50%;background:var(--accent2);opacity:0;animation:pf linear infinite}
+        .particle{position:absolute;border-radius:50%;background:rgba(94,234,212,0.6);opacity:0;animation:pf linear infinite}
         .particle-1{width:3px;height:3px;left:12%;animation-duration:14s;animation-delay:0s}
         .particle-2{width:2px;height:2px;left:35%;animation-duration:17s;animation-delay:3s}
         .particle-3{width:3px;height:3px;left:58%;animation-duration:12s;animation-delay:1s}
@@ -626,162 +772,149 @@ export default function NuevoEvento() {
         .particle-6{width:2px;height:2px;left:92%;animation-duration:18s;animation-delay:5s}
         @keyframes pf{0%{transform:translateY(110vh);opacity:0}5%{opacity:.12}90%{opacity:.12}100%{transform:translateY(-10vh) translateX(16px);opacity:0}}
 
-        /* ── NAV ── */
-        .nav { position:sticky; top:0; z-index:30; height:58px; padding:0 16px;
-          display:flex; align-items:center; justify-content:space-between;
-          background:var(--nav-bg); backdrop-filter:blur(18px);
-          border-bottom:1px solid var(--border); box-shadow:var(--shadow-sm);
-          transition:background 0.5s ease; }
-        .nav-left { display:flex; align-items:center; gap:10px; }
-        .nav-back { width:34px; height:34px; border-radius:10px; background:var(--surface);
-          border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
-          color:var(--text3); cursor:pointer; transition:var(--transition); text-decoration:none; }
-        .nav-back:hover { color:var(--accent); background:var(--accent-soft2); border-color:var(--accent2); }
-        .nav-brand { display:flex; align-items:center; gap:9px; }
-        .nav-brand-name { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:600;
-          color:var(--accent); letter-spacing:-0.5px; line-height:1; }
-        .nav-brand-sub { font-size:10px; color:var(--text3); font-weight:600;
-          letter-spacing:.4px; text-transform:uppercase; margin-top:2px; }
-        .nav-right { display:flex; align-items:center; gap:6px; }
-        .ctrl-btn { width:34px; height:34px; border-radius:50%; background:var(--surface);
-          border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
-          cursor:pointer; transition:var(--transition); color:var(--text2);
-          font-size:11px; font-weight:700; }
-        .ctrl-btn:hover { background:var(--accent-soft2); color:var(--accent); border-color:var(--accent2); }
-        .ctrl-lang { width:auto; padding:0 11px; border-radius:20px; letter-spacing:.5px; text-transform:uppercase; }
+        /* ── Nav ── */
+        .nav{position:sticky;top:0;z-index:30;height:56px;padding:0 16px;
+          display:flex;align-items:center;justify-content:space-between;
+          background:var(--nav-bg);backdrop-filter:blur(18px);
+          border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm)}
+        .nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+        .nav-back{width:34px;height:34px;border-radius:10px;background:var(--surface);
+          border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+          color:var(--text3);cursor:pointer;transition:var(--transition);text-decoration:none;flex-shrink:0}
+        .nav-back:hover{color:var(--accent);background:var(--accent-soft2);border-color:var(--accent2)}
+        .nav-brand{display:flex;align-items:center;gap:8px;min-width:0}
+        .nav-brand-name{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:var(--accent);letter-spacing:-0.5px;white-space:nowrap}
+        .nav-brand-sub{font-size:9px;color:var(--text3);font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-top:1px;white-space:nowrap}
+        .nav-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+        .ctrl-btn{padding:0 12px;height:32px;border-radius:20px;background:var(--surface);
+          border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+          cursor:pointer;transition:var(--transition);color:var(--text2);
+          font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;font-family:'DM Sans',sans-serif;
+          -webkit-tap-highlight-color:transparent}
+        .ctrl-btn:hover{background:var(--accent-soft2);color:var(--accent);border-color:var(--accent2)}
 
-        /* ── CONTENT ── */
-        .content { max-width:520px; margin:0 auto; padding:18px 14px 0; position:relative; z-index:1; display:flex; flex-direction:column; gap:12px; }
+        /* ── Content ── */
+        .content{max-width:480px;margin:0 auto;padding:16px 14px 0;position:relative;z-index:1;display:flex;flex-direction:column;gap:11px}
 
-        /* ── SECTION CARD ── */
-        .section-card { background:var(--surface); border-radius:var(--radius); padding:18px 16px;
-          border:1px solid var(--border); box-shadow:var(--shadow); transition:background 0.5s ease; }
-        .section-title { font-size:10px; font-weight:700; text-transform:uppercase;
-          letter-spacing:1.4px; color:var(--accent2); margin-bottom:14px; }
+        /* ── Section card ── */
+        .section-card{background:var(--surface);border-radius:var(--radius);padding:16px 14px;border:1px solid var(--border);box-shadow:var(--shadow)}
+        .section-title{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--accent2);margin-bottom:13px;display:flex;align-items:center;gap:6px}
+        .section-title svg{opacity:.7;flex-shrink:0}
 
-        /* ── TIPO BUTTONS ── */
-        .tipos-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:7px; }
-        .tipo-btn { display:flex; flex-direction:column; align-items:center; gap:6px;
-          padding:12px 4px; border-radius:14px; font-size:10px; font-weight:700;
-          border:2px solid var(--border); background:var(--surface2); color:var(--text2);
-          cursor:pointer; transition:var(--transition); font-family:'DM Sans',sans-serif; }
-        .tipo-btn:hover { border-color:var(--accent2); color:var(--accent); background:var(--accent-soft); }
-        .tipo-btn.active { background:var(--accent); color:#fff; border-color:var(--accent);
-          box-shadow:0 4px 16px rgba(58,173,160,0.38); }
+        /* ── Tipos ── */
+        .tipos-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+        .tipo-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 3px;border-radius:12px;font-size:9.5px;font-weight:700;border:2px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:var(--transition);font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;text-align:center;line-height:1.2}
+        .tipo-btn:hover{border-color:var(--accent2);color:var(--accent);background:var(--accent-soft)}
+        .tipo-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 12px rgba(13,148,136,0.38)}
 
-        /* ── PHOTO UPLOAD ── */
-        .photo-upload { cursor:pointer; display:block; border-radius:14px; overflow:hidden;
-          border:2px dashed var(--border-mid); transition:var(--transition); }
-        .photo-upload:hover { border-color:var(--accent2); background:var(--accent-soft); }
-        .photo-empty { display:flex; flex-direction:column; align-items:center; justify-content:center;
-          gap:10px; background:var(--accent-soft); padding:28px 16px; text-align:center; }
-        .photo-empty-icon { width:56px; height:56px; border-radius:14px; background:var(--surface);
-          border:1px solid var(--border-mid); display:flex; align-items:center; justify-content:center;
-          color:var(--accent); box-shadow:var(--shadow-sm); }
-        .photo-empty-title { font-size:13px; font-weight:700; color:var(--accent); }
-        .photo-empty-sub { font-size:11px; color:var(--text3); margin-top:2px; }
+        /* ── Photo portada (grande) ── */
+        .photo-upload{cursor:pointer;display:block;border-radius:12px;overflow:hidden;border:2px dashed var(--border-mid);transition:var(--transition)}
+        .photo-upload:hover{border-color:var(--accent2);background:var(--accent-soft)}
+        .photo-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--accent-soft);padding:24px 16px;text-align:center}
+        .photo-empty-icon{width:48px;height:48px;border-radius:12px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;color:var(--accent)}
+        .photo-empty-title{font-size:12px;font-weight:700;color:var(--accent)}
+        .photo-empty-sub{font-size:10px;color:var(--text3);margin-top:1px}
+        /* portada: tall */
+        .photo-cover .photo-empty{min-height:180px}
+        .photo-cover .photo-preview{height:180px}
+        /* lugar: PEQUEÑA — solo 110px */
+        .photo-venue .photo-empty{min-height:110px;padding:16px}
+        .photo-venue .photo-preview{height:110px}
+        .photo-preview{position:relative;width:100%}
+        .photo-preview-img{width:100%;height:100%;object-fit:cover;display:block}
+        .photo-preview-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.38);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;opacity:0;transition:opacity .22s ease}
+        .photo-preview:hover .photo-preview-overlay{opacity:1}
+        .photo-preview-overlay-text{color:white;font-size:11px;font-weight:700}
 
-        /* Cover photo — tall */
-        .photo-cover .photo-empty { min-height:200px; }
-        /* Venue photo — shorter */
-        .photo-venue .photo-empty { min-height:140px; }
+        /* ── Badge destacada ── */
+        .venue-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(13,148,136,0.10);color:var(--accent2);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 9px;border-radius:100px;margin-bottom:8px;border:1px solid var(--border-mid)}
 
-        /* Photo preview overlay */
-        .photo-preview { position:relative; width:100%; }
-        .photo-cover .photo-preview { height:200px; }
-        .photo-venue .photo-preview { height:140px; }
-        .photo-preview-img { width:100%; height:100%; object-fit:cover; display:block; }
-        .photo-preview-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.38);
-          display:flex; flex-direction:column; align-items:center; justify-content:center;
-          gap:6px; opacity:0; transition:opacity .25s ease; }
-        .photo-preview:hover .photo-preview-overlay { opacity:1; }
-        .photo-preview-overlay-icon { color:white; }
-        .photo-preview-overlay-text { color:white; font-size:12px; font-weight:700; }
+        /* ── File pick ── */
+        .file-pick-row{display:flex;align-items:center;gap:9px;background:var(--accent-soft);border:2px dashed var(--border-mid);border-radius:11px;padding:10px 11px;cursor:pointer;transition:var(--transition)}
+        .file-pick-row:hover{border-color:var(--accent);background:var(--surface)}
+        .file-pick-icon{width:32px;height:32px;border-radius:9px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0}
+        .file-pick-info{flex:1;min-width:0}
+        .file-name{display:block;font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .file-size{display:block;font-size:10px;color:var(--text3);margin-top:1px}
+        .file-empty{font-size:12px;color:var(--text3)}
+        .file-pick-btn{background:var(--accent);color:white;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;flex-shrink:0;white-space:nowrap}
+        .file-pick-btn-change{background:var(--surface2);color:var(--accent2);border:1px solid var(--border-mid)}
 
-        /* ── FIELDS ── */
-        .fields-group { display:flex; flex-direction:column; gap:14px; }
-        .field-label { font-size:11px; font-weight:700; color:var(--accent2); display:block;
-          margin-bottom:6px; letter-spacing:.2px; text-transform:uppercase; }
-        .field-input { width:100%; border:2px solid var(--border-mid); border-radius:12px;
-          padding:11px 13px; font-size:14px; background:var(--accent-soft); color:var(--text);
-          outline:none; transition:border-color .2s,box-shadow .2s,background .2s;
-          font-family:'DM Sans',sans-serif; }
-        .field-input::placeholder { color:var(--text3); }
-        .field-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(58,173,160,0.12); background:var(--surface); }
-        .field-hint { font-size:11px; color:var(--text3); margin-top:5px; padding:0 2px; line-height:1.4; }
-        .field-textarea { resize:none; }
-        .input-icon-wrap { position:relative; }
-        .input-icon-wrap .input-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text3); pointer-events:none; }
-        .input-icon-wrap .field-input { padding-left:34px; }
-        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        /* ── Cupo — FIJO, sin desbordamiento ── */
+        .cupo-wrap{display:flex;flex-direction:column;gap:8px}
+        .cupo-top{display:flex;align-items:center;gap:10px}
+        .cupo-input{width:110px;flex-shrink:0}
+        .cupo-tag{font-size:11px;color:var(--text3);line-height:1.4;flex:1}
 
-        /* ── ERROR ── */
-        .error-box { background:var(--danger-bg); border:1px solid var(--danger-border);
-          color:var(--danger); font-size:13px; padding:11px 14px; border-radius:12px;
-          display:flex; align-items:center; gap:8px; }
+        /* ── Fields ── */
+        .fields-group{display:flex;flex-direction:column;gap:13px}
+        .field-label{font-size:10px;font-weight:700;color:var(--accent2);display:block;margin-bottom:5px;letter-spacing:.2px;text-transform:uppercase}
+        .field-input{width:100%;border:2px solid var(--border-mid);border-radius:11px;padding:10px 12px;font-size:14px;background:var(--accent-soft);color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s,background .2s;font-family:'DM Sans',sans-serif;-webkit-appearance:none;touch-action:manipulation}
+        .field-input::placeholder{color:var(--text3)}
+        .field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(13,148,136,0.10);background:var(--surface)}
+        .field-hint{font-size:10px;color:var(--text3);margin-top:4px;padding:0 2px;line-height:1.4}
+        .field-textarea{resize:none}
+        .input-icon-wrap{position:relative}
+        .input-icon-wrap .input-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+        .input-icon-wrap .field-input{padding-left:32px}
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+        .error-box{background:var(--danger-bg);border:1px solid var(--danger-border);color:var(--danger);font-size:13px;padding:10px 13px;border-radius:11px;display:flex;align-items:center;gap:8px}
 
-        /* ── SUBMIT ── */
-        .btn-submit { width:100%; padding:15px; border-radius:var(--radius); border:none;
+        /* ── Submit ── */
+        .btn-submit{width:100%;padding:14px;border-radius:var(--radius);border:none;
           background:linear-gradient(135deg,var(--accent) 0%,var(--accent3) 100%);
-          color:#fff; font-size:15px; font-weight:800; font-family:'DM Sans',sans-serif;
-          cursor:pointer; box-shadow:0 6px 22px rgba(58,173,160,0.36);
-          transition:transform .2s,box-shadow .2s,opacity .2s; position:relative; overflow:hidden;
-          display:flex; align-items:center; justify-content:center; gap:8px; }
-        .btn-submit::after { content:''; position:absolute; inset:0;
-          background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.15) 50%,transparent 60%);
-          background-size:200% 100%; animation:shimmer 3.5s ease-in-out infinite; }
-        .btn-submit:not(:disabled):hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(58,173,160,0.46); }
-        .btn-submit:not(:disabled):active { transform:scale(0.98); }
-        .btn-submit:disabled { opacity:.55; cursor:not-allowed; }
+          color:#fff;font-size:15px;font-weight:800;font-family:'DM Sans',sans-serif;
+          cursor:pointer;box-shadow:0 6px 22px rgba(13,148,136,0.36);
+          transition:transform .2s,box-shadow .2s,opacity .2s;position:relative;overflow:hidden;
+          display:flex;align-items:center;justify-content:center;gap:8px;
+          -webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:50px}
+        .btn-submit::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.15) 50%,transparent 60%);background-size:200% 100%;animation:shimmer 3.5s ease-in-out infinite}
+        .btn-submit:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(13,148,136,0.46)}
+        .btn-submit:not(:disabled):active{transform:scale(0.98)}
+        .btn-submit:disabled{opacity:.55;cursor:not-allowed}
         @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
-
-        .footer-note { text-align:center; font-size:11px; color:var(--text3); padding-bottom:8px; }
-
+        .footer-note{text-align:center;font-size:10px;color:var(--text3);padding-bottom:6px}
         @keyframes spin{to{transform:rotate(360deg)}}
         .spin{animation:spin .75s linear infinite}
+
+        /* ── Responsive ── */
+        @media(max-width:360px){
+          .tipos-grid{grid-template-columns:repeat(3,1fr)}
+          .tipo-btn{padding:9px 2px;font-size:9px}
+          .grid-2{grid-template-columns:1fr}
+        }
+        @media(max-height:580px){.nav{height:48px}}
       `}</style>
 
-      <div className={`page${dark ? " dark" : ""}`}>
+      <div className="page">
         <div className="glow glow-1" />
         <div className="glow glow-2" />
         <Particles />
 
-        {/* ── NAV ─────────────────────────────────────────────────── */}
         <nav className="nav">
           <div className="nav-left">
             <Link href="/dashboard" className="nav-back">
               <IconoBack />
             </Link>
             <div className="nav-brand">
-              <AppLogo size={32} />
+              <AppLogo size={28} />
               <div>
-                <div className="nav-brand-name">Events</div>
+                <div className="nav-brand-name">Eventix</div>
                 <div className="nav-brand-sub">{t.title}</div>
               </div>
             </div>
           </div>
-
           <div className="nav-right">
             <button
-              className="ctrl-btn ctrl-lang"
+              className="ctrl-btn"
               onClick={() => setLang(lang === "es" ? "en" : "es")}
-              title={lang === "es" ? "Switch to English" : "Cambiar a Español"}
             >
               {lang === "es" ? "EN" : "ES"}
-            </button>
-            <button
-              className="ctrl-btn"
-              onClick={() => setDark(!dark)}
-              title={dark ? t.lightMode : t.darkMode}
-            >
-              {dark ? <IconoSun /> : <IconoMoon />}
             </button>
           </div>
         </nav>
 
-        {/* ── CONTENT ─────────────────────────────────────────────── */}
         <div className="content">
-          {/* Error */}
           {error && (
             <div className="error-box">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -803,7 +936,7 @@ export default function NuevoEvento() {
             </div>
           )}
 
-          {/* ── Sección 1: Tipo ── */}
+          {/* 1. Tipo */}
           <div className="section-card">
             <p className="section-title">{t.tipoEvento}</p>
             <div className="tipos-grid">
@@ -815,17 +948,18 @@ export default function NuevoEvento() {
                   className={`tipo-btn${tipo === value ? " active" : ""}`}
                 >
                   <Icono />
-                  <span style={{ lineHeight: 1.2, textAlign: "center" }}>
-                    {t.tipos[value as keyof typeof t.tipos]}
-                  </span>
+                  {T[lang].tipos[value as keyof typeof T.es.tipos]}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* ── Sección 2: Foto portada ── */}
+          {/* 2. Foto portada (grande) */}
           <div className="section-card">
-            <p className="section-title">{t.fotoPortada}</p>
+            <p className="section-title">
+              <IconoCamera />
+              {t.fotoPortada}
+            </p>
             <label className="photo-upload photo-cover">
               {preview ? (
                 <div className="photo-preview">
@@ -835,9 +969,7 @@ export default function NuevoEvento() {
                     className="photo-preview-img"
                   />
                   <div className="photo-preview-overlay">
-                    <div className="photo-preview-overlay-icon">
-                      <IconoCamera />
-                    </div>
+                    <IconoCamera />
                     <span className="photo-preview-overlay-text">
                       {t.cambiarFoto}
                     </span>
@@ -848,10 +980,8 @@ export default function NuevoEvento() {
                   <div className="photo-empty-icon">
                     <IconoCamera />
                   </div>
-                  <div>
-                    <p className="photo-empty-title">{cfg.labelFotoPortada}</p>
-                    <p className="photo-empty-sub">{t.fmtFoto}</p>
-                  </div>
+                  <p className="photo-empty-title">{cfg.lPortada}</p>
+                  <p className="photo-empty-sub">{t.fmtFoto}</p>
                 </div>
               )}
               <input
@@ -863,7 +993,7 @@ export default function NuevoEvento() {
             </label>
           </div>
 
-          {/* ── Sección 3: Info ── */}
+          {/* 3. Info del evento */}
           <div className="section-card">
             <p className="section-title">{t.infoEvento}</p>
             <div className="fields-group">
@@ -873,7 +1003,7 @@ export default function NuevoEvento() {
                   type="text"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  placeholder={cfg.placeholderNombre}
+                  placeholder={cfg.pNombre}
                 />
               </Campo>
               <Campo label={t.anfitriones}>
@@ -882,22 +1012,36 @@ export default function NuevoEvento() {
                   type="text"
                   value={anfitriones}
                   onChange={(e) => setAnfitriones(e.target.value)}
-                  placeholder={cfg.placeholderAnfitriones}
+                  placeholder={cfg.pAnf}
                 />
+              </Campo>
+              <Campo label={t.frase}>
+                <div className="input-icon-wrap">
+                  <span className="input-icon">
+                    <IconoQuote />
+                  </span>
+                  <input
+                    className="field-input"
+                    type="text"
+                    value={frase}
+                    onChange={(e) => setFrase(e.target.value)}
+                    placeholder={t.frasePlaceholder}
+                  />
+                </div>
               </Campo>
               <Campo label={t.mensaje}>
                 <textarea
                   className="field-input field-textarea"
                   value={mensajeInvitacion}
                   onChange={(e) => setMensajeInvitacion(e.target.value)}
-                  placeholder={cfg.placeholderMensaje}
+                  placeholder={cfg.pMensaje}
                   rows={3}
                 />
               </Campo>
             </div>
           </div>
 
-          {/* ── Sección 4: Fecha y lugar ── */}
+          {/* 4. Fecha y lugar */}
           <div className="section-card">
             <p className="section-title">{t.fechaLugar}</p>
             <div className="fields-group">
@@ -926,29 +1070,14 @@ export default function NuevoEvento() {
                   type="text"
                   value={lugar}
                   onChange={(e) => setLugar(e.target.value)}
-                  placeholder={cfg.placeholderLugar}
+                  placeholder={cfg.pLugar}
                 />
               </Campo>
 
               <Campo label={t.mapsLink} hint={t.mapsHint}>
                 <div className="input-icon-wrap">
                   <span className="input-icon">
-                    <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-                      <path
-                        d="M7.5 1A5 5 0 002.5 6c0 3.5 5 8 5 8s5-4.5 5-8a5 5 0 00-5-5z"
-                        stroke="currentColor"
-                        strokeWidth="1.3"
-                        fill="none"
-                      />
-                      <circle
-                        cx="7.5"
-                        cy="6"
-                        r="1.7"
-                        stroke="currentColor"
-                        strokeWidth="1.3"
-                        fill="none"
-                      />
-                    </svg>
+                    <IconoMap />
                   </span>
                   <input
                     className="field-input"
@@ -960,8 +1089,30 @@ export default function NuevoEvento() {
                 </div>
               </Campo>
 
-              {/* Foto del lugar */}
-              <Campo label={t.fotoLugar}>
+              <Campo label={t.comoLlegar}>
+                <textarea
+                  className="field-input field-textarea"
+                  value={comoLlegar}
+                  onChange={(e) => setComoLlegar(e.target.value)}
+                  placeholder={t.comoLlegarPH}
+                  rows={2}
+                />
+              </Campo>
+
+              {/* Foto del lugar — PEQUEÑA con badge */}
+              <div>
+                <label className="field-label">{t.fotoLugar}</label>
+                <div className="venue-badge">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path
+                      d="M5 1l1.1 3.1H9L6.5 6l1 3L5 7.4 2.5 9l1-3L1 4.1h2.9L5 1z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  {lang === "es"
+                    ? "Aparece primero en la tarjeta"
+                    : "Appears first on the card"}
+                </div>
                 <label
                   className="photo-upload photo-venue"
                   style={{ display: "block" }}
@@ -974,9 +1125,7 @@ export default function NuevoEvento() {
                         className="photo-preview-img"
                       />
                       <div className="photo-preview-overlay">
-                        <div className="photo-preview-overlay-icon">
-                          <IconoCamera />
-                        </div>
+                        <IconoCamera />
                         <span className="photo-preview-overlay-text">
                           {t.cambiarFoto}
                         </span>
@@ -987,12 +1136,8 @@ export default function NuevoEvento() {
                       <div className="photo-empty-icon">
                         <IconoCamera />
                       </div>
-                      <div>
-                        <p className="photo-empty-title">
-                          {cfg.labelFotoLugar}
-                        </p>
-                        <p className="photo-empty-sub">{t.fmtFoto}</p>
-                      </div>
+                      <p className="photo-empty-title">{cfg.lLugar}</p>
+                      <p className="photo-empty-sub">{t.fmtFoto}</p>
                     </div>
                   )}
                   <input
@@ -1002,11 +1147,79 @@ export default function NuevoEvento() {
                     style={{ display: "none" }}
                   />
                 </label>
+                <p className="field-hint">{t.fotoLugarHint}</p>
+              </div>
+
+              {/* Video corto del lugar */}
+              <FilePickRow
+                icon={<IconoVideo />}
+                label={t.videoLugar}
+                hint={t.videoLugarHint}
+                accept="video/mp4,video/*"
+                file={videoLugar}
+                onChange={setVideoLugar}
+                btnLabel={t.videoBtn}
+                btnCambiar={t.videoCambiar}
+              />
+            </div>
+          </div>
+
+          {/* 5. Música */}
+          <div className="section-card">
+            <p className="section-title">
+              <IconoMusic />
+              {t.musica}
+            </p>
+            <div className="fields-group">
+              <FilePickRow
+                icon={<IconoMusic />}
+                label={t.musicaArchivo}
+                hint={t.musicaArchivoHint}
+                accept="audio/mpeg,audio/ogg,audio/mp3,audio/*"
+                file={musicaFile}
+                onChange={setMusicaFile}
+                btnLabel={t.musicaBtn}
+                btnCambiar={t.musicaCambiar}
+              />
+              <Campo label={t.musicaNombre}>
+                <input
+                  className="field-input"
+                  type="text"
+                  value={musicaNombre}
+                  onChange={(e) => setMusicaNombre(e.target.value)}
+                  placeholder={t.musicaNombrePH}
+                />
               </Campo>
             </div>
           </div>
 
-          {/* ── Sección 5: Confirmación ── */}
+          {/* 6. Cupo — layout columna, sin desbordamiento */}
+          <div className="section-card">
+            <p className="section-title">
+              <IconoPeople />
+              {t.cupo}
+            </p>
+            <div className="fields-group">
+              <Campo label={t.cupoLabel} hint={t.cupoHint}>
+                <div className="cupo-wrap">
+                  <div className="cupo-top">
+                    <input
+                      className="field-input cupo-input"
+                      type="number"
+                      min="1"
+                      max="9999"
+                      value={cupo}
+                      onChange={(e) => setCupo(e.target.value)}
+                      placeholder={t.cupoPH}
+                    />
+                    <span className="cupo-tag">{t.cupoDesc}</span>
+                  </div>
+                </div>
+              </Campo>
+            </div>
+          </div>
+
+          {/* 7. Confirmación */}
           <div className="section-card">
             <p className="section-title">{t.confirmacion}</p>
             <Campo label={t.fechaLimite} hint={t.fechaLimiteHint}>
@@ -1019,11 +1232,12 @@ export default function NuevoEvento() {
             </Campo>
           </div>
 
-          {/* ── Botón crear ── */}
+          {/* Crear */}
           <button
             className="btn-submit"
             onClick={handleCrear}
             disabled={loading}
+            type="button"
           >
             {loading ? (
               <>
@@ -1048,9 +1262,9 @@ export default function NuevoEvento() {
               </>
             ) : (
               <>
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path
-                    d="M7.5 2v11M2 7.5h11"
+                    d="M7 1v12M1 7h12"
                     stroke="white"
                     strokeWidth="2"
                     strokeLinecap="round"
@@ -1060,7 +1274,6 @@ export default function NuevoEvento() {
               </>
             )}
           </button>
-
           <p className="footer-note">{t.footer}</p>
         </div>
       </div>

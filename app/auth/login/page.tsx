@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// ─── New Eventix Logo ────────────────────────────────────────────────────────
+// ─── Eventix Logo ─────────────────────────────────────────────────────────────
 function AppLogo({ size = 44 }: { size?: number }) {
   return (
     <svg
@@ -119,6 +119,15 @@ const translations = {
     back: "Volver al inicio",
     errorMsg: "Correo o contraseña incorrectos",
     tagline: "Invitaciones · Fotos · Recuerdos",
+    forgotPass: "¿Olvidaste tu contraseña?",
+    // Forgot password modal
+    forgotTitle: "Recuperar contraseña",
+    forgotSub: "Te enviaremos un enlace a tu correo",
+    forgotCta: "Enviar enlace",
+    forgotLoading: "Enviando...",
+    forgotSuccess: "¡Enlace enviado! Revisa tu correo.",
+    forgotError: "No encontramos ese correo. Verifica e intenta de nuevo.",
+    forgotBack: "Volver al inicio de sesión",
   },
   en: {
     title: "Welcome back",
@@ -134,9 +143,159 @@ const translations = {
     back: "Back to home",
     errorMsg: "Incorrect email or password",
     tagline: "Invitations · Photos · Memories",
+    forgotPass: "Forgot your password?",
+    // Forgot password modal
+    forgotTitle: "Reset password",
+    forgotSub: "We'll send a reset link to your email",
+    forgotCta: "Send link",
+    forgotLoading: "Sending...",
+    forgotSuccess: "Link sent! Check your inbox.",
+    forgotError: "We couldn't find that email. Please check and try again.",
+    forgotBack: "Back to sign in",
   },
 };
 
+// ─── Forgot Password Modal ─────────────────────────────────────────────────────
+function ForgotPasswordModal({
+  lang,
+  onClose,
+}: {
+  lang: "es" | "en";
+  onClose: () => void;
+}) {
+  const t = translations[lang];
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleReset() {
+    if (!email) return;
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    if (error) setError(t.forgotError);
+    else setSent(true);
+    setLoading(false);
+  }
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal-box">
+        {/* Close button */}
+        <button
+          className="modal-close"
+          onClick={onClose}
+          type="button"
+          aria-label="Close"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M2 2l12 12M14 2L2 14"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
+        {/* Icon */}
+        <div className="modal-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="10" fill="rgba(13,148,136,0.1)" />
+            <path
+              d="M6 10l8 6 8-6"
+              stroke="#0D9488"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <rect
+              x="5"
+              y="8"
+              width="18"
+              height="13"
+              rx="3"
+              stroke="#0D9488"
+              strokeWidth="1.6"
+            />
+          </svg>
+        </div>
+
+        <div className="modal-title">{t.forgotTitle}</div>
+        <div className="modal-sub">{t.forgotSub}</div>
+
+        {sent ? (
+          <div className="success-box">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              style={{ flexShrink: 0 }}
+            >
+              <circle cx="8" cy="8" r="7" stroke="#16a34a" strokeWidth="1.4" />
+              <path
+                d="M4.5 8l2.5 2.5 4.5-5"
+                stroke="#16a34a"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {t.forgotSuccess}
+          </div>
+        ) : (
+          <>
+            {error && <div className="error-box">{error}</div>}
+            <div style={{ marginBottom: "16px" }}>
+              <label className="field-label">{t.emailLabel}</label>
+              <input
+                className="field-input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t.emailPlaceholder}
+                autoComplete="email"
+                inputMode="email"
+                onKeyDown={(e) => e.key === "Enter" && handleReset()}
+              />
+            </div>
+            <button
+              className="btn-submit"
+              onClick={handleReset}
+              disabled={loading || !email}
+              type="button"
+            >
+              <span className="btn-shimmer" />
+              {loading ? t.forgotLoading : t.forgotCta}
+            </button>
+          </>
+        )}
+
+        <button className="modal-back-link" onClick={onClose} type="button">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path
+              d="M8 2L4 6l4 4"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {t.forgotBack}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Login Page ───────────────────────────────────────────────────────────
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -146,6 +305,7 @@ export default function Login() {
   const [mounted, setMounted] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
   const [showPass, setShowPass] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   const t = translations[lang];
 
@@ -155,6 +315,7 @@ export default function Login() {
   }, []);
 
   async function handleLogin() {
+    if (!email || !password) return;
     setLoading(true);
     setError("");
     const { error } = await supabase.auth.signInWithPassword({
@@ -199,6 +360,9 @@ export default function Login() {
           color: var(--text);
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+          /* Prevent horizontal scroll on mobile */
+          overflow-x: hidden;
+          width: 100%;
         }
 
         body::before {
@@ -208,24 +372,30 @@ export default function Login() {
           opacity: 0.5;
         }
 
+        /* ── Page wrapper — mobile-first ── */
         .page-wrap {
           min-height: 100vh;
           min-height: 100dvh;
           background: var(--bg);
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
-          padding: 24px 20px;
-          padding-bottom: max(24px, env(safe-area-inset-bottom));
+          padding: 72px 16px 32px;
+          padding-bottom: max(32px, env(safe-area-inset-bottom));
           position: relative;
-          overflow: hidden;
+          overflow-x: hidden;
+        }
+
+        /* On taller screens, center vertically */
+        @media (min-height: 700px) {
+          .page-wrap { align-items: center; padding-top: 24px; }
         }
 
         /* ── Glows ── */
         .glow { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(90px); }
-        .glow-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: radial-gradient(circle, rgba(13,148,136,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
-        .glow-2 { width: 260px; height: 260px; bottom: 80px; left: -80px; background: radial-gradient(circle, rgba(94,234,212,0.11) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
-        .glow-3 { width: 200px; height: 200px; bottom: -40px; right: 10px; background: radial-gradient(circle, rgba(13,148,136,0.08) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
+        .glow-1 { width: 280px; height: 280px; top: -60px; right: -40px; background: radial-gradient(circle, rgba(13,148,136,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
+        .glow-2 { width: 220px; height: 220px; bottom: 60px; left: -60px; background: radial-gradient(circle, rgba(94,234,212,0.11) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
+        .glow-3 { width: 180px; height: 180px; bottom: -30px; right: 10px; background: radial-gradient(circle, rgba(13,148,136,0.08) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
         @keyframes glowDrift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-18px,28px) scale(1.07)} 66%{transform:translate(14px,-18px) scale(0.95)} }
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(22px,-30px) scale(1.09)} 70%{transform:translate(-8px,18px) scale(0.93)} }
 
@@ -244,56 +414,100 @@ export default function Login() {
         .particle-10{width:3px;height:3px;left:71%;animation-duration:11s;animation-delay:3.8s}
         @keyframes particleFloat { 0%{transform:translateY(105vh);opacity:0} 5%{opacity:.15} 90%{opacity:.15} 100%{transform:translateY(-8vh) translateX(25px);opacity:0} }
 
-        /* ── Controls ── */
-        .controls { position: fixed; top: 16px; right: 16px; z-index: 20; display: flex; gap: 8px; align-items: center; }
-        .ctrl-btn { height: 36px; border-radius: 100px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); box-shadow: var(--shadow-sm); color: var(--text2); font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; padding: 0 14px; font-family: 'DM Sans', sans-serif; }
+        /* ── Language button ── */
+        .controls { position: fixed; top: 12px; right: 12px; z-index: 20; }
+        .ctrl-btn {
+          height: 34px; border-radius: 100px;
+          background: var(--surface); border: 1px solid var(--border);
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: var(--transition);
+          box-shadow: var(--shadow-sm); color: var(--text2);
+          font-size: 11px; font-weight: 600; letter-spacing: .5px;
+          text-transform: uppercase; padding: 0 14px;
+          font-family: 'DM Sans', sans-serif;
+          -webkit-tap-highlight-color: transparent;
+        }
         .ctrl-btn:hover { background: var(--accent-soft2); color: var(--accent); border-color: var(--border-hover); }
 
-        /* ── Card wrapper ── */
-        .card-wrap { width: 100%; max-width: 380px; position: relative; z-index: 1; }
+        /* ── Card wrapper — fluid width ── */
+        .card-wrap {
+          width: 100%;
+          max-width: 380px;
+          position: relative;
+          z-index: 1;
+        }
 
         /* ── Logo area ── */
-        .logo-area { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-bottom: 28px; }
-        .logo-container { position: relative; display: flex; align-items: center; justify-content: center; width: 86px; height: 86px; }
-        .logo-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(13,148,136,0.18); animation: ringExpand 3s ease-out infinite; width: 72px; height: 72px; }
+        .logo-area { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 24px; }
+        .logo-container { position: relative; display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; }
+        .logo-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(13,148,136,0.18); animation: ringExpand 3s ease-out infinite; width: 68px; height: 68px; }
         .logo-ring-2 { animation-delay: 1s; }
         .logo-ring-3 { animation-delay: 2s; }
         @keyframes ringExpand { 0%{transform:scale(0.82);opacity:0.7} 100%{transform:scale(2.0);opacity:0} }
         .logo-pulse { position: relative; z-index: 2; animation: logoPulse 3.5s ease-in-out infinite; filter: drop-shadow(0 4px 20px rgba(13,148,136,0.30)); }
         @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04);filter:drop-shadow(0 6px 28px rgba(13,148,136,0.46))} }
-        .logo-name { font-family: 'Cormorant Garamond', serif; font-size: 34px; font-weight: 600; letter-spacing: -1.2px; color: var(--text); line-height: 1; text-align: center; }
+        .logo-name { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 600; letter-spacing: -1.2px; color: var(--text); line-height: 1; text-align: center; }
         .logo-name span { color: var(--accent); }
         .logo-tag { font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-top: 3px; text-align: center; }
 
         /* ── Card ── */
-        .card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 24px; padding: 28px 26px; box-shadow: var(--shadow); }
-        .card-title { font-family: 'Cormorant Garamond', serif; font-size: 23px; font-weight: 600; color: var(--text); margin-bottom: 4px; letter-spacing: -0.3px; }
-        .card-sub { font-size: 13px; color: var(--text3); margin-bottom: 22px; line-height: 1.5; }
+        .card {
+          background: var(--surface);
+          border: 1.5px solid var(--border);
+          border-radius: 22px;
+          padding: 24px 20px;
+          box-shadow: var(--shadow);
+        }
+        @media (min-width: 400px) {
+          .card { padding: 28px 26px; border-radius: 24px; }
+        }
+        .card-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 4px; letter-spacing: -0.3px; }
+        .card-sub { font-size: 13px; color: var(--text3); margin-bottom: 20px; line-height: 1.5; }
 
-        /* ── Error ── */
+        /* ── Error / Success boxes ── */
         .error-box { background: #fff1f2; border: 1px solid #fecdd3; color: #e11d48; font-size: 13px; padding: 10px 14px; border-radius: 12px; margin-bottom: 16px; }
+        .success-box { background: #f0fdf4; border: 1px solid #bbf7d0; color: #16a34a; font-size: 13px; padding: 10px 14px; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 
         /* ── Fields ── */
         .fields { display: flex; flex-direction: column; gap: 16px; }
-        .field-label { font-size: 11.5px; font-weight: 600; color: var(--accent); display: block; margin-bottom: 7px; letter-spacing: 0.3px; text-transform: uppercase; }
+        .field-label { font-size: 11px; font-weight: 600; color: var(--accent); display: block; margin-bottom: 7px; letter-spacing: 0.3px; text-transform: uppercase; }
         .field-input-wrap { position: relative; }
         .field-input {
           width: 100%; border: 2px solid var(--border-input); border-radius: 14px;
-          padding: 12px 14px; font-size: 14px;
+          padding: 13px 14px; font-size: 15px;
           background: var(--accent-soft); color: var(--text);
           outline: none; transition: border-color .22s, box-shadow .22s, background .22s;
           font-family: 'DM Sans', sans-serif;
           -webkit-appearance: none;
+          /* Prevent zoom on iOS */
+          touch-action: manipulation;
         }
         .field-input::placeholder { color: var(--text3); }
         .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13,148,136,0.11); background: var(--surface); }
 
-        .pass-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text3); padding: 4px; display: flex; align-items: center; transition: color .2s; -webkit-tap-highlight-color: transparent; }
+        .pass-toggle {
+          position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+          background: none; border: none; cursor: pointer; color: var(--text3);
+          padding: 6px; display: flex; align-items: center; transition: color .2s;
+          -webkit-tap-highlight-color: transparent;
+          /* Make tap area bigger on mobile */
+          min-width: 36px; min-height: 36px; justify-content: center;
+        }
         .pass-toggle:hover { color: var(--accent); }
+
+        /* ── Forgot password link ── */
+        .forgot-link {
+          display: block; text-align: right; font-size: 12px; font-weight: 500;
+          color: var(--text3); text-decoration: none; margin-top: 6px;
+          transition: color .2s; cursor: pointer; background: none; border: none;
+          font-family: 'DM Sans', sans-serif; padding: 0;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .forgot-link:hover { color: var(--accent); }
 
         /* ── Submit button ── */
         .btn-submit {
-          width: 100%; padding: 14px; border-radius: 14px; border: none;
+          width: 100%; padding: 15px; border-radius: 14px; border: none;
           background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
           color: #fff; font-size: 15px; font-weight: 600;
           font-family: 'DM Sans', sans-serif; letter-spacing: 0.3px;
@@ -302,6 +516,10 @@ export default function Login() {
           transition: transform .2s ease, box-shadow .2s ease, opacity .2s;
           position: relative; overflow: hidden;
           -webkit-tap-highlight-color: transparent;
+          /* Prevent double-tap zoom */
+          touch-action: manipulation;
+          /* Better tap height on mobile */
+          min-height: 50px;
         }
         .btn-submit::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.16) 0%, transparent 55%); pointer-events: none; border-radius: inherit; }
         .btn-shimmer { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.22) 50%, transparent 62%); background-size: 200% 100%; animation: shimmer 3.5s ease-in-out infinite; }
@@ -311,12 +529,12 @@ export default function Login() {
         .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
         /* ── Footer links ── */
-        .footer-link { text-align: center; font-size: 13px; color: var(--text2); margin-top: 18px; }
+        .footer-link { text-align: center; font-size: 13px; color: var(--text2); margin-top: 16px; }
         .footer-link a { color: var(--accent); font-weight: 600; text-decoration: none; }
         .footer-link a:hover { text-decoration: underline; }
-        .back-link { display: flex; align-items: center; gap: 5px; justify-content: center; font-size: 12px; color: var(--text3); margin-top: 10px; text-decoration: none; transition: color .2s; -webkit-tap-highlight-color: transparent; }
+        .back-link { display: flex; align-items: center; gap: 5px; justify-content: center; font-size: 12px; color: var(--text3); margin-top: 10px; text-decoration: none; transition: color .2s; -webkit-tap-highlight-color: transparent; min-height: 36px; }
         .back-link:hover { color: var(--accent); }
-        .copy { text-align: center; margin-top: 24px; font-size: 10px; font-weight: 600; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text3); opacity: 0.65; }
+        .copy { text-align: center; margin-top: 20px; font-size: 10px; font-weight: 600; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text3); opacity: 0.65; }
 
         /* ── Mount animations ── */
         .anim-logo { opacity: 0; transform: translateY(28px) scale(0.92); }
@@ -327,12 +545,63 @@ export default function Login() {
         .mounted .anim-foot { animation: mountUp 0.5s cubic-bezier(.22,1,.36,1) 0.42s both; }
         @keyframes mountUp { from{opacity:0;transform:translateY(24px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
 
-        @media (max-height: 680px) {
-          .logo-area { margin-bottom: 18px; gap: 10px; }
-          .logo-container { width: 70px; height: 70px; }
-          .logo-name { font-size: 28px; }
-          .card { padding: 22px 20px; }
-          .card-sub { margin-bottom: 16px; }
+        /* ── Modal ── */
+        .modal-overlay {
+          position: fixed; inset: 0; z-index: 100;
+          background: rgba(12,26,25,0.45);
+          backdrop-filter: blur(6px);
+          display: flex; align-items: center; justify-content: center;
+          padding: 20px 16px;
+          animation: modalFadeIn .22s ease;
+        }
+        @keyframes modalFadeIn { from{opacity:0} to{opacity:1} }
+        .modal-box {
+          width: 100%; max-width: 340px;
+          background: var(--surface);
+          border: 1.5px solid var(--border);
+          border-radius: 22px;
+          padding: 28px 22px 22px;
+          box-shadow: 0 16px 48px rgba(13,148,136,0.18);
+          position: relative;
+          animation: modalSlideUp .28s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes modalSlideUp { from{opacity:0;transform:translateY(20px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+        .modal-close {
+          position: absolute; top: 14px; right: 14px;
+          width: 32px; height: 32px; border-radius: 50%;
+          background: var(--accent-soft); border: none; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--text2); transition: var(--transition);
+          -webkit-tap-highlight-color: transparent;
+        }
+        .modal-close:hover { background: var(--accent-soft2); color: var(--accent); }
+        .modal-icon { margin-bottom: 14px; }
+        .modal-title { font-family: 'Cormorant Garamond', serif; font-size: 21px; font-weight: 600; color: var(--text); margin-bottom: 4px; letter-spacing: -0.3px; }
+        .modal-sub { font-size: 13px; color: var(--text3); margin-bottom: 18px; line-height: 1.5; }
+        .modal-back-link {
+          display: flex; align-items: center; gap: 5px; justify-content: center;
+          font-size: 12px; color: var(--text3); margin-top: 14px;
+          text-decoration: none; transition: color .2s; cursor: pointer;
+          background: none; border: none; font-family: 'DM Sans', sans-serif;
+          width: 100%; min-height: 36px; -webkit-tap-highlight-color: transparent;
+        }
+        .modal-back-link:hover { color: var(--accent); }
+
+        /* ── Very small screens (< 360px) ── */
+        @media (max-width: 359px) {
+          .logo-name { font-size: 27px; }
+          .card { padding: 20px 16px; }
+          .logo-container { width: 68px; height: 68px; }
+        }
+
+        /* ── Landscape / short screens ── */
+        @media (max-height: 620px) {
+          .logo-area { margin-bottom: 14px; gap: 8px; }
+          .logo-container { width: 60px; height: 60px; }
+          .logo-ring { width: 56px; height: 56px; }
+          .logo-name { font-size: 26px; }
+          .logo-tag { display: none; }
+          .card-sub { margin-bottom: 14px; }
         }
       `}</style>
 
@@ -353,6 +622,14 @@ export default function Login() {
           </button>
         </div>
 
+        {/* Forgot password modal */}
+        {showForgot && (
+          <ForgotPasswordModal
+            lang={lang}
+            onClose={() => setShowForgot(false)}
+          />
+        )}
+
         <div className="card-wrap">
           {/* Logo */}
           <div className="logo-area anim-logo">
@@ -361,7 +638,7 @@ export default function Login() {
               <div className="logo-ring logo-ring-2" />
               <div className="logo-ring logo-ring-3" />
               <div className="logo-pulse">
-                <AppLogo size={62} />
+                <AppLogo size={58} />
               </div>
             </div>
             <div>
@@ -380,6 +657,7 @@ export default function Login() {
             {error && <div className="error-box">{error}</div>}
 
             <div className="fields">
+              {/* Email */}
               <div>
                 <label className="field-label">{t.emailLabel}</label>
                 <input
@@ -392,6 +670,8 @@ export default function Login() {
                   inputMode="email"
                 />
               </div>
+
+              {/* Password */}
               <div>
                 <label className="field-label">{t.passLabel}</label>
                 <div className="field-input-wrap">
@@ -401,7 +681,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t.passPlaceholder}
-                    style={{ paddingRight: "42px" }}
+                    style={{ paddingRight: "46px" }}
                     autoComplete="current-password"
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                   />
@@ -410,6 +690,9 @@ export default function Login() {
                     onClick={() => setShowPass(!showPass)}
                     tabIndex={-1}
                     type="button"
+                    aria-label={
+                      showPass ? "Ocultar contraseña" : "Mostrar contraseña"
+                    }
                   >
                     {showPass ? (
                       <svg
@@ -460,8 +743,17 @@ export default function Login() {
                     )}
                   </button>
                 </div>
+                {/* Forgot password */}
+                <button
+                  className="forgot-link"
+                  onClick={() => setShowForgot(true)}
+                  type="button"
+                >
+                  {t.forgotPass}
+                </button>
               </div>
 
+              {/* Submit */}
               <button
                 className="btn-submit"
                 onClick={handleLogin}
