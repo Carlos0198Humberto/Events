@@ -225,12 +225,9 @@ function AppLogo({ size = 28 }: { size?: number }) {
           <stop offset="100%" stopColor="#0f766e" />
         </linearGradient>
       </defs>
-      {/* Fondo */}
       <rect width="56" height="56" rx="16" fill="url(#lg-ev)" />
-      {/* Estrella / destello superior */}
       <circle cx="40" cy="10" r="3" fill="white" opacity="0.9" />
       <circle cx="44" cy="14" r="1.5" fill="white" opacity="0.5" />
-      {/* Cámara body */}
       <rect
         x="8"
         y="20"
@@ -240,17 +237,14 @@ function AppLogo({ size = 28 }: { size?: number }) {
         fill="white"
         opacity="0.95"
       />
-      {/* Lente */}
       <circle cx="25" cy="31" r="7" fill="#e0f5f2" />
       <circle cx="25" cy="31" r="4.5" fill="#3AADA0" />
       <circle cx="25" cy="31" r="2" fill="white" opacity="0.7" />
-      {/* Flash bump */}
       <path
         d="M28 20 L32 20 L34 16 L22 16 L22 20Z"
         fill="white"
         opacity="0.95"
       />
-      {/* "X" de Eventix — esquina derecha cámara */}
       <line
         x1="36"
         y1="23"
@@ -644,7 +638,6 @@ function FotoCard({
           )}
         </div>
       </div>
-      {/* Botón descargar */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -961,13 +954,15 @@ function ModalSubirFoto({
     const { data: urlData } = supabase.storage
       .from("fotos-eventos")
       .getPublicUrl(path);
-    await supabase.from("fotos").insert({
-      evento_id: eventoId,
-      invitado_id: invitadoId,
-      url: urlData.publicUrl,
-      path,
-      caption: caption.trim() || null,
-    });
+    await supabase
+      .from("fotos")
+      .insert({
+        evento_id: eventoId,
+        invitado_id: invitadoId,
+        url: urlData.publicUrl,
+        path,
+        caption: caption.trim() || null,
+      });
     setSubiendo(false);
     onSubida();
     onClose();
@@ -1225,6 +1220,7 @@ function ModalDeseo({
   yaSubioFoto,
   onClose,
   onPublicado,
+  onIrAFoto,
   t,
 }: {
   invitadoNombre: string;
@@ -1232,6 +1228,7 @@ function ModalDeseo({
   yaSubioFoto: boolean;
   onClose: () => void;
   onPublicado: (d: Partial<Deseo>) => void;
+  onIrAFoto: () => void;
   t: (typeof T)["es"];
 }) {
   const [mensaje, setMensaje] = useState("");
@@ -1325,6 +1322,7 @@ function ModalDeseo({
             {Ico.x(15, "#3AADA0")}
           </button>
         </div>
+
         {yaDejoDeseo ? (
           <div style={{ textAlign: "center", padding: "22px 0" }}>
             <div
@@ -1357,6 +1355,7 @@ function ModalDeseo({
             </p>
           </div>
         ) : !yaSubioFoto ? (
+          // ── BLOQUE "primero sube tu foto" ──────────────────────────────────
           <div style={{ textAlign: "center", padding: "24px 14px" }}>
             <div
               style={{
@@ -1386,8 +1385,12 @@ function ModalDeseo({
             <p style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
               {t.primeroFotoSub}
             </p>
+            {/* ── CORRECCIÓN: llama onIrAFoto en lugar de solo onClose ── */}
             <button
-              onClick={onClose}
+              onClick={() => {
+                onClose();
+                onIrAFoto();
+              }}
               style={{
                 marginTop: 18,
                 background: "#3AADA0",
@@ -1755,6 +1758,15 @@ export default function MuroPublico() {
   useEffect(() => {
     setTimeout(() => setMounted(true), 60);
     const token = new URLSearchParams(window.location.search).get("token");
+
+    // ── Leer tab inicial desde URL ──────────────────────────────────────────
+    const tabParam = new URLSearchParams(window.location.search).get(
+      "tab",
+    ) as Vista | null;
+    if (tabParam && ["fotos", "albumes", "deseos"].includes(tabParam)) {
+      setVista(tabParam);
+    }
+
     if (token) {
       supabase
         .from("invitados")
@@ -1852,7 +1864,6 @@ export default function MuroPublico() {
     setLoading(false);
   }
 
-  // ── CORRECCIÓN: normalizar invitados de array a objeto ──────────────────────
   async function cargarFotos() {
     const { data } = await supabase
       .from("fotos")
@@ -1945,7 +1956,6 @@ export default function MuroPublico() {
       : "";
   const pasoJourney = !invId ? null : !yaFoto ? 3 : !yaDeseo ? 4 : 5;
 
-  // ── Favicon dinámico ──
   useEffect(() => {
     if (!evento) return;
     const emoji = TIPO_EMOJI[evento.tipo] ?? "✨";
@@ -2059,7 +2069,7 @@ export default function MuroPublico() {
         .quick-bar{animation:fadeUp 0.4s 0.1s both}
       `}</style>
 
-      {/* ══ HERO ══════════════════════════════════════════════════════════════ */}
+      {/* ══ HERO ══ */}
       <div
         style={{
           position: "relative",
@@ -2101,7 +2111,6 @@ export default function MuroPublico() {
           }}
         />
 
-        {/* Top bar */}
         <div
           style={{
             position: "absolute",
@@ -2150,7 +2159,6 @@ export default function MuroPublico() {
           </Link>
         </div>
 
-        {/* Contenido hero */}
         <div style={{ position: "relative", zIndex: 1, marginBottom: 18 }}>
           <div
             style={{
@@ -2175,7 +2183,6 @@ export default function MuroPublico() {
               Eventix
             </span>
           </div>
-
           <h1
             style={{
               fontSize: 26,
@@ -2211,7 +2218,6 @@ export default function MuroPublico() {
             {evento.lugar ? ` · ${evento.lugar}` : ""}
           </p>
 
-          {/* Stats */}
           <div
             style={{
               display: "flex",
@@ -2260,7 +2266,6 @@ export default function MuroPublico() {
             ))}
           </div>
 
-          {/* Journey badge */}
           {invId && pasoJourney !== null && pasoJourney < 5 && (
             <div
               style={{
@@ -2311,7 +2316,7 @@ export default function MuroPublico() {
         </div>
       </div>
 
-      {/* ══ BARRA RÁPIDA DEL INVITADO ══════════════════════════════════════════ */}
+      {/* ══ BARRA RÁPIDA ══ */}
       {invId && (
         <div
           className="quick-bar"
@@ -2376,12 +2381,10 @@ export default function MuroPublico() {
               </span>
             )}
           </button>
-          {/* Escribir deseo */}
+
+          {/* ── CORRECCIÓN PRINCIPAL: ya no redirige a "fotos" ── */}
           <button
-            onClick={() => {
-              setModalDeseo(true);
-              if (!yaFoto) setVista("fotos");
-            }}
+            onClick={() => setModalDeseo(true)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -2438,6 +2441,7 @@ export default function MuroPublico() {
               </span>
             )}
           </button>
+
           {/* Ver muro */}
           <button
             onClick={() => setVista("fotos")}
@@ -2460,7 +2464,7 @@ export default function MuroPublico() {
         </div>
       )}
 
-      {/* ══ TABS ══════════════════════════════════════════════════════════════ */}
+      {/* ══ TABS ══ */}
       <div
         style={{
           background: "rgba(255,255,255,0.98)",
@@ -2549,7 +2553,6 @@ export default function MuroPublico() {
         </div>
       </div>
 
-      {/* Banner organizador */}
       {esOrg && (
         <div
           style={{ padding: "10px 16px 0", maxWidth: 640, margin: "0 auto" }}
@@ -2573,7 +2576,7 @@ export default function MuroPublico() {
         </div>
       )}
 
-      {/* ══ CONTENIDO ═════════════════════════════════════════════════════════ */}
+      {/* ══ CONTENIDO ══ */}
       <div style={{ padding: "14px 14px 0", maxWidth: 640, margin: "0 auto" }}>
         {/* ── FOTOS ── */}
         {vista === "fotos" &&
@@ -2948,7 +2951,7 @@ export default function MuroPublico() {
         )}
       </div>
 
-      {/* ══ Lightbox ══════════════════════════════════════════════════════════ */}
+      {/* ══ Lightbox ══ */}
       {fotoActiva !== null && fotos[fotoActiva] && (
         <Lightbox
           foto={fotos[fotoActiva]}
@@ -2968,7 +2971,7 @@ export default function MuroPublico() {
         />
       )}
 
-      {/* ══ Modales ═══════════════════════════════════════════════════════════ */}
+      {/* ══ Modales ══ */}
       {modalSubir && invId && (
         <ModalSubirFoto
           eventoId={eventoId}
@@ -2988,11 +2991,15 @@ export default function MuroPublico() {
           yaSubioFoto={yaFoto}
           onClose={() => setModalDeseo(false)}
           onPublicado={publicarDeseo}
+          onIrAFoto={() => {
+            setModalDeseo(false);
+            setModalSubir(true);
+          }}
           t={t}
         />
       )}
 
-      {/* ══ FABs flotantes ════════════════════════════════════════════════════ */}
+      {/* ══ FABs ══ */}
       {invId && (
         <div
           style={{
