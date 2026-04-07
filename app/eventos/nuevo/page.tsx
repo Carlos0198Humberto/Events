@@ -652,10 +652,11 @@ export default function NuevoEvento() {
   const [imagenLugar, setImagenLugar] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewLugar, setPreviewLugar] = useState<string | null>(null);
-  const [videoLugar, setVideoLugar] = useState<File | null>(null);
+  // videoLugar eliminado
   const [musicaFile, setMusicaFile] = useState<File | null>(null);
   const [musicaNombre, setMusicaNombre] = useState("");
   const [cupo, setCupo] = useState("");
+  const [tema, setTema] = useState("clasico");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -694,7 +695,7 @@ export default function NuevoEvento() {
       return;
     }
 
-    const [imagen_url, foto_lugar_url, musica_url, video_lugar_url] =
+    const [imagen_url, foto_lugar_url, musica_url] =
       await Promise.all([
         imagen
           ? subirArchivo(imagen, "eventos", user.id)
@@ -704,9 +705,6 @@ export default function NuevoEvento() {
           : Promise.resolve(null),
         musicaFile
           ? subirArchivo(musicaFile, "musica-eventos", `musica-${user.id}`)
-          : Promise.resolve(null),
-        videoLugar
-          ? subirArchivo(videoLugar, "videos-lugar", `video-${user.id}`)
           : Promise.resolve(null),
       ]);
 
@@ -727,8 +725,8 @@ export default function NuevoEvento() {
       foto_lugar_url,
       musica_url,
       musica_nombre: musicaNombre || null,
-      video_lugar_url,
       cupo_personas: cupo ? parseInt(cupo) : null,
+      tema,
     });
 
     if (insertError) setError(t.errorCrear + insertError.message);
@@ -822,6 +820,7 @@ export default function NuevoEvento() {
         .photo-venue .photo-preview{height:110px}
         .photo-preview{position:relative;width:100%}
         .photo-preview-img{width:100%;height:100%;object-fit:cover;display:block}
+        .photo-cover .photo-preview-img{object-fit:contain;background:#111}
         .photo-preview-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.38);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;opacity:0;transition:opacity .22s ease}
         .photo-preview:hover .photo-preview-overlay{opacity:1}
         .photo-preview-overlay-text{color:white;font-size:11px;font-weight:700}
@@ -1103,15 +1102,7 @@ export default function NuevoEvento() {
               <div>
                 <label className="field-label">{t.fotoLugar}</label>
                 <div className="venue-badge">
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path
-                      d="M5 1l1.1 3.1H9L6.5 6l1 3L5 7.4 2.5 9l1-3L1 4.1h2.9L5 1z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  {lang === "es"
-                    ? "Aparece primero en la tarjeta"
-                    : "Appears first on the card"}
+                  {lang === "es" ? "Opcional" : "Optional"}
                 </div>
                 <label
                   className="photo-upload photo-venue"
@@ -1150,17 +1141,7 @@ export default function NuevoEvento() {
                 <p className="field-hint">{t.fotoLugarHint}</p>
               </div>
 
-              {/* Video corto del lugar */}
-              <FilePickRow
-                icon={<IconoVideo />}
-                label={t.videoLugar}
-                hint={t.videoLugarHint}
-                accept="video/mp4,video/*"
-                file={videoLugar}
-                onChange={setVideoLugar}
-                btnLabel={t.videoBtn}
-                btnCambiar={t.videoCambiar}
-              />
+              {/* Video del lugar eliminado — no requerido */}
             </div>
           </div>
 
@@ -1230,6 +1211,49 @@ export default function NuevoEvento() {
                 onChange={(e) => setFechaLimite(e.target.value)}
               />
             </Campo>
+          </div>
+
+          {/* 8. Tema de color */}
+          <div className="section-card">
+            <p className="section-title">🎨 {lang === "es" ? "Tema de color" : "Color theme"}</p>
+            <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 12 }}>
+              {lang === "es" ? "Elige la paleta de colores de tu tarjeta de invitación" : "Choose the color palette for your invitation card"}
+            </p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {([
+                { id: "clasico", label: lang === "es" ? "Clásico" : "Classic", colors: ["#1a1209", "#C9A96E", "#FAF6F0"], desc: lang === "es" ? "Dorado elegante" : "Elegant gold" },
+                { id: "rosado", label: lang === "es" ? "Rosado" : "Blush", colors: ["#4a1535", "#d4847a", "#FDF5F5"], desc: lang === "es" ? "Rosa romántico" : "Romantic blush" },
+                { id: "esmeralda", label: lang === "es" ? "Esmeralda" : "Emerald", colors: ["#0d2d1e", "#4caf82", "#F2FAF6"], desc: lang === "es" ? "Verde sofisticado" : "Sophisticated green" },
+              ] as { id: string; label: string; colors: string[]; desc: string }[]).map((t2) => (
+                <button
+                  key={t2.id}
+                  type="button"
+                  onClick={() => setTema(t2.id)}
+                  style={{
+                    flex: "1 1 120px",
+                    padding: "12px 10px",
+                    borderRadius: 14,
+                    border: tema === t2.id ? "2px solid var(--accent)" : "1.5px solid var(--border-mid)",
+                    background: tema === t2.id ? "var(--accent-soft2)" : "var(--surface2)",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 7,
+                    transition: "all .2s",
+                  }}
+                >
+                  {/* Color swatches */}
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {t2.colors.map((c, i) => (
+                      <div key={i} style={{ width: 20, height: 20, borderRadius: "50%", background: c, border: "1.5px solid rgba(0,0,0,0.1)" }} />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{t2.label}</div>
+                  <div style={{ fontSize: 10, color: "var(--text3)" }}>{t2.desc}</div>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Crear */}

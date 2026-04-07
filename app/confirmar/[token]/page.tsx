@@ -11,6 +11,7 @@ type Invitado = {
   email: string;
   estado: string;
   num_personas: number;
+  cupo_elije_invitado?: boolean;
   token: string;
   numero_confirmacion?: number | null;
   foto_url?: string | null;
@@ -40,6 +41,7 @@ type Evento = {
   cupo_personas?: number | null;
   fecha_limite_confirmacion?: string | null;
   organizador_telefono?: string;
+  tema?: string | null;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -460,6 +462,177 @@ const IcoChevronRight = () => (
   </svg>
 );
 
+// ─── Decoración por tipo de evento ────────────────────────────────────────────
+function DecoracionEvento({ tipo }: { tipo: string }) {
+  if (tipo === "boda") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "6px 0" }}>
+        {/* Anillos de boda */}
+        <svg width="110" height="56" viewBox="0 0 110 56" fill="none">
+          {/* Anillo izquierdo */}
+          <circle cx="36" cy="30" r="20" stroke="#C9A96E" strokeWidth="5" fill="none" opacity="0.85" />
+          <circle cx="36" cy="30" r="13" stroke="#E8D5B0" strokeWidth="1.5" fill="none" opacity="0.4" />
+          {/* Diamante */}
+          <path d="M32 10 L36 4 L40 10 L36 15 Z" fill="#C9A96E" opacity="0.9" />
+          <path d="M32 10 L36 15 L40 10" fill="#E8D5B0" opacity="0.6" />
+          {/* Anillo derecho */}
+          <circle cx="74" cy="30" r="20" stroke="#C9A96E" strokeWidth="5" fill="none" opacity="0.85" />
+          <circle cx="74" cy="30" r="13" stroke="#E8D5B0" strokeWidth="1.5" fill="none" opacity="0.4" />
+          {/* Destello */}
+          <path d="M70 10 L74 4 L78 10 L74 15 Z" fill="#C9A96E" opacity="0.9" />
+          <path d="M70 10 L74 15 L78 10" fill="#E8D5B0" opacity="0.6" />
+          {/* Enlace */}
+          <path d="M52 28 Q55 22 58 28" stroke="#C9A96E" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
+        </svg>
+        {/* Flores decorativas */}
+        <svg width="200" height="28" viewBox="0 0 200 28" fill="none">
+          <path d="M0 14 Q25 4 50 14 Q75 24 100 14 Q125 4 150 14 Q175 24 200 14" stroke="#C9A96E" strokeWidth="1" fill="none" opacity="0.5" />
+          {[25, 75, 125, 175].map((x) => (
+            <g key={x} transform={`translate(${x},14)`}>
+              <circle cx="0" cy="0" r="2.5" fill="#C9A96E" opacity="0.7" />
+              <circle cx="0" cy="-5" r="2" fill="#E8D5B0" opacity="0.6" />
+              <circle cx="5" cy="0" r="2" fill="#E8D5B0" opacity="0.6" />
+              <circle cx="0" cy="5" r="2" fill="#E8D5B0" opacity="0.6" />
+              <circle cx="-5" cy="0" r="2" fill="#E8D5B0" opacity="0.6" />
+            </g>
+          ))}
+          <circle cx="100" cy="14" r="3" fill="#C9A96E" opacity="0.9" />
+        </svg>
+      </div>
+    );
+  }
+
+  if (tipo === "quinceañera") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "6px 0" }}>
+        {/* Corona */}
+        <svg width="90" height="52" viewBox="0 0 90 52" fill="none">
+          {/* Base de la corona */}
+          <path d="M8 44 L8 28 L22 8 L45 22 L68 8 L82 28 L82 44 Z" stroke="#C9A96E" strokeWidth="2.5" fill="rgba(201,169,110,0.12)" strokeLinejoin="round" />
+          {/* Puntas de la corona */}
+          <circle cx="22" cy="8" r="4" fill="#C9A96E" opacity="0.85" />
+          <circle cx="45" cy="4" r="5" fill="#C9A96E" opacity="0.95" />
+          <circle cx="68" cy="8" r="4" fill="#C9A96E" opacity="0.85" />
+          {/* Joyas en la corona */}
+          <ellipse cx="45" cy="36" rx="8" ry="6" fill="rgba(201,169,110,0.25)" stroke="#C9A96E" strokeWidth="1.5" />
+          <ellipse cx="24" cy="38" rx="5" ry="4" fill="rgba(201,169,110,0.15)" stroke="#C9A96E" strokeWidth="1" />
+          <ellipse cx="66" cy="38" rx="5" ry="4" fill="rgba(201,169,110,0.15)" stroke="#C9A96E" strokeWidth="1" />
+          {/* Destellos */}
+          <path d="M45 0 L46 3 L45 4 L44 3 Z" fill="#E8D5B0" opacity="0.9" />
+        </svg>
+        {/* Mariposas y flores */}
+        <svg width="200" height="32" viewBox="0 0 200 32" fill="none">
+          <path d="M0 16 Q50 6 100 16 Q150 26 200 16" stroke="#C9A96E" strokeWidth="0.8" fill="none" opacity="0.4" />
+          {/* Mariposa izq */}
+          <g transform="translate(40,16)">
+            <path d="M0 0 Q-10 -10 -18 -4 Q-10 2 0 0" fill="#C9A96E" opacity="0.5" />
+            <path d="M0 0 Q-10 10 -18 4 Q-10 -2 0 0" fill="#C9A96E" opacity="0.35" />
+            <path d="M0 0 Q10 -10 18 -4 Q10 2 0 0" fill="#C9A96E" opacity="0.5" />
+            <path d="M0 0 Q10 10 18 4 Q10 -2 0 0" fill="#C9A96E" opacity="0.35" />
+            <circle cx="0" cy="0" r="2" fill="#C9A96E" opacity="0.8" />
+          </g>
+          {/* Flor central */}
+          <g transform="translate(100,16)">
+            {[0,60,120,180,240,300].map((a) => (
+              <ellipse key={a} cx={Math.cos(a*Math.PI/180)*7} cy={Math.sin(a*Math.PI/180)*7} rx="4" ry="3" fill="#C9A96E" opacity="0.5" transform={`rotate(${a} ${Math.cos(a*Math.PI/180)*7} ${Math.sin(a*Math.PI/180)*7})`} />
+            ))}
+            <circle cx="0" cy="0" r="3.5" fill="#E8D5B0" opacity="0.85" />
+          </g>
+          {/* Mariposa der */}
+          <g transform="translate(160,16)">
+            <path d="M0 0 Q-10 -10 -18 -4 Q-10 2 0 0" fill="#C9A96E" opacity="0.5" />
+            <path d="M0 0 Q-10 10 -18 4 Q-10 -2 0 0" fill="#C9A96E" opacity="0.35" />
+            <path d="M0 0 Q10 -10 18 -4 Q10 2 0 0" fill="#C9A96E" opacity="0.5" />
+            <path d="M0 0 Q10 10 18 4 Q10 -2 0 0" fill="#C9A96E" opacity="0.35" />
+            <circle cx="0" cy="0" r="2" fill="#C9A96E" opacity="0.8" />
+          </g>
+        </svg>
+      </div>
+    );
+  }
+
+  if (tipo === "graduacion") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "6px 0" }}>
+        {/* Birrete de graduación */}
+        <svg width="90" height="60" viewBox="0 0 90 60" fill="none">
+          {/* Borla */}
+          <line x1="68" y1="18" x2="72" y2="38" stroke="#C9A96E" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
+          <circle cx="72" cy="40" r="4" fill="#C9A96E" opacity="0.75" />
+          {/* Tablero superior */}
+          <path d="M45 6 L82 22 L45 38 L8 22 Z" fill="rgba(201,169,110,0.18)" stroke="#C9A96E" strokeWidth="2.2" strokeLinejoin="round" />
+          {/* Parte superior brillante */}
+          <path d="M45 6 L82 22 L45 26 L8 22 Z" fill="rgba(201,169,110,0.12)" />
+          {/* Cuerpo del birrete */}
+          <path d="M24 26 L24 42 Q45 50 66 42 L66 26" stroke="#C9A96E" strokeWidth="2" fill="rgba(201,169,110,0.1)" strokeLinejoin="round" />
+          {/* Diploma */}
+          <rect x="12" y="40" width="22" height="14" rx="2" stroke="#C9A96E" strokeWidth="1.5" fill="rgba(201,169,110,0.08)" />
+          <line x1="15" y1="45" x2="31" y2="45" stroke="#C9A96E" strokeWidth="1" opacity="0.5" />
+          <line x1="15" y1="49" x2="28" y2="49" stroke="#C9A96E" strokeWidth="1" opacity="0.4" />
+          <path d="M29 38 Q33 36 34 40 Q33 44 29 42 Z" fill="#C9A96E" opacity="0.6" />
+        </svg>
+        {/* Estrellas y destellos */}
+        <svg width="200" height="28" viewBox="0 0 200 28" fill="none">
+          <path d="M0 14 Q50 5 100 14 Q150 23 200 14" stroke="#C9A96E" strokeWidth="0.8" fill="none" opacity="0.4" />
+          {[20, 60, 100, 140, 180].map((x, i) => (
+            <g key={x} transform={`translate(${x},14)`}>
+              <path d={`M0 -${i===2?7:5} L1.5 -2 L${i===2?7:5} 0 L1.5 2 L0 ${i===2?7:5} L-1.5 2 L-${i===2?7:5} 0 L-1.5 -2 Z`} fill="#C9A96E" opacity={i===2?0.9:0.6} />
+            </g>
+          ))}
+        </svg>
+      </div>
+    );
+  }
+
+  if (tipo === "cumpleaños") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "6px 0" }}>
+        {/* Pastel con globos */}
+        <svg width="110" height="60" viewBox="0 0 110 60" fill="none">
+          {/* Globo izq */}
+          <ellipse cx="20" cy="20" rx="12" ry="15" fill="rgba(201,169,110,0.25)" stroke="#C9A96E" strokeWidth="1.8" />
+          <line x1="20" y1="35" x2="30" y2="52" stroke="#C9A96E" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+          {/* Globo der */}
+          <ellipse cx="90" cy="18" rx="12" ry="15" fill="rgba(201,169,110,0.2)" stroke="#C9A96E" strokeWidth="1.8" />
+          <line x1="90" y1="33" x2="80" y2="52" stroke="#C9A96E" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+          {/* Pastel */}
+          <rect x="28" y="38" width="54" height="20" rx="4" fill="rgba(201,169,110,0.18)" stroke="#C9A96E" strokeWidth="2" />
+          <rect x="32" y="30" width="46" height="12" rx="3" fill="rgba(201,169,110,0.12)" stroke="#C9A96E" strokeWidth="1.5" />
+          {/* Velas */}
+          {[40, 55, 70].map((x) => (
+            <g key={x}>
+              <rect x={x-2} y="18" width="4" height="13" rx="2" fill="#C9A96E" opacity="0.7" />
+              <ellipse cx={x} cy="17" rx="3" ry="4" fill="#E8D5B0" opacity="0.9" />
+            </g>
+          ))}
+          {/* Decoración pastel */}
+          <path d="M28 42 Q55 36 82 42" stroke="#E8D5B0" strokeWidth="1" fill="none" opacity="0.5" />
+        </svg>
+        {/* Confeti */}
+        <svg width="200" height="24" viewBox="0 0 200 24" fill="none">
+          {[15,35,55,80,100,120,145,165,185].map((x,i) => (
+            <rect key={x} x={x} y={i%2===0?4:10} width="6" height="6" rx="1" fill="#C9A96E" opacity={0.4+i*0.05} transform={`rotate(${i*25} ${x+3} ${(i%2===0?4:10)+3})`} />
+          ))}
+        </svg>
+      </div>
+    );
+  }
+
+  // otro / default
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "6px 0" }}>
+      <svg width="160" height="36" viewBox="0 0 160 36" fill="none">
+        <path d="M0 18 Q40 6 80 18 Q120 30 160 18" stroke="#C9A96E" strokeWidth="1" fill="none" opacity="0.5" />
+        {[20,50,80,110,140].map((x,i) => (
+          <g key={x} transform={`translate(${x},18)`}>
+            <path d={`M0 -${i===2?8:5} L1.8 -2 L${i===2?8:5} 0 L1.8 2 L0 ${i===2?8:5} L-1.8 2 L-${i===2?8:5} 0 L-1.8 -2 Z`} fill="#C9A96E" opacity={i===2?0.9:0.55} />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 // ─── Ornamento decorativo ─────────────────────────────────────────────────────
 function OrnamentoDivider({ tipo }: { tipo: string }) {
   if (tipo === "boda") {
@@ -696,16 +869,15 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
 function SubirFotosInvitado({
   invitadoId,
   eventoId,
-  token,
 }: {
   invitadoId: string;
   eventoId: string;
-  token: string;
+  token?: string;
 }) {
   const [fotos, setFotos] = useState<string[]>([]);
   const [subiendo, setSubiendo] = useState(false);
   const [cargado, setCargado] = useState(false);
-  const [expandido, setExpandido] = useState(false);
+  const [verFotos, setVerFotos] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const MAX = 5;
 
@@ -715,11 +887,11 @@ function SubirFotosInvitado({
 
   async function cargarFotos() {
     const { data } = await supabase
-      .from("fotos_muro")
-      .select("foto_url")
+      .from("fotos")
+      .select("url")
       .eq("invitado_id", invitadoId)
       .order("created_at", { ascending: true });
-    if (data) setFotos(data.map((f) => f.foto_url).filter(Boolean));
+    if (data) setFotos(data.map((f) => f.url).filter(Boolean));
     setCargado(true);
   }
 
@@ -730,22 +902,23 @@ function SubirFotosInvitado({
     const seleccionadas = files.slice(0, disponibles);
     setSubiendo(true);
     for (const file of seleccionadas) {
-      const ext = file.name.split(".").pop();
-      const path = `muro/${eventoId}/${invitadoId}_${Date.now()}.${ext}`;
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${eventoId}/${invitadoId}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
       const { data: up, error } = await supabase.storage
-        .from("eventix")
+        .from("fotos-eventos")
         .upload(path, file, { upsert: false });
       if (!error && up) {
         const { data: urlData } = supabase.storage
-          .from("eventix")
+          .from("fotos-eventos")
           .getPublicUrl(up.path);
         const url = urlData?.publicUrl;
         if (url) {
-          await supabase.from("fotos_muro").insert({
+          await supabase.from("fotos").insert({
             evento_id: eventoId,
             invitado_id: invitadoId,
-            token_invitado: token,
-            foto_url: url,
+            url,
+            path: up.path,
+            estado: "aprobada",
           });
           setFotos((prev) => [...prev, url]);
         }
@@ -757,101 +930,67 @@ function SubirFotosInvitado({
 
   if (!cargado) return null;
 
+  const lleno = fotos.length >= MAX;
+
   return (
     <div className="fotos-inv-wrap">
-      <div
-        className="fotos-inv-header"
-        onClick={() => setExpandido(!expandido)}
+      {/* Input oculto */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: "none" }}
+        onChange={handleFile}
+      />
+
+      {/* Botón principal de subir — siempre visible */}
+      <button
+        className="btn-accion-full"
+        onClick={() => !lleno && fileRef.current?.click()}
+        disabled={subiendo || lleno}
+        style={{ opacity: lleno ? 0.75 : 1, cursor: lleno ? "default" : "pointer" }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div className="btn-accion-ico">
-            <IcoCamera />
-          </div>
-          <div>
-            <div
-              style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)" }}
-            >
-              Mis fotos del evento
-            </div>
-            <div style={{ fontSize: 11, color: "var(--ink3)" }}>
-              {fotos.length}/{MAX} fotos subidas · toca para{" "}
-              {expandido ? "cerrar" : "abrir"}
-            </div>
-          </div>
-        </div>
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--ink3)"
-          strokeWidth="2"
-          strokeLinecap="round"
-        >
-          <polyline points={expandido ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
-        </svg>
-      </div>
-
-      {expandido && (
-        <div className="fotos-inv-body">
-          {fotos.length > 0 && (
-            <div className="fotos-inv-grid">
-              {fotos.map((src, i) => (
-                <div key={i} className="fotos-inv-thumb">
-                  <img src={src} alt={`Foto ${i + 1}`} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {fotos.length < MAX ? (
-            <>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                multiple
-                style={{ display: "none" }}
-                onChange={handleFile}
-              />
-              <button
-                className="btn-subir-foto"
-                onClick={() => fileRef.current?.click()}
-                disabled={subiendo}
-              >
-                {subiendo ? (
-                  <>
-                    <div className="spinner" /> Subiendo...
-                  </>
-                ) : (
-                  <>
-                    <IcoPlus /> Agregar foto{fotos.length === 0 ? "" : " más"}
-                  </>
-                )}
-              </button>
-              <p
-                style={{
-                  fontSize: 11,
-                  color: "var(--ink3)",
-                  textAlign: "center",
-                }}
-              >
-                Puedes subir hasta {MAX} fotos · quedan {MAX - fotos.length}{" "}
-                disponibles
-              </p>
-            </>
+        <div className="btn-accion-ico">
+          {subiendo ? (
+            <div className="spinner" style={{ width: 20, height: 20 }} />
           ) : (
-            <p
-              style={{
-                fontSize: 12,
-                color: "var(--ink3)",
-                textAlign: "center",
-                padding: "8px 0",
-              }}
-            >
-              ✓ Ya subiste el máximo de {MAX} fotos
-            </p>
+            <IcoCamera />
           )}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "left", flex: 1 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)" }}>
+            {subiendo ? "Subiendo fotos..." : lleno ? "✓ Fotos subidas (máx. 5)" : "Subir mis fotos del evento"}
+          </span>
+          <span style={{ fontSize: 11, color: "var(--ink3)" }}>
+            {lleno
+              ? "Ya alcanzaste el máximo de 5 fotos"
+              : `${fotos.length} de ${MAX} fotos · toca para agregar`}
+          </span>
+        </div>
+        {fotos.length > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setVerFotos(!verFotos); }}
+            style={{ background: "none", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--ink3)", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            {verFotos ? "Ocultar" : `Ver (${fotos.length})`}
+          </button>
+        )}
+        {!lleno && (
+          <svg style={{ flexShrink: 0 }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+        )}
+      </button>
+
+      {/* Grid de miniaturas — se muestra al tocar "Ver" */}
+      {verFotos && fotos.length > 0 && (
+        <div className="fotos-inv-grid" style={{ marginTop: 10 }}>
+          {fotos.map((src, i) => (
+            <div key={i} className="fotos-inv-thumb">
+              <img src={src} alt={`Foto ${i + 1}`} />
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -1177,10 +1316,11 @@ export default function ConfirmarPage() {
 
   async function handleConfirmarClick() {
     if (!invitado) return;
-    if ((invitado.num_personas || 1) === 1) {
-      await confirmarAsistencia();
-    } else {
+    // Si el organizador configuró que el invitado elija, o si el cupo es > 1, mostrar form
+    if (invitado.cupo_elije_invitado || (invitado.num_personas || 1) > 1) {
       setStep("form");
+    } else {
+      await confirmarAsistencia();
     }
   }
 
@@ -1322,17 +1462,39 @@ export default function ConfirmarPage() {
       ].filter(Boolean) as string[])
     : [];
 
+  // ─── TEMAS ─────────────────────────────────────────────────────────────────
+  const TEMAS: Record<string, string> = {
+    clasico: `
+      --gold:#C9A96E;--gold-dark:#8B6914;--gold-light:#E8D5B0;--gold-pale:#F5EDD8;
+      --dark:#1a1209;--dark2:#2d1f0a;--ink:#3d2b0f;--ink2:#5a3e1b;--ink3:#8B6914;
+      --cream:#FAF6F0;--cream2:#F0E8D8;--surface:#FFFFFF;
+      --border:rgba(201,169,110,0.25);--border-mid:rgba(201,169,110,0.40);
+      --shadow:0 8px 40px rgba(26,18,9,0.10);--shadow-lg:0 20px 60px rgba(26,18,9,0.16);
+    `,
+    rosado: `
+      --gold:#d4847a;--gold-dark:#9c3f36;--gold-light:#f0b8b3;--gold-pale:#FDF0EF;
+      --dark:#4a1535;--dark2:#6b1f4a;--ink:#5c1f3d;--ink2:#8a3b62;--ink3:#b06a8a;
+      --cream:#FDF5F5;--cream2:#F7E8E8;--surface:#FFFFFF;
+      --border:rgba(212,132,122,0.25);--border-mid:rgba(212,132,122,0.40);
+      --shadow:0 8px 40px rgba(74,21,53,0.10);--shadow-lg:0 20px 60px rgba(74,21,53,0.16);
+    `,
+    esmeralda: `
+      --gold:#4caf82;--gold-dark:#2d7a57;--gold-light:#8fd5b5;--gold-pale:#E8F7F0;
+      --dark:#0d2d1e;--dark2:#1a4a30;--ink:#1b4332;--ink2:#2d6a4f;--ink3:#52b788;
+      --cream:#F2FAF6;--cream2:#E0F2EA;--surface:#FFFFFF;
+      --border:rgba(76,175,130,0.25);--border-mid:rgba(76,175,130,0.40);
+      --shadow:0 8px 40px rgba(13,45,30,0.10);--shadow-lg:0 20px 60px rgba(13,45,30,0.16);
+    `,
+  };
+  const temaVars = TEMAS[evento?.tema ?? "clasico"] ?? TEMAS.clasico;
+
   // ─── ESTILOS ───────────────────────────────────────────────────────────────
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Jost:wght@300;400;500;600;700&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAF6F0;color:#1a1209}
     :root{
-      --gold:#C9A96E;--gold-dark:#8B6914;--gold-light:#E8D5B0;--gold-pale:#F5EDD8;
-      --dark:#1a1209;--dark2:#2d1f0a;--ink:#3d2b0f;--ink2:#5a3e1b;--ink3:#8B6914;
-      --cream:#FAF6F0;--cream2:#F0E8D8;--surface:#FFFFFF;
-      --border:rgba(201,169,110,0.25);--border-mid:rgba(201,169,110,0.40);
-      --shadow:0 8px 40px rgba(26,18,9,0.10);--shadow-lg:0 20px 60px rgba(26,18,9,0.16);
+      ${temaVars}
       --r:24px;--r-sm:16px;
     }
     .page{min-height:100dvh;background:var(--cream);
@@ -1666,17 +1828,12 @@ export default function ConfirmarPage() {
         {step === "vista" && (
           <div className="wrap">
             <div className="inv-card">
-              <div
-                className="inv-hero"
-                style={{ minHeight: evento.imagen_url ? 320 : 260 }}
-              >
+
+              {/* ── HERO: foto completa + nombre invitado ── */}
+              <div className="inv-hero" style={{ minHeight: evento.imagen_url ? 360 : 240 }}>
                 {evento.imagen_url ? (
                   <>
-                    <img
-                      src={evento.imagen_url}
-                      className="inv-hero-foto"
-                      alt={evento.nombre}
-                    />
+                    <img src={evento.imagen_url} className="inv-hero-foto" alt={evento.nombre} />
                     <div className="inv-hero-foto-overlay" />
                   </>
                 ) : (
@@ -1688,50 +1845,62 @@ export default function ConfirmarPage() {
                 </div>
                 <h1 className="inv-saludo">
                   {nombresEnTarjeta.length > 1
-                    ? `${nombresEnTarjeta.slice(0, 2).join(" & ")}`
-                    : `${invitado.nombre}`}
+                    ? nombresEnTarjeta.slice(0, 2).join(" & ")
+                    : invitado.nombre}
                 </h1>
                 <p className="inv-anfitrion">
-                  Con cariño de{" "}
-                  <strong style={{ color: "#fff", fontWeight: 600 }}>
-                    {evento.anfitriones}
-                  </strong>
+                  Con cariño de <strong style={{ color: "#fff", fontWeight: 600 }}>{evento.anfitriones}</strong>
                 </p>
-                <div className="inv-evento-nombre">{evento.nombre}</div>
+              </div>
+
+              {/* ── Decoración por tipo de evento + nombre del evento ── */}
+              <div style={{ textAlign: "center", padding: "22px 20px 6px", background: "var(--cream)" }}>
+                <DecoracionEvento tipo={evento.tipo} />
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "var(--ink)", marginTop: 10, letterSpacing: 0.3 }}>
+                  {evento.nombre}
+                </div>
+                {evento.anfitriones && (
+                  <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 4, fontWeight: 500, letterSpacing: 0.5 }}>
+                    {evento.anfitriones}
+                  </div>
+                )}
+                {evento.frase_evento && (
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15, fontStyle: "italic", color: "var(--ink2)", marginTop: 10, lineHeight: 1.55 }}>
+                    ❝ {evento.frase_evento} ❞
+                  </div>
+                )}
               </div>
 
               <div className="inv-body">
-                {evento.frase_evento && (
-                  <>
-                    <OrnamentoDivider tipo={evento.tipo} />
-                    <div className="inv-frase">❝ {evento.frase_evento} ❞</div>
-                    <OrnamentoDivider tipo={evento.tipo} />
-                  </>
+                {/* 1️⃣ Música — autoplay, siempre arriba */}
+                {evento.musica_url && (
+                  <MusicPlayer url={evento.musica_url} nombre={evento.musica_nombre} />
                 )}
 
-                {nombresEnTarjeta.length > 1 && (
-                  <div className="inv-nombres">
-                    <div className="inv-nombres-title">
-                      Invitados en esta tarjeta
-                    </div>
-                    {nombresEnTarjeta.map((n, i) => (
-                      <div key={i} className="inv-nombre-item">
-                        <div className="inv-nombre-av">
-                          {n.charAt(0).toUpperCase()}
-                        </div>
-                        <span>{n}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* 2️⃣ Mensaje personalizado */}
+                <div className="inv-mensaje" style={{ lineHeight: 1.75, fontSize: 15 }}>
+                  <p>Hola <strong>{invitado.nombre}</strong>,</p>
+                  <p style={{ marginTop: 6 }}>te saluda <strong>{evento.anfitriones}</strong>.</p>
+                  <p style={{ marginTop: 6 }}>
+                    Con relación a nuestra <strong>{TIPO_LABEL[evento.tipo] || "celebración"}</strong>,{" "}
+                    {evento.mensaje_invitacion
+                      ? evento.mensaje_invitacion
+                      : "te invitamos con todo nuestro cariño a compartir este momento tan especial."}
+                  </p>
+                  <p style={{ marginTop: 6 }}>
+                    Queremos que nos confirmes tu asistencia
+                    {fechaLimiteFmt && <> antes del <strong>{fechaLimiteFmt}</strong></>}.
+                  </p>
+                </div>
 
+                <OrnamentoDivider tipo={evento.tipo} />
+
+                {/* 3️⃣ Detalles del evento — SIN botón de mapa */}
                 {(fechaFmt || evento.hora || evento.lugar) && (
                   <div className="detalles">
                     {fechaFmt && (
                       <div className="detalle-fila">
-                        <div className="detalle-ico-wrap">
-                          <IcoFecha />
-                        </div>
+                        <div className="detalle-ico-wrap"><IcoFecha /></div>
                         <div>
                           <div className="detalle-label">Fecha</div>
                           <div className="detalle-texto">{fechaFmt}</div>
@@ -1740,9 +1909,7 @@ export default function ConfirmarPage() {
                     )}
                     {horaFmt && (
                       <div className="detalle-fila">
-                        <div className="detalle-ico-wrap">
-                          <IcoHora />
-                        </div>
+                        <div className="detalle-ico-wrap"><IcoHora /></div>
                         <div>
                           <div className="detalle-label">Hora</div>
                           <div className="detalle-texto">{horaFmt}</div>
@@ -1751,93 +1918,39 @@ export default function ConfirmarPage() {
                     )}
                     {evento.lugar && (
                       <div className="detalle-fila">
-                        <div className="detalle-ico-wrap">
-                          <IcoLugar />
-                        </div>
+                        <div className="detalle-ico-wrap"><IcoLugar /></div>
                         <div>
                           <div className="detalle-label">Lugar</div>
                           <div className="detalle-texto">{evento.lugar}</div>
-                          {evento.maps_url && (
-                            <a
-                              href={evento.maps_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="maps-btn"
-                            >
-                              <span>
-                                <svg
-                                  width="11"
-                                  height="11"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="white"
-                                  strokeWidth="2.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                                  <circle cx="12" cy="10" r="3" />
-                                </svg>
-                              </span>
-                              Ver en el mapa
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {evento.musica_nombre && (
-                      <div className="detalle-fila">
-                        <div className="detalle-ico-wrap">
-                          <IcoMusica />
-                        </div>
-                        <div>
-                          <div className="detalle-label">
-                            Canción del evento
-                          </div>
-                          <div className="detalle-texto">
-                            {evento.musica_nombre}
-                          </div>
                         </div>
                       </div>
                     )}
                   </div>
                 )}
 
+                {/* 4️⃣ Cómo llegar — texto, sin botón de ubicación */}
                 {evento.como_llegar && (
                   <div className="como-llegar-box">
-                    <div className="como-llegar-label">
-                      Instrucciones para llegar
-                    </div>
+                    <div className="como-llegar-label">Instrucciones para llegar</div>
                     <p className="como-llegar-text">{evento.como_llegar}</p>
                   </div>
                 )}
 
-                {/* Galería de fotos del lugar (máx 3, con lightbox) */}
+                {/* 5️⃣ Galería del lugar */}
                 {fotosLugar.length > 0 && (
                   <GaleriaLugar fotos={fotosLugar} lugar={evento.lugar} />
                 )}
 
-                {/* Música con autoplay */}
-                {evento.musica_url && (
-                  <MusicPlayer
-                    url={evento.musica_url}
-                    nombre={evento.musica_nombre}
-                  />
-                )}
-
-                {evento.mensaje_invitacion && (
-                  <div className="inv-mensaje">
-                    "{evento.mensaje_invitacion}"
-                  </div>
-                )}
-
-                {fechaLimiteFmt && (
-                  <div className="inv-deadline">
-                    <IcoDeadline />
-                    <span className="deadline-text">
-                      Por favor confirma antes del{" "}
-                      <strong>{fechaLimiteFmt}</strong>
-                    </span>
+                {/* Invitados en la tarjeta */}
+                {nombresEnTarjeta.length > 1 && (
+                  <div className="inv-nombres">
+                    <div className="inv-nombres-title">Invitados en esta tarjeta</div>
+                    {nombresEnTarjeta.map((n, i) => (
+                      <div key={i} className="inv-nombre-item">
+                        <div className="inv-nombre-av">{n.charAt(0).toUpperCase()}</div>
+                        <span>{n}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -1872,7 +1985,11 @@ export default function ConfirmarPage() {
             <div className="form-card">
               <div className="form-titulo">¡Qué alegría!</div>
               <div className="form-sub">Un detalle más</div>
-              <span className="campo-label">¿Cuántas personas asistirán?</span>
+              <span className="campo-label">
+                {invitado.cupo_elije_invitado
+                  ? "¿Cuántas personas irán incluyéndote a ti?"
+                  : "¿Cuántas personas asistirán?"}
+              </span>
               <div className="counter-row">
                 <button
                   className="cnt-btn"
@@ -1885,7 +2002,7 @@ export default function ConfirmarPage() {
                   className="cnt-btn"
                   onClick={() =>
                     setNumPersonas(
-                      Math.min(invitado.num_personas || 20, numPersonas + 1),
+                      Math.min(invitado.cupo_elije_invitado ? 20 : (invitado.num_personas || 20), numPersonas + 1),
                     )
                   }
                 >
@@ -1900,8 +2017,9 @@ export default function ConfirmarPage() {
                   letterSpacing: ".3px",
                 }}
               >
-                Tu invitación es para hasta {invitado.num_personas}{" "}
-                {invitado.num_personas === 1 ? "persona" : "personas"}
+                {invitado.cupo_elije_invitado
+                  ? "Incluye tu lugar y el de los acompañantes"
+                  : `Tu invitación es para hasta ${invitado.num_personas} ${invitado.num_personas === 1 ? "persona" : "personas"}`}
               </p>
               <button
                 className="btn-confirmar-final"
@@ -2110,15 +2228,16 @@ export default function ConfirmarPage() {
                   </button>
                 )}
 
+                {/* Botón ver muro de fotos (modo lectura) */}
                 <button
                   className="btn-wa"
-                  onClick={abrirModalTarjeta}
-                  disabled={generandoTarjeta}
+                  style={{ background: "linear-gradient(135deg,var(--gold-dark),var(--gold))" }}
+                  onClick={() => window.open(`/muro/${invitado.evento_id}?token=${invitado.token}`, "_blank")}
                 >
-                  <IcoWhatsapp size={17} />
-                  {generandoTarjeta
-                    ? "Generando tarjeta..."
-                    : "Compartir tarjeta por WhatsApp"}
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  Ver muro de fotos del evento
                 </button>
 
                 <button className="btn-cerrar" onClick={confirmarYCerrar}>

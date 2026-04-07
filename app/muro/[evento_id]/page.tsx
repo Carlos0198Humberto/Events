@@ -24,6 +24,7 @@ type Evento = {
   imagen_url?: string | null;
   frase_evento?: string | null;
   lugar?: string;
+  muro_abierto?: boolean;
 };
 type Deseo = {
   id: string;
@@ -1855,7 +1856,7 @@ export default function MuroPublico() {
     const { data: ev } = await supabase
       .from("eventos")
       .select(
-        "id,nombre,tipo,fecha,anfitriones,organizador_id,imagen_url,frase_evento,lugar",
+        "id,nombre,tipo,fecha,anfitriones,organizador_id,imagen_url,frase_evento,lugar,muro_abierto",
       )
       .eq("id", eventoId)
       .single();
@@ -1890,6 +1891,32 @@ export default function MuroPublico() {
       .eq("aprobado", true)
       .order("created_at", { ascending: true });
     if (data) setDeseos(data as Deseo[]);
+  }
+
+  async function toggleMuro() {
+    if (!evento) return;
+    const nuevo = evento.muro_abierto === false ? true : false;
+    await supabase
+      .from("eventos")
+      .update({ muro_abierto: nuevo })
+      .eq("id", eventoId);
+    setEvento({ ...evento, muro_abierto: nuevo });
+  }
+
+  async function descargarAlbumPersona(album: { label: string; fotos: Foto[] }) {
+    // Descarga las fotos una por una con nombre de la persona
+    for (let i = 0; i < album.fotos.length; i++) {
+      const foto = album.fotos[i];
+      try {
+        const resp = await fetch(foto.url);
+        const blob = await resp.blob();
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${album.label.replace(/\s/g, "_")}_foto${i + 1}.jpg`;
+        a.click();
+        await new Promise((r) => setTimeout(r, 400));
+      } catch {}
+    }
   }
 
   async function eliminarFoto(id: string) {
@@ -2036,6 +2063,18 @@ export default function MuroPublico() {
         }}
       >
         <p style={{ color: "#6b7280" }}>{t.eventoNoEncontrado}</p>
+      </main>
+    );
+
+  // Si el muro está cerrado y el visitante no es el organizador
+  if (evento.muro_abierto === false && !esOrg)
+    return (
+      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0FAF8", flexDirection: "column", gap: 16, padding: 24 }}>
+        <AppLogo size={52} />
+        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, color: "#0f766e", textAlign: "center" }}>El muro está cerrado</h2>
+        <p style={{ color: "#4b5563", fontSize: 14, textAlign: "center", maxWidth: 320 }}>
+          El organizador ha cerrado temporalmente el muro de fotos y deseos. Vuelve pronto.
+        </p>
       </main>
     );
 
@@ -2554,9 +2593,7 @@ export default function MuroPublico() {
       </div>
 
       {esOrg && (
-        <div
-          style={{ padding: "10px 16px 0", maxWidth: 640, margin: "0 auto" }}
-        >
+        <div style={{ padding: "10px 16px 0", maxWidth: 640, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           <div
             style={{
               background: "#e0f5f2",
@@ -2573,6 +2610,25 @@ export default function MuroPublico() {
           >
             {Ico.check(12, acento)} {t.modoOrganizador}
           </div>
+          {/* Toggle muro */}
+          <button
+            onClick={toggleMuro}
+            style={{
+              background: evento.muro_abierto === false ? "#fef2f2" : "#f0fdf4",
+              border: `1px solid ${evento.muro_abierto === false ? "#fca5a5" : "#86efac"}`,
+              borderRadius: 10,
+              padding: "7px 13px",
+              fontSize: 11,
+              fontWeight: 700,
+              color: evento.muro_abierto === false ? "#dc2626" : "#16a34a",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
+            {evento.muro_abierto === false ? "🔒 Muro cerrado — Abrir" : "🔓 Muro abierto — Cerrar"}
+          </button>
         </div>
       )}
 

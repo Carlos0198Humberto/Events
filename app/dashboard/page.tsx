@@ -24,6 +24,17 @@ type Stats = {
   total_deseos: number;
 };
 
+// Invitado con número de orden
+type InvitadoResumen = {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  estado: string;
+  num_personas: number;
+  token: string;
+  orden: number; // #001, #002 ... basado en created_at
+};
+
 // ─── Config ────────────────────────────────────────────────────────────────────
 const TIPO_CONFIG: Record<string, { label: string; labelEn: string }> = {
   quinceañera: { label: "Quinceañera", labelEn: "Quinceañera" },
@@ -65,6 +76,12 @@ const translations = {
     cargando: "Cargando...",
     elimConfirm: "¿Eliminar este evento y todos sus datos?",
     totalPersonas: "Total asistentes",
+    verInvitados: "Ver todos",
+    invitadosSin: "Sin invitados aún",
+    num: "N°",
+    estadoPend: "Pendiente",
+    estadoConf: "Confirmado",
+    estadoDecl: "Declinó",
   },
   en: {
     hello: "Hello",
@@ -96,6 +113,12 @@ const translations = {
     cargando: "Loading...",
     elimConfirm: "Delete this event and all its data?",
     totalPersonas: "Total attendees",
+    verInvitados: "View all",
+    invitadosSin: "No guests yet",
+    num: "No.",
+    estadoPend: "Pending",
+    estadoConf: "Confirmed",
+    estadoDecl: "Declined",
   },
 };
 
@@ -347,6 +370,38 @@ const Icon = {
       <path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" />
     </svg>
   ),
+  whatsapp: () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  ),
+  copy: () => (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+    >
+      <rect x="7" y="7" width="11" height="11" rx="2" />
+      <path d="M4 13H3a2 2 0 01-2-2V3a2 2 0 012-2h8a2 2 0 012 2v1" />
+    </svg>
+  ),
+  chevron: () => (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M7 10l3 3 3-3" />
+    </svg>
+  ),
 };
 
 // ─── Particles ─────────────────────────────────────────────────────────────────
@@ -411,7 +466,154 @@ function LoadingScreen({ t }: { t: typeof translations.es }) {
   );
 }
 
-// ─── Main ──────────────────────────────────────────────────────────────────────
+// ─── Guest number badge ────────────────────────────────────────────────────────
+function NumBadge({ n }: { n: number }) {
+  return <span className="num-badge">#{String(n).padStart(3, "0")}</span>;
+}
+
+// ─── Estado badge ──────────────────────────────────────────────────────────────
+function EstadoBadge({
+  estado,
+  t,
+}: {
+  estado: string;
+  t: typeof translations.es;
+}) {
+  const map: Record<string, { cls: string; label: string }> = {
+    confirmado: { cls: "badge-conf", label: t.estadoConf },
+    rechazado: { cls: "badge-decl", label: t.estadoDecl },
+    pendiente: { cls: "badge-pend", label: t.estadoPend },
+  };
+  const info = map[estado] ?? map.pendiente;
+  return <span className={`estado-badge ${info.cls}`}>{info.label}</span>;
+}
+
+// ─── Mini guest list inside dashboard card ─────────────────────────────────────
+function MiniInvitados({
+  eventoId,
+  lang,
+  t,
+}: {
+  eventoId: string;
+  lang: "es" | "en";
+  t: typeof translations.es;
+}) {
+  const [invitados, setInvitados] = useState<InvitadoResumen[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [copiado, setCopiado] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("invitados")
+      .select("id,nombre,telefono,estado,num_personas,token,created_at")
+      .eq("evento_id", eventoId)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (data) {
+          setInvitados(data.map((inv, idx) => ({ ...inv, orden: idx + 1 })));
+        }
+        setLoading(false);
+      });
+  }, [eventoId]);
+
+  function copiarLink(token: string) {
+    const url = `${window.location.origin}/confirmar/${token}`;
+    navigator.clipboard.writeText(url);
+    setCopiado(token);
+    setTimeout(() => setCopiado(null), 2000);
+  }
+
+  function abrirWhatsApp(inv: InvitadoResumen) {
+    const link = `${window.location.origin}/confirmar/${inv.token}`;
+    const msg =
+      lang === "es"
+        ? `🎟️ *Invitación #${String(inv.orden).padStart(3, "0")}*\n\nHola *${inv.nombre}*, aquí está tu invitación personal 👇\n\n${link}\n\nAbre el enlace para:\n✅ Confirmar tu asistencia\n📸 Subir tu foto\n💌 Dejar tu deseo`
+        : `🎟️ *Invitation #${String(inv.orden).padStart(3, "0")}*\n\nHi *${inv.nombre}*, here's your personal invitation 👇\n\n${link}\n\nOpen the link to:\n✅ Confirm attendance\n📸 Upload your photo\n💌 Leave a wish`;
+    const tel = inv.telefono?.replace(/\D/g, "") ?? "";
+    window.open(
+      `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,
+      "_blank",
+    );
+  }
+
+  if (loading) return null;
+
+  const visibles = expanded ? invitados : invitados.slice(0, 3);
+
+  return (
+    <div className="mini-inv-wrap">
+      <div className="mini-inv-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Icon.users />
+          <span className="mini-inv-title">{t.invitados}</span>
+          <span className="mini-inv-count">{invitados.length}</span>
+        </div>
+        <Link href={`/eventos/${eventoId}/invitados`} className="mini-inv-ver">
+          {t.verInvitados} →
+        </Link>
+      </div>
+
+      {invitados.length === 0 ? (
+        <p className="mini-inv-empty">{t.invitadosSin}</p>
+      ) : (
+        <>
+          <div className="mini-inv-list">
+            {visibles.map((inv) => (
+              <div key={inv.id} className="mini-inv-row">
+                {/* Número de orden */}
+                <NumBadge n={inv.orden} />
+
+                {/* Avatar + nombre */}
+                <div className="mini-inv-avatar">
+                  {inv.nombre.charAt(0).toUpperCase()}
+                </div>
+                <div className="mini-inv-info">
+                  <span className="mini-inv-nombre">{inv.nombre}</span>
+                  {inv.telefono && (
+                    <span className="mini-inv-tel">{inv.telefono}</span>
+                  )}
+                </div>
+
+                {/* Estado */}
+                <EstadoBadge estado={inv.estado} t={t} />
+
+                {/* Acciones */}
+                <div className="mini-inv-actions">
+                  <button
+                    className="mini-btn mini-btn-wa"
+                    title="WhatsApp"
+                    onClick={() => abrirWhatsApp(inv)}
+                  >
+                    <Icon.whatsapp />
+                  </button>
+                  <button
+                    className={`mini-btn ${copiado === inv.token ? "mini-btn-ok" : "mini-btn-copy"}`}
+                    title="Copiar link"
+                    onClick={() => copiarLink(inv.token)}
+                  >
+                    {copiado === inv.token ? "✓" : <Icon.copy />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {invitados.length > 3 && (
+            <button
+              className="mini-inv-toggle"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? "▲ Ver menos" : `▼ Ver ${invitados.length - 3} más`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const router = useRouter();
   const [eventos, setEventos] = useState<Evento[]>([]);
@@ -425,7 +627,6 @@ export default function Dashboard() {
   const t = translations[lang];
 
   useEffect(() => {
-    // Favicon
     const svgFav = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="18" fill="#0D9488"/><path d="M18 17 L30 32 L18 47" stroke="#5EEAD4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M46 17 L34 32 L46 47" stroke="rgba(255,255,255,0.4)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="32" cy="32" r="4" fill="white"/></svg>`;
     const link = document.createElement("link");
     link.rel = "icon";
@@ -473,7 +674,7 @@ export default function Dashboard() {
     const [invData, fotosData, deseosData] = await Promise.all([
       supabase
         .from("invitados")
-        .select("estado, num_personas")
+        .select("estado,num_personas")
         .eq("evento_id", eventoId),
       supabase
         .from("fotos")
@@ -570,14 +771,12 @@ export default function Dashboard() {
 
         .page{min-height:100vh;min-height:100dvh;background:var(--bg);position:relative;overflow-x:hidden}
 
-        /* ── Glows ── */
         .glow{position:fixed;pointer-events:none;z-index:0;border-radius:50%;filter:blur(90px)}
         .glow-1{width:340px;height:340px;top:-100px;right:-70px;background:radial-gradient(circle,rgba(13,148,136,0.12) 0%,transparent 70%);animation:gd1 9s ease-in-out infinite}
         .glow-2{width:280px;height:280px;bottom:80px;left:-90px;background:radial-gradient(circle,rgba(94,234,212,0.08) 0%,transparent 70%);animation:gd2 11s ease-in-out infinite}
         @keyframes gd1{0%,100%{transform:translate(0,0)}40%{transform:translate(-18px,28px)}70%{transform:translate(14px,-18px)}}
         @keyframes gd2{0%,100%{transform:translate(0,0)}35%{transform:translate(22px,-30px)}65%{transform:translate(-12px,18px)}}
 
-        /* ── Particles ── */
         .particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
         .particle{position:absolute;border-radius:50%;background:var(--accent-light);opacity:0;animation:pf linear infinite}
         .particle-1{width:3px;height:3px;left:10%;animation-duration:14s;animation-delay:0s}
@@ -592,8 +791,7 @@ export default function Dashboard() {
 
         /* ── Nav ── */
         .nav{
-          position:sticky;top:0;z-index:30;
-          height:var(--nav-h);
+          position:sticky;top:0;z-index:30;height:var(--nav-h);
           padding:0 12px;
           padding-left:max(12px, env(safe-area-inset-left));
           padding-right:max(12px, env(safe-area-inset-right));
@@ -606,65 +804,28 @@ export default function Dashboard() {
         .nav-brand-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;letter-spacing:-.5px;line-height:1;color:var(--text);white-space:nowrap}
         .nav-brand-name span{color:var(--accent)}
         .nav-brand-sub{font-size:9.5px;color:var(--text3);font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
-
         .nav-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
-
-        /* Language button */
-        .ctrl-btn{
-          height:32px;border-radius:100px;background:var(--surface);border:1px solid var(--border);
-          display:flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--transition);
-          box-shadow:var(--shadow-sm);color:var(--text2);font-size:10.5px;font-weight:700;letter-spacing:.5px;
-          text-transform:uppercase;padding:0 11px;font-family:'DM Sans',sans-serif;
-          -webkit-tap-highlight-color:transparent;touch-action:manipulation;
-        }
+        .ctrl-btn{height:32px;border-radius:100px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--transition);box-shadow:var(--shadow-sm);color:var(--text2);font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:0 11px;font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
         .ctrl-btn:hover{background:var(--accent-soft2);color:var(--accent);border-color:var(--border-hover)}
-
-        /* New event button */
-        .btn-new{
-          display:flex;align-items:center;gap:5px;background:var(--accent);color:#fff;text-decoration:none;
-          border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;
-          box-shadow:0 3px 14px rgba(13,148,136,0.28);transition:transform .2s,box-shadow .2s;
-          border:none;cursor:pointer;white-space:nowrap;
-          -webkit-tap-highlight-color:transparent;touch-action:manipulation;
-          min-height:34px;
-        }
+        .btn-new{display:flex;align-items:center;gap:5px;background:var(--accent);color:#fff;text-decoration:none;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;box-shadow:0 3px 14px rgba(13,148,136,0.28);transition:transform .2s,box-shadow .2s;border:none;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:34px}
         .btn-new:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,148,136,0.40)}
-
-        /* Sign out — icon only on mobile, text on wider */
-        .btn-salir{
-          display:flex;align-items:center;gap:5px;background:var(--danger-bg);color:var(--danger);
-          border:1px solid var(--danger-border);border-radius:10px;padding:7px 10px;
-          font-size:12px;font-weight:700;cursor:pointer;transition:var(--transition);
-          font-family:'DM Sans',sans-serif;
-          -webkit-tap-highlight-color:transparent;touch-action:manipulation;
-          min-height:34px;
-        }
+        .btn-salir{display:flex;align-items:center;gap:5px;background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);border-radius:10px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;transition:var(--transition);font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:34px}
         .btn-salir:hover{opacity:.75}
         .btn-salir-text{display:none}
         @media(min-width:420px){.btn-salir-text{display:inline}}
 
         /* ── Content ── */
-        .content{
-          max-width:540px;margin:0 auto;
-          padding:16px 12px max(56px, calc(env(safe-area-inset-bottom) + 24px));
-          position:relative;z-index:1;
-        }
+        .content{max-width:540px;margin:0 auto;padding:16px 12px max(56px, calc(env(safe-area-inset-bottom) + 24px));position:relative;z-index:1}
         @media(min-width:400px){.content{padding-left:16px;padding-right:16px}}
 
-        /* ── Greeting banner ── */
-        .greeting{
-          margin-bottom:16px;padding:16px;
-          background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);
-          border-radius:var(--radius);box-shadow:0 4px 20px rgba(13,148,136,0.26);
-          position:relative;overflow:hidden;
-        }
+        /* ── Greeting ── */
+        .greeting{margin-bottom:16px;padding:16px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);border-radius:var(--radius);box-shadow:0 4px 20px rgba(13,148,136,0.26);position:relative;overflow:hidden}
         .greeting::after{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,0.10) 0%,transparent 55%);pointer-events:none}
         .greeting-name{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;color:white;letter-spacing:-.4px;line-height:1.2;margin-bottom:2px}
         .greeting-sub{font-size:12px;color:rgba(255,255,255,0.72);font-weight:500}
 
-        /* ── Global stats grid ── */
+        /* ── Global stats ── */
         .global-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px}
-        /* Stack to 2x2 on very narrow phones */
         @media(max-width:320px){.global-stats{grid-template-columns:repeat(2,1fr)}}
         .stat-pill{background:var(--surface);border:1.5px solid var(--border);border-radius:15px;padding:11px 5px 9px;text-align:center;transition:var(--transition);box-shadow:var(--shadow-card)}
         .stat-pill:hover{border-color:var(--border-mid);transform:translateY(-1px)}
@@ -672,28 +833,19 @@ export default function Dashboard() {
         .stat-pill-val{font-weight:800;font-size:20px;color:var(--text);line-height:1;letter-spacing:-.5px}
         .stat-pill-label{font-size:8.5px;color:var(--text3);font-weight:700;margin-top:2px;letter-spacing:.4px;text-transform:uppercase}
 
-        /* ── Total attendees banner ── */
+        /* ── Total attendees ── */
         .total-banner{display:flex;align-items:center;gap:12px;background:var(--surface);border:1.5px solid var(--border-mid);border-radius:16px;padding:13px 16px;margin-bottom:14px;box-shadow:var(--shadow-card)}
         .total-banner-icon{width:40px;height:40px;flex-shrink:0;background:var(--accent-soft2);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--accent);border:1px solid var(--border-mid)}
         .total-banner-val{font-weight:800;font-size:26px;color:var(--text);letter-spacing:-1px;line-height:1}
         .total-banner-label{font-size:12px;color:var(--text3);font-weight:600;margin-top:1px}
 
-        /* ── Create CTA ── */
-        .btn-cta{
-          display:flex;align-items:center;justify-content:center;gap:9px;
-          background:var(--accent);color:#fff;text-decoration:none;
-          border-radius:var(--radius);padding:15px 20px;font-size:14px;font-weight:800;
-          margin-bottom:18px;box-shadow:0 4px 20px rgba(13,148,136,0.30);
-          letter-spacing:-.2px;transition:transform .2s,box-shadow .2s;
-          position:relative;overflow:hidden;
-          -webkit-tap-highlight-color:transparent;touch-action:manipulation;
-          min-height:52px;
-        }
+        /* ── CTA ── */
+        .btn-cta{display:flex;align-items:center;justify-content:center;gap:9px;background:var(--accent);color:#fff;text-decoration:none;border-radius:var(--radius);padding:15px 20px;font-size:14px;font-weight:800;margin-bottom:18px;box-shadow:0 4px 20px rgba(13,148,136,0.30);letter-spacing:-.2px;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:52px}
         .btn-cta::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.16) 50%,transparent 62%);background-size:200% 100%;animation:shimmer 3.5s ease-in-out infinite}
         .btn-cta:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(13,148,136,0.42)}
         @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
 
-        /* ── Empty state ── */
+        /* ── Empty ── */
         .empty{background:var(--surface);border-radius:var(--radius);padding:48px 24px;text-align:center;border:1.5px dashed var(--border-mid);box-shadow:var(--shadow-card)}
         .empty-icon{width:54px;height:54px;background:var(--accent-soft);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(--accent);border:1px solid var(--border-mid)}
         .empty-title{font-weight:800;color:var(--text);font-size:16px;margin-bottom:5px}
@@ -704,7 +856,6 @@ export default function Dashboard() {
         .event-card{background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1.5px solid var(--border);box-shadow:var(--shadow-card);transition:var(--transition)}
         .event-card:hover{box-shadow:0 8px 28px rgba(13,148,136,0.13);transform:translateY(-1px);border-color:var(--border-mid)}
         .event-strip{height:4px;background:linear-gradient(90deg,var(--accent),var(--accent-light))}
-
         .event-header{padding:13px 14px 11px}
         .event-meta{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
         .event-badge{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;color:var(--accent2);background:var(--accent-soft);border-radius:7px;padding:3px 9px;letter-spacing:.3px;text-transform:uppercase;margin-bottom:5px;border:1px solid var(--border-mid)}
@@ -719,13 +870,8 @@ export default function Dashboard() {
 
         .stats-body{padding:0 14px 14px}
         .stats-divider{height:1px;background:var(--border);margin:0 0 11px}
-
-        /* ── Per-event stats grid ── */
         .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:11px}
-        /* Collapse to 3+2 on very small screens */
-        @media(max-width:330px){
-          .stats-grid{grid-template-columns:repeat(3,1fr)}
-        }
+        @media(max-width:330px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
         .stat-box{background:var(--surface3);border-radius:10px;padding:8px 3px;text-align:center;border:1.5px solid var(--border);transition:var(--transition)}
         .stat-box:hover{border-color:var(--border-mid)}
         .stat-box-val{font-weight:800;font-size:16px;color:var(--text);line-height:1;letter-spacing:-.3px}
@@ -736,56 +882,105 @@ export default function Dashboard() {
         .stat-fotos .stat-box-val{color:var(--accent2)}
         .stat-deseos .stat-box-val{color:#7C3AED}
 
-        /* ── Personas row ── */
         .event-personas-row{display:flex;align-items:center;justify-content:space-between;background:var(--accent-soft);border:1px solid var(--border-mid);border-radius:11px;padding:8px 13px;margin-bottom:10px}
         .event-personas-label{font-size:12px;color:var(--text2);font-weight:600;display:flex;align-items:center;gap:6px}
         .event-personas-val{font-size:17px;font-weight:800;color:var(--accent);letter-spacing:-.5px}
 
-        /* ── Progress bar ── */
         .progress-row{display:flex;justify-content:space-between;margin-bottom:5px}
         .progress-label{font-size:11.5px;color:var(--text2);font-weight:600}
         .progress-value{font-size:11.5px;color:var(--accent);font-weight:700}
         .progress-track{background:var(--accent-soft);border-radius:99px;height:6px;overflow:hidden;border:1px solid var(--border)}
         .progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-light));transition:width .7s ease}
 
+        /* ── Mini invitados ── */
+        .mini-inv-wrap{background:var(--surface3);border:1.5px solid var(--border-mid);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:10px}
+        .mini-inv-header{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-bottom:1px solid var(--border)}
+        .mini-inv-title{font-size:10px;font-weight:800;color:var(--accent2);text-transform:uppercase;letter-spacing:.8px}
+        .mini-inv-count{background:var(--accent);color:#fff;font-size:9px;font-weight:800;border-radius:99px;padding:1px 7px;min-width:20px;text-align:center}
+        .mini-inv-ver{font-size:10px;font-weight:700;color:var(--accent);text-decoration:none;letter-spacing:.2px}
+        .mini-inv-ver:hover{text-decoration:underline}
+        .mini-inv-empty{font-size:12px;color:var(--text3);text-align:center;padding:14px;font-style:italic}
+        .mini-inv-list{display:flex;flex-direction:column}
+
+        .mini-inv-row{
+          display:flex;align-items:center;gap:8px;
+          padding:8px 12px;border-bottom:1px solid var(--border);
+          transition:background .15s;
+        }
+        .mini-inv-row:last-child{border-bottom:none}
+        .mini-inv-row:hover{background:rgba(13,148,136,0.04)}
+
+        /* Número de orden */
+        .num-badge{
+          flex-shrink:0;
+          font-size:9.5px;font-weight:800;
+          color:var(--accent2);
+          background:var(--accent-soft2);
+          border:1px solid var(--border-mid);
+          border-radius:6px;
+          padding:2px 6px;
+          letter-spacing:.3px;
+          font-variant-numeric:tabular-nums;
+          min-width:38px;
+          text-align:center;
+        }
+
+        .mini-inv-avatar{
+          width:28px;height:28px;border-radius:50%;
+          background:linear-gradient(135deg,var(--accent),var(--accent2));
+          color:#fff;font-size:12px;font-weight:800;
+          display:flex;align-items:center;justify-content:center;
+          flex-shrink:0;
+        }
+        .mini-inv-info{flex:1;min-width:0}
+        .mini-inv-nombre{display:block;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .mini-inv-tel{display:block;font-size:10px;color:var(--text3);margin-top:1px}
+
+        /* Estado badges */
+        .estado-badge{flex-shrink:0;font-size:9px;font-weight:700;border-radius:99px;padding:2px 8px;border:1px solid transparent}
+        .badge-conf{background:rgba(5,150,105,0.10);color:var(--success);border-color:rgba(5,150,105,0.22)}
+        .badge-pend{background:rgba(217,119,6,0.08);color:var(--warn);border-color:rgba(217,119,6,0.22)}
+        .badge-decl{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-border)}
+
+        /* Micro action buttons */
+        .mini-inv-actions{display:flex;gap:4px;flex-shrink:0}
+        .mini-btn{
+          width:28px;height:28px;border-radius:8px;border:1px solid var(--border);
+          display:flex;align-items:center;justify-content:center;
+          cursor:pointer;transition:var(--transition);font-size:10px;font-weight:800;
+          -webkit-tap-highlight-color:transparent;
+        }
+        .mini-btn-wa{background:#16a34a;color:#fff;border-color:#16a34a}
+        .mini-btn-wa:hover{background:#15803d}
+        .mini-btn-copy{background:var(--surface);color:var(--accent)}
+        .mini-btn-copy:hover{background:var(--accent-soft2)}
+        .mini-btn-ok{background:rgba(5,150,105,0.12);color:var(--success);border-color:rgba(5,150,105,0.22)}
+
+        .mini-inv-toggle{
+          width:100%;background:none;border:none;border-top:1px solid var(--border);
+          padding:8px;font-size:11px;font-weight:700;color:var(--accent2);
+          cursor:pointer;text-align:center;transition:background .15s;
+          font-family:'DM Sans',sans-serif;
+        }
+        .mini-inv-toggle:hover{background:var(--accent-soft)}
+
         /* ── Quick links ── */
         .quick-links{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 9px}
-        .quick-link{
-          position:relative;display:flex;align-items:center;gap:7px;
-          background:var(--surface2);color:var(--text2);border:1.5px solid var(--border);
-          border-radius:var(--radius-sm);padding:10px 12px;font-size:11.5px;font-weight:700;
-          text-decoration:none;transition:var(--transition);
-          -webkit-tap-highlight-color:transparent;touch-action:manipulation;
-          min-height:42px;
-        }
+        .quick-link{position:relative;display:flex;align-items:center;gap:7px;background:var(--surface2);color:var(--text2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:11.5px;font-weight:700;text-decoration:none;transition:var(--transition);-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:42px}
         .quick-link:hover{background:var(--accent-soft2);color:var(--accent);border-color:var(--border-hover)}
         .quick-link-icon{color:var(--accent);flex-shrink:0}
         .quick-link-badge{position:absolute;top:-5px;right:-5px;width:15px;height:15px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:800;border:2px solid var(--surface)}
 
         /* ── Card actions ── */
         .card-actions{display:flex;gap:6px}
-        .btn-manage{
-          flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
-          background:var(--accent-soft2);color:var(--accent);border:1.5px solid var(--border-mid);
-          border-radius:var(--radius-sm);padding:11px;font-size:12px;font-weight:700;
-          text-decoration:none;transition:var(--transition);
-          -webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:42px;
-        }
+        .btn-manage{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--accent-soft2);color:var(--accent);border:1.5px solid var(--border-mid);border-radius:var(--radius-sm);padding:11px;font-size:12px;font-weight:700;text-decoration:none;transition:var(--transition);-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:42px}
         .btn-manage:hover{background:var(--accent);color:white;border-color:var(--accent)}
-        .btn-delete{
-          display:flex;align-items:center;gap:5px;background:var(--danger-bg);color:var(--danger);
-          border:1.5px solid var(--danger-border);border-radius:var(--radius-sm);padding:11px 14px;
-          font-size:12px;font-weight:700;cursor:pointer;transition:var(--transition);
-          font-family:'DM Sans',sans-serif;
-          -webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:42px;
-        }
+        .btn-delete{display:flex;align-items:center;gap:5px;background:var(--danger-bg);color:var(--danger);border:1.5px solid var(--danger-border);border-radius:var(--radius-sm);padding:11px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:var(--transition);font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:42px}
         .btn-delete:hover{background:var(--danger);color:white;border-color:var(--danger)}
         .btn-delete:disabled{opacity:.4;cursor:not-allowed}
 
-        /* ── Footer ── */
         .footer-copy{text-align:center;margin-top:32px;font-size:10px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--text4);opacity:.7}
 
-        /* ── Mount animations ── */
         .anim-in{opacity:0;transform:translateY(16px)}
         .mounted .anim-in{animation:mountIn .52s cubic-bezier(.22,1,.36,1) both}
         .mounted .anim-d1{animation-delay:.06s}
@@ -816,7 +1011,6 @@ export default function Dashboard() {
               )}
             </div>
           </Link>
-
           <div className="nav-actions">
             <button
               className="ctrl-btn"
@@ -895,7 +1089,7 @@ export default function Dashboard() {
             <Icon.plus /> {t.crearEvento}
           </Link>
 
-          {/* Empty / event list */}
+          {/* Event list */}
           {eventos.length === 0 ? (
             <div className="empty anim-in anim-d4">
               <div className="empty-icon">
@@ -1051,6 +1245,9 @@ export default function Dashboard() {
                           </div>
                         </div>
 
+                        {/* ── MINI LISTA DE INVITADOS CON NÚMERO DE ORDEN ── */}
+                        <MiniInvitados eventoId={evento.id} lang={lang} t={t} />
+
                         {/* Quick links */}
                         <div className="quick-links">
                           {[
@@ -1089,7 +1286,7 @@ export default function Dashboard() {
                         {/* Actions */}
                         <div className="card-actions">
                           <Link
-                            href={`/eventos/${evento.id}`}
+                            href={`/eventos/${evento.id}/invitados`}
                             className="btn-manage"
                           >
                             <Icon.settings /> {t.gestionar}
