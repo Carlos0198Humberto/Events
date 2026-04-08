@@ -7,69 +7,22 @@ import Link from "next/link";
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 function AppLogo({ size = 34 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient
-          id="evx-bg-ne"
-          x1="0"
-          y1="0"
-          x2="64"
-          y2="64"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#0F766E" />
-          <stop offset="100%" stopColor="#0D9488" />
-        </linearGradient>
-        <linearGradient
-          id="evx-glow-ne"
-          x1="12"
-          y1="20"
-          x2="52"
-          y2="44"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#5EEAD4" />
-          <stop offset="100%" stopColor="#2DD4BF" />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="18" fill="url(#evx-bg-ne)" />
-      <rect
-        x="2.5"
-        y="2.5"
-        width="59"
-        height="59"
-        rx="16"
-        fill="none"
-        stroke="rgba(255,255,255,0.14)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M18 17 L30 32 L18 47"
-        stroke="url(#evx-glow-ne)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M46 17 L34 32 L46 47"
-        stroke="rgba(255,255,255,0.38)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="32" cy="32" r="4" fill="white" opacity="0.95" />
-      <circle cx="17" cy="13" r="2" fill="#5EEAD4" opacity="0.8" />
-      <circle cx="47" cy="13" r="1.5" fill="#5EEAD4" opacity="0.5" />
-      <circle cx="47" cy="51" r="2" fill="#5EEAD4" opacity="0.8" />
-      <circle cx="17" cy="51" r="1.5" fill="#5EEAD4" opacity="0.5" />
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Background */}
+      <rect width="64" height="64" rx="18" fill="#140d04"/>
+      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
+      {/* Geometric E — vertical bar */}
+      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
+      {/* Top bar */}
+      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
+      {/* Middle bar (slightly shorter) */}
+      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
+      {/* Bottom bar */}
+      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
+      {/* 4-pointed star sparkle — upper right */}
+      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
+      {/* Small accent dot */}
+      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
     </svg>
   );
 }
@@ -708,7 +661,7 @@ export default function NuevoEvento() {
           : Promise.resolve(null),
       ]);
 
-    const { error: insertError } = await supabase.from("eventos").insert({
+    const { data: nuevoEvento, error: insertError } = await supabase.from("eventos").insert({
       organizador_id: user.id,
       nombre,
       tipo,
@@ -726,11 +679,20 @@ export default function NuevoEvento() {
       musica_url,
       musica_nombre: musicaNombre || null,
       cupo_personas: cupo ? parseInt(cupo) : null,
-      tema,
-    });
+    }).select("id").single();
 
-    if (insertError) setError(t.errorCrear + insertError.message);
-    else router.push("/dashboard");
+    if (insertError) {
+      setError(t.errorCrear + insertError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Guardar tema por separado (columna opcional — ejecuta el parche SQL si no existe)
+    if (nuevoEvento?.id && tema !== "clasico") {
+      await supabase.from("eventos").update({ tema }).eq("id", nuevoEvento.id).throwOnError().catch(() => {});
+    }
+
+    router.push("/dashboard");
     setLoading(false);
   }
 

@@ -134,65 +134,22 @@ function crearParticulas() {
 // ─── AppLogo ──────────────────────────────────────────────────────────────────
 function AppLogo({ size = 32 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient
-          id="logo-bg"
-          x1="0"
-          y1="0"
-          x2="64"
-          y2="64"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#1a1209" />
-          <stop offset="100%" stopColor="#2d1f0a" />
-        </linearGradient>
-        <linearGradient
-          id="logo-glow"
-          x1="12"
-          y1="20"
-          x2="52"
-          y2="44"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#C9A96E" />
-          <stop offset="100%" stopColor="#E8D5B0" />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="18" fill="url(#logo-bg)" />
-      <rect
-        x="2.5"
-        y="2.5"
-        width="59"
-        height="59"
-        rx="16"
-        fill="none"
-        stroke="rgba(201,169,110,0.3)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M18 17 L30 32 L18 47"
-        stroke="url(#logo-glow)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M46 17 L34 32 L46 47"
-        stroke="rgba(201,169,110,0.45)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="32" cy="32" r="4" fill="#C9A96E" opacity="0.95" />
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Background */}
+      <rect width="64" height="64" rx="18" fill="#140d04"/>
+      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
+      {/* Geometric E — vertical bar */}
+      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
+      {/* Top bar */}
+      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
+      {/* Middle bar (slightly shorter) */}
+      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
+      {/* Bottom bar */}
+      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
+      {/* 4-pointed star sparkle — upper right */}
+      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
+      {/* Small accent dot */}
+      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
     </svg>
   );
 }
@@ -1678,8 +1635,9 @@ export default function ConfirmarPage() {
     .rech-sub{font-size:14px;color:var(--ink2);line-height:1.8}
 
     /* Loading */
-    .loading-screen{min-height:100dvh;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
-    .loading-spinner{width:36px;height:36px;border-radius:50%;border:2.5px solid rgba(201,169,110,0.15);border-top-color:var(--gold);animation:spin .75s linear infinite}
+    .loading-screen{min-height:100dvh;background:#FAF6F0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .loading-spinner{width:28px;height:28px;border-radius:50%;border:2.5px solid transparent;border-top-color:#C9A96E;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
     canvas#confetti-canvas{position:fixed;inset:0;z-index:9999;width:100%;height:100%;display:none;pointer-events:none}
   `;
 
@@ -1688,18 +1646,19 @@ export default function ConfirmarPage() {
       <>
         <style>{styles}</style>
         <div className="loading-screen">
-          <AppLogo size={56} />
-          <div className="loading-spinner" />
+          <AppLogo size={72} />
+          <div style={{marginTop: 14, fontFamily: "Cormorant Garamond, Georgia, serif", fontSize: 26, color: "#1a0f04", letterSpacing: 3}}>Eventix</div>
+          <div className="loading-spinner" style={{marginTop: 24}} />
           <p
             style={{
-              color: "var(--gold)",
-              fontWeight: 500,
-              fontSize: 12,
+              fontSize: 11,
               letterSpacing: 1.5,
               textTransform: "uppercase",
+              color: "rgba(201,169,110,0.7)",
+              marginTop: 12,
             }}
           >
-            Cargando tu invitación
+            Cargando...
           </p>
         </div>
       </>

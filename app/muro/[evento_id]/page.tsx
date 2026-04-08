@@ -206,64 +206,22 @@ const TIPO_EMOJI: Record<string, string> = {
 // ─── Logo Eventix ──────────────────────────────────────────────────────────────
 function AppLogo({ size = 28 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 56 56"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient
-          id="lg-ev"
-          x1="0"
-          y1="0"
-          x2="56"
-          y2="56"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#3AADA0" />
-          <stop offset="100%" stopColor="#0f766e" />
-        </linearGradient>
-      </defs>
-      <rect width="56" height="56" rx="16" fill="url(#lg-ev)" />
-      <circle cx="40" cy="10" r="3" fill="white" opacity="0.9" />
-      <circle cx="44" cy="14" r="1.5" fill="white" opacity="0.5" />
-      <rect
-        x="8"
-        y="20"
-        width="34"
-        height="22"
-        rx="4"
-        fill="white"
-        opacity="0.95"
-      />
-      <circle cx="25" cy="31" r="7" fill="#e0f5f2" />
-      <circle cx="25" cy="31" r="4.5" fill="#3AADA0" />
-      <circle cx="25" cy="31" r="2" fill="white" opacity="0.7" />
-      <path
-        d="M28 20 L32 20 L34 16 L22 16 L22 20Z"
-        fill="white"
-        opacity="0.95"
-      />
-      <line
-        x1="36"
-        y1="23"
-        x2="40"
-        y2="27"
-        stroke="#3AADA0"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <line
-        x1="40"
-        y1="23"
-        x2="36"
-        y2="27"
-        stroke="#3AADA0"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Background */}
+      <rect width="64" height="64" rx="18" fill="#140d04"/>
+      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
+      {/* Geometric E — vertical bar */}
+      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
+      {/* Top bar */}
+      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
+      {/* Middle bar (slightly shorter) */}
+      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
+      {/* Bottom bar */}
+      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
+      {/* 4-pointed star sparkle — upper right */}
+      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
+      {/* Small accent dot */}
+      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
     </svg>
   );
 }
@@ -2019,33 +1977,36 @@ export default function MuroPublico() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#F0FAF8",
+          background: "#FAF6F0",
         }}
       >
         <div style={{ textAlign: "center" }}>
-          <div style={{ marginBottom: 16 }}>
-            <AppLogo size={52} />
+          <div style={{ marginBottom: 0 }}>
+            <AppLogo size={72} />
           </div>
+          <div style={{marginTop: 14, fontFamily: "Cormorant Garamond, Georgia, serif", fontSize: 26, color: "#1a0f04", letterSpacing: 3}}>Eventix</div>
           <div
             style={{
-              width: 34,
-              height: 34,
+              width: 28,
+              height: 28,
               borderRadius: "50%",
-              border: "3px solid rgba(58,173,160,0.2)",
-              borderTopColor: "#3AADA0",
+              border: "2.5px solid transparent",
+              borderTopColor: "#C9A96E",
               animation: "spin 0.8s linear infinite",
-              margin: "0 auto 12px",
+              margin: "24px auto 0",
             }}
           />
           <p
             style={{
-              color: "#3AADA0",
-              fontWeight: 600,
-              fontSize: 13,
-              letterSpacing: 1,
+              color: "rgba(201,169,110,0.7)",
+              fontWeight: 400,
+              fontSize: 11,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              marginTop: 12,
             }}
           >
-            {t.cargando}
+            Cargando...
           </p>
         </div>
         <style>{`@keyframes spin { to { transform:rotate(360deg) } }`}</style>
