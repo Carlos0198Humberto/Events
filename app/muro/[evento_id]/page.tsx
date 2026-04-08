@@ -2079,10 +2079,93 @@ export default function MuroPublico() {
         .confetti-bottom { bottom: 0; }
         @keyframes popIn{from{opacity:0;transform:scale(0.93) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-        .foto-card{transition:transform 0.18s;} .foto-card:hover{transform:translateY(-2px)}
-        .tab-btn{transition:all 0.16s;} .tab-btn:active{transform:scale(0.95)}
-        .fab{transition:transform 0.14s,box-shadow 0.14s;} .fab:hover{transform:scale(1.06)} .fab:active{transform:scale(0.95)}
-        .quick-bar{animation:fadeUp 0.4s 0.1s both}
+        .foto-card{transition:transform 0.18s;} .foto-card:active{transform:scale(0.97)}
+
+        /* ── Bottom nav nativa ── */
+        .bottom-nav {
+          position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+          background: rgba(255,255,255,0.97);
+          backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+          border-top: 1px solid rgba(201,169,110,0.18);
+          box-shadow: 0 -4px 24px rgba(26,15,4,0.08);
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .nav-guest-row {
+          display: flex; gap: 8px; padding: 8px 12px 0;
+          border-bottom: 1px solid rgba(201,169,110,0.10);
+        }
+        .nav-guest-btn {
+          flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+          border-radius: 12px; padding: 10px 8px;
+          font-size: 13px; font-weight: 700; cursor: pointer;
+          border: none; font-family: 'DM Sans',sans-serif;
+          -webkit-tap-highlight-color: transparent;
+          transition: opacity .15s, transform .12s;
+        }
+        .nav-guest-btn:active { transform: scale(0.96); opacity: 0.85; }
+        .nav-tabs {
+          display: grid; grid-template-columns: repeat(4,1fr);
+          padding: 4px 0 2px;
+        }
+        .nav-tab {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 2px; padding: 8px 4px 6px;
+          border: none; background: transparent; cursor: pointer;
+          font-family: 'DM Sans',sans-serif;
+          -webkit-tap-highlight-color: transparent;
+          transition: background .15s;
+          text-decoration: none;
+          position: relative;
+        }
+        .nav-tab:active { background: rgba(201,169,110,0.08); }
+        .nav-tab-icon { line-height: 0; transition: transform .15s; }
+        .nav-tab.active .nav-tab-icon { transform: scale(1.1); }
+        .nav-tab-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2px; }
+        .nav-tab.active .nav-tab-label { color: #8B6914; }
+        .nav-tab:not(.active) .nav-tab-label { color: #94a3b8; }
+        .nav-tab:not(.active) .nav-tab-icon { color: #94a3b8; }
+        .nav-tab.active .nav-tab-icon { color: #C9A96E; }
+        .nav-tab-badge {
+          position: absolute; top: 4px; right: calc(50% - 14px);
+          background: #C9A96E; color: white;
+          font-size: 8px; font-weight: 800; border-radius: 99px;
+          padding: 1px 4px; min-width: 14px; text-align: center;
+          border: 1.5px solid white;
+        }
+
+        /* ── Compact sticky header ── */
+        .muro-header {
+          position: sticky; top: 7px; z-index: 150;
+          background: rgba(255,255,255,0.95);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+          border-bottom: 1px solid rgba(201,169,110,0.15);
+          box-shadow: 0 2px 12px rgba(26,15,4,0.06);
+          display: flex; align-items: center; gap: 10px;
+          padding: 10px 14px;
+        }
+        .muro-header-brand { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+        .muro-header-name { font-family: 'Playfair Display',serif; font-size: 15px; font-weight: 700; color: #1a0f04; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .muro-header-sub { font-size: 10px; color: #8B6914; font-weight: 600; letter-spacing: 0.3px; display: block; }
+        .muro-header-btn {
+          display: flex; align-items: center; gap: 5px;
+          background: #FAF6F0; color: #8B6914;
+          border: 1.5px solid rgba(201,169,110,0.28);
+          border-radius: 10px; padding: 6px 10px;
+          font-size: 11px; font-weight: 700;
+          cursor: pointer; white-space: nowrap; flex-shrink: 0;
+          font-family: 'DM Sans',sans-serif; text-decoration: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ── Org banner ── */
+        .org-banner {
+          background: rgba(201,169,110,0.10);
+          border-bottom: 1px solid rgba(201,169,110,0.18);
+          padding: 8px 16px;
+          font-size: 11px; font-weight: 600; color: #8B6914;
+          display: flex; align-items: center; gap: 6px;
+          flex-wrap: wrap;
+        }
       `}</style>
 
       {/* ── Bordes festivos ── */}
@@ -2096,7 +2179,7 @@ export default function MuroPublico() {
           overflow: "hidden",
           background: "linear-gradient(135deg,#8B6914 0%,#C9A96E 100%)",
           color: "white",
-          padding: "55px 20px 32px",
+          padding: "18px 16px 20px",
           textAlign: "center",
         }}
       >
@@ -2131,490 +2214,83 @@ export default function MuroPublico() {
           }}
         />
 
-        <div
-          style={{
-            position: "absolute",
-            top: 14,
-            left: 0,
-            right: 0,
-            display: "flex",
-            justifyContent: "space-between",
-            padding: "0 14px",
-            zIndex: 5,
-          }}
-        >
-          <button
-            onClick={() => setLang(lang === "es" ? "en" : "es")}
-            style={{
-              background: "rgba(255,255,255,0.18)",
-              color: "white",
-              border: "1px solid rgba(255,255,255,0.28)",
-              borderRadius: 10,
-              padding: "6px 11px",
-              fontSize: 11,
-              fontWeight: 800,
-              cursor: "pointer",
-              letterSpacing: 1,
-            }}
-          >
-            {lang === "es" ? "EN" : "ES"}
-          </button>
-          <Link
-            href="/dashboard"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              background: "rgba(255,255,255,0.18)",
-              color: "white",
-              border: "1px solid rgba(255,255,255,0.28)",
-              borderRadius: 10,
-              padding: "6px 13px",
-              fontSize: 12,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            {Ico.dashboard(14, "white")} {t.dashboard}
-          </Link>
+        {/* Header row dentro del hero */}
+        <div style={{ position: "relative", zIndex: 5, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <AppLogo size={26} />
+            <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", opacity: 0.9, fontFamily: "'DM Sans',sans-serif" }}>Eventix</span>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => setLang(lang === "es" ? "en" : "es")} style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, padding: "5px 9px", fontSize: 10, fontWeight: 800, cursor: "pointer", letterSpacing: 1 }}>
+              {lang === "es" ? "EN" : "ES"}
+            </button>
+            {esOrg && (
+              <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, padding: "5px 9px", fontSize: 10, fontWeight: 700, textDecoration: "none" }}>
+                {Ico.dashboard(12, "white")}
+              </Link>
+            )}
+          </div>
         </div>
 
-        <div style={{ position: "relative", zIndex: 1, marginBottom: 18 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              marginBottom: 16,
-            }}
-          >
-            <AppLogo size={32} />
-            <span
-              style={{
-                fontSize: 15,
-                fontWeight: 800,
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-                opacity: 0.95,
-                fontFamily: "'DM Sans',sans-serif",
-              }}
-            >
-              Eventix
-            </span>
-          </div>
-          <h1
-            style={{
-              fontSize: 26,
-              fontWeight: 700,
-              marginBottom: 5,
-              lineHeight: 1.2,
-              fontFamily: "'Playfair Display',serif",
-              letterSpacing: "-0.2px",
-            }}
-          >
+        {/* Evento info */}
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 3, lineHeight: 1.15, fontFamily: "'Playfair Display',serif" }}>
             {evento.nombre}
           </h1>
           {evento.anfitriones && (
-            <p style={{ fontSize: 14, opacity: 0.88, marginBottom: 4 }}>
-              {evento.anfitriones}
-            </p>
+            <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 2 }}>{evento.anfitriones}</p>
           )}
           {evento.frase_evento && (
-            <p
-              style={{
-                fontSize: 13,
-                fontStyle: "italic",
-                opacity: 0.75,
-                marginBottom: 5,
-                fontFamily: "'Playfair Display',serif",
-              }}
-            >
-              "{evento.frase_evento}"
-            </p>
+            <p style={{ fontSize: 12, fontStyle: "italic", opacity: 0.72, fontFamily: "'Playfair Display',serif", marginBottom: 4 }}>"{evento.frase_evento}"</p>
           )}
-          <p style={{ fontSize: 11, opacity: 0.65, letterSpacing: "0.3px" }}>
-            {fechaFmt}
-            {evento.lugar ? ` · ${evento.lugar}` : ""}
+          <p style={{ fontSize: 10.5, opacity: 0.62, letterSpacing: "0.2px" }}>
+            {fechaFmt}{evento.lugar ? ` · ${evento.lugar}` : ""}
           </p>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: 9,
-              marginTop: 20,
-              flexWrap: "wrap",
-            }}
-          >
+          {/* Stats compactos */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 12 }}>
             {[
               { num: fotos.length, label: t.fotos },
               { num: deseos.length, label: t.deseos },
               { num: albumes.length, label: t.participantes },
             ].map((s) => (
-              <div
-                key={s.label}
-                style={{
-                  background: "rgba(255,255,255,0.18)",
-                  borderRadius: 14,
-                  padding: "7px 16px",
-                  textAlign: "center",
-                  border: "1px solid rgba(255,255,255,0.25)",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 19,
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    fontFamily: "'Playfair Display',serif",
-                  }}
-                >
-                  {s.num}
-                </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    opacity: 0.8,
-                    marginTop: 2,
-                    letterSpacing: "0.3px",
-                  }}
-                >
-                  {s.label}
-                </div>
+              <div key={s.label} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "5px 12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <div style={{ fontSize: 17, fontWeight: 800, lineHeight: 1, fontFamily: "'Playfair Display',serif" }}>{s.num}</div>
+                <div style={{ fontSize: 9, opacity: 0.78, marginTop: 1, letterSpacing: "0.2px" }}>{s.label}</div>
               </div>
             ))}
           </div>
 
-          {invId && pasoJourney !== null && pasoJourney < 5 && (
-            <div
-              style={{
-                marginTop: 16,
-                background: "rgba(255,255,255,0.18)",
-                border: "1px solid rgba(255,255,255,0.28)",
-                borderRadius: 12,
-                padding: "9px 15px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {pasoJourney === 3 ? (
-                <>
-                  {Ico.camera(13, "white")} <span>{t.paso3}</span>
-                </>
-              ) : (
-                <>
-                  {Ico.heart(13, "white")} <span>{t.paso4}</span>
-                </>
-              )}
-            </div>
-          )}
           {invId && pasoJourney === 5 && (
-            <div
-              style={{
-                marginTop: 16,
-                background: "rgba(255,255,255,0.18)",
-                border: "1px solid rgba(255,255,255,0.28)",
-                borderRadius: 12,
-                padding: "9px 15px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {Ico.check(13, "white")}{" "}
-              <span>
-                {t.completaste} {invNombre}
-              </span>
+            <div style={{ marginTop: 10, background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 10, padding: "7px 12px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600 }}>
+              {Ico.check(12, "white")} <span>{t.completaste} {invNombre}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* ══ BARRA RÁPIDA ══ */}
-      {invId && (
-        <div
-          className="quick-bar"
-          style={{
-            background: "white",
-            borderBottom: "1px solid rgba(201,169,110,0.20)",
-            padding: "11px 14px",
-            display: "flex",
-            gap: 8,
-            justifyContent: "center",
-            flexWrap: "wrap",
-            boxShadow: "0 2px 12px rgba(201,169,110,0.08)",
-          }}
-        >
-          {/* Subir foto */}
-          <button
-            onClick={() => setModalSubir(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: yaFoto
-                ? "rgba(34,197,94,0.09)"
-                : "linear-gradient(135deg,#C9A96E,#8B6914)",
-              color: yaFoto ? "#16a34a" : "white",
-              border: yaFoto ? "1.5px solid rgba(34,197,94,0.28)" : "none",
-              borderRadius: 11,
-              padding: "9px 16px",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-              boxShadow: yaFoto ? "none" : "0 3px 12px rgba(201,169,110,0.30)",
-              position: "relative",
-            }}
-          >
-            {yaFoto ? (
-              <>
-                {Ico.check(13, "#16a34a")} {t.subirMiFoto}
-              </>
-            ) : (
-              <>
-                {Ico.camera(13, "white")} {t.subirMiFoto}
-              </>
-            )}
-            {yaFoto && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: -5,
-                  right: -5,
-                  width: 15,
-                  height: 15,
-                  borderRadius: "50%",
-                  background: "#22c55e",
-                  border: "2px solid white",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {Ico.check(8, "white")}
-              </span>
-            )}
-          </button>
-
-          {/* ── CORRECCIÓN PRINCIPAL: ya no redirige a "fotos" ── */}
-          <button
-            onClick={() => setModalDeseo(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: yaDeseo
-                ? "rgba(34,197,94,0.09)"
-                : yaFoto
-                  ? "linear-gradient(135deg,#C9A96E,#8B6914)"
-                  : "#FAF6F0",
-              color: yaDeseo ? "#16a34a" : yaFoto ? "white" : acento,
-              border: yaDeseo
-                ? "1.5px solid rgba(34,197,94,0.28)"
-                : yaFoto
-                  ? "none"
-                  : "1.5px solid rgba(201,169,110,0.28)",
-              borderRadius: 11,
-              padding: "9px 16px",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-              boxShadow:
-                yaFoto && !yaDeseo
-                  ? "0 3px 12px rgba(201,169,110,0.30)"
-                  : "none",
-              position: "relative",
-            }}
-          >
-            {yaDeseo ? (
-              <>
-                {Ico.check(13, "#16a34a")} {t.miDeseo}
-              </>
-            ) : (
-              <>
-                {Ico.heart(13, yaFoto ? "white" : acento)} {t.miDeseo}
-              </>
-            )}
-            {yaDeseo && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: -5,
-                  right: -5,
-                  width: 15,
-                  height: 15,
-                  borderRadius: "50%",
-                  background: "#22c55e",
-                  border: "2px solid white",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {Ico.check(8, "white")}
-              </span>
-            )}
-          </button>
-
-          {/* Ver muro */}
-          <button
-            onClick={() => setVista("fotos")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: "#FAF6F0",
-              color: acento,
-              border: "1.5px solid rgba(201,169,110,0.28)",
-              borderRadius: 11,
-              padding: "9px 14px",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            {Ico.wall(13, acento)} {t.verMuro}
-          </button>
-        </div>
-      )}
-
-      {/* ══ TABS ══ */}
-      <div
-        style={{
-          background: "rgba(255,255,255,0.98)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(201,169,110,0.20)",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          boxShadow: "0 1px 12px rgba(201,169,110,0.07)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "stretch",
-            maxWidth: 640,
-            margin: "0 auto",
-          }}
-        >
-          {[
-            {
-              key: "fotos" as Vista,
-              icon: Ico.grid(13, vista === "fotos" ? "white" : acento),
-              label: `${t.fotos} (${fotos.length})`,
-            },
-            {
-              key: "albumes" as Vista,
-              icon: Ico.folder(13, vista === "albumes" ? "white" : acento),
-              label: `${t.albumes} (${albumes.length})`,
-            },
-            {
-              key: "deseos" as Vista,
-              icon: Ico.heart(13, vista === "deseos" ? "white" : acento),
-              label: `${t.deseos} (${deseos.length})`,
-            },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              className="tab-btn"
-              onClick={() => setVista(tab.key)}
-              style={{
-                flex: 1,
-                background: vista === tab.key ? "#C9A96E" : "transparent",
-                color: vista === tab.key ? "white" : acento,
-                border: "none",
-                padding: "12px 5px",
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                borderBottom:
-                  vista === tab.key
-                    ? "3px solid #8B6914"
-                    : "3px solid transparent",
-                letterSpacing: "0.1px",
-                fontFamily: "'DM Sans',sans-serif",
-              }}
-            >
-              {tab.icon}{" "}
-              <span style={{ whiteSpace: "nowrap" }}>{tab.label}</span>
-            </button>
-          ))}
-          <Link
-            href={`/libro/${eventoId}${tokenParam ? `?token=${tokenParam}` : ""}`}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 4,
-              background: "#FAF6F0",
-              color: acento,
-              border: "none",
-              borderLeft: "1px solid rgba(201,169,110,0.2)",
-              padding: "12px 13px",
-              fontSize: 11,
-              fontWeight: 700,
-              textDecoration: "none",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {Ico.book(13, acento)} {t.libro}
-          </Link>
-        </div>
-      </div>
 
       {esOrg && (
-        <div style={{ padding: "10px 16px 0", maxWidth: 640, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          <div
-            style={{
-              background: "#E8D5B0",
-              border: "1px solid rgba(201,169,110,0.28)",
-              borderRadius: 10,
-              padding: "7px 13px",
-              fontSize: 11,
-              fontWeight: 700,
-              color: acento,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            {Ico.check(12, acento)} {t.modoOrganizador}
-          </div>
-          {/* Toggle muro */}
+        <div className="org-banner">
+          {Ico.check(12, "#8B6914")} {t.modoOrganizador}
           <button
             onClick={toggleMuro}
             style={{
               background: evento.muro_abierto === false ? "#fef2f2" : "#f0fdf4",
               border: `1px solid ${evento.muro_abierto === false ? "#fca5a5" : "#86efac"}`,
-              borderRadius: 10,
-              padding: "7px 13px",
-              fontSize: 11,
-              fontWeight: 700,
+              borderRadius: 8, padding: "5px 11px", fontSize: 11, fontWeight: 700,
               color: evento.muro_abierto === false ? "#dc2626" : "#16a34a",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
+              cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5,
+              marginLeft: "auto",
             }}
           >
-            {evento.muro_abierto === false ? "🔒 Muro cerrado — Abrir" : "🔓 Muro abierto — Cerrar"}
+            {evento.muro_abierto === false ? "🔒 Abrir muro" : "🔓 Cerrar muro"}
           </button>
         </div>
       )}
 
       {/* ══ CONTENIDO ══ */}
-      <div style={{ padding: "14px 14px 0", maxWidth: 640, margin: "0 auto" }}>
+      <div style={{ padding: "14px 14px 0", maxWidth: 640, margin: "0 auto", paddingBottom: invId ? "160px" : "100px" }}>
         {/* ── FOTOS ── */}
         {vista === "fotos" &&
           (fotos.length === 0 ? (
@@ -3036,86 +2712,68 @@ export default function MuroPublico() {
         />
       )}
 
-      {/* ══ FABs ══ */}
-      {invId && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 24,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 100,
-            display: "flex",
-            gap: 8,
-          }}
-        >
-          {vista === "fotos" && !yaFoto && (
+      {/* ══ BOTTOM NAV ══ */}
+      <nav className="bottom-nav">
+        {/* Acciones del invitado */}
+        {invId && (
+          <div className="nav-guest-row">
             <button
+              className="nav-guest-btn"
               onClick={() => setModalSubir(true)}
-              className="fab"
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                background: "linear-gradient(135deg,#C9A96E,#8B6914)",
-                color: "white",
-                border: "none",
-                borderRadius: 99,
-                padding: "12px 20px",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 5px 20px rgba(201,169,110,0.42)",
-                whiteSpace: "nowrap",
+                background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,#C9A96E,#8B6914)",
+                color: yaFoto ? "#16a34a" : "white",
+                border: yaFoto ? "1.5px solid rgba(22,163,74,0.28)" : "none",
+                boxShadow: yaFoto ? "none" : "0 3px 14px rgba(201,169,110,0.38)",
               }}
             >
-              {Ico.camera(15, "white")} {t.subirMiFoto}
+              {yaFoto ? Ico.check(15, "#16a34a") : Ico.camera(15, "white")}
+              {t.subirMiFoto}
+              {yaFoto && <span style={{ fontSize: 10, background: "#22c55e", color: "white", borderRadius: 99, padding: "1px 5px", marginLeft: 2 }}>✓</span>}
             </button>
-          )}
-          {vista === "deseos" && (
             <button
+              className="nav-guest-btn"
               onClick={() => setModalDeseo(true)}
-              className="fab"
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                background: yaDeseo
-                  ? "#9ca3af"
-                  : !yaFoto
-                    ? "#d1d5db"
-                    : "linear-gradient(135deg,#C9A96E,#8B6914)",
-                color: "white",
-                border: "none",
-                borderRadius: 99,
-                padding: "12px 20px",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow:
-                  yaDeseo || !yaFoto
-                    ? "0 3px 10px rgba(0,0,0,0.10)"
-                    : "0 5px 20px rgba(201,169,110,0.42)",
-                whiteSpace: "nowrap",
+                background: yaDeseo ? "rgba(22,163,74,0.10)" : yaFoto ? "linear-gradient(135deg,#C9A96E,#8B6914)" : "#F3EDE4",
+                color: yaDeseo ? "#16a34a" : yaFoto ? "white" : "#C9A96E",
+                border: yaDeseo ? "1.5px solid rgba(22,163,74,0.28)" : yaFoto ? "none" : "1.5px solid rgba(201,169,110,0.28)",
+                boxShadow: yaFoto && !yaDeseo ? "0 3px 14px rgba(201,169,110,0.38)" : "none",
               }}
             >
-              {yaDeseo ? (
-                <>
-                  {Ico.check(15, "white")} {t.deseoEnviado}
-                </>
-              ) : !yaFoto ? (
-                <>
-                  {Ico.lock(13, "white")} {t.subeFoto}
-                </>
-              ) : (
-                <>
-                  {Ico.heart(15, "white")} {t.escribirDeseoBtn}
-                </>
-              )}
+              {yaDeseo ? Ico.check(15, "#16a34a") : Ico.heart(15, yaFoto ? "white" : "#C9A96E")}
+              {t.miDeseo}
+              {yaDeseo && <span style={{ fontSize: 10, background: "#22c55e", color: "white", borderRadius: 99, padding: "1px 5px", marginLeft: 2 }}>✓</span>}
             </button>
-          )}
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="nav-tabs">
+          {([
+            { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#C9A96E" : "#94a3b8"), label: t.fotos, count: fotos.length },
+            { key: "albumes" as Vista, icon: Ico.folder(20, vista === "albumes" ? "#C9A96E" : "#94a3b8"), label: t.albumes, count: albumes.length },
+            { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#C9A96E" : "#94a3b8"), label: t.deseos, count: deseos.length },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              className={`nav-tab${vista === tab.key ? " active" : ""}`}
+              onClick={() => setVista(tab.key)}
+            >
+              {tab.count > 0 && <span className="nav-tab-badge">{tab.count}</span>}
+              <span className="nav-tab-icon">{tab.icon}</span>
+              <span className="nav-tab-label">{tab.label}</span>
+            </button>
+          ))}
+          <Link
+            href={`/libro/${eventoId}${tokenParam ? `?token=${tokenParam}` : ""}`}
+            className="nav-tab"
+          >
+            <span className="nav-tab-icon" style={{ color: "#94a3b8" }}>{Ico.book(20, "#94a3b8")}</span>
+            <span className="nav-tab-label">{t.libro}</span>
+          </Link>
         </div>
-      )}
+      </nav>
     </main>
   );
 }

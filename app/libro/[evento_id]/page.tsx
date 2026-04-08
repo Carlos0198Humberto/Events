@@ -431,7 +431,9 @@ export default function LibroRecuerdosPage() {
         }}
       >
         <div style={{ textAlign: "center" }}>
-          <AppLogo size={44} />
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 0 }}>
+            <AppLogo size={52} />
+          </div>
           <div
             style={{
               width: 36,

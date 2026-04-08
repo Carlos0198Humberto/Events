@@ -290,16 +290,18 @@ export default function AgregarInvitados() {
         @keyframes glowDrift1 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-18px,28px)} 66%{transform:translate(14px,-18px)} }
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0)} 40%{transform:translate(22px,-30px)} 70%{transform:translate(-8px,18px)} }
 
-        .page-wrap { min-height:100vh; min-height:100dvh; background:var(--bg); display:flex; flex-direction:column; position:relative; overflow-x:hidden; }
+        .page-wrap { min-height:100vh; min-height:100dvh; background:var(--bg); position:relative; }
 
-        .top-bar { background:rgba(240,250,249,0.93); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--border); padding:13px 18px; padding-top:calc(13px + env(safe-area-inset-top,0px)); display:flex; align-items:center; gap:11px; position:sticky; top:0; z-index:10; box-shadow:var(--shadow-sm); }
+        .top-bar { background:rgba(250,246,240,0.96); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid var(--border); padding:13px 18px; padding-top:calc(13px + env(safe-area-inset-top,0px)); display:flex; align-items:center; gap:11px; position:sticky; top:0; z-index:10; box-shadow:var(--shadow-sm); }
         .top-bar-name { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:600; color:var(--text); letter-spacing:-0.5px; line-height:1; }
         .top-bar-name span { color:var(--accent); }
         .top-bar-sub { font-size:10.5px; font-weight:500; letter-spacing:1.8px; text-transform:uppercase; color:var(--text3); margin-top:2px; }
 
-        .scroll-area { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:22px 16px; padding-bottom:calc(96px + env(safe-area-inset-bottom,16px)); display:flex; flex-direction:column; gap:16px; max-width:480px; width:100%; margin:0 auto; position:relative; z-index:1; }
+        /* scroll-area: flujo normal, NO overflow interno — el scroll lo hace la página completa */
+        .scroll-area { padding:22px 16px; padding-bottom:calc(110px + env(safe-area-inset-bottom,16px)); display:flex; flex-direction:column; gap:16px; max-width:480px; width:100%; margin:0 auto; position:relative; z-index:1; }
 
         .card { background:var(--surface); border:1.5px solid var(--border); border-radius:22px; padding:22px 20px; box-shadow:var(--shadow); }
+        .section-card { background:var(--surface); border:1.5px solid var(--border); border-radius:22px; padding:20px 18px; box-shadow:var(--shadow); }
         .card-title { font-family:'Cormorant Garamond',serif; font-size:21px; font-weight:600; color:var(--text); margin-bottom:3px; letter-spacing:-0.3px; }
         .card-sub { font-size:12.5px; color:var(--text3); margin-bottom:20px; font-weight:500; }
 
