@@ -687,9 +687,13 @@ export default function NuevoEvento() {
       return;
     }
 
-    // Guardar tema por separado (columna opcional — ejecuta el parche SQL si no existe)
+    // Guardar tema por separado (columna opcional — silencia error si columna no existe)
     if (nuevoEvento?.id && tema !== "clasico") {
-      await supabase.from("eventos").update({ tema }).eq("id", nuevoEvento.id).throwOnError().catch(() => {});
+      try {
+        await supabase.from("eventos").update({ tema }).eq("id", nuevoEvento.id);
+      } catch {
+        // columna tema aún no migrada, ignorar
+      }
     }
 
     router.push("/dashboard");
