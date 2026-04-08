@@ -247,23 +247,23 @@ export default function AgregarInvitados() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg:           #F0FAF9;
+          --bg:           #FAF6F0;
           --surface:      #FFFFFF;
-          --surface2:     #F7FDFB;
-          --border:       rgba(13,148,136,0.14);
-          --border-hover: rgba(13,148,136,0.40);
-          --border-input: rgba(13,148,136,0.22);
-          --accent:       #0D9488;
-          --accent2:      #0F766E;
-          --accent-light: #5EEAD4;
-          --accent-soft:  rgba(13,148,136,0.06);
-          --accent-soft2: rgba(13,148,136,0.13);
-          --text:         #0C1A19;
-          --text2:        #2D6E68;
-          --text3:        #7ABFBA;
-          --shadow:       0 4px 28px rgba(13,148,136,0.13);
-          --shadow-sm:    0 2px 10px rgba(13,148,136,0.09);
-          --shadow-btn:   0 6px 28px rgba(13,148,136,0.38);
+          --surface2:     #F7F2EA;
+          --border:       rgba(201,169,110,0.16);
+          --border-hover: rgba(201,169,110,0.50);
+          --border-input: rgba(201,169,110,0.28);
+          --accent:       #C9A96E;
+          --accent2:      #8B6914;
+          --accent-light: #C9A96E;
+          --accent-soft:  rgba(201,169,110,0.08);
+          --accent-soft2: rgba(201,169,110,0.16);
+          --text:         #1a0f04;
+          --text2:        #3d2b0f;
+          --text3:        #8B6914;
+          --shadow:       0 4px 28px rgba(26,15,4,0.10);
+          --shadow-sm:    0 2px 10px rgba(26,15,4,0.07);
+          --shadow-btn:   0 6px 28px rgba(201,169,110,0.38);
           --wa-green:     #25D366;
           --wa-dark:      #128C7E;
           --transition:   all 0.36s cubic-bezier(.4,0,.2,1);

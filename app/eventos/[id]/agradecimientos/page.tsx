@@ -150,7 +150,7 @@ function TarjetaAgradecimiento({
         background: "linear-gradient(135deg,#f0fdfa,#ccfbf1)",
         borderRadius: 20,
         padding: 22,
-        border: "2px solid #5eead4",
+        border: "2px solid #E8D5B0",
         boxShadow: "0 8px 32px rgba(13,148,136,0.12)",
         position: "relative",
         overflow: "hidden",
@@ -164,7 +164,7 @@ function TarjetaAgradecimiento({
           width: 100,
           height: 100,
           borderRadius: "50%",
-          background: "#5eead4",
+          background: "#E8D5B0",
           opacity: 0.18,
         }}
       />
@@ -176,7 +176,7 @@ function TarjetaAgradecimiento({
           width: 80,
           height: 80,
           borderRadius: "50%",
-          background: "#0D9488",
+          background: "#C9A96E",
           opacity: 0.1,
         }}
       />
@@ -206,7 +206,7 @@ function TarjetaAgradecimiento({
         style={{
           fontWeight: 900,
           fontSize: 20,
-          color: "#0f766e",
+          color: "#8B6914",
           textAlign: "center",
           marginBottom: 3,
           position: "relative",
@@ -219,7 +219,7 @@ function TarjetaAgradecimiento({
         style={{
           fontWeight: 700,
           fontSize: 13,
-          color: "#0f766e",
+          color: "#8B6914",
           opacity: 0.8,
           textAlign: "center",
           marginBottom: 14,
@@ -264,7 +264,7 @@ function TarjetaAgradecimiento({
             width: 34,
             height: 34,
             borderRadius: "50%",
-            background: "linear-gradient(135deg,#0D9488,#0F766E)",
+            background: "linear-gradient(135deg,#C9A96E,#8B6914)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -277,10 +277,10 @@ function TarjetaAgradecimiento({
           {invitado.nombre.charAt(0).toUpperCase()}
         </div>
         <div>
-          <p style={{ fontWeight: 700, color: "#0f766e", fontSize: 13 }}>
+          <p style={{ fontWeight: 700, color: "#8B6914", fontSize: 13 }}>
             {invitado.nombre}
           </p>
-          <p style={{ fontSize: 11, color: "#0f766e", opacity: 0.7 }}>
+          <p style={{ fontSize: 11, color: "#8B6914", opacity: 0.7 }}>
             {fecha}
           </p>
         </div>
@@ -293,8 +293,8 @@ function TarjetaAgradecimiento({
               padding: "3px 10px",
               fontSize: 11,
               fontWeight: 700,
-              color: "#0f766e",
-              border: "1px solid #5eead4",
+              color: "#8B6914",
+              border: "1px solid #E8D5B0",
             }}
           >
             +{invitado.num_personas - 1} más
@@ -504,23 +504,23 @@ export default function AgradecimientosPage() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg:           #F0FAF9;
+          --bg:           #FAF6F0;
           --surface:      #FFFFFF;
-          --surface2:     #F7FDFB;
-          --border:       rgba(13,148,136,0.14);
-          --border-hover: rgba(13,148,136,0.40);
-          --border-input: rgba(13,148,136,0.22);
-          --accent:       #0D9488;
-          --accent2:      #0F766E;
-          --accent-light: #5EEAD4;
-          --accent-soft:  rgba(13,148,136,0.06);
-          --accent-soft2: rgba(13,148,136,0.13);
-          --text:         #0C1A19;
-          --text2:        #2D6E68;
-          --text3:        #7ABFBA;
-          --shadow:       0 4px 28px rgba(13,148,136,0.13);
-          --shadow-sm:    0 2px 10px rgba(13,148,136,0.09);
-          --shadow-btn:   0 6px 28px rgba(13,148,136,0.38);
+          --surface2:     #F7F2EA;
+          --border:       rgba(201,169,110,0.16);
+          --border-hover: rgba(201,169,110,0.50);
+          --border-input: rgba(201,169,110,0.28);
+          --accent:       #C9A96E;
+          --accent2:      #8B6914;
+          --accent-light: #C9A96E;
+          --accent-soft:  rgba(201,169,110,0.08);
+          --accent-soft2: rgba(201,169,110,0.16);
+          --text:         #1a0f04;
+          --text2:        #3d2b0f;
+          --text3:        #8B6914;
+          --shadow:       0 4px 28px rgba(26,15,4,0.10);
+          --shadow-sm:    0 2px 10px rgba(26,15,4,0.07);
+          --shadow-btn:   0 6px 28px rgba(201,169,110,0.38);
           --transition:   all 0.36s cubic-bezier(.4,0,.2,1);
         }
 
@@ -725,7 +725,7 @@ export default function AgradecimientosPage() {
           {/* Stats */}
           <div className="stats-grid anim-in">
             {[
-              { num: invitados.length, label: "Confirmados", color: "#0f766e" },
+              { num: invitados.length, label: "Confirmados", color: "#8B6914" },
               { num: totalEnviados, label: "Enviados", color: "#1d4ed8" },
               { num: sinTelefono, label: "Sin teléfono", color: "#d97706" },
             ].map((s) => (

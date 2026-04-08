@@ -43,7 +43,7 @@ function FaviconInjector() {
       .querySelectorAll("link[rel~='icon'], link[rel~='shortcut']")
       .forEach((el) => el.parentNode?.removeChild(el));
     const svgFavicon =
-      `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="18" fill="#0D9488"/><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/><path d="M20 18 L32 32 L20 46" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M44 18 L32 32 L44 46" stroke="rgba(255,255,255,0.45)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="32" cy="32" r="3.5" fill="white"/><circle cx="18" cy="14" r="2" fill="rgba(255,255,255,0.35)"/><circle cx="46" cy="14" r="2" fill="rgba(255,255,255,0.25)"/><circle cx="18" cy="50" r="2" fill="rgba(255,255,255,0.25)"/><circle cx="46" cy="50" r="2" fill="rgba(255,255,255,0.35)"/></svg>`.trim();
+      `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="18" fill="#140d04"/><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" stroke-width="1.2"/><rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/><rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/><rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/><rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/></svg>`.trim();
     const link = document.createElement("link");
     link.rel = "icon";
     link.type = "image/svg+xml";
@@ -56,83 +56,15 @@ function FaviconInjector() {
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 function AppLogo({ size = 44 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient
-          id="evx-bg"
-          x1="0"
-          y1="0"
-          x2="64"
-          y2="64"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#0F766E" />
-          <stop offset="100%" stopColor="#0D9488" />
-        </linearGradient>
-        <linearGradient
-          id="evx-glow"
-          x1="12"
-          y1="20"
-          x2="52"
-          y2="44"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#5EEAD4" />
-          <stop offset="100%" stopColor="#2DD4BF" />
-        </linearGradient>
-        <filter id="evx-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow
-            dx="0"
-            dy="2"
-            stdDeviation="3"
-            floodColor="rgba(13,148,136,0.4)"
-          />
-        </filter>
-      </defs>
-      <rect
-        width="64"
-        height="64"
-        rx="18"
-        fill="url(#evx-bg)"
-        filter="url(#evx-shadow)"
-      />
-      <rect
-        x="2.5"
-        y="2.5"
-        width="59"
-        height="59"
-        rx="16"
-        fill="none"
-        stroke="rgba(255,255,255,0.14)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M18 17 L30 32 L18 47"
-        stroke="url(#evx-glow)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M46 17 L34 32 L46 47"
-        stroke="rgba(255,255,255,0.38)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="32" cy="32" r="4" fill="white" opacity="0.95" />
-      <circle cx="17" cy="13" r="2" fill="#5EEAD4" opacity="0.8" />
-      <circle cx="47" cy="13" r="1.5" fill="#5EEAD4" opacity="0.5" />
-      <circle cx="47" cy="51" r="2" fill="#5EEAD4" opacity="0.8" />
-      <circle cx="17" cy="51" r="1.5" fill="#5EEAD4" opacity="0.5" />
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="18" fill="#140d04"/>
+      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
+      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
+      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
+      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
+      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
+      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
+      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
     </svg>
   );
 }
@@ -187,21 +119,21 @@ export default function Home() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg:           #F0FAF9;
+          --bg:           #FAF6F0;
           --surface:      #FFFFFF;
-          --border:       rgba(13,148,136,0.14);
-          --border-hover: rgba(13,148,136,0.40);
-          --accent:       #0D9488;
-          --accent2:      #0F766E;
-          --accent-light: #5EEAD4;
-          --accent-soft:  rgba(13,148,136,0.08);
-          --accent-soft2: rgba(13,148,136,0.14);
-          --text:         #0C1A19;
-          --text2:        #2D6E68;
-          --text3:        #7ABFBA;
-          --shadow:       0 4px 28px rgba(13,148,136,0.13);
-          --shadow-sm:    0 2px 10px rgba(13,148,136,0.09);
-          --shadow-btn:   0 6px 28px rgba(13,148,136,0.38);
+          --border:       rgba(201,169,110,0.22);
+          --border-hover: rgba(201,169,110,0.50);
+          --accent:       #C9A96E;
+          --accent2:      #8B6914;
+          --accent-light: #E8D5B0;
+          --accent-soft:  rgba(201,169,110,0.08);
+          --accent-soft2: rgba(201,169,110,0.16);
+          --text:         #1a0f04;
+          --text2:        #3d2b0f;
+          --text3:        #8B6914;
+          --shadow:       0 4px 28px rgba(26,15,4,0.10);
+          --shadow-sm:    0 2px 10px rgba(26,15,4,0.07);
+          --shadow-btn:   0 6px 28px rgba(201,169,110,0.38);
           --transition:   all 0.36s cubic-bezier(.4,0,.2,1);
         }
 
@@ -238,9 +170,9 @@ export default function Home() {
 
         /* ── Glows ── */
         .glow { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(90px); }
-        .glow-1 { width: 300px; height: 300px; top: -70px; right: -50px; background: radial-gradient(circle, rgba(13,148,136,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
-        .glow-2 { width: 240px; height: 240px; bottom: 70px; left: -70px; background: radial-gradient(circle, rgba(94,234,212,0.11) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
-        .glow-3 { width: 170px; height: 170px; bottom: -30px; right: 20px; background: radial-gradient(circle, rgba(13,148,136,0.08) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
+        .glow-1 { width: 300px; height: 300px; top: -70px; right: -50px; background: radial-gradient(circle, rgba(201,169,110,0.14) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
+        .glow-2 { width: 240px; height: 240px; bottom: 70px; left: -70px; background: radial-gradient(circle, rgba(232,213,176,0.10) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
+        .glow-3 { width: 170px; height: 170px; bottom: -30px; right: 20px; background: radial-gradient(circle, rgba(201,169,110,0.07) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
         @keyframes glowDrift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-18px,28px) scale(1.07)} 66%{transform:translate(14px,-18px) scale(0.95)} }
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(22px,-30px) scale(1.09)} 70%{transform:translate(-8px,18px) scale(0.93)} }
 

@@ -585,7 +585,7 @@ export default function Dashboard() {
   const t = translations[lang];
 
   useEffect(() => {
-    const svgFav = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="18" fill="#0D9488"/><path d="M18 17 L30 32 L18 47" stroke="#5EEAD4" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M46 17 L34 32 L46 47" stroke="rgba(255,255,255,0.4)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="32" cy="32" r="4" fill="white"/></svg>`;
+    const svgFav = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="18" fill="#140d04"/><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" stroke-width="1.2"/><rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/><rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/><rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/><rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/><circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/></svg>`;
     const link = document.createElement("link");
     link.rel = "icon";
     link.type = "image/svg+xml";
@@ -703,16 +703,16 @@ export default function Dashboard() {
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
         :root{
-          --bg:#EFF9F7;--surface:#FFFFFF;--surface2:#F4FBFA;--surface3:#EBF7F5;
-          --border:rgba(13,148,136,0.13);--border-mid:rgba(13,148,136,0.22);--border-hover:rgba(13,148,136,0.38);
-          --accent:#0D9488;--accent2:#0F766E;--accent-light:#5EEAD4;
-          --accent-soft:rgba(13,148,136,0.08);--accent-soft2:rgba(13,148,136,0.14);
-          --text:#0A1A19;--text2:#1D5954;--text3:#5BA3A0;--text4:#8ECFCC;
+          --bg:#FAF6F0;--surface:#FFFFFF;--surface2:#F7F2EA;
+          --border:rgba(201,169,110,0.16);--border-mid:rgba(201,169,110,0.28);--border-hover:rgba(201,169,110,0.50);
+          --accent:#C9A96E;--accent2:#8B6914;--accent-light:#C9A96E;
+          --accent-soft:rgba(201,169,110,0.08);--accent-soft2:rgba(201,169,110,0.16);
+          --text:#1a0f04;--text2:#3d2b0f;--text3:#8B6914;--text4:#8B6914;
           --danger:#DC2626;--danger-bg:#FEF2F2;--danger-border:#FECACA;
           --success:#059669;--warn:#D97706;
-          --shadow-card:0 2px 16px rgba(13,148,136,0.09),0 1px 4px rgba(13,148,136,0.06);
-          --shadow-sm:0 2px 8px rgba(13,148,136,0.08);
-          --nav-h:58px;--nav-bg:rgba(239,249,247,0.96);
+          --shadow-card:0 2px 16px rgba(26,15,4,0.09),0 1px 4px rgba(26,15,4,0.06);
+          --shadow-sm:0 2px 8px rgba(26,15,4,0.08);
+          --nav-h:58px;--nav-bg:rgba(250,246,240,0.96);
           --radius:20px;--radius-sm:13px;
           --transition:all 0.30s cubic-bezier(.4,0,.2,1);
         }
@@ -726,6 +726,22 @@ export default function Dashboard() {
         body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
           background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
           opacity:0.4}
+
+        /* ── Borde festivo de colores (top + bottom) ── */
+        .confetti-top, .confetti-bottom {
+          position: fixed; left: 0; right: 0; z-index: 9999;
+          height: 7px; pointer-events: none;
+          background: repeating-linear-gradient(90deg,
+            #F44336 0px,#F44336 12px, #E91E63 12px,#E91E63 24px,
+            #9C27B0 24px,#9C27B0 36px, #3F51B5 36px,#3F51B5 48px,
+            #2196F3 48px,#2196F3 60px, #00BCD4 60px,#00BCD4 72px,
+            #4CAF50 72px,#4CAF50 84px, #8BC34A 84px,#8BC34A 96px,
+            #FFEB3B 96px,#FFEB3B 108px, #FF9800 108px,#FF9800 120px,
+            #FF5722 120px,#FF5722 132px, #F44336 132px,#F44336 144px
+          );
+        }
+        .confetti-top { top: 0; }
+        .confetti-bottom { bottom: 0; }
 
         .page{min-height:100vh;min-height:100dvh;background:var(--bg);position:relative;overflow-x:hidden}
 
@@ -749,7 +765,7 @@ export default function Dashboard() {
 
         /* ── Nav ── */
         .nav{
-          position:sticky;top:0;z-index:30;height:var(--nav-h);
+          position:sticky;top:7px;z-index:30;height:var(--nav-h);
           padding:0 12px;
           padding-left:max(12px, env(safe-area-inset-left));
           padding-right:max(12px, env(safe-area-inset-right));
@@ -950,6 +966,8 @@ export default function Dashboard() {
       `}</style>
 
       <div className={`page${mounted ? " mounted" : ""}`}>
+        <div className="confetti-top" />
+        <div className="confetti-bottom" />
         <div className="glow glow-1" />
         <div className="glow glow-2" />
         <Particles />

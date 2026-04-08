@@ -668,16 +668,38 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
-    const tryPlay = () => {
+
+    // Strategy: muted autoplay (always allowed) → unmute after 300ms
+    // Fallback: wait for first user gesture
+    const startMuted = () => {
+      a.muted = true;
       a.play()
-        .then(() => setPlaying(true))
-        .catch(() => {});
+        .then(() => {
+          setTimeout(() => {
+            a.muted = false;
+            setPlaying(true);
+          }, 300);
+        })
+        .catch(() => {
+          // Muted play also blocked → wait for interaction
+          const onInteract = () => {
+            a.muted = false;
+            a.play().then(() => setPlaying(true)).catch(() => {});
+            cleanup();
+          };
+          const cleanup = () => {
+            document.removeEventListener("click", onInteract);
+            document.removeEventListener("touchstart", onInteract);
+          };
+          document.addEventListener("click", onInteract, { once: true });
+          document.addEventListener("touchstart", onInteract, { once: true });
+        });
     };
-    tryPlay();
-    document.addEventListener("click", tryPlay, { once: true });
+
+    startMuted();
+
     return () => {
       a.pause();
-      document.removeEventListener("click", tryPlay);
     };
   }, [url]);
 
@@ -1472,15 +1494,15 @@ export default function ConfirmarPage() {
     .wrap{max-width:430px;margin:0 auto;padding:22px 16px;display:flex;flex-direction:column;gap:20px}
 
     .inv-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow-lg);overflow:hidden;animation:riseUp .6s cubic-bezier(.22,1,.36,1) both;}
-    .inv-hero{padding:40px 24px 32px;text-align:center;position:relative;overflow:hidden;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:0}
-    .inv-hero-bg{position:absolute;inset:0;background:linear-gradient(160deg,var(--dark) 0%,var(--dark2) 100%)}
-    .inv-hero-bg::before{content:'';position:absolute;inset:0;opacity:0.04;background-image:url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23C9A96E' fill-opacity='1'%3E%3Ccircle cx='20' cy='20' r='1'/%3E%3C/g%3E%3C/svg%3E")}
-    .inv-hero-foto{position:absolute;inset:0;object-fit:cover;width:100%;height:100%;object-position:center top;}
-    .inv-hero-foto-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,7,3,0.18) 0%,rgba(10,7,3,0.55) 45%,rgba(10,7,3,0.88) 100%)}
-    .inv-tipo-badge{position:relative;z-index:2;display:inline-flex;align-items:center;gap:6px;background:rgba(201,169,110,0.18);border:1px solid rgba(201,169,110,0.55);border-radius:99px;padding:5px 14px;font-family:'Jost',sans-serif;font-size:10px;font-weight:700;color:rgba(232,213,176,1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;text-shadow:0 1px 4px rgba(0,0,0,0.5);}
-    .inv-saludo{position:relative;z-index:2;font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:500;font-style:italic;color:#fff;letter-spacing:-.5px;line-height:1.15;margin-bottom:6px;text-shadow:0 2px 16px rgba(0,0,0,0.7),0 1px 4px rgba(0,0,0,0.9);}
-    .inv-anfitrion{position:relative;z-index:2;font-size:12px;color:rgba(232,213,176,0.92);font-weight:500;letter-spacing:.5px;margin-bottom:16px;text-shadow:0 1px 6px rgba(0,0,0,0.7);}
-    .inv-evento-nombre{position:relative;z-index:2;background:rgba(26,18,9,0.65);backdrop-filter:blur(8px);border:1px solid rgba(201,169,110,0.55);border-radius:12px;padding:12px 22px;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#fff;letter-spacing:.3px;text-shadow:0 1px 8px rgba(0,0,0,0.6);}
+    /* Hero foto — limpia, sin overlays ni texto encima */
+    .inv-hero{position:relative;overflow:hidden;width:100%;background:var(--dark)}
+    .inv-hero-foto{width:100%;height:100%;object-fit:cover;display:block;object-position:center top;}
+    .inv-hero-bg{min-height:200px;background:linear-gradient(160deg,var(--dark) 0%,var(--dark2) 100%)}
+    /* Sección debajo del hero */
+    .inv-tipo-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(201,169,110,0.14);border:1px solid rgba(201,169,110,0.45);border-radius:99px;padding:5px 14px;font-family:'Jost',sans-serif;font-size:10px;font-weight:700;color:var(--gold-dark);letter-spacing:1.5px;text-transform:uppercase;}
+    .inv-saludo{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:500;font-style:italic;color:var(--ink);letter-spacing:-.3px;line-height:1.2;margin-top:8px}
+    .inv-anfitrion{font-size:12px;color:var(--ink3);font-weight:500;letter-spacing:.5px;margin-top:4px}
+    .inv-evento-nombre{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;margin-top:6px}
     .inv-body{padding:22px 20px;display:flex;flex-direction:column;gap:16px}
     .inv-frase{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;font-weight:400;color:var(--ink2);text-align:center;line-height:1.6;padding:2px 8px}
     .inv-nombres{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px}
@@ -1788,43 +1810,53 @@ export default function ConfirmarPage() {
           <div className="wrap">
             <div className="inv-card">
 
-              {/* ── HERO: foto completa + nombre invitado ── */}
-              <div className="inv-hero" style={{ minHeight: evento.imagen_url ? 360 : 240 }}>
-                {evento.imagen_url ? (
-                  <>
-                    <img src={evento.imagen_url} className="inv-hero-foto" alt={evento.nombre} />
-                    <div className="inv-hero-foto-overlay" />
-                  </>
-                ) : (
-                  <div className="inv-hero-bg" />
-                )}
-                <div className="inv-tipo-badge">
-                  <span>{tipoOrn}</span>
-                  <span>{tipoLabel}</span>
+              {/* ── HERO: foto limpia sin texto encima ── */}
+              {evento.imagen_url ? (
+                <div className="inv-hero" style={{ maxHeight: 420 }}>
+                  <img
+                    src={evento.imagen_url}
+                    className="inv-hero-foto"
+                    alt={evento.nombre}
+                    style={{ width: "100%", display: "block", maxHeight: 420, objectFit: "cover", objectPosition: "center top" }}
+                  />
                 </div>
+              ) : (
+                <div className="inv-hero-bg" style={{ minHeight: 160, background: "linear-gradient(160deg,var(--dark) 0%,var(--dark2) 100%)" }} />
+              )}
+
+              {/* ── Tipo, decoración, nombre invitado, anfitriones — TODO DEBAJO de la foto ── */}
+              <div style={{ textAlign: "center", padding: "24px 22px 10px", background: "var(--cream)", borderBottom: "1px solid var(--border)" }}>
+                {/* Badge de tipo */}
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                  <span className="inv-tipo-badge">
+                    <span>{tipoOrn}</span>
+                    <span>{tipoLabel}</span>
+                  </span>
+                </div>
+
+                {/* Decoraciones del tipo de evento */}
+                <DecoracionEvento tipo={evento.tipo} />
+
+                {/* Nombre del invitado */}
                 <h1 className="inv-saludo">
                   {nombresEnTarjeta.length > 1
                     ? nombresEnTarjeta.slice(0, 2).join(" & ")
                     : invitado.nombre}
                 </h1>
-                <p className="inv-anfitrion">
-                  Con cariño de <strong style={{ color: "#fff", fontWeight: 600 }}>{evento.anfitriones}</strong>
-                </p>
-              </div>
 
-              {/* ── Decoración por tipo de evento + nombre del evento ── */}
-              <div style={{ textAlign: "center", padding: "22px 20px 6px", background: "var(--cream)" }}>
-                <DecoracionEvento tipo={evento.tipo} />
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "var(--ink)", marginTop: 10, letterSpacing: 0.3 }}>
-                  {evento.nombre}
-                </div>
+                {/* Anfitriones */}
                 {evento.anfitriones && (
-                  <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 4, fontWeight: 500, letterSpacing: 0.5 }}>
-                    {evento.anfitriones}
-                  </div>
+                  <p className="inv-anfitrion">
+                    Con cariño de <strong style={{ color: "var(--ink2)" }}>{evento.anfitriones}</strong>
+                  </p>
                 )}
+
+                {/* Nombre del evento */}
+                <div className="inv-evento-nombre">{evento.nombre}</div>
+
+                {/* Frase opcional */}
                 {evento.frase_evento && (
-                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15, fontStyle: "italic", color: "var(--ink2)", marginTop: 10, lineHeight: 1.55 }}>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px" }}>
                     ❝ {evento.frase_evento} ❞
                   </div>
                 )}
@@ -1835,22 +1867,6 @@ export default function ConfirmarPage() {
                 {evento.musica_url && (
                   <MusicPlayer url={evento.musica_url} nombre={evento.musica_nombre} />
                 )}
-
-                {/* 2️⃣ Mensaje personalizado */}
-                <div className="inv-mensaje" style={{ lineHeight: 1.75, fontSize: 15 }}>
-                  <p>Hola <strong>{invitado.nombre}</strong>,</p>
-                  <p style={{ marginTop: 6 }}>te saluda <strong>{evento.anfitriones}</strong>.</p>
-                  <p style={{ marginTop: 6 }}>
-                    Con relación a nuestra <strong>{TIPO_LABEL[evento.tipo] || "celebración"}</strong>,{" "}
-                    {evento.mensaje_invitacion
-                      ? evento.mensaje_invitacion
-                      : "te invitamos con todo nuestro cariño a compartir este momento tan especial."}
-                  </p>
-                  <p style={{ marginTop: 6 }}>
-                    Queremos que nos confirmes tu asistencia
-                    {fechaLimiteFmt && <> antes del <strong>{fechaLimiteFmt}</strong></>}.
-                  </p>
-                </div>
 
                 <OrnamentoDivider tipo={evento.tipo} />
 
@@ -1877,7 +1893,12 @@ export default function ConfirmarPage() {
                     )}
                     {evento.lugar && (
                       <div className="detalle-fila">
-                        <div className="detalle-ico-wrap"><IcoLugar /></div>
+                        <div className="detalle-ico-wrap">
+                          {/* Sin ícono en la dirección — solo texto */}
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <path d="M4 10h16M4 14h10" stroke="#C9A96E" strokeWidth="1.8" strokeLinecap="round"/>
+                          </svg>
+                        </div>
                         <div>
                           <div className="detalle-label">Lugar</div>
                           <div className="detalle-texto">{evento.lugar}</div>

@@ -57,12 +57,12 @@ function Toast({ msg, onHide }: { msg: string; onHide: () => void }) {
         right: 24,
         zIndex: 999,
         background: "#fff",
-        border: "1px solid rgba(13,148,136,0.2)",
+        border: "1px solid rgba(201,169,110,0.18)",
         borderRadius: 12,
         padding: "10px 18px",
         fontSize: 13,
         boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
-        color: "#0C1A19",
+        color: "#1a0f04",
         animation: "toastIn .25s ease",
       }}
     >
@@ -109,8 +109,8 @@ function ConfirmModal({
           padding: "24px 22px",
           maxWidth: 320,
           width: "100%",
-          border: "1.5px solid rgba(13,148,136,0.14)",
-          boxShadow: "0 12px 40px rgba(13,148,136,0.15)",
+          border: "1.5px solid rgba(201,169,110,0.18)",
+          boxShadow: "0 12px 40px rgba(201,169,110,0.15)",
         }}
       >
         <p
@@ -118,7 +118,7 @@ function ConfirmModal({
             fontWeight: 600,
             fontSize: 15,
             marginBottom: 8,
-            color: "#0C1A19",
+            color: "#1a0f04",
           }}
         >
           {title}
@@ -126,7 +126,7 @@ function ConfirmModal({
         <p
           style={{
             fontSize: 13,
-            color: "#7ABFBA",
+            color: "#8B6914",
             marginBottom: 22,
             lineHeight: 1.5,
           }}
@@ -139,11 +139,11 @@ function ConfirmModal({
             style={{
               padding: "8px 18px",
               borderRadius: 10,
-              border: "1.5px solid rgba(13,148,136,0.22)",
+              border: "1.5px solid rgba(201,169,110,0.30)",
               background: "none",
               cursor: "pointer",
               fontSize: 13,
-              color: "#2D6E68",
+              color: "#8B6914",
               fontFamily: "inherit",
             }}
           >
@@ -155,7 +155,7 @@ function ConfirmModal({
               padding: "8px 18px",
               borderRadius: 10,
               border: "none",
-              background: danger ? "#e11d48" : "#0D9488",
+              background: danger ? "#e11d48" : "#C9A96E",
               color: "#fff",
               cursor: "pointer",
               fontSize: 13,
@@ -199,7 +199,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#F0FAF9",
+        background: "#FAF6F0",
         padding: 16,
       }}
     >
@@ -208,10 +208,10 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
           width: "100%",
           maxWidth: 340,
           background: "#fff",
-          border: "1.5px solid rgba(13,148,136,0.14)",
+          border: "1.5px solid rgba(201,169,110,0.18)",
           borderRadius: 22,
           padding: "32px 28px",
-          boxShadow: "0 4px 28px rgba(13,148,136,0.13)",
+          boxShadow: "0 4px 24px rgba(26,15,4,0.10)",
         }}
       >
         {/* Header */}
@@ -229,13 +229,13 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
             style={{
               fontSize: 22,
               fontWeight: 600,
-              color: "#0C1A19",
+              color: "#1a0f04",
               letterSpacing: -0.5,
             }}
           >
-            Event<span style={{ color: "#0D9488" }}>ix</span>
+            Event<span style={{ color: "#C9A96E" }}>ix</span>
           </div>
-          <div style={{ fontSize: 12, color: "#7ABFBA", marginTop: 3 }}>
+          <div style={{ fontSize: 12, color: "#8B6914", marginTop: 3 }}>
             Panel de administrador
           </div>
           <div
@@ -244,8 +244,8 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
               marginTop: 8,
               fontSize: 11,
               padding: "3px 12px",
-              background: "rgba(13,148,136,0.08)",
-              color: "#0D9488",
+              background: "rgba(201,169,110,0.09)",
+              color: "#C9A96E",
               borderRadius: 100,
               fontWeight: 600,
               letterSpacing: 0.3,
@@ -287,7 +287,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: "#0D9488",
+                color: "#C9A96E",
                 display: "block",
                 marginBottom: 6,
                 textTransform: "uppercase",
@@ -303,12 +303,12 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
               autoComplete={f.auto}
               style={{
                 width: "100%",
-                border: "2px solid rgba(13,148,136,0.22)",
+                border: "2px solid rgba(201,169,110,0.30)",
                 borderRadius: 13,
                 padding: "12px 14px",
                 fontSize: 15,
-                background: "rgba(13,148,136,0.06)",
-                color: "#0C1A19",
+                background: "rgba(201,169,110,0.09)",
+                color: "#1a0f04",
                 outline: "none",
                 fontFamily: "inherit",
               }}
@@ -321,7 +321,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
             style={{
               fontSize: 11,
               fontWeight: 600,
-              color: "#0D9488",
+              color: "#C9A96E",
               display: "block",
               marginBottom: 6,
               textTransform: "uppercase",
@@ -339,12 +339,12 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               style={{
                 width: "100%",
-                border: "2px solid rgba(13,148,136,0.22)",
+                border: "2px solid rgba(201,169,110,0.30)",
                 borderRadius: 13,
                 padding: "12px 44px 12px 14px",
                 fontSize: 15,
-                background: "rgba(13,148,136,0.06)",
-                color: "#0C1A19",
+                background: "rgba(201,169,110,0.09)",
+                color: "#1a0f04",
                 outline: "none",
                 fontFamily: "inherit",
               }}
@@ -360,7 +360,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                color: "#7ABFBA",
+                color: "#8B6914",
                 padding: 4,
               }}
             >
@@ -377,7 +377,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
             padding: 14,
             borderRadius: 13,
             border: "none",
-            background: "linear-gradient(135deg,#0D9488 0%,#0F766E 100%)",
+            background: "linear-gradient(135deg,#C9A96E 0%,#8B6914 100%)",
             color: "#fff",
             fontSize: 15,
             fontWeight: 600,
@@ -547,8 +547,8 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
   }
 
   const avatarColors = [
-    "#0D9488",
-    "#0F766E",
+    "#C9A96E",
+    "#8B6914",
     "#0369a1",
     "#7c3aed",
     "#be185d",
@@ -566,7 +566,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
     <div
       style={{
         minHeight: "100vh",
-        background: "#F0FAF9",
+        background: "#FAF6F0",
         fontFamily: "'DM Sans', sans-serif",
       }}
     >
@@ -575,9 +575,9 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
         * { box-sizing: border-box; }
         @keyframes toastIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
         @keyframes spin { to{transform:rotate(360deg)} }
-        .user-row:hover { background: rgba(13,148,136,0.03) !important; }
-        select:focus { outline: 2px solid #0D9488; outline-offset: 1px; }
-        input:focus { outline: 2px solid #0D9488; outline-offset: 1px; border-color: #0D9488 !important; }
+        .user-row:hover { background: rgba(201,169,110,0.03) !important; }
+        select:focus { outline: 2px solid #C9A96E; outline-offset: 1px; }
+        input:focus { outline: 2px solid #C9A96E; outline-offset: 1px; border-color: #C9A96E !important; }
         .btn-act { transition: opacity .15s, transform .15s; }
         .btn-act:hover:not(:disabled) { opacity: 0.82; transform: scale(0.97); }
         .btn-act:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -587,7 +587,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
       <div
         style={{
           background: "#fff",
-          borderBottom: "1.5px solid rgba(13,148,136,0.12)",
+          borderBottom: "1.5px solid rgba(201,169,110,0.18)",
           padding: "14px 24px",
           display: "flex",
           alignItems: "center",
@@ -605,13 +605,13 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
               style={{
                 fontSize: 15,
                 fontWeight: 600,
-                color: "#0C1A19",
+                color: "#1a0f04",
                 letterSpacing: -0.3,
               }}
             >
               Panel de administrador
             </div>
-            <div style={{ fontSize: 12, color: "#7ABFBA" }}>
+            <div style={{ fontSize: 12, color: "#8B6914" }}>
               Eventix · Gestión de usuarios
             </div>
           </div>
@@ -622,11 +622,11 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
           style={{
             padding: "7px 16px",
             borderRadius: 10,
-            border: "1.5px solid rgba(13,148,136,0.22)",
+            border: "1.5px solid rgba(201,169,110,0.30)",
             background: "none",
             cursor: "pointer",
             fontSize: 13,
-            color: "#2D6E68",
+            color: "#8B6914",
             fontFamily: "inherit",
           }}
         >
@@ -645,7 +645,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
           }}
         >
           {[
-            { label: "Total usuarios", value: stats.total, color: "#0D9488" },
+            { label: "Total usuarios", value: stats.total, color: "#C9A96E" },
             { label: "Sin límite", value: stats.unlimited, color: "#16a34a" },
             { label: "Con límite", value: stats.limited, color: "#d97706" },
             { label: "Bloqueados", value: stats.blocked, color: "#e11d48" },
@@ -654,13 +654,13 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
               key={s.label}
               style={{
                 background: "#fff",
-                border: "1.5px solid rgba(13,148,136,0.12)",
+                border: "1.5px solid rgba(201,169,110,0.18)",
                 borderRadius: 16,
                 padding: "16px 18px",
-                boxShadow: "0 2px 10px rgba(13,148,136,0.06)",
+                boxShadow: "0 2px 10px rgba(201,169,110,0.06)",
               }}
             >
-              <div style={{ fontSize: 12, color: "#7ABFBA", marginBottom: 4 }}>
+              <div style={{ fontSize: 12, color: "#8B6914", marginBottom: 4 }}>
                 {s.label}
               </div>
               <div style={{ fontSize: 26, fontWeight: 600, color: s.color }}>
@@ -685,10 +685,10 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
             viewBox="0 0 16 16"
             fill="none"
           >
-            <circle cx="7" cy="7" r="5" stroke="#0D9488" strokeWidth="1.5" />
+            <circle cx="7" cy="7" r="5" stroke="#C9A96E" strokeWidth="1.5" />
             <path
               d="M11 11l3 3"
-              stroke="#0D9488"
+              stroke="#C9A96E"
               strokeWidth="1.5"
               strokeLinecap="round"
             />
@@ -700,11 +700,11 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
             style={{
               width: "100%",
               padding: "11px 14px 11px 38px",
-              border: "1.5px solid rgba(13,148,136,0.22)",
+              border: "1.5px solid rgba(201,169,110,0.30)",
               borderRadius: 13,
               fontSize: 14,
               background: "#fff",
-              color: "#0C1A19",
+              color: "#1a0f04",
               fontFamily: "inherit",
               outline: "none",
             }}
@@ -716,7 +716,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
           style={{
             fontSize: 12,
             fontWeight: 600,
-            color: "#7ABFBA",
+            color: "#8B6914",
             letterSpacing: 0.8,
             textTransform: "uppercase",
             marginBottom: 12,
@@ -733,13 +733,13 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                 width: 32,
                 height: 32,
                 borderRadius: "50%",
-                border: "3px solid rgba(13,148,136,0.2)",
-                borderTopColor: "#0D9488",
+                border: "3px solid rgba(201,169,110,0.2)",
+                borderTopColor: "#C9A96E",
                 margin: "0 auto 12px",
                 animation: "spin 0.8s linear infinite",
               }}
             />
-            <div style={{ fontSize: 13, color: "#7ABFBA" }}>
+            <div style={{ fontSize: 13, color: "#8B6914" }}>
               Cargando usuarios…
             </div>
           </div>
@@ -749,7 +749,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
               textAlign: "center",
               padding: "48px 0",
               fontSize: 14,
-              color: "#7ABFBA",
+              color: "#8B6914",
             }}
           >
             {search
@@ -773,7 +773,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                     background: profile.bloqueado
                       ? "rgba(225,29,72,0.03)"
                       : "#fff",
-                    border: `1.5px solid ${profile.bloqueado ? "rgba(225,29,72,0.18)" : "rgba(13,148,136,0.12)"}`,
+                    border: `1.5px solid ${profile.bloqueado ? "rgba(225,29,72,0.18)" : "rgba(201,169,110,0.18)"}`,
                     borderRadius: 16,
                     padding: "14px 16px",
                     display: "flex",
@@ -817,7 +817,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                         style={{
                           fontSize: 14,
                           fontWeight: 600,
-                          color: "#0C1A19",
+                          color: "#1a0f04",
                         }}
                       >
                         {profile.nombre}
@@ -842,8 +842,8 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                             fontSize: 10,
                             padding: "2px 8px",
                             borderRadius: 100,
-                            background: "rgba(13,148,136,0.1)",
-                            color: "#0D9488",
+                            background: "rgba(201,169,110,0.09)",
+                            color: "#C9A96E",
                             fontWeight: 600,
                           }}
                         >
@@ -852,12 +852,12 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                       )}
                     </div>
                     <div
-                      style={{ fontSize: 12, color: "#7ABFBA", marginTop: 2 }}
+                      style={{ fontSize: 12, color: "#8B6914", marginTop: 2 }}
                     >
                       {profile.email}
                     </div>
                     <div
-                      style={{ fontSize: 11, color: "#7ABFBA", marginTop: 2 }}
+                      style={{ fontSize: 11, color: "#8B6914", marginTop: 2 }}
                     >
                       {profile.total_eventos ?? 0} evento
                       {profile.total_eventos !== 1 ? "s" : ""} creado
@@ -903,10 +903,10 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                       style={{
                         fontSize: 12,
                         padding: "6px 10px",
-                        border: "1.5px solid rgba(13,148,136,0.22)",
+                        border: "1.5px solid rgba(201,169,110,0.30)",
                         borderRadius: 10,
-                        background: "#F0FAF9",
-                        color: "#0C1A19",
+                        background: "#FAF6F0",
+                        color: "#1a0f04",
                         cursor: "pointer",
                         fontFamily: "inherit",
                       }}
@@ -930,9 +930,9 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                         borderRadius: 10,
                         border: "none",
                         background: profile.bloqueado
-                          ? "rgba(13,148,136,0.1)"
+                          ? "rgba(201,169,110,0.09)"
                           : "rgba(217,119,6,0.1)",
-                        color: profile.bloqueado ? "#0D9488" : "#d97706",
+                        color: profile.bloqueado ? "#C9A96E" : "#d97706",
                         cursor: "pointer",
                         fontSize: 12,
                         fontWeight: 600,

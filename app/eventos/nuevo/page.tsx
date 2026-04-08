@@ -701,17 +701,17 @@ export default function NuevoEvento() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        html,body{font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;background:#F0FAF9}
+        html,body{font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;background:#FAF6F0}
 
         :root{
-          --bg:#F0FAF9;--surface:#FFFFFF;--surface2:#F7FDFB;
-          --border:rgba(13,148,136,0.14);--border-mid:rgba(13,148,136,0.24);
-          --accent:#0D9488;--accent2:#0F766E;--accent3:#0a5c55;
-          --accent-soft:rgba(13,148,136,0.06);--accent-soft2:rgba(13,148,136,0.14);
-          --text:#0A1E1C;--text2:#2D6E68;--text3:#7ABFBA;
+          --bg:#FAF6F0;--surface:#FFFFFF;--surface2:#F7F2EA;
+          --border:rgba(201,169,110,0.16);--border-mid:rgba(201,169,110,0.28);
+          --accent:#C9A96E;--accent2:#8B6914;--accent3:#5a3e1b;
+          --accent-soft:rgba(201,169,110,0.08);--accent-soft2:rgba(201,169,110,0.16);
+          --text:#1a0f04;--text2:#3d2b0f;--text3:#8B6914;
           --danger:#dc2626;--danger-bg:#fef2f2;--danger-border:#fecaca;
-          --shadow:0 4px 24px rgba(13,148,136,0.13);--shadow-sm:0 2px 10px rgba(13,148,136,0.09);
-          --nav-bg:rgba(240,250,249,0.95);--transition:all 0.35s cubic-bezier(.4,0,.2,1);
+          --shadow:0 4px 24px rgba(26,15,4,0.10);--shadow-sm:0 2px 10px rgba(26,15,4,0.07);
+          --nav-bg:rgba(250,246,240,0.95);--transition:all 0.35s cubic-bezier(.4,0,.2,1);
           --radius:18px;
         }
 

@@ -10,17 +10,24 @@ export default function Icon() {
         width: 32,
         height: 32,
         borderRadius: 9,
-        background: "linear-gradient(135deg, #0D9488 0%, #0F766E 100%)",
+        background: "#140d04",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        position: "relative",
       }}
     >
-      <svg width="18" height="18" viewBox="0 0 18 18">
-        <path
-          d="M9 2 L10.2 7.8 L16 9 L10.2 10.2 L9 16 L7.8 10.2 L2 9 L7.8 7.8 Z"
-          fill="white"
-        />
+      <svg width="22" height="22" viewBox="0 0 64 64" fill="none">
+        {/* E vertical */}
+        <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
+        {/* E top */}
+        <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
+        {/* E middle */}
+        <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
+        {/* E bottom */}
+        <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
+        {/* Star */}
+        <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
       </svg>
     </div>,
     { ...size },

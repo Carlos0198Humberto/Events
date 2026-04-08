@@ -45,72 +45,18 @@ type Invitado = {
 };
 type Vista = "portada" | "fotos" | "deseos" | "asistentes";
 
-// ─── Eventix Logo (mismo que login) ───────────────────────────────────────────
+// ─── Eventix Logo ─────────────────────────────────────────────────────────────
 function AppLogo({ size = 32 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient
-          id="evx-bg-lr"
-          x1="0"
-          y1="0"
-          x2="64"
-          y2="64"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#0F766E" />
-          <stop offset="100%" stopColor="#0D9488" />
-        </linearGradient>
-        <linearGradient
-          id="evx-glow-lr"
-          x1="12"
-          y1="20"
-          x2="52"
-          y2="44"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#5EEAD4" />
-          <stop offset="100%" stopColor="#2DD4BF" />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="18" fill="url(#evx-bg-lr)" />
-      <rect
-        x="2.5"
-        y="2.5"
-        width="59"
-        height="59"
-        rx="16"
-        fill="none"
-        stroke="rgba(255,255,255,0.14)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M18 17 L30 32 L18 47"
-        stroke="url(#evx-glow-lr)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M46 17 L34 32 L46 47"
-        stroke="rgba(255,255,255,0.38)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="32" cy="32" r="4" fill="white" opacity="0.95" />
-      <circle cx="17" cy="13" r="2" fill="#5EEAD4" opacity="0.8" />
-      <circle cx="47" cy="13" r="1.5" fill="#5EEAD4" opacity="0.5" />
-      <circle cx="47" cy="51" r="2" fill="#5EEAD4" opacity="0.8" />
-      <circle cx="17" cy="51" r="1.5" fill="#5EEAD4" opacity="0.5" />
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="18" fill="#140d04"/>
+      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
+      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
+      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
+      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
+      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
+      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
+      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
     </svg>
   );
 }
@@ -160,12 +106,12 @@ const TEMAS: Record<
     ornSvg: `<svg width="120" height="24" viewBox="0 0 120 24" fill="none"><path d="M50 8L60 4L70 8L60 12Z" fill="#93c5fd" opacity=".7"/><path d="M56 12L56 18L64 18L64 12" stroke="#93c5fd" strokeWidth="1.5" fill="none"/><circle cx="20" cy="14" r="2" fill="#93c5fd" opacity=".4"/><circle cx="100" cy="14" r="2" fill="#93c5fd" opacity=".4"/></svg>`,
   },
   otro: {
-    portada: "linear-gradient(160deg,#f0fdfa 0%,#d1fae5 50%,#ccfbf1 100%)",
-    titulo: "#134e4a",
-    subtitulo: "#0f766e",
-    acento: "#5eead4",
-    fondo: "#f0fdfa",
-    ornSvg: `<svg width="120" height="24" viewBox="0 0 120 24" fill="none"><path d="M10 12 h100" stroke="#5eead4" strokeWidth="1" strokeDasharray="4 3"/><circle cx="60" cy="12" r="3" fill="#5eead4" opacity=".6"/></svg>`,
+    portada: "linear-gradient(160deg,#FAF6F0 0%,#E8D5B0 50%,#D4A96A 100%)",
+    titulo: "#3d2b0f",
+    subtitulo: "#8B6914",
+    acento: "#C9A96E",
+    fondo: "#FAF6F0",
+    ornSvg: `<svg width="120" height="24" viewBox="0 0 120 24" fill="none"><path d="M10 12 h100" stroke="#C9A96E" strokeWidth="1" strokeDasharray="4 3"/><circle cx="60" cy="12" r="3" fill="#C9A96E" opacity=".6"/></svg>`,
   },
 };
 
@@ -481,7 +427,7 @@ export default function LibroRecuerdosPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#F0FAF9",
+          background: "#FAF6F0",
         }}
       >
         <div style={{ textAlign: "center" }}>
@@ -490,8 +436,8 @@ export default function LibroRecuerdosPage() {
             style={{
               width: 36,
               height: 36,
-              border: "3px solid #ccfbf1",
-              borderTopColor: "#0D9488",
+              border: "3px solid #E8D5B0",
+              borderTopColor: "#C9A96E",
               borderRadius: "50%",
               margin: "16px auto 12px",
               animation: "spin .8s linear infinite",
@@ -499,7 +445,7 @@ export default function LibroRecuerdosPage() {
           />
           <p
             style={{
-              color: "#0f766e",
+              color: "#8B6914",
               fontWeight: 600,
               fontSize: 14,
               fontFamily: "'DM Sans',sans-serif",
@@ -549,22 +495,22 @@ export default function LibroRecuerdosPage() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg:           #F0FAF9;
+          --bg:           #FAF6F0;
           --surface:      #FFFFFF;
-          --surface2:     #F7FDFB;
-          --border:       rgba(13,148,136,0.14);
-          --border-hover: rgba(13,148,136,0.40);
-          --accent:       #0D9488;
-          --accent2:      #0F766E;
-          --accent-light: #5EEAD4;
-          --accent-soft:  rgba(13,148,136,0.06);
-          --accent-soft2: rgba(13,148,136,0.13);
-          --text:         #0C1A19;
-          --text2:        #2D6E68;
-          --text3:        #7ABFBA;
-          --shadow:       0 4px 28px rgba(13,148,136,0.13);
-          --shadow-sm:    0 2px 10px rgba(13,148,136,0.09);
-          --shadow-btn:   0 6px 28px rgba(13,148,136,0.38);
+          --surface2:     #F7F2EA;
+          --border:       rgba(201,169,110,0.18);
+          --border-hover: rgba(201,169,110,0.40);
+          --accent:       #C9A96E;
+          --accent2:      #8B6914;
+          --accent-light: #E8D5B0;
+          --accent-soft:  rgba(201,169,110,0.09);
+          --accent-soft2: rgba(201,169,110,0.17);
+          --text:         #1a0f04;
+          --text2:        #3d2b0f;
+          --text3:        #8B6914;
+          --shadow:       0 4px 24px rgba(26,15,4,0.10);
+          --shadow-sm:    0 2px 10px rgba(26,15,4,0.08);
+          --shadow-btn:   0 6px 28px rgba(201,169,110,0.25);
           --transition:   all 0.3s cubic-bezier(.4,0,.2,1);
         }
 
@@ -593,7 +539,7 @@ export default function LibroRecuerdosPage() {
         /* ── Header ── */
         .libro-header {
           position: sticky; top: 0; z-index: 20;
-          background: rgba(240,250,249,0.94);
+          background: rgba(250,246,240,0.94);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
           border-bottom: 1px solid var(--border);
           box-shadow: var(--shadow-sm);
@@ -622,7 +568,7 @@ export default function LibroRecuerdosPage() {
         .hbtn-ghost { background: var(--surface); color: var(--text2); border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); }
         .hbtn-ghost:hover { background: var(--accent-soft2); color: var(--accent); border-color: var(--border-hover); }
         .hbtn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; box-shadow: var(--shadow-btn); }
-        .hbtn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(13,148,136,0.42); }
+        .hbtn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(201,169,110,0.25); }
         .hbtn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
         .hbtn-danger:hover { background: #fee2e2; }
         .hbtn:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -653,7 +599,7 @@ export default function LibroRecuerdosPage() {
         .tab-label { font-size: 9px; font-weight: 700; letter-spacing: 0.3px; color: #94a3b8; text-transform: uppercase; }
         .tab-btn.active .tab-label { color: var(--accent); }
         .tab-badge { font-size: 8px; font-weight: 800; background: #f1f5f9; color: #94a3b8; border-radius: 99px; padding: 1px 5px; line-height: 1.5; }
-        .tab-btn.active .tab-badge { background: #ccfbf1; color: var(--accent2); }
+        .tab-btn.active .tab-badge { background: #E8D5B0; color: var(--accent2); }
 
         /* ── Barra de acciones de sección ── */
         .section-actions {
@@ -670,7 +616,7 @@ export default function LibroRecuerdosPage() {
           transition: var(--transition); box-shadow: var(--shadow-sm);
           -webkit-tap-highlight-color: transparent;
         }
-        .btn-dl:hover:not(:disabled) { background: var(--accent-soft2); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(13,148,136,0.18); }
+        .btn-dl:hover:not(:disabled) { background: var(--accent-soft2); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(201,169,110,0.18); }
         .btn-dl:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* ── Cuerpo ── */
@@ -711,10 +657,10 @@ export default function LibroRecuerdosPage() {
           position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
           padding: 11px 14px;
           padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px));
-          background: rgba(240,250,249,0.94);
+          background: rgba(250,246,240,0.94);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
           border-top: 1px solid var(--border);
-          box-shadow: 0 -4px 20px rgba(13,148,136,0.09);
+          box-shadow: 0 -4px 20px rgba(201,169,110,0.09);
         }
         .bottom-inner { display: flex; gap: 10px; max-width: 640px; margin: 0 auto; }
         .btn-back-bottom {

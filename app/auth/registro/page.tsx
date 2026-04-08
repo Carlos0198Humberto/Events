@@ -53,7 +53,7 @@ function getStrength(pass: string): {
   if (score <= 1) return { level: 1, label: "Débil", color: "#e11d48" };
   if (score <= 2) return { level: 2, label: "Regular", color: "#f59e0b" };
   if (score <= 3) return { level: 3, label: "Buena", color: "#22c55e" };
-  return { level: 4, label: "Fuerte", color: "#0D9488" };
+  return { level: 4, label: "Fuerte", color: "#C9A96E" };
 }
 
 function getStrengthEn(pass: string): string {
@@ -217,22 +217,22 @@ export default function Registro() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg:           #F0FAF9;
+          --bg:           #FAF6F0;
           --surface:      #FFFFFF;
-          --border:       rgba(13,148,136,0.14);
-          --border-hover: rgba(13,148,136,0.40);
-          --border-input: rgba(13,148,136,0.22);
-          --accent:       #0D9488;
-          --accent2:      #0F766E;
-          --accent-light: #5EEAD4;
-          --accent-soft:  rgba(13,148,136,0.06);
-          --accent-soft2: rgba(13,148,136,0.13);
-          --text:         #0C1A19;
-          --text2:        #2D6E68;
-          --text3:        #7ABFBA;
-          --shadow:       0 4px 28px rgba(13,148,136,0.13);
-          --shadow-sm:    0 2px 10px rgba(13,148,136,0.09);
-          --shadow-btn:   0 6px 28px rgba(13,148,136,0.38);
+          --border:       rgba(201,169,110,0.18);
+          --border-hover: rgba(201,169,110,0.40);
+          --border-input: rgba(201,169,110,0.30);
+          --accent:       #C9A96E;
+          --accent2:      #8B6914;
+          --accent-light: #E8D5B0;
+          --accent-soft:  rgba(201,169,110,0.09);
+          --accent-soft2: rgba(201,169,110,0.17);
+          --text:         #1a0f04;
+          --text2:        #3d2b0f;
+          --text3:        #8B6914;
+          --shadow:       0 4px 24px rgba(26,15,4,0.10);
+          --shadow-sm:    0 2px 10px rgba(26,15,4,0.08);
+          --shadow-btn:   0 6px 28px rgba(201,169,110,0.25);
           --transition:   all 0.36s cubic-bezier(.4,0,.2,1);
         }
 
@@ -274,9 +274,9 @@ export default function Registro() {
 
         /* ── Glows ── */
         .glow { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(90px); }
-        .glow-1 { width: 280px; height: 280px; top: -60px; right: -40px; background: radial-gradient(circle, rgba(13,148,136,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
-        .glow-2 { width: 220px; height: 220px; bottom: 60px; left: -60px; background: radial-gradient(circle, rgba(94,234,212,0.11) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
-        .glow-3 { width: 180px; height: 180px; bottom: -30px; right: 10px; background: radial-gradient(circle, rgba(13,148,136,0.08) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
+        .glow-1 { width: 280px; height: 280px; top: -60px; right: -40px; background: radial-gradient(circle, rgba(201,169,110,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
+        .glow-2 { width: 220px; height: 220px; bottom: 60px; left: -60px; background: radial-gradient(circle, rgba(232,213,176,0.11) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
+        .glow-3 { width: 180px; height: 180px; bottom: -30px; right: 10px; background: radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
         @keyframes glowDrift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-18px,28px) scale(1.07)} 66%{transform:translate(14px,-18px) scale(0.95)} }
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(22px,-30px) scale(1.09)} 70%{transform:translate(-8px,18px) scale(0.93)} }
 
@@ -316,12 +316,12 @@ export default function Registro() {
         /* ── Logo area ── */
         .logo-area { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 20px; }
         .logo-container { position: relative; display: flex; align-items: center; justify-content: center; width: 76px; height: 76px; }
-        .logo-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(13,148,136,0.18); animation: ringExpand 3s ease-out infinite; width: 62px; height: 62px; }
+        .logo-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(201,169,110,0.18); animation: ringExpand 3s ease-out infinite; width: 62px; height: 62px; }
         .logo-ring-2 { animation-delay: 1s; }
         .logo-ring-3 { animation-delay: 2s; }
         @keyframes ringExpand { 0%{transform:scale(0.82);opacity:0.7} 100%{transform:scale(2.0);opacity:0} }
-        .logo-pulse { position: relative; z-index: 2; animation: logoPulse 3.5s ease-in-out infinite; filter: drop-shadow(0 4px 20px rgba(13,148,136,0.30)); }
-        @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04);filter:drop-shadow(0 6px 28px rgba(13,148,136,0.46))} }
+        .logo-pulse { position: relative; z-index: 2; animation: logoPulse 3.5s ease-in-out infinite; filter: drop-shadow(0 4px 20px rgba(201,169,110,0.20)); }
+        @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04);filter:drop-shadow(0 6px 28px rgba(201,169,110,0.25))} }
         .logo-name { font-family: 'Cormorant Garamond', serif; font-size: 30px; font-weight: 600; letter-spacing: -1.2px; color: var(--text); line-height: 1; text-align: center; }
         .logo-name span { color: var(--accent); }
         .logo-tag { font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-top: 2px; text-align: center; }
@@ -357,7 +357,7 @@ export default function Registro() {
           touch-action: manipulation;
         }
         .field-input::placeholder { color: var(--text3); }
-        .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13,148,136,0.11); background: var(--surface); }
+        .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201,169,110,0.11); background: var(--surface); }
         .field-input.err { border-color: #fca5a5; }
         .field-input.ok  { border-color: #86efac; }
 
@@ -388,7 +388,7 @@ export default function Registro() {
           -webkit-tap-highlight-color: transparent;
         }
         .terms-row:hover { border-color: var(--border-hover); background: var(--accent-soft2); }
-        .terms-row.active { border-color: var(--accent); background: rgba(13,148,136,0.08); }
+        .terms-row.active { border-color: var(--accent); background: rgba(201,169,110,0.08); }
         .checkbox-box {
           width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
           border: 2px solid var(--border-input); background: var(--surface);
@@ -417,7 +417,7 @@ export default function Registro() {
         .btn-submit::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.16) 0%, transparent 55%); pointer-events: none; border-radius: inherit; }
         .btn-shimmer { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.22) 50%, transparent 62%); background-size: 200% 100%; animation: shimmer 3.5s ease-in-out infinite; }
         @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
-        .btn-submit:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 34px rgba(13,148,136,0.50); }
+        .btn-submit:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 34px rgba(201,169,110,0.25); }
         .btn-submit:not(:disabled):active { transform: scale(0.97); }
         .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
 
