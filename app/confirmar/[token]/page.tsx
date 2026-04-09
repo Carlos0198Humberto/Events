@@ -18,6 +18,8 @@ type Invitado = {
   deseo?: string | null;
   evento_id: string;
   nombres_personas?: string | null;
+  mesa_id?: string | null;
+  mesa_nombre?: string | null; // populated by join
 };
 
 type Evento = {
@@ -42,6 +44,15 @@ type Evento = {
   fecha_limite_confirmacion?: string | null;
   organizador_telefono?: string;
   tema?: string | null;
+  regalo_activo?: boolean;
+  regalo_banco?: string | null;
+  regalo_titular?: string | null;
+  regalo_cuenta?: string | null;
+  regalo_mensaje?: string | null;
+  vestimenta_activo?: boolean;
+  vestimenta_tipo?: string | null;
+  vestimenta_colores?: string | null;
+  vestimenta_nota?: string | null;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1206,6 +1217,178 @@ function rrPath(
   ctx.closePath();
 }
 
+// ─── Vestimenta data ──────────────────────────────────────────────────────────
+const TIPOS_VESTIMENTA_MAP: Record<string, { emoji: string; label: string; desc: string }> = {
+  "formal":      { emoji: "🤵", label: "Etiqueta formal",  desc: "Traje o smoking / vestido de gala" },
+  "semi-formal": { emoji: "👔", label: "Semi-formal",       desc: "Traje casual / vestido elegante" },
+  "cocktail":    { emoji: "🥂", label: "Cocktail",          desc: "Vestido corto o de cóctel" },
+  "casual-chic": { emoji: "✨", label: "Casual elegante",   desc: "Ropa bonita pero cómoda" },
+  "casual":      { emoji: "👕", label: "Casual",            desc: "Ropa cómoda y relajada" },
+  "tematico":    { emoji: "🎭", label: "Temático",          desc: "Disfraz o tema especial" },
+  "blanco":      { emoji: "🤍", label: "Todo de blanco",    desc: "Vestimenta en color blanco" },
+  "colores":     { emoji: "🎨", label: "Paleta de colores", desc: "Colores específicos indicados" },
+};
+
+function isLightColor(hex: string): boolean {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return (r*299 + g*587 + b*114)/1000 > 140;
+}
+
+function VestimentaCard({ evento }: { evento: { vestimenta_tipo?: string | null; vestimenta_colores?: string | null; vestimenta_nota?: string | null } }) {
+  const tipo = evento.vestimenta_tipo ? TIPOS_VESTIMENTA_MAP[evento.vestimenta_tipo] : null;
+  const colores = evento.vestimenta_colores ? evento.vestimenta_colores.split(",").filter(Boolean) : [];
+
+  return (
+    <div style={{
+      background: "linear-gradient(135deg,rgba(201,169,110,0.06) 0%,rgba(232,213,176,0.10) 100%)",
+      border: "1.5px solid rgba(201,169,110,0.28)",
+      borderRadius: 18,
+      padding: "16px 18px",
+      margin: "4px 0 8px",
+    }}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+        <span style={{ fontSize:20 }}>👗</span>
+        <div>
+          <div style={{ fontSize:10, fontWeight:700, color:"var(--gold)", textTransform:"uppercase", letterSpacing:".8px" }}>Vestimenta</div>
+          <div style={{ fontSize:13, fontWeight:600, color:"var(--ink)", marginTop:1 }}>Código de vestimenta</div>
+        </div>
+      </div>
+
+      {/* Tipo */}
+      {tipo && (
+        <div style={{
+          display:"flex", alignItems:"center", gap:12,
+          background:"rgba(250,246,240,0.8)", borderRadius:12,
+          padding:"11px 13px", marginBottom: colores.length > 0 || evento.vestimenta_nota ? 10 : 0,
+        }}>
+          <span style={{ fontSize:24, lineHeight:1 }}>{tipo.emoji}</span>
+          <div>
+            <div style={{ fontSize:15, fontWeight:700, color:"var(--ink)", fontFamily:"'Cormorant Garamond',serif" }}>{tipo.label}</div>
+            <div style={{ fontSize:11, color:"var(--ink3)", marginTop:2 }}>{tipo.desc}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Paleta de colores */}
+      {colores.length > 0 && (
+        <div style={{ marginBottom: evento.vestimenta_nota ? 10 : 0 }}>
+          <div style={{ fontSize:10, fontWeight:600, color:"var(--ink3)", textTransform:"uppercase", letterSpacing:".6px", marginBottom:8 }}>
+            Paleta sugerida
+          </div>
+          <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
+            {colores.map((hex, i) => (
+              <div key={i} style={{
+                width:36, height:36, borderRadius:10,
+                background:hex,
+                border:isLightColor(hex) ? "1.5px solid rgba(0,0,0,0.12)" : "1.5px solid rgba(255,255,255,0.08)",
+                boxShadow:"0 2px 8px rgba(0,0,0,0.12)",
+              }}/>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Nota */}
+      {evento.vestimenta_nota && (
+        <p style={{
+          fontSize:12, fontStyle:"italic", color:"var(--ink2)", lineHeight:1.6,
+          borderTop:"1px solid rgba(201,169,110,0.2)", paddingTop:10, marginTop:4,
+        }}>
+          {evento.vestimenta_nota}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── RegaloCard ───────────────────────────────────────────────────────────────
+function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo_titular?: string | null; regalo_cuenta?: string | null; regalo_mensaje?: string | null } }) {
+  const [copiado, setCopiado] = useState(false);
+
+  function copiarCuenta() {
+    if (!evento.regalo_cuenta) return;
+    navigator.clipboard.writeText(evento.regalo_cuenta).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    }).catch(() => {
+      // fallback manual
+      const el = document.createElement("textarea");
+      el.value = evento.regalo_cuenta!;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    });
+  }
+
+  return (
+    <div style={{
+      background: "linear-gradient(135deg,rgba(201,169,110,0.08) 0%,rgba(232,213,176,0.12) 100%)",
+      border: "1.5px solid rgba(201,169,110,0.3)",
+      borderRadius: 18,
+      padding: "18px 18px 16px",
+      margin: "4px 0 8px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <span style={{ fontSize: 22 }}>🎁</span>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".8px" }}>Regalo</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginTop: 1 }}>Datos para transferencia</div>
+        </div>
+      </div>
+
+      {evento.regalo_mensaje && (
+        <p style={{ fontSize: 12, fontStyle: "italic", color: "var(--ink2)", lineHeight: 1.6, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(201,169,110,0.2)" }}>
+          {evento.regalo_mensaje}
+        </p>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {evento.regalo_banco && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".4px" }}>Banco</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{evento.regalo_banco}</span>
+          </div>
+        )}
+        {evento.regalo_titular && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".4px" }}>Titular</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{evento.regalo_titular}</span>
+          </div>
+        )}
+        {evento.regalo_cuenta && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 4, background: "rgba(250,246,240,0.8)", border: "1px solid rgba(201,169,110,0.25)", borderRadius: 10, padding: "10px 12px" }}>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 3 }}>Cuenta / CLABE</div>
+              <div style={{ fontFamily: "'Courier New',monospace", fontSize: 13, fontWeight: 600, color: "var(--ink)", letterSpacing: ".5px", wordBreak: "break-all" }}>
+                {evento.regalo_cuenta}
+              </div>
+            </div>
+            <button
+              onClick={copiarCuenta}
+              style={{
+                background: copiado ? "linear-gradient(135deg,#2d7d46,#38a85c)" : "linear-gradient(135deg,#C9A96E,#E8C97A)",
+                color: copiado ? "#fff" : "#140d04",
+                border: "none", borderRadius: 10, padding: "8px 13px",
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                fontFamily: "'Jost',sans-serif", whiteSpace: "nowrap",
+                flexShrink: 0, transition: "all .2s",
+              }}
+            >
+              {copiado ? "✓ Copiado" : "Copiar"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 export default function ConfirmarPage() {
   const params = useParams();
@@ -1224,6 +1407,7 @@ export default function ConfirmarPage() {
   const [generandoTarjeta, setGenerandoTarjeta] = useState(false);
   const [tarjetaPreview, setTarjetaPreview] = useState<string | null>(null);
   const [mostrarModalTarjeta, setMostrarModalTarjeta] = useState(false);
+  const [showPwaPrompt, setShowPwaPrompt] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
@@ -1231,24 +1415,40 @@ export default function ConfirmarPage() {
     document.title = "Eventix — Tu invitación";
     setTimeout(() => setMounted(true), 80);
     cargarDatos();
+    // Mostrar prompt "Agregar a pantalla" si NO está en modo standalone (PWA)
+    const isStandalone =
+      (window.navigator as { standalone?: boolean }).standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches;
+    if (!isStandalone) {
+      const dismissed = sessionStorage.getItem("pwa-prompt-dismissed");
+      if (!dismissed) {
+        const t = setTimeout(() => setShowPwaPrompt(true), 2500);
+        return () => clearTimeout(t);
+      }
+    }
   }, []);
 
   async function cargarDatos() {
     const { data: inv } = await supabase
       .from("invitados")
-      .select("*")
+      .select("*, mesas(nombre)")
       .eq("token", token)
       .single();
     if (!inv) {
       setLoading(false);
       return;
     }
+    // Normalizar el join de mesas
+    const invNorm = {
+      ...inv,
+      mesa_nombre: (inv.mesas as { nombre?: string } | null)?.nombre ?? null,
+    };
     const { data: ev } = await supabase
       .from("eventos")
       .select("*")
       .eq("id", inv.evento_id)
       .single();
-    setInvitado(inv);
+    setInvitado(invNorm);
     if (ev) setEvento(ev);
     setNumPersonas(inv.num_personas || 1);
     if (inv.estado === "confirmado") setStep("confirmado");
@@ -1651,6 +1851,19 @@ export default function ConfirmarPage() {
     .btn-descargar:disabled{opacity:.6;cursor:wait}
     .modal-cancelar{width:100%;background:transparent;border:none;padding:12px;font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;font-family:'Jost',sans-serif}
 
+    /* Tu Mesa */
+    .tu-mesa-card{
+      display:flex;align-items:center;gap:14px;
+      background:linear-gradient(135deg,rgba(201,169,110,0.1) 0%,rgba(232,213,176,0.15) 100%);
+      border:1.5px solid rgba(201,169,110,0.35);
+      border-radius:16px;padding:16px 18px;margin:4px 0 8px;
+      box-shadow:0 4px 16px rgba(201,169,110,0.12);
+    }
+    .tu-mesa-icon{font-size:28px;line-height:1;flex-shrink:0}
+    .tu-mesa-info{flex:1}
+    .tu-mesa-label{font-size:10px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}
+    .tu-mesa-nombre{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);letter-spacing:.3px}
+
     /* Rechazado */
     .rech-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow);padding:40px 26px;text-align:center;animation:riseUp .5s cubic-bezier(.22,1,.36,1) both}
     .rech-titulo{font-family:'Cormorant Garamond',serif;font-size:32px;font-style:italic;color:var(--ink);margin-bottom:12px}
@@ -1661,6 +1874,26 @@ export default function ConfirmarPage() {
     .loading-spinner{width:28px;height:28px;border-radius:50%;border:2.5px solid transparent;border-top-color:#C9A96E;animation:spin 0.8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     canvas#confetti-canvas{position:fixed;inset:0;z-index:9999;width:100%;height:100%;display:none;pointer-events:none}
+
+    /* ─── PWA Install Prompt ─── */
+    .pwa-prompt{
+      position:fixed;bottom:0;left:0;right:0;z-index:9000;
+      background:rgba(20,13,4,0.97);
+      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      padding:16px 20px calc(16px + env(safe-area-inset-bottom,0px));
+      border-top:1px solid rgba(201,169,110,0.3);
+      display:flex;align-items:center;gap:14px;
+      animation:slideUp .4s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+    .pwa-prompt-icon{width:48px;height:48px;border-radius:12px;flex-shrink:0;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+    .pwa-prompt-text{flex:1;min-width:0}
+    .pwa-prompt-title{font-size:13px;font-weight:600;color:#E8D5B0;line-height:1.3;margin-bottom:2px}
+    .pwa-prompt-sub{font-size:11px;color:rgba(232,213,176,0.6);line-height:1.4}
+    .pwa-prompt-ios{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:10.5px;color:rgba(201,169,110,0.8);font-weight:500}
+    .pwa-prompt-btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+    .pwa-prompt-add{background:linear-gradient(135deg,#C9A96E,#E8C97A);color:#140d04;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;white-space:nowrap;letter-spacing:.2px}
+    .pwa-prompt-close{background:transparent;border:1px solid rgba(201,169,110,0.3);border-radius:10px;padding:7px 10px;font-size:11px;font-weight:500;color:rgba(232,213,176,0.5);cursor:pointer;font-family:'Jost',sans-serif;white-space:nowrap}
   `;
 
   if (loading)
@@ -1921,6 +2154,11 @@ export default function ConfirmarPage() {
                   <GaleriaLugar fotos={fotosLugar} lugar={evento.lugar} />
                 )}
 
+                {/* 5b️⃣ Código de vestimenta */}
+                {evento.vestimenta_activo && evento.vestimenta_tipo && (
+                  <VestimentaCard evento={evento} />
+                )}
+
                 {/* Invitados en la tarjeta */}
                 {nombresEnTarjeta.length > 1 && (
                   <div className="inv-nombres">
@@ -1932,6 +2170,22 @@ export default function ConfirmarPage() {
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* 6️⃣ Tu Mesa */}
+                {invitado.mesa_nombre && (
+                  <div className="tu-mesa-card">
+                    <div className="tu-mesa-icon">🪑</div>
+                    <div className="tu-mesa-info">
+                      <div className="tu-mesa-label">Tu lugar asignado</div>
+                      <div className="tu-mesa-nombre">{invitado.mesa_nombre}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 7️⃣ Regalo / Transferencia */}
+                {evento.regalo_activo && (evento.regalo_banco || evento.regalo_titular || evento.regalo_cuenta) && (
+                  <RegaloCard evento={evento} />
                 )}
 
                 <OrnamentoDivider tipo={evento.tipo} />
@@ -2264,6 +2518,46 @@ export default function ConfirmarPage() {
           </div>
         )}
       </div>
+
+      {/* ─── Banner "Agregar a pantalla de inicio" ─── */}
+      {showPwaPrompt && (
+        <div className="pwa-prompt">
+          <div className="pwa-prompt-icon">
+            <AppLogo size={48} />
+          </div>
+          <div className="pwa-prompt-text">
+            <div className="pwa-prompt-title">Abre como app, sin barra de URL</div>
+            <div className="pwa-prompt-sub">Experiencia completa, como app nativa</div>
+            <div className="pwa-prompt-ios">
+              {/* Instrucción según plataforma — se renderiza en cliente */}
+              {typeof window !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent)
+                ? <>Toca <strong style={{color:"#C9A96E"}}>⎙ Compartir</strong> → &ldquo;Agregar a inicio&rdquo;</>
+                : <>Toca <strong style={{color:"#C9A96E"}}>⋮ Menú</strong> → &ldquo;Añadir a pantalla de inicio&rdquo;</>
+              }
+            </div>
+          </div>
+          <div className="pwa-prompt-btns">
+            <button
+              className="pwa-prompt-add"
+              onClick={() => {
+                sessionStorage.setItem("pwa-prompt-dismissed", "1");
+                setShowPwaPrompt(false);
+              }}
+            >
+              Entendido
+            </button>
+            <button
+              className="pwa-prompt-close"
+              onClick={() => {
+                sessionStorage.setItem("pwa-prompt-dismissed", "1");
+                setShowPwaPrompt(false);
+              }}
+            >
+              No gracias
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

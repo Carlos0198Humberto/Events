@@ -285,8 +285,8 @@ export default function AgregarInvitados() {
         }
 
         .glow { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(90px); }
-        .glow-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: radial-gradient(circle, rgba(13,148,136,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
-        .glow-2 { width: 260px; height: 260px; bottom: 80px; left: -80px; background: radial-gradient(circle, rgba(94,234,212,0.11) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
+        .glow-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: radial-gradient(circle, rgba(201,169,110,0.12) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
+        .glow-2 { width: 260px; height: 260px; bottom: 80px; left: -80px; background: radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
         @keyframes glowDrift1 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-18px,28px)} 66%{transform:translate(14px,-18px)} }
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0)} 40%{transform:translate(22px,-30px)} 70%{transform:translate(-8px,18px)} }
 
@@ -389,7 +389,7 @@ export default function AgregarInvitados() {
         .warn-box { background:#fffbeb; border:1px solid #fcd34d; color:#92400e; font-size:12.5px; padding:9px 13px; border-radius:12px; margin-bottom:10px; font-weight:500; display:flex; align-items:center; gap:7px; }
 
         /* ── Bottom bar ── */
-        .bottom-bar { position:fixed; bottom:0; left:0; right:0; z-index:20; padding:12px 16px; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); background:rgba(240,250,249,0.94); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-top:1px solid var(--border); box-shadow:0 -4px 24px rgba(13,148,136,0.09); }
+        .bottom-bar { position:fixed; bottom:0; left:0; right:0; z-index:20; padding:12px 16px; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); background:rgba(250,246,240,0.96); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-top:1px solid var(--border); box-shadow:0 -4px 24px rgba(201,169,110,0.12); }
         .btn-back { display:flex; align-items:center; justify-content:center; gap:7px; width:100%; max-width:480px; margin:0 auto; padding:14px; background:var(--surface); color:var(--text2); border:1.5px solid var(--border); border-radius:14px; font-size:14px; font-weight:600; font-family:'DM Sans',sans-serif; text-decoration:none; transition:var(--transition); box-shadow:var(--shadow-sm); -webkit-tap-highlight-color:transparent; }
         .btn-back:hover { background:var(--accent-soft2); color:var(--accent); border-color:var(--border-hover); }
 
@@ -758,6 +758,9 @@ export default function AgregarInvitados() {
             </div>
           )}
         </div>
+
+        {/* Spacer: garantiza que el último item no quede oculto bajo el bottom-bar */}
+        <div style={{ height: "calc(120px + env(safe-area-inset-bottom, 24px))", flexShrink: 0 }} aria-hidden="true" />
 
         {/* ── Floating back button ── */}
         <div className="bottom-bar anim-bottom">

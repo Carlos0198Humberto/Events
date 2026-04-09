@@ -1,0 +1,747 @@
+"use client";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+
+// ─── AppLogo ──────────────────────────────────────────────────────────────────
+function AppLogo({ size = 36 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+      <rect width="64" height="64" rx="18" fill="#140d04"/>
+      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
+      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
+      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
+      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
+      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
+      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
+      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
+    </svg>
+  );
+}
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+type Mesa = {
+  id: string;
+  nombre: string;
+  capacidad: number;
+  seccion: string | null;
+};
+
+type Invitado = {
+  id: string;
+  nombre: string;
+  num_personas: number;
+  estado: string;
+  mesa_id: string | null;
+};
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+export default function GestionarMesas() {
+  const params = useParams();
+  const eventoId = params.id as string;
+
+  const [mesas, setMesas] = useState<Mesa[]>([]);
+  const [invitados, setInvitados] = useState<Invitado[]>([]);
+  const [eventoNombre, setEventoNombre] = useState("");
+  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Modal nueva mesa
+  const [showModalMesa, setShowModalMesa] = useState(false);
+  const [editMesa, setEditMesa] = useState<Mesa | null>(null);
+  const [formNombre, setFormNombre] = useState("");
+  const [formCapacidad, setFormCapacidad] = useState("10");
+  const [formSeccion, setFormSeccion] = useState("");
+  const [guardandoMesa, setGuardandoMesa] = useState(false);
+
+  // Modal asignar invitado
+  const [mesaSeleccionada, setMesaSeleccionada] = useState<Mesa | null>(null);
+  const [busqueda, setBusqueda] = useState("");
+
+  // Eliminación de mesa
+  const [confirmEliminar, setConfirmEliminar] = useState<string | null>(null);
+  const [eliminando, setEliminando] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = "Eventix — Mesas";
+    setTimeout(() => setMounted(true), 60);
+    cargarDatos();
+  }, [eventoId]);
+
+  async function cargarDatos() {
+    setLoading(true);
+    const [{ data: ev }, { data: ms }, { data: inv }] = await Promise.all([
+      supabase.from("eventos").select("nombre").eq("id", eventoId).single(),
+      supabase.from("mesas").select("*").eq("evento_id", eventoId).order("created_at"),
+      supabase
+        .from("invitados")
+        .select("id, nombre, num_personas, estado, mesa_id")
+        .eq("evento_id", eventoId)
+        .order("nombre"),
+    ]);
+    if (ev) setEventoNombre(ev.nombre);
+    if (ms) setMesas(ms);
+    if (inv) setInvitados(inv);
+    setLoading(false);
+  }
+
+  // ── CRUD Mesas ─────────────────────────────────────────────────────────────
+  function abrirNuevaMesa() {
+    setEditMesa(null);
+    setFormNombre(`Mesa ${mesas.length + 1}`);
+    setFormCapacidad("10");
+    setFormSeccion("");
+    setShowModalMesa(true);
+  }
+
+  function abrirEditarMesa(m: Mesa) {
+    setEditMesa(m);
+    setFormNombre(m.nombre);
+    setFormCapacidad(String(m.capacidad));
+    setFormSeccion(m.seccion || "");
+    setShowModalMesa(true);
+  }
+
+  async function guardarMesa() {
+    if (!formNombre.trim()) return;
+    setGuardandoMesa(true);
+    const cap = parseInt(formCapacidad) || 10;
+
+    if (editMesa) {
+      const { data } = await supabase
+        .from("mesas")
+        .update({ nombre: formNombre.trim(), capacidad: cap, seccion: formSeccion.trim() || null })
+        .eq("id", editMesa.id)
+        .select()
+        .single();
+      if (data) setMesas((prev) => prev.map((m) => (m.id === data.id ? data : m)));
+    } else {
+      const { data } = await supabase
+        .from("mesas")
+        .insert({ evento_id: eventoId, nombre: formNombre.trim(), capacidad: cap, seccion: formSeccion.trim() || null })
+        .select()
+        .single();
+      if (data) setMesas((prev) => [...prev, data]);
+    }
+    setGuardandoMesa(false);
+    setShowModalMesa(false);
+    setEditMesa(null);
+  }
+
+  async function eliminarMesa(id: string) {
+    setEliminando(id);
+    // Desasignar invitados de esta mesa
+    await supabase.from("invitados").update({ mesa_id: null }).eq("mesa_id", id);
+    await supabase.from("mesas").delete().eq("id", id);
+    setMesas((prev) => prev.filter((m) => m.id !== id));
+    setInvitados((prev) => prev.map((i) => (i.mesa_id === id ? { ...i, mesa_id: null } : i)));
+    setEliminando(null);
+    setConfirmEliminar(null);
+  }
+
+  // ── Asignación de invitados ────────────────────────────────────────────────
+  async function asignarInvitado(invId: string, mesaId: string | null) {
+    await supabase.from("invitados").update({ mesa_id: mesaId }).eq("id", invId);
+    setInvitados((prev) =>
+      prev.map((i) => (i.id === invId ? { ...i, mesa_id: mesaId } : i))
+    );
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function invitadosDeMesa(mesaId: string) {
+    return invitados.filter((i) => i.mesa_id === mesaId);
+  }
+  function invitadosSinMesa() {
+    return invitados.filter((i) => !i.mesa_id);
+  }
+  function ocupadosMesa(mesaId: string) {
+    return invitadosDeMesa(mesaId).reduce((s, i) => s + (i.num_personas || 1), 0);
+  }
+  function invitadosFiltrados() {
+    const q = busqueda.toLowerCase().trim();
+    if (!q) return invitados;
+    return invitados.filter((i) => i.nombre.toLowerCase().includes(q));
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+  const sinMesa = invitadosSinMesa();
+
+  return (
+    <div className={`page-wrap${mounted ? " vis" : ""}`}>
+      <style>{styles}</style>
+
+      {/* Top bar */}
+      <div className="top-bar">
+        <Link href={`/eventos/${eventoId}/invitados`} className="back-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </Link>
+        <div className="top-bar-logo">
+          <AppLogo size={30} />
+          <div>
+            <div className="top-bar-title">Mesas</div>
+            <div className="top-bar-sub" title={eventoNombre}>{eventoNombre || "Cargando…"}</div>
+          </div>
+        </div>
+        <button className="btn-nueva-mesa" onClick={abrirNuevaMesa}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nueva
+        </button>
+      </div>
+
+      <div className="content">
+        {loading ? (
+          <div className="empty-state">
+            <div className="spinner" />
+          </div>
+        ) : (
+          <>
+            {/* ─ Resumen ─ */}
+            <div className="resumen-row">
+              <div className="resumen-chip">
+                <span className="resumen-val">{mesas.length}</span>
+                <span className="resumen-label">mesas</span>
+              </div>
+              <div className="resumen-chip">
+                <span className="resumen-val">{invitados.length}</span>
+                <span className="resumen-label">invitados</span>
+              </div>
+              <div className="resumen-chip">
+                <span className="resumen-val">{invitados.length - sinMesa.length}</span>
+                <span className="resumen-label">asignados</span>
+              </div>
+              <div className="resumen-chip warn">
+                <span className="resumen-val">{sinMesa.length}</span>
+                <span className="resumen-label">sin mesa</span>
+              </div>
+            </div>
+
+            {/* ─ Sin mesas aún ─ */}
+            {mesas.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">🪑</div>
+                <div className="empty-title">Sin mesas configuradas</div>
+                <div className="empty-sub">Crea tus mesas para asignar lugares a tus invitados</div>
+                <button className="btn-crear-primera" onClick={abrirNuevaMesa}>
+                  Crear primera mesa
+                </button>
+              </div>
+            )}
+
+            {/* ─ Tarjetas de mesas ─ */}
+            {mesas.map((mesa) => {
+              const asignados = invitadosDeMesa(mesa.id);
+              const ocupados = ocupadosMesa(mesa.id);
+              const pct = Math.min(100, Math.round((ocupados / mesa.capacidad) * 100));
+              const llena = ocupados >= mesa.capacidad;
+
+              return (
+                <div key={mesa.id} className={`mesa-card${llena ? " llena" : ""}`}>
+                  <div className="mesa-card-header">
+                    <div className="mesa-card-left">
+                      <div className="mesa-icono">🪑</div>
+                      <div>
+                        <div className="mesa-nombre">{mesa.nombre}</div>
+                        {mesa.seccion && <div className="mesa-seccion">{mesa.seccion}</div>}
+                      </div>
+                    </div>
+                    <div className="mesa-card-right">
+                      <div className={`mesa-cupo${llena ? " llena" : ""}`}>
+                        {ocupados}/{mesa.capacidad}
+                      </div>
+                      <button className="mesa-edit-btn" onClick={() => abrirEditarMesa(mesa)} title="Editar">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                      <button
+                        className="mesa-del-btn"
+                        onClick={() => setConfirmEliminar(mesa.id)}
+                        title="Eliminar"
+                        disabled={eliminando === mesa.id}
+                      >
+                        {eliminando === mesa.id
+                          ? <div className="spinner sm" />
+                          : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        }
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Barra de ocupación */}
+                  <div className="mesa-barra-bg">
+                    <div className={`mesa-barra-fill${llena ? " llena" : ""}`} style={{ width: `${pct}%` }} />
+                  </div>
+
+                  {/* Lista de invitados asignados */}
+                  {asignados.length > 0 && (
+                    <div className="mesa-invitados">
+                      {asignados.map((inv) => (
+                        <div key={inv.id} className="mesa-inv-row">
+                          <div className="mesa-inv-avatar">
+                            {inv.nombre.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="mesa-inv-info">
+                            <span className="mesa-inv-nombre">{inv.nombre}</span>
+                            {inv.num_personas > 1 && (
+                              <span className="mesa-inv-pax">×{inv.num_personas}</span>
+                            )}
+                          </div>
+                          <button
+                            className="mesa-inv-quitar"
+                            onClick={() => asignarInvitado(inv.id, null)}
+                            title="Quitar de esta mesa"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Botón agregar invitado */}
+                  {!llena && (
+                    <button
+                      className="btn-asignar"
+                      onClick={() => {
+                        setMesaSeleccionada(mesa);
+                        setBusqueda("");
+                      }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      Asignar invitado
+                    </button>
+                  )}
+                  {llena && (
+                    <div className="mesa-llena-tag">Mesa completa</div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* ─ Sin mesa ─ */}
+            {sinMesa.length > 0 && mesas.length > 0 && (
+              <div className="sin-mesa-section">
+                <div className="sin-mesa-title">
+                  <span>Sin mesa asignada</span>
+                  <span className="sin-mesa-count">{sinMesa.length}</span>
+                </div>
+                {sinMesa.map((inv) => (
+                  <div key={inv.id} className="sin-mesa-row">
+                    <div className="mesa-inv-avatar">{inv.nombre.charAt(0).toUpperCase()}</div>
+                    <div className="mesa-inv-info">
+                      <span className="mesa-inv-nombre">{inv.nombre}</span>
+                      {inv.num_personas > 1 && (
+                        <span className="mesa-inv-pax">×{inv.num_personas}</span>
+                      )}
+                    </div>
+                    <select
+                      className="select-mesa"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) asignarInvitado(inv.id, e.target.value);
+                      }}
+                    >
+                      <option value="">Asignar…</option>
+                      {mesas
+                        .filter((m) => ocupadosMesa(m.id) < m.capacidad)
+                        .map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.nombre} ({ocupadosMesa(m.id)}/{m.capacidad})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ─── Modal: Crear / Editar mesa ─── */}
+      {showModalMesa && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModalMesa(false)}>
+          <div className="modal-sheet">
+            <div className="modal-drag" />
+            <div className="modal-header">
+              <span className="modal-title">{editMesa ? "Editar mesa" : "Nueva mesa"}</span>
+              <button className="modal-close" onClick={() => setShowModalMesa(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <label className="field-label">Nombre de la mesa</label>
+              <input
+                className="field-input"
+                value={formNombre}
+                onChange={(e) => setFormNombre(e.target.value)}
+                placeholder="Ej: Mesa 1, Mesa de honor, Familia…"
+                autoFocus
+              />
+              <label className="field-label" style={{ marginTop: 14 }}>Capacidad (personas)</label>
+              <input
+                className="field-input"
+                type="number"
+                min={1}
+                max={50}
+                value={formCapacidad}
+                onChange={(e) => setFormCapacidad(e.target.value)}
+              />
+              <label className="field-label" style={{ marginTop: 14 }}>Sección / área <span style={{ color: "var(--ink3)", fontWeight: 400 }}>(opcional)</span></label>
+              <input
+                className="field-input"
+                value={formSeccion}
+                onChange={(e) => setFormSeccion(e.target.value)}
+                placeholder="Ej: Jardín, Salón A, Terraza…"
+              />
+              <button
+                className="btn-guardar"
+                onClick={guardarMesa}
+                disabled={guardandoMesa || !formNombre.trim()}
+              >
+                {guardandoMesa ? <div className="spinner sm" /> : (editMesa ? "Guardar cambios" : "Crear mesa")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Modal: Asignar invitado a mesa ─── */}
+      {mesaSeleccionada && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setMesaSeleccionada(null)}>
+          <div className="modal-sheet">
+            <div className="modal-drag" />
+            <div className="modal-header">
+              <div>
+                <span className="modal-title">Asignar a {mesaSeleccionada.nombre}</span>
+                <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 2 }}>
+                  {ocupadosMesa(mesaSeleccionada.id)}/{mesaSeleccionada.capacidad} lugares ocupados
+                </div>
+              </div>
+              <button className="modal-close" onClick={() => setMesaSeleccionada(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <input
+                className="field-input"
+                placeholder="Buscar invitado…"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                autoFocus
+              />
+              <div className="asignar-lista">
+                {invitadosFiltrados().length === 0 && (
+                  <div className="asignar-empty">No se encontraron invitados</div>
+                )}
+                {invitadosFiltrados().map((inv) => {
+                  const yaEnEstaMesa = inv.mesa_id === mesaSeleccionada.id;
+                  const otraMesa = inv.mesa_id && inv.mesa_id !== mesaSeleccionada.id
+                    ? mesas.find((m) => m.id === inv.mesa_id)?.nombre
+                    : null;
+
+                  return (
+                    <button
+                      key={inv.id}
+                      className={`asignar-item${yaEnEstaMesa ? " activo" : ""}`}
+                      onClick={() => {
+                        if (yaEnEstaMesa) {
+                          asignarInvitado(inv.id, null);
+                        } else {
+                          asignarInvitado(inv.id, mesaSeleccionada.id);
+                        }
+                      }}
+                    >
+                      <div className="mesa-inv-avatar sm">{inv.nombre.charAt(0).toUpperCase()}</div>
+                      <div style={{ flex: 1, textAlign: "left" }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{inv.nombre}</div>
+                        {otraMesa && (
+                          <div style={{ fontSize: 11, color: "var(--gold)" }}>En: {otraMesa}</div>
+                        )}
+                        {inv.num_personas > 1 && (
+                          <div style={{ fontSize: 11, color: "var(--ink3)" }}>{inv.num_personas} personas</div>
+                        )}
+                      </div>
+                      <div className={`asignar-check${yaEnEstaMesa ? " activo" : ""}`}>
+                        {yaEnEstaMesa ? "✓" : "+"}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Confirm eliminar mesa ─── */}
+      {confirmEliminar && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setConfirmEliminar(null)}>
+          <div className="modal-sheet" style={{ paddingBottom: "env(safe-area-inset-bottom,16px)" }}>
+            <div className="modal-drag" />
+            <div className="modal-body" style={{ textAlign: "center", paddingTop: 24 }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🗑️</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>
+                ¿Eliminar esta mesa?
+              </div>
+              <div style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 24, lineHeight: 1.6 }}>
+                Los invitados asignados quedarán sin mesa. Esta acción no se puede deshacer.
+              </div>
+              <button
+                className="btn-guardar"
+                style={{ background: "#c0392b" }}
+                onClick={() => eliminarMesa(confirmEliminar)}
+                disabled={!!eliminando}
+              >
+                {eliminando ? <div className="spinner sm" /> : "Sí, eliminar"}
+              </button>
+              <button
+                className="modal-cancelar"
+                onClick={() => setConfirmEliminar(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CSS ──────────────────────────────────────────────────────────────────────
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500;600;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAF6F0;color:#1a1209}
+  :root{
+    --bg:#FAF6F0;--surface:#fff;--cream:#FAF6F0;--cream2:#F3EDE3;
+    --ink:#1a1209;--ink2:#3d2b0f;--ink3:#8B6914;
+    --gold:#C9A96E;--gold-pale:rgba(201,169,110,0.1);--gold-mid:rgba(201,169,110,0.2);
+    --border:rgba(201,169,110,0.2);--border-mid:rgba(201,169,110,0.35);
+    --shadow:0 4px 20px rgba(26,18,9,0.08);--shadow-lg:0 8px 40px rgba(26,18,9,0.12);
+    --r:20px;--r-sm:14px;
+  }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+
+  .page-wrap{min-height:100dvh;background:var(--bg);opacity:0;transition:opacity .35s ease}
+  .page-wrap.vis{opacity:1}
+
+  /* Top bar */
+  .top-bar{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 16px;
+    background:rgba(250,246,240,0.96);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:30;
+  }
+  .back-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:10px;
+    background:var(--cream2);border:1px solid var(--border);
+    color:var(--ink2);text-decoration:none;flex-shrink:0;
+    transition:background .15s;
+  }
+  .back-btn:hover{background:var(--gold-pale)}
+  .top-bar-logo{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+  .top-bar-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);line-height:1.1}
+  .top-bar-sub{font-size:10px;color:var(--ink3);text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:180px}
+  .btn-nueva-mesa{
+    display:flex;align-items:center;gap:5px;
+    background:linear-gradient(135deg,#C9A96E,#E8C97A);
+    color:#140d04;border:none;border-radius:10px;
+    padding:8px 13px;font-size:12px;font-weight:700;
+    cursor:pointer;font-family:'Jost',sans-serif;
+    flex-shrink:0;letter-spacing:.2px;
+    box-shadow:0 2px 8px rgba(201,169,110,0.35);
+  }
+  .btn-nueva-mesa:active{transform:scale(.97)}
+
+  /* Content */
+  .content{max-width:480px;margin:0 auto;padding:16px 16px calc(32px + env(safe-area-inset-bottom,16px))}
+
+  /* Resumen */
+  .resumen-row{display:flex;gap:8px;margin-bottom:16px}
+  .resumen-chip{
+    flex:1;background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;padding:10px 8px;text-align:center;
+    box-shadow:var(--shadow);
+  }
+  .resumen-chip.warn{border-color:rgba(201,169,110,0.5);background:rgba(201,169,110,0.07)}
+  .resumen-val{display:block;font-size:20px;font-weight:700;color:var(--ink);line-height:1.1}
+  .resumen-label{display:block;font-size:10px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+  /* Empty state */
+  .empty-state{
+    display:flex;flex-direction:column;align-items:center;
+    padding:48px 20px;text-align:center;gap:10px;
+  }
+  .empty-icon{font-size:44px}
+  .empty-title{font-size:17px;font-weight:700;color:var(--ink)}
+  .empty-sub{font-size:13px;color:var(--ink3);line-height:1.6;max-width:240px}
+  .btn-crear-primera{
+    margin-top:8px;background:linear-gradient(135deg,#C9A96E,#E8C97A);
+    color:#140d04;border:none;border-radius:14px;padding:13px 28px;
+    font-size:14px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;
+    box-shadow:0 4px 16px rgba(201,169,110,0.4);
+  }
+
+  /* Mesa card */
+  .mesa-card{
+    background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);
+    box-shadow:var(--shadow);padding:16px;margin-bottom:14px;
+    animation:fadeIn .4s ease both;
+  }
+  .mesa-card.llena{border-color:rgba(201,169,110,0.6);background:rgba(201,169,110,0.04)}
+  .mesa-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .mesa-card-left{display:flex;align-items:center;gap:10px}
+  .mesa-icono{font-size:22px;line-height:1}
+  .mesa-nombre{font-size:15px;font-weight:700;color:var(--ink);line-height:1.2}
+  .mesa-seccion{font-size:11px;color:var(--ink3);margin-top:1px}
+  .mesa-card-right{display:flex;align-items:center;gap:6px}
+  .mesa-cupo{font-size:13px;font-weight:600;color:var(--ink3);padding:3px 8px;background:var(--cream2);border-radius:8px}
+  .mesa-cupo.llena{color:#B45309;background:rgba(180,83,9,0.1)}
+  .mesa-edit-btn,.mesa-del-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:30px;height:30px;border-radius:8px;border:none;
+    cursor:pointer;transition:all .15s;
+  }
+  .mesa-edit-btn{background:var(--cream2);color:var(--ink2)}
+  .mesa-edit-btn:hover{background:var(--gold-pale);color:var(--gold)}
+  .mesa-del-btn{background:var(--cream2);color:#c0392b}
+  .mesa-del-btn:hover{background:rgba(192,57,43,0.1)}
+  .mesa-del-btn:disabled{opacity:.5;cursor:default}
+
+  /* Barra de ocupación */
+  .mesa-barra-bg{height:4px;background:var(--cream2);border-radius:4px;margin-bottom:12px;overflow:hidden}
+  .mesa-barra-fill{height:100%;background:linear-gradient(90deg,#C9A96E,#E8C97A);border-radius:4px;transition:width .4s ease}
+  .mesa-barra-fill.llena{background:linear-gradient(90deg,#B45309,#E57C00)}
+
+  /* Invitados en mesa */
+  .mesa-invitados{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+  .mesa-inv-row,.sin-mesa-row{
+    display:flex;align-items:center;gap:10px;
+    background:var(--cream);border-radius:10px;padding:8px 10px;
+    border:1px solid var(--border);
+  }
+  .sin-mesa-row{background:rgba(201,169,110,0.06);border-color:rgba(201,169,110,0.2)}
+  .mesa-inv-avatar{
+    width:32px;height:32px;border-radius:50%;
+    background:linear-gradient(135deg,#C9A96E,#E8C97A);
+    color:#140d04;font-size:13px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .mesa-inv-avatar.sm{width:28px;height:28px;font-size:11px}
+  .mesa-inv-info{flex:1;min-width:0}
+  .mesa-inv-nombre{font-size:13px;font-weight:600;color:var(--ink)}
+  .mesa-inv-pax{font-size:11px;color:var(--gold);font-weight:600;margin-left:6px}
+  .mesa-inv-quitar{
+    background:none;border:none;color:var(--ink3);font-size:18px;
+    cursor:pointer;line-height:1;padding:0 4px;border-radius:6px;
+    transition:color .15s;
+  }
+  .mesa-inv-quitar:hover{color:#c0392b}
+  .btn-asignar{
+    width:100%;background:transparent;border:1.5px dashed var(--border-mid);
+    border-radius:10px;padding:10px;color:var(--gold);
+    font-size:12px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    font-family:'Jost',sans-serif;transition:all .15s;
+  }
+  .btn-asignar:hover{background:var(--gold-pale);border-style:solid}
+  .mesa-llena-tag{text-align:center;font-size:11px;color:var(--gold);font-weight:600;padding:6px;letter-spacing:.5px}
+
+  /* Sin mesa section */
+  .sin-mesa-section{
+    background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);
+    padding:16px;margin-bottom:14px;box-shadow:var(--shadow);
+  }
+  .sin-mesa-title{
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:13px;font-weight:700;color:var(--ink2);
+    margin-bottom:12px;
+  }
+  .sin-mesa-count{
+    background:rgba(201,169,110,0.15);color:var(--gold);
+    border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;
+  }
+  .select-mesa{
+    font-family:'Jost',sans-serif;font-size:12px;font-weight:500;
+    background:var(--cream2);border:1px solid var(--border-mid);
+    border-radius:8px;padding:6px 8px;color:var(--ink2);
+    cursor:pointer;max-width:140px;
+  }
+
+  /* Modales */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(20,13,4,0.65);
+    z-index:1000;display:flex;align-items:flex-end;
+    backdrop-filter:blur(4px);
+  }
+  .modal-sheet{
+    width:100%;max-height:90dvh;overflow-y:auto;
+    background:#FAF6F0;border-radius:24px 24px 0 0;
+    animation:slideUp .35s cubic-bezier(.22,1,.36,1) both;
+    max-width:480px;margin:0 auto;
+  }
+  .modal-drag{width:36px;height:4px;background:rgba(201,169,110,0.35);border-radius:4px;margin:10px auto 0}
+  .modal-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 20px 10px;border-bottom:1px solid var(--border);
+  }
+  .modal-title{font-size:16px;font-weight:700;color:var(--ink)}
+  .modal-close{background:none;border:none;font-size:24px;color:var(--ink3);cursor:pointer;line-height:1}
+  .modal-body{padding:16px 20px 20px;display:flex;flex-direction:column;gap:4px}
+
+  .field-label{font-size:12px;font-weight:600;color:var(--ink2);letter-spacing:.3px;text-transform:uppercase;margin-bottom:4px}
+  .field-input{
+    width:100%;background:var(--surface);border:1.5px solid var(--border-mid);
+    border-radius:12px;padding:12px 14px;font-size:14px;
+    font-family:'Jost',sans-serif;color:var(--ink);
+    outline:none;transition:border-color .15s;
+  }
+  .field-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,0.1)}
+  .btn-guardar{
+    width:100%;margin-top:16px;
+    background:linear-gradient(135deg,#C9A96E,#E8C97A);
+    color:#140d04;border:none;border-radius:14px;
+    padding:14px;font-size:14px;font-weight:700;
+    cursor:pointer;font-family:'Jost',sans-serif;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    transition:opacity .15s;
+  }
+  .btn-guardar:disabled{opacity:.6;cursor:not-allowed}
+  .modal-cancelar{
+    width:100%;background:transparent;border:none;
+    padding:12px;font-size:13px;font-weight:500;
+    color:var(--ink3);cursor:pointer;font-family:'Jost',sans-serif;margin-top:4px;
+  }
+
+  /* Lista asignar */
+  .asignar-lista{max-height:280px;overflow-y:auto;margin-top:10px;display:flex;flex-direction:column;gap:4px}
+  .asignar-item{
+    display:flex;align-items:center;gap:10px;
+    background:var(--surface);border:1.5px solid var(--border);
+    border-radius:12px;padding:10px 12px;cursor:pointer;
+    transition:all .15s;font-family:'Jost',sans-serif;
+  }
+  .asignar-item:hover{background:var(--gold-pale);border-color:var(--gold)}
+  .asignar-item.activo{background:rgba(201,169,110,0.12);border-color:var(--gold)}
+  .asignar-empty{text-align:center;padding:20px;color:var(--ink3);font-size:13px}
+  .asignar-check{
+    width:24px;height:24px;border-radius:50%;
+    border:1.5px solid var(--border-mid);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:var(--ink3);
+    flex-shrink:0;transition:all .15s;
+  }
+  .asignar-check.activo{background:var(--gold);border-color:var(--gold);color:#140d04}
+
+  /* Spinner */
+  .spinner{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(201,169,110,0.2);border-top-color:var(--gold);animation:spin .75s linear infinite}
+  .spinner.sm{width:16px;height:16px;border-width:2px}
+`;

@@ -68,6 +68,8 @@ const translations = {
     invitados: "Invitados",
     libro: "Libro",
     agradecimientos: "Gracias",
+    mesas: "Mesas",
+    configurar: "Configurar",
     gestionar: "Gestionar",
     eliminar: "Eliminar",
     finalizad: "Finalizado",
@@ -105,6 +107,8 @@ const translations = {
     invitados: "Guests",
     libro: "Book",
     agradecimientos: "Thank-yous",
+    mesas: "Tables",
+    configurar: "Settings",
     gestionar: "Manage",
     eliminar: "Delete",
     finalizad: "Finished",
@@ -270,6 +274,18 @@ const Icon = {
     >
       <circle cx="10" cy="10" r="2.5" />
       <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" />
+    </svg>
+  ),
+  table: () => (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <rect x="2" y="4" width="16" height="4" rx="1.5"/>
+      <path d="M5 8v8M15 8v8M8 8v8M12 8v8"/>
+    </svg>
+  ),
+  gear: () => (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <circle cx="10" cy="10" r="2.5"/>
+      <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/>
     </svg>
   ),
   trash: () => (
@@ -995,9 +1011,6 @@ export default function Dashboard() {
             >
               {lang === "es" ? "EN" : "ES"}
             </button>
-            <Link href="/eventos/nuevo" className="btn-new">
-              <Icon.plus /> {t.nuevo}
-            </Link>
             <button
               onClick={cerrarSesion}
               className="btn-salir"
@@ -1247,6 +1260,16 @@ export default function Dashboard() {
                               icon: <Icon.mail />,
                               label: t.agradecimientos,
                               badge: evento.agradecimiento_enviado,
+                            },
+                            {
+                              href: `/eventos/${evento.id}/mesas`,
+                              icon: <Icon.table />,
+                              label: t.mesas,
+                            },
+                            {
+                              href: `/eventos/${evento.id}/configurar`,
+                              icon: <Icon.gear />,
+                              label: t.configurar,
                             },
                           ].map(({ href, icon, label, badge }) => (
                             <Link key={href} href={href} className="quick-link">
