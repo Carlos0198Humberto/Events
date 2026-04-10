@@ -55,6 +55,15 @@ type Evento = {
   vestimenta_nota?: string | null;
 };
 
+type ItemItinerario = {
+  id: string;
+  hora?: string | null;
+  titulo: string;
+  descripcion?: string | null;
+  icono?: string | null;
+  orden: number;
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const TIPO_LABEL: Record<string, string> = {
   quinceañera: "Quinceañera",
@@ -121,6 +130,18 @@ function abrirGoogleCalendar(evento: Evento) {
     "_blank",
   );
 }
+
+// ─── Confetti para pantalla de bienvenida (determinista, sin random) ─────────
+const CONFETTI_PIECES = Array.from({ length: 42 }, (_, i) => ({
+  id: i,
+  left: ((i * 7.3 + (i % 5) * 11.7) % 100),
+  delay: (i * 0.12) % 3.8,
+  dur: 2.6 + (i % 6) * 0.35,
+  size: 5 + (i % 5) * 2.5,
+  color: ["#C9A96E","#E8D5B0","#ffffff","#f9a8d4","#fbbf24","#ddd6fe","#86efac","#93c5fd","#fca5a5","#a5f3fc"][i % 10],
+  rot: (i * 53) % 360,
+  wide: i % 3 !== 0,
+}));
 
 function crearParticulas() {
   const colores = [
@@ -1217,6 +1238,50 @@ function rrPath(
   ctx.closePath();
 }
 
+// ─── CountdownTimer ───────────────────────────────────────────────────────────
+function CountdownTimer({ fecha, hora }: { fecha: string; hora?: string | null }) {
+  const [diff, setDiff] = useState<{ d:number; h:number; m:number; s:number; pasado:boolean } | null>(null);
+
+  useEffect(() => {
+    function calcular() {
+      const fechaStr = fecha.split("T")[0];
+      const horaStr = hora ? hora.replace(".", ":").slice(0,5) : "00:00";
+      const target = new Date(`${fechaStr}T${horaStr}:00`);
+      const now = new Date();
+      const ms = target.getTime() - now.getTime();
+      if (ms <= 0) { setDiff({ d:0, h:0, m:0, s:0, pasado:true }); return; }
+      const s = Math.floor(ms/1000);
+      setDiff({ d:Math.floor(s/86400), h:Math.floor((s%86400)/3600), m:Math.floor((s%3600)/60), s:s%60, pasado:false });
+    }
+    calcular();
+    const t = setInterval(calcular, 1000);
+    return () => clearInterval(t);
+  }, [fecha, hora]);
+
+  if (!diff) return null;
+  if (diff.pasado) return (
+    <div style={{ textAlign:"center", padding:"14px 0 6px" }}>
+      <span style={{ fontSize:12, color:"var(--gold)", fontWeight:600 }}>✨ ¡El evento ya ocurrió!</span>
+    </div>
+  );
+
+  const pad = (n:number) => String(n).padStart(2,"0");
+
+  return (
+    <div className="countdown-wrap">
+      <div className="countdown-label">Faltan</div>
+      <div className="countdown-grid">
+        {[{ val:diff.d, unit:"días" }, { val:diff.h, unit:"horas" }, { val:diff.m, unit:"min" }, { val:diff.s, unit:"seg" }].map(({val,unit}) => (
+          <div key={unit} className="countdown-block">
+            <div className="countdown-num">{unit==="días" ? diff.d : pad(val)}</div>
+            <div className="countdown-unit">{unit}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Vestimenta data ──────────────────────────────────────────────────────────
 const TIPOS_VESTIMENTA_MAP: Record<string, { emoji: string; label: string; desc: string }> = {
   "formal":      { emoji: "🤵", label: "Etiqueta formal",  desc: "Traje o smoking / vestido de gala" },
@@ -1389,6 +1454,76 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
   );
 }
 
+// ─── ProgramaCard ─────────────────────────────────────────────────────────────
+function ProgramaCard({ items }: { items: ItemItinerario[] }) {
+  return (
+    <div style={{
+      background: "var(--surface)", border: "1px solid var(--border-mid)",
+      borderRadius: "var(--r-sm)", overflow: "hidden",
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: "14px 18px 12px",
+        borderBottom: "1px solid var(--border)",
+        display: "flex", alignItems: "center", gap: 10,
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 10,
+          background: "var(--cream2)", border: "1px solid var(--border)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 16, flexShrink: 0,
+        }}>📅</div>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: 2 }}>Programa del evento</div>
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 600, color: "var(--ink)" }}>Itinerario</div>
+        </div>
+      </div>
+      {/* Items */}
+      <div style={{ padding: "6px 0 8px" }}>
+        {items.map((item, idx) => (
+          <div key={item.id} style={{
+            display: "flex", alignItems: "flex-start", gap: 14,
+            padding: "12px 18px",
+            borderBottom: idx < items.length - 1 ? "1px solid var(--border)" : "none",
+          }}>
+            {/* Línea de tiempo */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: 32 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: "linear-gradient(135deg,var(--dark),var(--dark2))",
+                border: "1.5px solid rgba(201,169,110,0.3)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 14, lineHeight: 1,
+              }}>
+                {item.icono || "✨"}
+              </div>
+              {idx < items.length - 1 && (
+                <div style={{ width: 1, flex: 1, minHeight: 12, background: "linear-gradient(180deg,rgba(201,169,110,0.3),transparent)", marginTop: 4 }} />
+              )}
+            </div>
+            {/* Contenido */}
+            <div style={{ flex: 1, paddingTop: 4 }}>
+              {item.hora && (
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 3 }}>
+                  {item.hora}
+                </div>
+              )}
+              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 600, color: "var(--ink)", lineHeight: 1.2, marginBottom: item.descripcion ? 4 : 0 }}>
+                {item.titulo}
+              </div>
+              {item.descripcion && (
+                <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.6 }}>
+                  {item.descripcion}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 export default function ConfirmarPage() {
   const params = useParams();
@@ -1408,6 +1543,8 @@ export default function ConfirmarPage() {
   const [tarjetaPreview, setTarjetaPreview] = useState<string | null>(null);
   const [mostrarModalTarjeta, setMostrarModalTarjeta] = useState(false);
   const [showPwaPrompt, setShowPwaPrompt] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [itinerario, setItinerario] = useState<ItemItinerario[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
@@ -1429,30 +1566,49 @@ export default function ConfirmarPage() {
   }, []);
 
   async function cargarDatos() {
+    // Primero cargamos el invitado sin join (siempre funciona)
     const { data: inv } = await supabase
       .from("invitados")
-      .select("*, mesas(nombre)")
+      .select("*")
       .eq("token", token)
       .single();
     if (!inv) {
       setLoading(false);
       return;
     }
-    // Normalizar el join de mesas
-    const invNorm = {
-      ...inv,
-      mesa_nombre: (inv.mesas as { nombre?: string } | null)?.nombre ?? null,
-    };
+    // Intentar obtener nombre de mesa por separado (falla graciosamente si la tabla no existe aún)
+    let mesa_nombre: string | null = null;
+    if (inv.mesa_id) {
+      try {
+        const { data: mesa } = await supabase
+          .from("mesas")
+          .select("nombre")
+          .eq("id", inv.mesa_id)
+          .single();
+        mesa_nombre = mesa?.nombre ?? null;
+      } catch {
+        // tabla mesas no migrada aún — ignorar
+      }
+    }
     const { data: ev } = await supabase
       .from("eventos")
       .select("*")
       .eq("id", inv.evento_id)
       .single();
-    setInvitado(invNorm);
+    setInvitado({ ...inv, mesa_nombre });
     if (ev) setEvento(ev);
     setNumPersonas(inv.num_personas || 1);
     if (inv.estado === "confirmado") setStep("confirmado");
     if (inv.estado === "rechazado") setStep("rechazado");
+    // Cargar itinerario (falla graciosamente si tabla no existe)
+    try {
+      const { data: iti } = await supabase
+        .from("itinerario")
+        .select("*")
+        .eq("evento_id", inv.evento_id)
+        .order("orden", { ascending: true });
+      if (iti && iti.length > 0) setItinerario(iti);
+    } catch { /* tabla no migrada aún */ }
     setLoading(false);
   }
 
@@ -1851,6 +2007,15 @@ export default function ConfirmarPage() {
     .btn-descargar:disabled{opacity:.6;cursor:wait}
     .modal-cancelar{width:100%;background:transparent;border:none;padding:12px;font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;font-family:'Jost',sans-serif}
 
+    /* Countdown */
+    @keyframes cdPulse{0%,100%{opacity:1}50%{opacity:.7}}
+    .countdown-wrap{background:linear-gradient(135deg,var(--dark) 0%,var(--dark2) 100%);border-radius:18px;padding:18px 12px 14px;margin:4px 0 8px;text-align:center}
+    .countdown-label{font-size:10px;font-weight:700;color:rgba(201,169,110,0.7);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+    .countdown-grid{display:flex;justify-content:center;gap:8px}
+    .countdown-block{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,0.06);border:1px solid rgba(201,169,110,0.2);border-radius:12px;padding:10px 10px 8px;min-width:58px}
+    .countdown-num{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:#E8D5B0;line-height:1;letter-spacing:-1px;animation:cdPulse 2s ease infinite}
+    .countdown-unit{font-size:9px;font-weight:700;color:rgba(201,169,110,0.6);text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+
     /* Tu Mesa */
     .tu-mesa-card{
       display:flex;align-items:center;gap:14px;
@@ -1894,6 +2059,108 @@ export default function ConfirmarPage() {
     .pwa-prompt-btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
     .pwa-prompt-add{background:linear-gradient(135deg,#C9A96E,#E8C97A);color:#140d04;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;white-space:nowrap;letter-spacing:.2px}
     .pwa-prompt-close{background:transparent;border:1px solid rgba(201,169,110,0.3);border-radius:10px;padding:7px 10px;font-size:11px;font-weight:500;color:rgba(232,213,176,0.5);cursor:pointer;font-family:'Jost',sans-serif;white-space:nowrap}
+
+    /* ─── QR de entrada ─── */
+    .qr-entry-card{background:var(--surface);border:1.5px solid rgba(201,169,110,0.28);border-radius:18px;padding:20px 18px;text-align:center}
+    .qr-entry-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--gold-dark);margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:7px}
+    .qr-img-wrap{width:164px;height:164px;margin:0 auto 14px;border-radius:14px;overflow:hidden;background:#fff;padding:8px;box-shadow:0 4px 18px rgba(0,0,0,.10);border:1.5px solid rgba(201,169,110,0.2)}
+    .qr-img-wrap img{width:100%;height:100%;display:block;border-radius:6px}
+    .qr-nombre-badge{display:inline-flex;align-items:center;gap:8px;background:var(--cream2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:10px}
+    .qr-nombre-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .qr-nombre-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--ink)}
+    .qr-hint{font-size:11px;color:var(--ink3);line-height:1.6}
+
+    /* ─── Pantalla de bienvenida ─── */
+    @keyframes welcomeFadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes welcomeFadeOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.04)}}
+    @keyframes welcomeSlideUp{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}85%{opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+    @keyframes confettiWave{0%,100%{transform:translateX(0)}25%{transform:translateX(12px)}75%{transform:translateX(-12px)}}
+    @keyframes shimmer{0%,100%{opacity:.7}50%{opacity:1}}
+    @keyframes starPop{0%{transform:scale(0) rotate(0deg);opacity:0}60%{transform:scale(1.2) rotate(20deg);opacity:1}100%{transform:scale(1) rotate(0deg);opacity:1}}
+
+    .welcome-overlay{
+      position:fixed;inset:0;z-index:9990;
+      background:linear-gradient(160deg,var(--dark) 0%,var(--dark2) 55%,#1e1208 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:env(safe-area-inset-top,20px) 24px env(safe-area-inset-bottom,24px);
+      animation:welcomeFadeIn .55s ease both;
+      overflow:hidden;
+    }
+    .welcome-overlay.leaving{animation:welcomeFadeOut .45s ease forwards}
+    .welcome-confetti-layer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+    .confetti-piece{
+      position:absolute;top:-30px;border-radius:2px;
+      animation:confettiFall linear both, confettiWave ease-in-out infinite;
+    }
+    .welcome-logo-ring{
+      position:relative;z-index:1;
+      width:90px;height:90px;border-radius:24px;
+      background:rgba(201,169,110,0.10);
+      border:1.5px solid rgba(201,169,110,0.35);
+      display:flex;align-items:center;justify-content:center;
+      margin-bottom:24px;
+      box-shadow:0 0 40px rgba(201,169,110,0.18), 0 8px 32px rgba(0,0,0,0.4);
+      animation:starPop .7s .1s cubic-bezier(.22,1,.36,1) both;
+    }
+    .welcome-hola{
+      position:relative;z-index:1;
+      font-family:'Jost',sans-serif;font-size:11px;font-weight:700;
+      color:rgba(201,169,110,0.8);text-transform:uppercase;letter-spacing:2.5px;
+      margin-bottom:10px;
+      animation:welcomeSlideUp .6s .25s cubic-bezier(.22,1,.36,1) both;
+    }
+    .welcome-nombre{
+      position:relative;z-index:1;
+      font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:600;font-style:italic;
+      color:#F5EDD8;letter-spacing:-.5px;line-height:1.1;text-align:center;
+      margin-bottom:16px;
+      animation:welcomeSlideUp .6s .35s cubic-bezier(.22,1,.36,1) both;
+    }
+    .welcome-divider{
+      position:relative;z-index:1;
+      width:60px;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,0.6),transparent);
+      margin:0 auto 16px;
+      animation:welcomeSlideUp .6s .45s cubic-bezier(.22,1,.36,1) both;
+    }
+    .welcome-evento-nombre{
+      position:relative;z-index:1;
+      font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;
+      color:rgba(232,213,176,0.9);text-align:center;line-height:1.3;letter-spacing:.3px;
+      margin-bottom:6px;
+      animation:welcomeSlideUp .6s .5s cubic-bezier(.22,1,.36,1) both;
+    }
+    .welcome-anfitrion{
+      position:relative;z-index:1;
+      font-size:12px;color:rgba(201,169,110,0.65);font-weight:500;
+      text-align:center;letter-spacing:.5px;margin-bottom:48px;
+      animation:welcomeSlideUp .6s .58s cubic-bezier(.22,1,.36,1) both;
+    }
+    .welcome-btn{
+      position:relative;z-index:1;
+      background:linear-gradient(135deg,#C9A96E,#E8C97A);
+      color:#140d04;border:none;border-radius:16px;
+      padding:17px 40px;
+      font-family:'Jost',sans-serif;font-size:15px;font-weight:700;letter-spacing:.5px;
+      cursor:pointer;
+      box-shadow:0 6px 28px rgba(201,169,110,0.40), 0 2px 8px rgba(0,0,0,0.3);
+      transition:transform .18s,box-shadow .18s;
+      animation:welcomeSlideUp .6s .68s cubic-bezier(.22,1,.36,1) both;
+      display:flex;align-items:center;gap:8px;
+    }
+    .welcome-btn:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(201,169,110,0.50), 0 2px 8px rgba(0,0,0,0.3)}
+    .welcome-btn:active{transform:translateY(0)}
+    .welcome-dots{
+      position:absolute;inset:0;pointer-events:none;
+      background-image:radial-gradient(circle,rgba(201,169,110,0.07) 1px,transparent 1px);
+      background-size:30px 30px;
+    }
+    .welcome-glow{
+      position:absolute;bottom:-80px;left:50%;transform:translateX(-50%);
+      width:300px;height:300px;border-radius:50%;
+      background:radial-gradient(circle,rgba(201,169,110,0.12) 0%,transparent 70%);
+      pointer-events:none;
+    }
   `;
 
   if (loading)
@@ -1976,6 +2243,77 @@ export default function ConfirmarPage() {
     <>
       <style>{styles}</style>
       <canvas id="confetti-canvas" ref={canvasRef} />
+
+      {/* ─── Pantalla de bienvenida con confeti ─── */}
+      {showWelcome && (
+        <div
+          className="welcome-overlay"
+          id="welcome-overlay"
+        >
+          {/* Fondo de puntos */}
+          <div className="welcome-dots" />
+          <div className="welcome-glow" />
+
+          {/* Confeti */}
+          <div className="welcome-confetti-layer">
+            {CONFETTI_PIECES.map((p) => (
+              <div
+                key={p.id}
+                className="confetti-piece"
+                style={{
+                  left: `${p.left}%`,
+                  width: p.wide ? p.size * 2 : p.size,
+                  height: p.wide ? p.size * 0.5 : p.size,
+                  borderRadius: p.wide ? 2 : p.size / 2,
+                  background: p.color,
+                  animationDuration: `${p.dur}s, ${p.dur * 0.8}s`,
+                  animationDelay: `${p.delay}s, ${p.delay}s`,
+                  animationIterationCount: "infinite, infinite",
+                  transform: `rotate(${p.rot}deg)`,
+                  opacity: 0.85,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Logo */}
+          <div className="welcome-logo-ring">
+            <AppLogo size={54} />
+          </div>
+
+          {/* Saludo */}
+          <p className="welcome-hola">¡Te damos la bienvenida!</p>
+          <h1 className="welcome-nombre">
+            {invitado.nombre.split(" ").slice(0, 2).join(" ")}
+          </h1>
+          <div className="welcome-divider" />
+
+          {/* Evento */}
+          <p className="welcome-evento-nombre">{evento.nombre}</p>
+          <p className="welcome-anfitrion">
+            {TIPO_ORNAMENTO[evento.tipo] || "✨"}&nbsp; de {evento.anfitriones}
+          </p>
+
+          {/* CTA */}
+          <button
+            className="welcome-btn"
+            onClick={() => {
+              const el = document.getElementById("welcome-overlay");
+              if (el) {
+                el.classList.add("leaving");
+                setTimeout(() => setShowWelcome(false), 420);
+              } else {
+                setShowWelcome(false);
+              }
+            }}
+          >
+            Ver mi invitación
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="#140d04" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Modal tarjeta */}
       {mostrarModalTarjeta && (
@@ -2149,6 +2487,9 @@ export default function ConfirmarPage() {
                   </div>
                 )}
 
+                {/* ⏱ Cuenta regresiva */}
+                {evento.fecha && <CountdownTimer fecha={evento.fecha} hora={evento.hora} />}
+
                 {/* 5️⃣ Galería del lugar */}
                 {fotosLugar.length > 0 && (
                   <GaleriaLugar fotos={fotosLugar} lugar={evento.lugar} />
@@ -2186,6 +2527,11 @@ export default function ConfirmarPage() {
                 {/* 7️⃣ Regalo / Transferencia */}
                 {evento.regalo_activo && (evento.regalo_banco || evento.regalo_titular || evento.regalo_cuenta) && (
                   <RegaloCard evento={evento} />
+                )}
+
+                {/* 8️⃣ Programa del evento */}
+                {itinerario.length > 0 && (
+                  <ProgramaCard items={itinerario} />
                 )}
 
                 <OrnamentoDivider tipo={evento.tipo} />
@@ -2361,6 +2707,36 @@ export default function ConfirmarPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* ─── QR de entrada ─── */}
+                {(() => {
+                  const qrUrl = typeof window !== "undefined"
+                    ? `${window.location.origin}/confirmar/${invitado.token}`
+                    : `/confirmar/${invitado.token}`;
+                  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}&format=png&color=140d04&bgcolor=FFFFFF&margin=4`;
+                  return (
+                    <div className="qr-entry-card">
+                      <div className="qr-entry-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                          <rect x="2" y="2" width="9" height="9" rx="2" stroke="currentColor" strokeWidth="2"/>
+                          <rect x="13" y="2" width="9" height="9" rx="2" stroke="currentColor" strokeWidth="2"/>
+                          <rect x="2" y="13" width="9" height="9" rx="2" stroke="currentColor" strokeWidth="2"/>
+                          <rect x="17" y="17" width="4" height="4" fill="currentColor"/>
+                          <rect x="13" y="13" width="4" height="4" fill="currentColor"/>
+                        </svg>
+                        Tu QR de entrada
+                      </div>
+                      <div className="qr-img-wrap">
+                        <img src={qrSrc} alt="QR de entrada" width={148} height={148} />
+                      </div>
+                      <div className="qr-nombre-badge">
+                        <div className="qr-nombre-av">{invitado.nombre.charAt(0).toUpperCase()}</div>
+                        <span className="qr-nombre-text">{invitado.nombre}</span>
+                      </div>
+                      <p className="qr-hint">Muestra este código en la entrada del evento.<br/>El organizador lo escaneará para registrar tu llegada.</p>
+                    </div>
+                  );
+                })()}
 
                 {/* Subir fotos — máx 5, opcional */}
                 <SubirFotosInvitado

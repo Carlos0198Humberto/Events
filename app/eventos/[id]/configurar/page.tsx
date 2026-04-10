@@ -75,6 +75,17 @@ export default function ConfigurarEvento() {
   const [vestColores, setVestColores] = useState<string[]>([]);
   const [vestNota, setVestNota] = useState("");
 
+  // ── Itinerario ──
+  type ItemItinerario = { id: string; hora: string; titulo: string; descripcion: string; icono: string; orden: number };
+  const [items, setItems] = useState<ItemItinerario[]>([]);
+  const [itiOpen, setItiOpen] = useState(true);
+  const [nuevoHora, setNuevoHora] = useState("");
+  const [nuevoTitulo, setNuevoTitulo] = useState("");
+  const [nuevoDesc, setNuevoDesc] = useState("");
+  const [nuevoIcono, setNuevoIcono] = useState("✨");
+  const [agregando, setAgregando] = useState(false);
+  const [eliminandoItem, setEliminandoItem] = useState<string | null>(null);
+
   useEffect(() => {
     document.title = "Eventix — Configurar evento";
     setTimeout(() => setMounted(true), 60);
@@ -99,6 +110,15 @@ export default function ConfigurarEvento() {
       setVestColores(data.vestimenta_colores ? data.vestimenta_colores.split(",").filter(Boolean) : []);
       setVestNota(data.vestimenta_nota ?? "");
     }
+    // Cargar itinerario
+    try {
+      const { data: itiData } = await supabase
+        .from("itinerario")
+        .select("*")
+        .eq("evento_id", eventoId)
+        .order("orden", { ascending: true });
+      if (itiData) setItems(itiData);
+    } catch { /* tabla no existe aún */ }
     setLoading(false);
   }
 
@@ -118,6 +138,44 @@ export default function ConfigurarEvento() {
     setGuardando(false);
     setGuardado(true);
     setTimeout(() => setGuardado(false), 2500);
+  }
+
+  async function agregarItem() {
+    if (!nuevoTitulo.trim()) return;
+    setAgregando(true);
+    const orden = items.length;
+    const { data } = await supabase.from("itinerario").insert({
+      evento_id: eventoId,
+      hora: nuevoHora.trim() || null,
+      titulo: nuevoTitulo.trim(),
+      descripcion: nuevoDesc.trim() || null,
+      icono: nuevoIcono,
+      orden,
+    }).select().single();
+    if (data) setItems(prev => [...prev, data]);
+    setNuevoHora(""); setNuevoTitulo(""); setNuevoDesc(""); setNuevoIcono("✨");
+    setAgregando(false);
+  }
+
+  async function eliminarItem(id: string) {
+    setEliminandoItem(id);
+    await supabase.from("itinerario").delete().eq("id", id);
+    setItems(prev => prev.filter(i => i.id !== id));
+    setEliminandoItem(null);
+  }
+
+  async function moverItem(id: string, dir: "up" | "down") {
+    const idx = items.findIndex(i => i.id === id);
+    if (dir === "up" && idx === 0) return;
+    if (dir === "down" && idx === items.length - 1) return;
+    const newItems = [...items];
+    const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+    [newItems[idx], newItems[swapIdx]] = [newItems[swapIdx], newItems[idx]];
+    setItems(newItems);
+    // Actualizar orden en Supabase
+    await Promise.all(newItems.map((item, i) =>
+      supabase.from("itinerario").update({ orden: i }).eq("id", item.id)
+    ));
   }
 
   function toggleColor(hex: string) {
@@ -334,6 +392,89 @@ export default function ConfigurarEvento() {
               </div>
             </div>
 
+            {/* ══════════════════════════════════════════
+                SECCIÓN 3: PROGRAMA DEL EVENTO
+            ══════════════════════════════════════════ */}
+            <div className="section-card">
+              <div className="section-header" style={{cursor:"pointer"}} onClick={() => setItiOpen(o => !o)}>
+                <div className="section-icon">📅</div>
+                <div style={{flex:1}}>
+                  <div className="section-title">Programa del evento</div>
+                  <div className="section-sub">Itinerario que verán tus invitados</div>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="2" strokeLinecap="round"
+                  style={{transition:"transform .25s", transform: itiOpen ? "rotate(180deg)" : "rotate(0deg)"}}>
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </div>
+
+              {itiOpen && (
+                <div className="iti-body">
+                  {/* Lista de ítems */}
+                  {items.length > 0 && (
+                    <div className="iti-list">
+                      {items.map((item, idx) => (
+                        <div key={item.id} className="iti-item">
+                          <div className="iti-item-icon">{item.icono}</div>
+                          <div className="iti-item-info">
+                            {item.hora && <span className="iti-item-hora">{item.hora}</span>}
+                            <span className="iti-item-titulo">{item.titulo}</span>
+                            {item.descripcion && <span className="iti-item-desc">{item.descripcion}</span>}
+                          </div>
+                          <div className="iti-item-btns">
+                            <button className="iti-ord-btn" onClick={() => moverItem(item.id, "up")} disabled={idx === 0} title="Subir">▲</button>
+                            <button className="iti-ord-btn" onClick={() => moverItem(item.id, "down")} disabled={idx === items.length - 1} title="Bajar">▼</button>
+                            <button className="iti-del-btn" onClick={() => eliminarItem(item.id)} disabled={eliminandoItem === item.id}>
+                              {eliminandoItem === item.id ? "…" : "×"}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Formulario nuevo ítem */}
+                  <div className="iti-form">
+                    <div className="iti-form-title">+ Agregar momento</div>
+
+                    {/* Selector de emoji */}
+                    <div className="iti-form-label">Ícono</div>
+                    <div className="iti-emoji-grid">
+                      {["✨","🎂","💃","🎶","📸","🥂","🍽️","👑","💍","🎓","🎭","🎊","🕯️","🌸","🎁","💐","🪩","🎤","🎺","🥳","🌟","🎠","🫶","🎻","🏆"].map(e => (
+                        <button key={e} className={`iti-emoji-btn${nuevoIcono === e ? " sel" : ""}`} onClick={() => setNuevoIcono(e)}>{e}</button>
+                      ))}
+                    </div>
+
+                    <div className="iti-form-row">
+                      <div style={{flex:"0 0 90px"}}>
+                        <div className="iti-form-label">Hora</div>
+                        <input className="iti-input" type="time" value={nuevoHora} onChange={e => setNuevoHora(e.target.value)} placeholder="18:00" />
+                      </div>
+                      <div style={{flex:1}}>
+                        <div className="iti-form-label">Título *</div>
+                        <input className="iti-input" placeholder="Ej: Entrada de los novios" value={nuevoTitulo} onChange={e => setNuevoTitulo(e.target.value)} maxLength={60} />
+                      </div>
+                    </div>
+
+                    <div className="iti-form-label" style={{marginTop:8}}>Descripción (opcional)</div>
+                    <input className="iti-input" placeholder="Detalles del momento…" value={nuevoDesc} onChange={e => setNuevoDesc(e.target.value)} maxLength={120} />
+
+                    <button
+                      className="iti-add-btn"
+                      onClick={agregarItem}
+                      disabled={agregando || !nuevoTitulo.trim()}
+                    >
+                      {agregando ? "Agregando…" : "Agregar al programa"}
+                    </button>
+                  </div>
+
+                  {items.length === 0 && (
+                    <p className="iti-empty">Aún no hay momentos. Agrega el primero arriba.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* ─── Botón guardar ─── */}
             <button className={`btn-guardar${guardado ? " done" : ""}`} onClick={guardar} disabled={guardando}>
               {guardando
@@ -461,4 +602,35 @@ const styles = `
   .spinner.sm{width:14px;height:14px}
   .spinner.lg{width:30px;height:30px;border-top-color:var(--gold)}
   .spinner-center{display:flex;justify-content:center;padding:60px}
+
+  /* ─── Itinerario ─── */
+  .iti-body{padding:0 18px 18px;display:flex;flex-direction:column;gap:14px}
+  .iti-list{display:flex;flex-direction:column;gap:8px}
+  .iti-item{display:flex;align-items:flex-start;gap:11px;background:var(--surface);border:1.5px solid var(--border-mid);border-radius:12px;padding:12px 10px 12px 14px}
+  .iti-item-icon{font-size:20px;line-height:1;flex-shrink:0;margin-top:1px}
+  .iti-item-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .iti-item-hora{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.8px}
+  .iti-item-titulo{font-size:14px;font-weight:600;color:var(--ink);line-height:1.3}
+  .iti-item-desc{font-size:11px;color:var(--ink3);line-height:1.4;margin-top:1px}
+  .iti-item-btns{display:flex;align-items:center;gap:4px;flex-shrink:0}
+  .iti-ord-btn{width:26px;height:26px;border-radius:7px;background:var(--cream2);border:1px solid var(--border);color:var(--ink3);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+  .iti-ord-btn:hover:not(:disabled){background:var(--gold-pale);border-color:var(--gold);color:var(--gold-dark)}
+  .iti-ord-btn:disabled{opacity:.35;cursor:default}
+  .iti-del-btn{width:26px;height:26px;border-radius:7px;background:#fef2f2;border:1px solid rgba(185,28,28,.15);color:#b91c1c;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;line-height:1}
+  .iti-del-btn:hover:not(:disabled){background:#fee2e2}
+
+  .iti-form{background:rgba(201,169,110,0.06);border:1.5px dashed rgba(201,169,110,0.3);border-radius:14px;padding:14px}
+  .iti-form-title{font-size:12px;font-weight:700;color:var(--gold-dark);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+  .iti-form-label{font-size:10px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+  .iti-form-row{display:flex;gap:9px;align-items:flex-end}
+  .iti-input{width:100%;background:var(--surface);border:1.5px solid var(--border-mid);border-radius:10px;padding:9px 12px;font-size:13px;font-family:'Jost',sans-serif;color:var(--ink);outline:none;transition:border-color .15s}
+  .iti-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,0.12)}
+  .iti-input::placeholder{color:var(--ink3);opacity:.6}
+  .iti-emoji-grid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+  .iti-emoji-btn{width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;line-height:1}
+  .iti-emoji-btn:hover{border-color:var(--gold);background:var(--gold-pale)}
+  .iti-emoji-btn.sel{border-color:var(--gold);background:rgba(201,169,110,0.15);box-shadow:0 0 0 1px var(--gold)}
+  .iti-add-btn{width:100%;margin-top:12px;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(201,169,110,0.3);border-radius:11px;padding:11px;font-family:'Jost',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
+  .iti-add-btn:disabled{opacity:.55;cursor:not-allowed}
+  .iti-empty{font-size:12px;color:var(--ink3);text-align:center;font-style:italic;padding:4px 0}
 `;

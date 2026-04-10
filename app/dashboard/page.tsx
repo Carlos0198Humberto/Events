@@ -70,6 +70,7 @@ const translations = {
     agradecimientos: "Gracias",
     mesas: "Mesas",
     configurar: "Configurar",
+    scanner: "Scanner QR",
     gestionar: "Gestionar",
     eliminar: "Eliminar",
     finalizad: "Finalizado",
@@ -109,6 +110,7 @@ const translations = {
     agradecimientos: "Thank-yous",
     mesas: "Tables",
     configurar: "Settings",
+    scanner: "QR Scanner",
     gestionar: "Manage",
     eliminar: "Delete",
     finalizad: "Finished",
@@ -286,6 +288,12 @@ const Icon = {
     <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
       <circle cx="10" cy="10" r="2.5"/>
       <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/>
+    </svg>
+  ),
+  scanner: () => (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <rect x="2" y="2" width="6" height="6" rx="1.5"/><rect x="12" y="2" width="6" height="6" rx="1.5"/><rect x="2" y="12" width="6" height="6" rx="1.5"/>
+      <rect x="13" y="13" width="2.5" height="2.5" fill="currentColor" stroke="none"/><rect x="15.5" y="15.5" width="2.5" height="2.5" fill="currentColor" stroke="none"/><path d="M12 12h.5"/>
     </svg>
   ),
   trash: () => (
@@ -1270,6 +1278,11 @@ export default function Dashboard() {
                               href: `/eventos/${evento.id}/configurar`,
                               icon: <Icon.gear />,
                               label: t.configurar,
+                            },
+                            {
+                              href: `/eventos/${evento.id}/scanner`,
+                              icon: <Icon.scanner />,
+                              label: t.scanner,
                             },
                           ].map(({ href, icon, label, badge }) => (
                             <Link key={href} href={href} className="quick-link">

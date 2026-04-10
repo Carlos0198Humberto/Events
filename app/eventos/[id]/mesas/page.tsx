@@ -220,8 +220,53 @@ export default function GestionarMesas() {
               </div>
             </div>
 
-            {/* ─ Sin mesas aún ─ */}
-            {mesas.length === 0 && (
+            {/* ─ Invitados sin mesa — SIEMPRE visible al tope ─ */}
+            {sinMesa.length > 0 && (
+              <div className="sin-mesa-section">
+                <div className="sin-mesa-title">
+                  <span>📋 Sin mesa asignada</span>
+                  <span className="sin-mesa-count">{sinMesa.length}</span>
+                </div>
+                {mesas.length === 0 && (
+                  <div className="sin-mesa-hint">Crea una mesa con el botón <strong>+ Nueva</strong> para comenzar a asignar</div>
+                )}
+                {sinMesa.map((inv) => (
+                  <div key={inv.id} className="sin-mesa-row">
+                    <div className="mesa-inv-avatar">{inv.nombre.charAt(0).toUpperCase()}</div>
+                    <div className="mesa-inv-info">
+                      <span className="mesa-inv-nombre">{inv.nombre}</span>
+                      {(inv.num_personas ?? 1) > 1 && (
+                        <span className="mesa-inv-pax">×{inv.num_personas}</span>
+                      )}
+                      <span className={`est-badge est-${inv.estado}`}>
+                        {inv.estado === "confirmado" ? "✓ Confirmado" : inv.estado === "rechazado" ? "✗ Declinó" : "Pendiente"}
+                      </span>
+                    </div>
+                    {mesas.length > 0 ? (
+                      <select
+                        className="select-mesa"
+                        value=""
+                        onChange={(e) => { if (e.target.value) asignarInvitado(inv.id, e.target.value); }}
+                      >
+                        <option value="">Asignar…</option>
+                        {mesas
+                          .filter((m) => ocupadosMesa(m.id) < m.capacidad)
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.nombre} ({ocupadosMesa(m.id)}/{m.capacidad})
+                            </option>
+                          ))}
+                      </select>
+                    ) : (
+                      <span className="sin-mesa-espera">—</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ─ Sin mesas aún (solo si no hay invitados tampoco) ─ */}
+            {mesas.length === 0 && invitados.length === 0 && (
               <div className="empty-state">
                 <div className="empty-icon">🪑</div>
                 <div className="empty-title">Sin mesas configuradas</div>
@@ -323,40 +368,10 @@ export default function GestionarMesas() {
               );
             })}
 
-            {/* ─ Sin mesa ─ */}
-            {sinMesa.length > 0 && mesas.length > 0 && (
-              <div className="sin-mesa-section">
-                <div className="sin-mesa-title">
-                  <span>Sin mesa asignada</span>
-                  <span className="sin-mesa-count">{sinMesa.length}</span>
-                </div>
-                {sinMesa.map((inv) => (
-                  <div key={inv.id} className="sin-mesa-row">
-                    <div className="mesa-inv-avatar">{inv.nombre.charAt(0).toUpperCase()}</div>
-                    <div className="mesa-inv-info">
-                      <span className="mesa-inv-nombre">{inv.nombre}</span>
-                      {inv.num_personas > 1 && (
-                        <span className="mesa-inv-pax">×{inv.num_personas}</span>
-                      )}
-                    </div>
-                    <select
-                      className="select-mesa"
-                      value=""
-                      onChange={(e) => {
-                        if (e.target.value) asignarInvitado(inv.id, e.target.value);
-                      }}
-                    >
-                      <option value="">Asignar…</option>
-                      {mesas
-                        .filter((m) => ocupadosMesa(m.id) < m.capacidad)
-                        .map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.nombre} ({ocupadosMesa(m.id)}/{m.capacidad})
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                ))}
+            {/* ─ Todos asignados ─ */}
+            {mesas.length > 0 && sinMesa.length === 0 && invitados.length > 0 && (
+              <div style={{ textAlign:"center", padding:"14px", color:"#2d7d46", fontWeight:600, fontSize:13, background:"rgba(45,125,70,0.07)", borderRadius:14, border:"1px solid rgba(45,125,70,0.2)" }}>
+                ✓ Todos los invitados tienen mesa asignada
               </div>
             )}
           </>
@@ -669,6 +684,12 @@ const styles = `
     background:rgba(201,169,110,0.15);color:var(--gold);
     border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;
   }
+  .sin-mesa-hint{font-size:12px;color:var(--ink3);padding:8px 4px 4px;line-height:1.5}
+  .sin-mesa-espera{font-size:12px;color:var(--ink3);padding:4px 8px}
+  .est-badge{font-size:10px;font-weight:600;border-radius:6px;padding:2px 6px;margin-left:4px}
+  .est-confirmado{background:rgba(45,125,70,0.12);color:#2d7d46}
+  .est-rechazado{background:rgba(192,57,43,0.12);color:#c0392b}
+  .est-pendiente{background:rgba(201,169,110,0.15);color:var(--ink3)}
   .select-mesa{
     font-family:'Jost',sans-serif;font-size:12px;font-weight:500;
     background:var(--cream2);border:1px solid var(--border-mid);
