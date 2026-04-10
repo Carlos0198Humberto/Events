@@ -1297,13 +1297,15 @@ export default function LibroRecuerdosPage() {
             </svg>
             Volver al Muro
           </Link>
-          <Link
-            href="/dashboard"
-            className="btn-back-bottom"
-            style={{ flex: "0 0 auto", padding: "13px 18px" }}
-          >
-            Dashboard
-          </Link>
+          {!tokenParam && (
+            <Link
+              href="/dashboard"
+              className="btn-back-bottom"
+              style={{ flex: "0 0 auto", padding: "13px 18px" }}
+            >
+              Dashboard
+            </Link>
+          )}
         </div>
       </div>
     </>

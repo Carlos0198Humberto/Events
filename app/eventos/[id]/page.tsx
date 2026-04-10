@@ -52,11 +52,11 @@ const TIPO_LABEL: Record<string, string> = {
   otro: "Evento especial",
 };
 const TIPO_ORNAMENTO: Record<string, string> = {
-  quinceañera: "👑",
-  boda: "💍",
-  graduacion: "🎓",
-  cumpleaños: "🎂",
-  otro: "✨",
+  quinceañera: "",
+  boda: "",
+  graduacion: "",
+  cumpleaños: "",
+  otro: "",
 };
 
 function formatFecha(fecha: string) {
@@ -638,7 +638,7 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
   return (
     <>
       <div>
-        <div className="foto-lugar-label">📍 {lugar || "El lugar"}</div>
+        <div className="foto-lugar-label">{lugar || "El lugar"}</div>
         <div className="galeria-thumbs">
           {validas.slice(0, 3).map((src, i) => (
             <div
@@ -707,7 +707,7 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
                 </div>
               </>
             )}
-            {lugar && <div className="lightbox-caption">📍 {lugar}</div>}
+            {lugar && <div className="lightbox-caption">{lugar}</div>}
           </div>
         </div>
       )}
@@ -918,7 +918,7 @@ function DejarDeseo({
       invitado_id: invitadoId,
       nombre_autor: invNombre || "Anónimo",
       mensaje: mensaje.trim(),
-      emoji_sticker: "💌",
+      emoji_sticker: "✉",
       color_fondo: "#e8f8f5",
       aprobado: true,
     });
@@ -966,7 +966,7 @@ function DejarDeseo({
             />
           </svg>
         )}
-        {enviado && <span style={{ fontSize: 18 }}>💌</span>}
+        {enviado && <span style={{ fontSize: 13, color:"var(--gold)", fontWeight:600 }}>✓</span>}
       </div>
       {expandido && !enviado && (
         <div className="fotos-inv-body">
@@ -1012,7 +1012,7 @@ function DejarDeseo({
                 <div className="spinner" /> Enviando...
               </>
             ) : (
-              <>💌 Publicar deseo</>
+              <>Publicar deseo</>
             )}
           </button>
         </div>
@@ -1463,7 +1463,11 @@ export default function ConfirmarPage() {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: 44, marginBottom: 14 }}>🔍</div>
+            <div style={{ marginBottom: 16, opacity: 0.35 }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
             <p
               style={{
                 fontFamily: "'Cormorant Garamond',serif",
@@ -1484,7 +1488,7 @@ export default function ConfirmarPage() {
     );
 
   const tipoLabel = TIPO_LABEL[evento.tipo] || "Evento especial";
-  const tipoOrn = TIPO_ORNAMENTO[evento.tipo] || "✨";
+  const tipoOrn = TIPO_ORNAMENTO[evento.tipo] || "";
   const fechaFmt = evento.fecha ? formatFecha(evento.fecha) : null;
   const fechaCorta = evento.fecha ? formatFechaCorta(evento.fecha) : null;
   const horaFmt = evento.hora ? formatHora(evento.hora) : null;
@@ -1513,7 +1517,7 @@ export default function ConfirmarPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Número de orden siempre visible */}
             <div className="topbar-num">
-              🎟️ #{String(numOrden).padStart(3, "0")}
+              #{String(numOrden).padStart(3, "0")}
             </div>
             {/* Botón salir SOLO cuando ya está en modo muro */}
             {(step === "confirmado" || step === "rechazado") && (
@@ -1546,7 +1550,7 @@ export default function ConfirmarPage() {
                 )}
                 {/* Número de orden en hero */}
                 <div className="inv-num-badge">
-                  🎟️ Invitación #{String(numOrden).padStart(3, "0")}
+                  Invitación #{String(numOrden).padStart(3, "0")}
                 </div>
                 <div className="inv-tipo-badge">
                   <span>{tipoOrn}</span>
@@ -1630,7 +1634,7 @@ export default function ConfirmarPage() {
                               rel="noopener noreferrer"
                               className="maps-btn"
                             >
-                              <span>📍</span>Ver en el mapa
+                              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 2a6 6 0 016 6c0 5-6 10-6 10S4 13 4 8a6 6 0 016-6z"/><circle cx="10" cy="8" r="2"/></svg>Ver en el mapa
                             </a>
                           )}
                         </div>
@@ -1881,7 +1885,7 @@ export default function ConfirmarPage() {
                   <div
                     className={`paso-dot ${fotoSubida ? "paso-dot-done" : "paso-dot-active"}`}
                   >
-                    {fotoSubida ? "✓" : "📸"}
+                    {fotoSubida ? "✓" : "2"}
                   </div>
                   <div
                     className={`paso-line${deseoGuardado ? " paso-line-done" : ""}`}
@@ -1889,7 +1893,7 @@ export default function ConfirmarPage() {
                   <div
                     className={`paso-dot ${deseoGuardado ? "paso-dot-done" : "paso-dot-pending"}`}
                   >
-                    {deseoGuardado ? "✓" : "💌"}
+                    {deseoGuardado ? "✓" : "3"}
                   </div>
                 </div>
                 <p
@@ -1901,8 +1905,8 @@ export default function ConfirmarPage() {
                   }}
                 >
                   ✓ Confirmado ·{" "}
-                  {fotoSubida ? "📸 Foto subida" : "📸 Foto (opcional)"} ·{" "}
-                  {deseoGuardado ? "💌 Deseo enviado" : "💌 Deseo (opcional)"}
+                  {fotoSubida ? "Foto subida" : "Foto (opcional)"} ·{" "}
+                  {deseoGuardado ? "Deseo enviado" : "Deseo (opcional)"}
                 </p>
 
                 {/* Subir fotos (opcional) */}
@@ -1970,7 +1974,7 @@ export default function ConfirmarPage() {
 
                 {/* ── IR AL MURO (solo fotos y deseos, sin dashboard) ── */}
                 <button className="btn-muro" onClick={irAlMuro}>
-                  📸 Ver fotos y deseos del evento
+                  Ver fotos y deseos del evento
                 </button>
 
                 {/* ── SALIR ── */}
@@ -1986,7 +1990,9 @@ export default function ConfirmarPage() {
         {step === "rechazado" && (
           <div className="wrap">
             <div className="rech-card">
-              <div style={{ fontSize: 50, marginBottom: 18 }}>🕊️</div>
+              <div style={{ marginBottom: 18 }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.4" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
               <div className="rech-titulo">Gracias por avisar</div>
               <OrnamentoDivider tipo={evento.tipo} />
               <p className="rech-sub" style={{ marginTop: 16 }}>

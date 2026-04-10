@@ -25,7 +25,6 @@ type Mesa = {
   id: string;
   nombre: string;
   capacidad: number;
-  seccion: string | null;
 };
 
 type Invitado = {
@@ -52,8 +51,9 @@ export default function GestionarMesas() {
   const [editMesa, setEditMesa] = useState<Mesa | null>(null);
   const [formNombre, setFormNombre] = useState("");
   const [formCapacidad, setFormCapacidad] = useState("10");
-  const [formSeccion, setFormSeccion] = useState("");
   const [guardandoMesa, setGuardandoMesa] = useState(false);
+  const [asignandoAuto, setAsignandoAuto] = useState(false);
+  const [showAutoPanel, setShowAutoPanel] = useState(false);
 
   // Modal asignar invitado
   const [mesaSeleccionada, setMesaSeleccionada] = useState<Mesa | null>(null);
@@ -91,7 +91,6 @@ export default function GestionarMesas() {
     setEditMesa(null);
     setFormNombre(`Mesa ${mesas.length + 1}`);
     setFormCapacidad("10");
-    setFormSeccion("");
     setShowModalMesa(true);
   }
 
@@ -99,7 +98,6 @@ export default function GestionarMesas() {
     setEditMesa(m);
     setFormNombre(m.nombre);
     setFormCapacidad(String(m.capacidad));
-    setFormSeccion(m.seccion || "");
     setShowModalMesa(true);
   }
 
@@ -111,7 +109,7 @@ export default function GestionarMesas() {
     if (editMesa) {
       const { data } = await supabase
         .from("mesas")
-        .update({ nombre: formNombre.trim(), capacidad: cap, seccion: formSeccion.trim() || null })
+        .update({ nombre: formNombre.trim(), capacidad: cap })
         .eq("id", editMesa.id)
         .select()
         .single();
@@ -119,7 +117,7 @@ export default function GestionarMesas() {
     } else {
       const { data } = await supabase
         .from("mesas")
-        .insert({ evento_id: eventoId, nombre: formNombre.trim(), capacidad: cap, seccion: formSeccion.trim() || null })
+        .insert({ evento_id: eventoId, nombre: formNombre.trim(), capacidad: cap })
         .select()
         .single();
       if (data) setMesas((prev) => [...prev, data]);
@@ -146,6 +144,34 @@ export default function GestionarMesas() {
     setInvitados((prev) =>
       prev.map((i) => (i.id === invId ? { ...i, mesa_id: mesaId } : i))
     );
+  }
+
+  // ── Auto-asignación de confirmados ─────────────────────────────────────────
+  async function autoAsignarConfirmados() {
+    if (mesas.length === 0) return;
+    setAsignandoAuto(true);
+    // Solo los confirmados sin mesa asignada
+    const pendientes = invitados.filter((i) => i.estado === "confirmado" && !i.mesa_id);
+    let mesaIdx = 0;
+    for (const inv of pendientes) {
+      // Buscar la siguiente mesa con espacio
+      let intentos = 0;
+      while (intentos < mesas.length) {
+        const mesa = mesas[mesaIdx % mesas.length];
+        const ocupados = invitados
+          .filter((i) => i.mesa_id === mesa.id)
+          .reduce((s, i) => s + (i.num_personas || 1), 0);
+        if (ocupados + (inv.num_personas || 1) <= mesa.capacidad) {
+          await asignarInvitado(inv.id, mesa.id);
+          mesaIdx++;
+          break;
+        }
+        mesaIdx++;
+        intentos++;
+      }
+    }
+    setAsignandoAuto(false);
+    setShowAutoPanel(false);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -185,12 +211,26 @@ export default function GestionarMesas() {
             <div className="top-bar-sub" title={eventoNombre}>{eventoNombre || "Cargando…"}</div>
           </div>
         </div>
-        <button className="btn-nueva-mesa" onClick={abrirNuevaMesa}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Nueva
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          {invitados.filter(i => i.estado === "confirmado" && !i.mesa_id).length > 0 && mesas.length > 0 && (
+            <button
+              className="btn-nueva-mesa"
+              style={{ background: "rgba(201,169,110,0.12)", color: "var(--gold)", border: "1.5px solid rgba(201,169,110,0.3)" }}
+              onClick={() => setShowAutoPanel(true)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+              Auto
+            </button>
+          )}
+          <button className="btn-nueva-mesa" onClick={abrirNuevaMesa}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nueva
+          </button>
+        </div>
       </div>
 
       <div className="content">
@@ -291,7 +331,6 @@ export default function GestionarMesas() {
                       <div className="mesa-icono">🪑</div>
                       <div>
                         <div className="mesa-nombre">{mesa.nombre}</div>
-                        {mesa.seccion && <div className="mesa-seccion">{mesa.seccion}</div>}
                       </div>
                     </div>
                     <div className="mesa-card-right">
@@ -405,13 +444,6 @@ export default function GestionarMesas() {
                 value={formCapacidad}
                 onChange={(e) => setFormCapacidad(e.target.value)}
               />
-              <label className="field-label" style={{ marginTop: 14 }}>Sección / área <span style={{ color: "var(--ink3)", fontWeight: 400 }}>(opcional)</span></label>
-              <input
-                className="field-input"
-                value={formSeccion}
-                onChange={(e) => setFormSeccion(e.target.value)}
-                placeholder="Ej: Jardín, Salón A, Terraza…"
-              />
               <button
                 className="btn-guardar"
                 onClick={guardarMesa}
@@ -491,6 +523,71 @@ export default function GestionarMesas() {
       )}
 
       {/* ─── Confirm eliminar mesa ─── */}
+      {/* ─── Panel auto-asignación ─── */}
+      {showAutoPanel && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowAutoPanel(false)}>
+          <div className="modal-sheet">
+            <div className="modal-drag" />
+            <div className="modal-header">
+              <div>
+                <span className="modal-title">Asignación automática</span>
+                <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 2 }}>
+                  Solo invitados confirmados sin mesa
+                </div>
+              </div>
+              <button className="modal-close" onClick={() => setShowAutoPanel(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              {/* Lista de confirmados sin mesa */}
+              <div style={{ marginBottom: 16 }}>
+                {invitados.filter(i => i.estado === "confirmado" && !i.mesa_id).length === 0 ? (
+                  <div className="asignar-empty">Todos los confirmados ya tienen mesa asignada</div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 10, fontWeight: 500 }}>
+                      {invitados.filter(i => i.estado === "confirmado" && !i.mesa_id).length} confirmados sin mesa:
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+                      {invitados
+                        .filter(i => i.estado === "confirmado" && !i.mesa_id)
+                        .map(inv => (
+                          <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: 10, padding: "8px 12px" }}>
+                            <div className="mesa-inv-avatar sm">{inv.nombre.charAt(0).toUpperCase()}</div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{inv.nombre}</div>
+                              {(inv.num_personas ?? 1) > 1 && (
+                                <div style={{ fontSize: 11, color: "var(--ink3)" }}>{inv.num_personas} personas</div>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>✓ Confirmado</div>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {invitados.filter(i => i.estado === "confirmado" && !i.mesa_id).length > 0 && (
+                <>
+                  <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 12, lineHeight: 1.5, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.2)", borderRadius: 8, padding: "10px 12px" }}>
+                    Se distribuirán por orden de confirmación, respetando la capacidad de cada mesa.
+                  </div>
+                  <button
+                    className="btn-guardar"
+                    onClick={autoAsignarConfirmados}
+                    disabled={asignandoAuto}
+                  >
+                    {asignandoAuto ? <div className="spinner sm" /> : "Asignar automáticamente"}
+                  </button>
+                </>
+              )}
+              <button className="modal-cancelar" onClick={() => setShowAutoPanel(false)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {confirmEliminar && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setConfirmEliminar(null)}>
           <div className="modal-sheet" style={{ paddingBottom: "env(safe-area-inset-bottom,16px)" }}>

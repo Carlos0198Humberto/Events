@@ -73,11 +73,11 @@ const TIPO_LABEL: Record<string, string> = {
   otro: "Evento especial",
 };
 const TIPO_ORNAMENTO: Record<string, string> = {
-  quinceañera: "👑",
-  boda: "💍",
-  graduacion: "🎓",
-  cumpleaños: "🎂",
-  otro: "✨",
+  quinceañera: "",
+  boda: "",
+  graduacion: "",
+  cumpleaños: "",
+  otro: "",
 };
 
 function formatFecha(fecha: string) {
@@ -796,7 +796,7 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
     <>
       {/* Thumbnails */}
       <div>
-        <div className="foto-lugar-label">📍 {lugar || "El lugar"}</div>
+        <div className="foto-lugar-label">{lugar || "El lugar"}</div>
         <div className="galeria-thumbs">
           {validas.slice(0, 3).map((src, i) => (
             <div
@@ -868,7 +868,7 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
                 </div>
               </>
             )}
-            {lugar && <div className="lightbox-caption">📍 {lugar}</div>}
+            {lugar && <div className="lightbox-caption">{lugar}</div>}
           </div>
         </div>
       )}
@@ -1261,7 +1261,7 @@ function CountdownTimer({ fecha, hora }: { fecha: string; hora?: string | null }
   if (!diff) return null;
   if (diff.pasado) return (
     <div style={{ textAlign:"center", padding:"14px 0 6px" }}>
-      <span style={{ fontSize:12, color:"var(--gold)", fontWeight:600 }}>✨ ¡El evento ya ocurrió!</span>
+      <span style={{ fontSize:12, color:"var(--gold-dark)", fontWeight:600, letterSpacing:".3px" }}>¡El evento ya ocurrió!</span>
     </div>
   );
 
@@ -1283,15 +1283,15 @@ function CountdownTimer({ fecha, hora }: { fecha: string; hora?: string | null }
 }
 
 // ─── Vestimenta data ──────────────────────────────────────────────────────────
-const TIPOS_VESTIMENTA_MAP: Record<string, { emoji: string; label: string; desc: string }> = {
-  "formal":      { emoji: "🤵", label: "Etiqueta formal",  desc: "Traje o smoking / vestido de gala" },
-  "semi-formal": { emoji: "👔", label: "Semi-formal",       desc: "Traje casual / vestido elegante" },
-  "cocktail":    { emoji: "🥂", label: "Cocktail",          desc: "Vestido corto o de cóctel" },
-  "casual-chic": { emoji: "✨", label: "Casual elegante",   desc: "Ropa bonita pero cómoda" },
-  "casual":      { emoji: "👕", label: "Casual",            desc: "Ropa cómoda y relajada" },
-  "tematico":    { emoji: "🎭", label: "Temático",          desc: "Disfraz o tema especial" },
-  "blanco":      { emoji: "🤍", label: "Todo de blanco",    desc: "Vestimenta en color blanco" },
-  "colores":     { emoji: "🎨", label: "Paleta de colores", desc: "Colores específicos indicados" },
+const TIPOS_VESTIMENTA_MAP: Record<string, { label: string; desc: string }> = {
+  "formal":      { label: "Etiqueta formal",  desc: "Traje o smoking / vestido de gala" },
+  "semi-formal": { label: "Semi-formal",       desc: "Traje casual / vestido elegante" },
+  "cocktail":    { label: "Cocktail",          desc: "Vestido corto o de cóctel" },
+  "casual-chic": { label: "Casual elegante",   desc: "Ropa bonita pero cómoda" },
+  "casual":      { label: "Casual",            desc: "Ropa cómoda y relajada" },
+  "tematico":    { label: "Temático",          desc: "Disfraz o tema especial" },
+  "blanco":      { label: "Todo de blanco",    desc: "Vestimenta en color blanco" },
+  "colores":     { label: "Paleta de colores", desc: "Colores específicos indicados" },
 };
 
 function isLightColor(hex: string): boolean {
@@ -1315,9 +1315,16 @@ function VestimentaCard({ evento }: { evento: { vestimenta_tipo?: string | null;
     }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-        <span style={{ fontSize:20 }}>👗</span>
+        <div style={{ width:36, height:36, borderRadius:10, background:"rgba(201,169,110,0.10)", border:"1px solid rgba(201,169,110,0.22)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.5 18H3.5a1 1 0 0 1-.78-1.63L12 6.5"/>
+            <path d="M12 6.5V4.5"/>
+            <circle cx="12" cy="3.5" r="1"/>
+            <path d="M8.5 18c0-1.93 1.57-3.5 3.5-3.5s3.5 1.57 3.5 3.5"/>
+          </svg>
+        </div>
         <div>
-          <div style={{ fontSize:10, fontWeight:700, color:"var(--gold)", textTransform:"uppercase", letterSpacing:".8px" }}>Vestimenta</div>
+          <div style={{ fontSize:10, fontWeight:700, color:"var(--gold-dark)", textTransform:"uppercase", letterSpacing:".8px" }}>Vestimenta</div>
           <div style={{ fontSize:13, fontWeight:600, color:"var(--ink)", marginTop:1 }}>Código de vestimenta</div>
         </div>
       </div>
@@ -1326,13 +1333,14 @@ function VestimentaCard({ evento }: { evento: { vestimenta_tipo?: string | null;
       {tipo && (
         <div style={{
           display:"flex", alignItems:"center", gap:12,
-          background:"rgba(250,246,240,0.8)", borderRadius:12,
-          padding:"11px 13px", marginBottom: colores.length > 0 || evento.vestimenta_nota ? 10 : 0,
+          background:"rgba(250,246,240,0.7)", borderRadius:12,
+          border:"1px solid rgba(201,169,110,0.15)",
+          padding:"12px 14px", marginBottom: colores.length > 0 || evento.vestimenta_nota ? 10 : 0,
         }}>
-          <span style={{ fontSize:24, lineHeight:1 }}>{tipo.emoji}</span>
+          <div style={{ width:8, height:8, borderRadius:"50%", background:"var(--gold-dark)", flexShrink:0, opacity:0.7 }}/>
           <div>
-            <div style={{ fontSize:15, fontWeight:700, color:"var(--ink)", fontFamily:"'Cormorant Garamond',serif" }}>{tipo.label}</div>
-            <div style={{ fontSize:11, color:"var(--ink3)", marginTop:2 }}>{tipo.desc}</div>
+            <div style={{ fontSize:15, fontWeight:600, color:"var(--ink)", fontFamily:"'Cormorant Garamond',serif" }}>{tipo.label}</div>
+            <div style={{ fontSize:11, color:"var(--ink3)", marginTop:2, lineHeight:1.4 }}>{tipo.desc}</div>
           </div>
         </div>
       )}
@@ -1400,9 +1408,16 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
       margin: "4px 0 8px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <span style={{ fontSize: 22 }}>🎁</span>
+        <div style={{ width:36, height:36, borderRadius:10, background:"rgba(201,169,110,0.10)", border:"1px solid rgba(201,169,110,0.22)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 7V5a2 2 0 0 0-4 0v2"/>
+            <path d="M12 7V5a2 2 0 0 1 4 0v2"/>
+          </svg>
+        </div>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".8px" }}>Regalo</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--gold-dark)", textTransform: "uppercase", letterSpacing: ".8px" }}>Regalo</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginTop: 1 }}>Datos para transferencia</div>
         </div>
       </div>
@@ -1469,10 +1484,17 @@ function ProgramaCard({ items }: { items: ItemItinerario[] }) {
       }}>
         <div style={{
           width: 34, height: 34, borderRadius: 10,
-          background: "var(--cream2)", border: "1px solid var(--border)",
+          background: "rgba(201,169,110,0.10)", border: "1px solid rgba(201,169,110,0.22)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 16, flexShrink: 0,
-        }}>📅</div>
+          flexShrink: 0,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
         <div>
           <div style={{ fontSize: 9, fontWeight: 700, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: 2 }}>Programa del evento</div>
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 600, color: "var(--ink)" }}>Itinerario</div>
@@ -1490,12 +1512,14 @@ function ProgramaCard({ items }: { items: ItemItinerario[] }) {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: 32 }}>
               <div style={{
                 width: 32, height: 32, borderRadius: "50%",
-                background: "linear-gradient(135deg,var(--dark),var(--dark2))",
-                border: "1.5px solid rgba(201,169,110,0.3)",
+                background: "rgba(201,169,110,0.12)",
+                border: "1.5px solid rgba(201,169,110,0.35)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 14, lineHeight: 1,
               }}>
-                {item.icono || "✨"}
+                {item.icono ? item.icono : (
+                  <div style={{ width:8, height:8, borderRadius:"50%", background:"var(--gold-dark)", opacity:0.8 }}/>
+                )}
               </div>
               {idx < items.length - 1 && (
                 <div style={{ width: 1, flex: 1, minHeight: 12, background: "linear-gradient(180deg,rgba(201,169,110,0.3),transparent)", marginTop: 4 }} />
@@ -1542,8 +1566,8 @@ export default function ConfirmarPage() {
   const [generandoTarjeta, setGenerandoTarjeta] = useState(false);
   const [tarjetaPreview, setTarjetaPreview] = useState<string | null>(null);
   const [mostrarModalTarjeta, setMostrarModalTarjeta] = useState(false);
-  const [showPwaPrompt, setShowPwaPrompt] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [showEventixPromo, setShowEventixPromo] = useState(false);
   const [itinerario, setItinerario] = useState<ItemItinerario[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
@@ -1552,17 +1576,6 @@ export default function ConfirmarPage() {
     document.title = "Eventix — Tu invitación";
     setTimeout(() => setMounted(true), 80);
     cargarDatos();
-    // Mostrar prompt "Agregar a pantalla" si NO está en modo standalone (PWA)
-    const isStandalone =
-      (window.navigator as { standalone?: boolean }).standalone === true ||
-      window.matchMedia("(display-mode: standalone)").matches;
-    if (!isStandalone) {
-      const dismissed = sessionStorage.getItem("pwa-prompt-dismissed");
-      if (!dismissed) {
-        const t = setTimeout(() => setShowPwaPrompt(true), 2500);
-        return () => clearTimeout(t);
-      }
-    }
   }, []);
 
   async function cargarDatos() {
@@ -1702,10 +1715,8 @@ export default function ConfirmarPage() {
   }
 
   function redirigirFinal() {
-    window.close();
-    setTimeout(() => {
-      window.location.href = "whatsapp://";
-    }, 300);
+    setDestroying(false);
+    setShowEventixPromo(true);
   }
 
   async function abrirModalTarjeta() {
@@ -1849,26 +1860,27 @@ export default function ConfirmarPage() {
 
     .wrap{max-width:430px;margin:0 auto;padding:22px 16px;display:flex;flex-direction:column;gap:20px}
 
-    .inv-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow-lg);overflow:hidden;animation:riseUp .6s cubic-bezier(.22,1,.36,1) both;}
+    .inv-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:0 8px 48px rgba(26,18,9,.13),0 2px 8px rgba(26,18,9,.06);overflow:hidden;animation:riseUp .6s cubic-bezier(.22,1,.36,1) both;}
     /* Hero foto — limpia, sin overlays ni texto encima */
     .inv-hero{position:relative;overflow:hidden;width:100%;background:var(--dark)}
     .inv-hero-foto{width:100%;height:100%;object-fit:cover;display:block;object-position:center top;}
     .inv-hero-bg{min-height:200px;background:linear-gradient(160deg,var(--dark) 0%,var(--dark2) 100%)}
     /* Sección debajo del hero */
-    .inv-tipo-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(201,169,110,0.14);border:1px solid rgba(201,169,110,0.45);border-radius:99px;padding:5px 14px;font-family:'Jost',sans-serif;font-size:10px;font-weight:700;color:var(--gold-dark);letter-spacing:1.5px;text-transform:uppercase;}
+    .inv-tipo-badge{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid rgba(201,169,110,0.35);border-radius:99px;padding:5px 14px 5px 10px;font-family:'Jost',sans-serif;font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:1.2px;text-transform:uppercase;}
+    .inv-tipo-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dark);opacity:.7;display:inline-block}
     .inv-saludo{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:500;font-style:italic;color:var(--ink);letter-spacing:-.3px;line-height:1.2;margin-top:8px}
-    .inv-anfitrion{font-size:12px;color:var(--ink3);font-weight:500;letter-spacing:.5px;margin-top:4px}
+    .inv-anfitrion{font-size:12px;color:var(--ink3);font-weight:400;letter-spacing:.3px;margin-top:4px}
     .inv-evento-nombre{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;margin-top:6px}
-    .inv-body{padding:22px 20px;display:flex;flex-direction:column;gap:16px}
+    .inv-body{padding:24px 20px;display:flex;flex-direction:column;gap:18px}
     .inv-frase{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;font-weight:400;color:var(--ink2);text-align:center;line-height:1.6;padding:2px 8px}
-    .inv-nombres{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px}
-    .inv-nombres-title{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px}
-    .inv-nombre-item{display:flex;align-items:center;gap:10px;font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--ink);font-weight:500;margin-bottom:7px}
+    .inv-nombres{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px 18px}
+    .inv-nombres-title{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:12px}
+    .inv-nombre-item{display:flex;align-items:center;gap:11px;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--ink);font-weight:500;margin-bottom:8px}
     .inv-nombre-item:last-child{margin-bottom:0}
-    .inv-nombre-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .detalles{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px 18px;display:flex;flex-direction:column;gap:14px}
-    .detalle-fila{display:flex;align-items:flex-start;gap:13px}
-    .detalle-ico-wrap{width:36px;height:36px;border-radius:10px;background:var(--cream2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .inv-nombre-av{width:30px;height:30px;border-radius:50%;background:var(--dark);color:rgba(232,213,176,0.85);font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(201,169,110,0.25)}
+    .detalles{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:18px 18px;display:flex;flex-direction:column;gap:16px}
+    .detalle-fila{display:flex;align-items:flex-start;gap:14px}
+    .detalle-ico-wrap{width:38px;height:38px;border-radius:11px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(26,18,9,.05)}
     .detalle-label{font-size:9px;color:var(--ink3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
     .detalle-texto{font-size:14px;color:var(--ink);font-weight:400;line-height:1.4;text-transform:capitalize}
     .maps-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;letter-spacing:.3px;text-decoration:none;margin-top:7px;transition:opacity .15s;font-family:'Jost',sans-serif;}
@@ -1948,22 +1960,22 @@ export default function ConfirmarPage() {
 
     /* Confirmado */
     .conf-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow-lg);overflow:hidden;animation:riseUp .5s cubic-bezier(.22,1,.36,1) both}
-    .conf-hero{background:linear-gradient(160deg,var(--dark) 0%,var(--dark2) 100%);padding:36px 24px 30px;text-align:center;position:relative;overflow:hidden}
-    .conf-hero::before{content:'';position:absolute;inset:0;opacity:.04;background-image:radial-gradient(circle,var(--gold) 1px,transparent 1px);background-size:28px 28px}
-    .conf-check{position:relative;z-index:1;width:72px;height:72px;border-radius:50%;background:rgba(201,169,110,0.15);border:1.5px solid rgba(201,169,110,0.45);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:popIn .55s .1s cubic-bezier(.22,1,.36,1) both}
+    .conf-hero{background:linear-gradient(155deg,#1a1108 0%,#251907 100%);padding:40px 24px 32px;text-align:center;position:relative;overflow:hidden}
+    .conf-hero::before{content:'';position:absolute;inset:0;opacity:.025;background-image:radial-gradient(circle,#C9A96E 1px,transparent 1px);background-size:32px 32px}
+    .conf-check{position:relative;z-index:1;width:68px;height:68px;border-radius:50%;background:rgba(201,169,110,0.10);border:1px solid rgba(201,169,110,0.35);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;animation:popIn .55s .1s cubic-bezier(.22,1,.36,1) both}
     @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
-    .conf-titulo{position:relative;z-index:1;font-family:'Cormorant Garamond',serif;font-size:38px;font-style:italic;font-weight:400;color:var(--gold-light);letter-spacing:-.3px;margin-bottom:8px}
-    .conf-sub{position:relative;z-index:1;font-size:13px;color:rgba(232,213,176,0.7);font-weight:400}
+    .conf-titulo{position:relative;z-index:1;font-family:'Cormorant Garamond',serif;font-size:40px;font-style:italic;font-weight:300;color:rgba(232,213,176,0.95);letter-spacing:-.5px;margin-bottom:8px}
+    .conf-sub{position:relative;z-index:1;font-size:12px;color:rgba(232,213,176,0.5);font-weight:400;letter-spacing:.3px}
     .conf-body{padding:22px;display:flex;flex-direction:column;gap:16px}
-    .num-badge{background:linear-gradient(135deg,var(--dark),var(--dark2));border-radius:var(--r-sm);border:1px solid rgba(201,169,110,0.3);padding:16px 20px;display:flex;align-items:center;gap:16px}
-    .num-icono{width:46px;height:46px;border-radius:12px;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .num-label{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(201,169,110,0.6);margin-bottom:3px}
-    .num-val{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:var(--gold);letter-spacing:-1px;line-height:1}
-    .resumen{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px 18px;display:flex;flex-direction:column;gap:12px}
-    .res-fila{display:flex;align-items:center;gap:11px}
-    .res-ico{width:32px;height:32px;border-radius:9px;background:var(--cream2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .num-badge{background:linear-gradient(145deg,#1e1409,#2a1c0a);border-radius:var(--r-sm);border:1px solid rgba(201,169,110,0.2);padding:16px 20px;display:flex;align-items:center;gap:16px}
+    .num-icono{width:46px;height:46px;border-radius:12px;background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .num-label{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(201,169,110,0.5);margin-bottom:3px}
+    .num-val{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;color:rgba(232,213,176,0.9);letter-spacing:-1px;line-height:1}
+    .resumen{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px 18px;display:flex;flex-direction:column;gap:13px}
+    .res-fila{display:flex;align-items:center;gap:12px}
+    .res-ico{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(26,18,9,.05)}
     .res-texto{font-size:13px;color:var(--ink2);font-weight:400;text-transform:capitalize}
-    .acciones-titulo{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:11px}
+    .acciones-titulo{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px}
 
     /* Fotos invitado */
     .fotos-inv-wrap{background:var(--cream);border:1px solid var(--border-mid);border-radius:var(--r-sm);overflow:hidden}
@@ -2008,25 +2020,25 @@ export default function ConfirmarPage() {
     .modal-cancelar{width:100%;background:transparent;border:none;padding:12px;font-size:13px;font-weight:500;color:var(--ink3);cursor:pointer;font-family:'Jost',sans-serif}
 
     /* Countdown */
-    @keyframes cdPulse{0%,100%{opacity:1}50%{opacity:.7}}
-    .countdown-wrap{background:linear-gradient(135deg,var(--dark) 0%,var(--dark2) 100%);border-radius:18px;padding:18px 12px 14px;margin:4px 0 8px;text-align:center}
-    .countdown-label{font-size:10px;font-weight:700;color:rgba(201,169,110,0.7);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+    @keyframes cdPulse{0%,100%{opacity:1}50%{opacity:.75}}
+    .countdown-wrap{background:linear-gradient(150deg,#1e1409 0%,#291a08 100%);border-radius:18px;padding:20px 12px 16px;margin:4px 0 8px;text-align:center;border:1px solid rgba(201,169,110,0.15)}
+    .countdown-label{font-size:9px;font-weight:700;color:rgba(201,169,110,0.55);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
     .countdown-grid{display:flex;justify-content:center;gap:8px}
-    .countdown-block{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,0.06);border:1px solid rgba(201,169,110,0.2);border-radius:12px;padding:10px 10px 8px;min-width:58px}
-    .countdown-num{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:#E8D5B0;line-height:1;letter-spacing:-1px;animation:cdPulse 2s ease infinite}
-    .countdown-unit{font-size:9px;font-weight:700;color:rgba(201,169,110,0.6);text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+    .countdown-block{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.15);border-radius:14px;padding:12px 10px 9px;min-width:60px}
+    .countdown-num{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:400;color:rgba(232,213,176,0.92);line-height:1;letter-spacing:-1px;animation:cdPulse 2s ease infinite}
+    .countdown-unit{font-size:8px;font-weight:700;color:rgba(201,169,110,0.45);text-transform:uppercase;letter-spacing:1px;margin-top:5px}
 
     /* Tu Mesa */
     .tu-mesa-card{
       display:flex;align-items:center;gap:14px;
-      background:linear-gradient(135deg,rgba(201,169,110,0.1) 0%,rgba(232,213,176,0.15) 100%);
-      border:1.5px solid rgba(201,169,110,0.35);
+      background:var(--cream);
+      border:1px solid var(--border-mid);
       border-radius:16px;padding:16px 18px;margin:4px 0 8px;
-      box-shadow:0 4px 16px rgba(201,169,110,0.12);
+      box-shadow:0 2px 12px rgba(26,18,9,.06);
     }
-    .tu-mesa-icon{font-size:28px;line-height:1;flex-shrink:0}
+    .tu-mesa-icon{width:42px;height:42px;border-radius:12px;background:rgba(201,169,110,0.10);border:1px solid rgba(201,169,110,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold-dark)}
     .tu-mesa-info{flex:1}
-    .tu-mesa-label{font-size:10px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}
+    .tu-mesa-label{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
     .tu-mesa-nombre{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);letter-spacing:.3px}
 
     /* Rechazado */
@@ -2039,26 +2051,6 @@ export default function ConfirmarPage() {
     .loading-spinner{width:28px;height:28px;border-radius:50%;border:2.5px solid transparent;border-top-color:#C9A96E;animation:spin 0.8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     canvas#confetti-canvas{position:fixed;inset:0;z-index:9999;width:100%;height:100%;display:none;pointer-events:none}
-
-    /* ─── PWA Install Prompt ─── */
-    .pwa-prompt{
-      position:fixed;bottom:0;left:0;right:0;z-index:9000;
-      background:rgba(20,13,4,0.97);
-      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-      padding:16px 20px calc(16px + env(safe-area-inset-bottom,0px));
-      border-top:1px solid rgba(201,169,110,0.3);
-      display:flex;align-items:center;gap:14px;
-      animation:slideUp .4s cubic-bezier(.22,1,.36,1) both;
-    }
-    @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
-    .pwa-prompt-icon{width:48px;height:48px;border-radius:12px;flex-shrink:0;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
-    .pwa-prompt-text{flex:1;min-width:0}
-    .pwa-prompt-title{font-size:13px;font-weight:600;color:#E8D5B0;line-height:1.3;margin-bottom:2px}
-    .pwa-prompt-sub{font-size:11px;color:rgba(232,213,176,0.6);line-height:1.4}
-    .pwa-prompt-ios{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:10.5px;color:rgba(201,169,110,0.8);font-weight:500}
-    .pwa-prompt-btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
-    .pwa-prompt-add{background:linear-gradient(135deg,#C9A96E,#E8C97A);color:#140d04;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;white-space:nowrap;letter-spacing:.2px}
-    .pwa-prompt-close{background:transparent;border:1px solid rgba(201,169,110,0.3);border-radius:10px;padding:7px 10px;font-size:11px;font-weight:500;color:rgba(232,213,176,0.5);cursor:pointer;font-family:'Jost',sans-serif;white-space:nowrap}
 
     /* ─── QR de entrada ─── */
     .qr-entry-card{background:var(--surface);border:1.5px solid rgba(201,169,110,0.28);border-radius:18px;padding:20px 18px;text-align:center}
@@ -2210,7 +2202,11 @@ export default function ConfirmarPage() {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: 44, marginBottom: 14 }}>🔍</div>
+            <div style={{ marginBottom: 16, opacity: 0.35 }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
             <p
               style={{
                 fontFamily: "'Cormorant Garamond',serif",
@@ -2231,7 +2227,7 @@ export default function ConfirmarPage() {
     );
 
   const tipoLabel = TIPO_LABEL[evento.tipo] || "Evento especial";
-  const tipoOrn = TIPO_ORNAMENTO[evento.tipo] || "✨";
+  const tipoOrn = TIPO_ORNAMENTO[evento.tipo] || "";
   const fechaFmt = evento.fecha ? formatFecha(evento.fecha) : null;
   const fechaCorta = evento.fecha ? formatFechaCorta(evento.fecha) : null;
   const horaFmt = evento.hora ? formatHora(evento.hora) : null;
@@ -2291,7 +2287,7 @@ export default function ConfirmarPage() {
           {/* Evento */}
           <p className="welcome-evento-nombre">{evento.nombre}</p>
           <p className="welcome-anfitrion">
-            {TIPO_ORNAMENTO[evento.tipo] || "✨"}&nbsp; de {evento.anfitriones}
+            de {evento.anfitriones}
           </p>
 
           {/* CTA */}
@@ -2400,7 +2396,7 @@ export default function ConfirmarPage() {
                 {/* Badge de tipo */}
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
                   <span className="inv-tipo-badge">
-                    <span>{tipoOrn}</span>
+                    <span className="inv-tipo-badge-dot"/>
                     <span>{tipoLabel}</span>
                   </span>
                 </div>
@@ -2479,7 +2475,25 @@ export default function ConfirmarPage() {
                   </div>
                 )}
 
-                {/* 4️⃣ Cómo llegar — texto, sin botón de ubicación */}
+                {/* 4️⃣ Link GPS / Google Maps */}
+                {evento.maps_url && (
+                  <div style={{ textAlign: "center", marginTop: 4 }}>
+                    <a
+                      href={evento.maps_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="maps-btn"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M10 2a6 6 0 016 6c0 5-6 10-6 10S4 13 4 8a6 6 0 016-6z"/>
+                        <circle cx="10" cy="8" r="2"/>
+                      </svg>
+                      Ver en Google Maps
+                    </a>
+                  </div>
+                )}
+
+                {/* Cómo llegar — instrucciones textuales */}
                 {evento.como_llegar && (
                   <div className="como-llegar-box">
                     <div className="como-llegar-label">Instrucciones para llegar</div>
@@ -2516,7 +2530,9 @@ export default function ConfirmarPage() {
                 {/* 6️⃣ Tu Mesa */}
                 {invitado.mesa_nombre && (
                   <div className="tu-mesa-card">
-                    <div className="tu-mesa-icon">🪑</div>
+                    <div className="tu-mesa-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="20" height="4" rx="2"/><path d="M5 10v8M19 10v8M8 10v8M16 10v8"/></svg>
+                    </div>
                     <div className="tu-mesa-info">
                       <div className="tu-mesa-label">Tu lugar asignado</div>
                       <div className="tu-mesa-nombre">{invitado.mesa_nombre}</div>
@@ -2862,7 +2878,9 @@ export default function ConfirmarPage() {
         {step === "rechazado" && (
           <div className="wrap">
             <div className="rech-card">
-              <div style={{ fontSize: 50, marginBottom: 18 }}>🕊️</div>
+              <div style={{ marginBottom: 18 }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.4" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
               <div className="rech-titulo">Gracias por avisar</div>
               <OrnamentoDivider tipo={evento.tipo} />
               <p className="rech-sub" style={{ marginTop: 16 }}>
@@ -2895,41 +2913,53 @@ export default function ConfirmarPage() {
         )}
       </div>
 
-      {/* ─── Banner "Agregar a pantalla de inicio" ─── */}
-      {showPwaPrompt && (
-        <div className="pwa-prompt">
-          <div className="pwa-prompt-icon">
-            <AppLogo size={48} />
-          </div>
-          <div className="pwa-prompt-text">
-            <div className="pwa-prompt-title">Abre como app, sin barra de URL</div>
-            <div className="pwa-prompt-sub">Experiencia completa, como app nativa</div>
-            <div className="pwa-prompt-ios">
-              {/* Instrucción según plataforma — se renderiza en cliente */}
-              {typeof window !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent)
-                ? <>Toca <strong style={{color:"#C9A96E"}}>⎙ Compartir</strong> → &ldquo;Agregar a inicio&rdquo;</>
-                : <>Toca <strong style={{color:"#C9A96E"}}>⋮ Menú</strong> → &ldquo;Añadir a pantalla de inicio&rdquo;</>
-              }
+      {/* ─── Ficha Eventix (se muestra al cerrar la tarjeta) ─── */}
+      {showEventixPromo && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "#140d04",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          padding: "32px 24px",
+          animation: "fadeInPromo .5s ease both",
+        }}>
+          <style>{`
+            @keyframes fadeInPromo { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
+            @keyframes shimmerP { 0%,100%{opacity:.6} 50%{opacity:1} }
+            .promo-card{width:100%;max-width:360px;background:linear-gradient(160deg,#1e1308 0%,#140d04 100%);border:1.5px solid rgba(201,169,110,0.25);border-radius:24px;padding:36px 28px 32px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.5),0 0 0 1px rgba(201,169,110,0.08);}
+            .promo-logo-ring{width:72px;height:72px;border-radius:22px;background:rgba(201,169,110,0.08);border:1.5px solid rgba(201,169,110,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+            .promo-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#E8D5B0;letter-spacing:.3px;line-height:1.15;margin-bottom:8px;}
+            .promo-sub{font-size:13px;color:rgba(232,213,176,0.55);line-height:1.6;margin-bottom:28px;font-family:'Jost',sans-serif;}
+            .promo-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:24px;}
+            .promo-tag{background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.22);border-radius:20px;padding:5px 13px;font-size:11px;font-weight:600;color:#C9A96E;letter-spacing:.3px;font-family:'Jost',sans-serif;}
+            .promo-divider{width:40px;height:1px;background:rgba(201,169,110,0.25);margin:0 auto 20px;}
+            .promo-features{display:flex;flex-direction:column;gap:10px;margin-bottom:28px;text-align:left;}
+            .promo-feature{display:flex;align-items:center;gap:12px;font-size:12.5px;color:rgba(232,213,176,0.7);font-family:'Jost',sans-serif;}
+            .promo-dot{width:6px;height:6px;border-radius:50%;background:#C9A96E;flex-shrink:0;}
+            .promo-btn{width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,#C9A96E,#E8C97A);color:#140d04;font-size:14px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;letter-spacing:.4px;box-shadow:0 6px 20px rgba(201,169,110,0.3);margin-bottom:10px;}
+            .promo-btn-sec{width:100%;padding:12px;border:1.5px solid rgba(201,169,110,0.2);border-radius:14px;background:transparent;color:rgba(232,213,176,0.45);font-size:12px;font-weight:500;cursor:pointer;font-family:'Jost',sans-serif;}
+          `}</style>
+          <div className="promo-card">
+            <div className="promo-logo-ring"><AppLogo size={48} /></div>
+            <div className="promo-title">Eventix</div>
+            <p className="promo-sub">Gestiona tus invitaciones digitales de forma elegante y sencilla</p>
+            <div className="promo-tags">
+              <span className="promo-tag">Invitaciones</span>
+              <span className="promo-tag">Fotos</span>
+              <span className="promo-tag">Mesas</span>
+              <span className="promo-tag">Recuerdos</span>
             </div>
-          </div>
-          <div className="pwa-prompt-btns">
-            <button
-              className="pwa-prompt-add"
-              onClick={() => {
-                sessionStorage.setItem("pwa-prompt-dismissed", "1");
-                setShowPwaPrompt(false);
-              }}
-            >
-              Entendido
+            <div className="promo-divider" />
+            <div className="promo-features">
+              <div className="promo-feature"><div className="promo-dot"/><span>Invitaciones personalizadas por WhatsApp</span></div>
+              <div className="promo-feature"><div className="promo-dot"/><span>Confirmación de asistencia en un toque</span></div>
+              <div className="promo-feature"><div className="promo-dot"/><span>Muro de fotos y deseos del evento</span></div>
+              <div className="promo-feature"><div className="promo-dot"/><span>Asignación de mesas y código QR de entrada</span></div>
+            </div>
+            <button className="promo-btn" onClick={() => window.location.href = "/"}>
+              Crear mi evento en Eventix
             </button>
-            <button
-              className="pwa-prompt-close"
-              onClick={() => {
-                sessionStorage.setItem("pwa-prompt-dismissed", "1");
-                setShowPwaPrompt(false);
-              }}
-            >
-              No gracias
+            <button className="promo-btn-sec" onClick={() => { window.close(); setTimeout(() => { window.location.href = "whatsapp://"; }, 200); }}>
+              Cerrar
             </button>
           </div>
         </div>
