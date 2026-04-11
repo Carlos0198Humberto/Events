@@ -703,7 +703,7 @@ ORDER BY p.created_at DESC;
 -- 15. MARCAR SUPER-ADMIN
 -- ─────────────────────────────────────────────────────────────────────────────
 UPDATE profiles SET es_admin = true
-WHERE email = 'cchavarriaaparicio@gmail.com';
+WHERE email = '98humbertocarlos@gmail.com';
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -776,7 +776,7 @@ CREATE POLICY "lectura_publica_itinerario" ON itinerario FOR SELECT USING (true)
 CREATE POLICY "superadmin_gestiona_itinerario" ON itinerario FOR ALL USING (es_super_admin());
 
 -- Marcar super-admin (si ya existe el usuario)
-UPDATE profiles SET es_admin = true WHERE email = 'cchavarriaaparicio@gmail.com';
+UPDATE profiles SET es_admin = true WHERE email = '98humbertocarlos@gmail.com';
 
 NOTIFY pgrst, 'reload schema';
 */

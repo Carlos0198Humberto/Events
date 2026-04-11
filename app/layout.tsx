@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import FullscreenManager from "./components/FullscreenManager";
+import { ToastProvider } from "./components/Toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,9 +51,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <ToastProvider />
+        <FullscreenManager />
+      </body>
     </html>
   );
 }

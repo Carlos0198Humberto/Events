@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 
 function AppLogo({ size = 36 }: { size?: number }) {
   return (
@@ -70,6 +71,7 @@ export default function AgregarInvitados() {
   const [enviandoTodos, setEnviandoTodos] = useState(false);
   const [enviados, setEnviados] = useState<Set<string>>(new Set());
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const bulkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -100,6 +102,33 @@ export default function AgregarInvitados() {
       .order("created_at", { ascending: true });
     if (data) setTodosInvitados(data);
     setLoadingInvitados(false);
+  }
+
+  async function handleExportarExcel() {
+    if (exportando || todosInvitados.length === 0) return;
+    setExportando(true);
+    try {
+      // Fetch full data including mesas and numero_confirmacion
+      const { data } = await supabase
+        .from("invitados")
+        .select("nombre, telefono, num_personas, estado, numero_confirmacion, mesa_id")
+        .eq("evento_id", params.id)
+        .order("estado", { ascending: true });
+      // Get mesa names
+      const { data: mesas } = await supabase
+        .from("mesas")
+        .select("id, nombre")
+        .eq("evento_id", params.id);
+      const mesaMap: Record<string, string> = {};
+      (mesas || []).forEach((m) => { mesaMap[m.id] = m.nombre; });
+      const invData = (data || []).map((inv) => ({
+        ...inv,
+        mesa_nombre: inv.mesa_id ? (mesaMap[inv.mesa_id] ?? null) : null,
+      }));
+      await exportarInvitadosExcel(invData, evento?.nombre ?? "Evento");
+    } finally {
+      setExportando(false);
+    }
   }
 
   async function handleEliminar(inv: Invitado) {
@@ -645,9 +674,32 @@ export default function AgregarInvitados() {
 
         {/* ── Gestionar todos los invitados ── */}
         <div className="section-card" style={{ marginTop: 12 }}>
-          <div className="gestionar-header">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-            Gestionar invitados ({todosInvitados.length})
+          <div className="gestionar-header" style={{ justifyContent: "space-between" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+              Gestionar invitados ({todosInvitados.length})
+            </span>
+            {todosInvitados.length > 0 && (
+              <button
+                onClick={handleExportarExcel}
+                disabled={exportando}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  background: exportando ? "rgba(201,169,110,0.08)" : "rgba(201,169,110,0.12)",
+                  border: "1px solid rgba(201,169,110,0.35)", borderRadius: 10,
+                  padding: "6px 12px", fontSize: 11, fontWeight: 700,
+                  color: "var(--accent2)", cursor: exportando ? "wait" : "pointer",
+                  fontFamily: "inherit", transition: "all .15s",
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                {exportando ? "Exportando..." : "Excel"}
+              </button>
+            )}
           </div>
 
           {loadingInvitados ? (

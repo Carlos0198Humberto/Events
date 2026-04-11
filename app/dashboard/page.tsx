@@ -605,6 +605,7 @@ export default function Dashboard() {
   const [eliminando, setElim] = useState<string | null>(null);
   const [lang, setLang] = useState<"es" | "en">("es");
   const [mounted, setMounted] = useState(false);
+  const [esAdmin, setEsAdmin] = useState(false);
 
   const t = translations[lang];
 
@@ -629,10 +630,13 @@ export default function Dashboard() {
     }
     const { data: profile } = await supabase
       .from("profiles")
-      .select("nombre")
+      .select("nombre,es_admin")
       .eq("id", data.user.id)
       .single();
-    if (profile) setNombre(profile.nombre);
+    if (profile) {
+      setNombre(profile.nombre);
+      setEsAdmin(!!profile.es_admin);
+    }
   }
 
   async function cargarEventos() {
@@ -680,7 +684,7 @@ export default function Dashboard() {
         (i) => i.estado === "pendiente",
       ).length;
       const total_personas = invData.data
-        .filter((i) => i.estado !== "rechazado")
+        .filter((i) => i.estado === "confirmado")
         .reduce((s, i) => s + (i.num_personas || 1), 0);
       setStats((prev) => ({
         ...prev,
@@ -1320,6 +1324,24 @@ export default function Dashboard() {
             </div>
           )}
 
+          {esAdmin && (
+            <Link
+              href="/admin"
+              style={{
+                display: "block",
+                textAlign: "center",
+                marginTop: 8,
+                marginBottom: 4,
+                fontSize: 11,
+                color: "var(--text3)",
+                opacity: 0.55,
+                textDecoration: "none",
+                letterSpacing: ".04em",
+              }}
+            >
+              ⬡ Panel Admin
+            </Link>
+          )}
           <p className="footer-copy">Humb3rsec 2026</p>
         </div>
       </div>

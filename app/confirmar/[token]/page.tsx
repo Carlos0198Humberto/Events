@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
+import { toast } from "@/app/components/Toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -1569,6 +1570,11 @@ export default function ConfirmarPage() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [showEventixPromo, setShowEventixPromo] = useState(false);
   const [itinerario, setItinerario] = useState<ItemItinerario[]>([]);
+  // Mesa self-selection
+  type MesaConOcupacion = { id: string; nombre: string; capacidad: number; ocupados: number };
+  const [mesasDisponibles, setMesasDisponibles] = useState<MesaConOcupacion[]>([]);
+  const [asignandoMesa, setAsignandoMesa] = useState(false);
+  const [mesaConfirmada, setMesaConfirmada] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
@@ -1611,7 +1617,10 @@ export default function ConfirmarPage() {
     setInvitado({ ...inv, mesa_nombre });
     if (ev) setEvento(ev);
     setNumPersonas(inv.num_personas || 1);
-    if (inv.estado === "confirmado") setStep("confirmado");
+    if (inv.estado === "confirmado") {
+      setStep("confirmado");
+      cargarMesasDisponibles(inv.evento_id);
+    }
     if (inv.estado === "rechazado") setStep("rechazado");
     // Cargar itinerario (falla graciosamente si tabla no existe)
     try {
@@ -1623,6 +1632,54 @@ export default function ConfirmarPage() {
       if (iti && iti.length > 0) setItinerario(iti);
     } catch { /* tabla no migrada aún */ }
     setLoading(false);
+  }
+
+  async function cargarMesasDisponibles(eventoId: string) {
+    try {
+      const { data: mesas } = await supabase
+        .from("mesas")
+        .select("id, nombre, capacidad")
+        .eq("evento_id", eventoId)
+        .order("nombre", { ascending: true });
+      if (!mesas || mesas.length === 0) return;
+      // Get occupancy per mesa
+      const { data: invs } = await supabase
+        .from("invitados")
+        .select("mesa_id, num_personas")
+        .eq("evento_id", eventoId)
+        .eq("estado", "confirmado")
+        .not("mesa_id", "is", null);
+      const ocupMap: Record<string, number> = {};
+      (invs || []).forEach((i: { mesa_id: string; num_personas: number }) => {
+        ocupMap[i.mesa_id] = (ocupMap[i.mesa_id] || 0) + (i.num_personas || 1);
+      });
+      const lista = mesas.map((m) => ({
+        id: m.id,
+        nombre: m.nombre,
+        capacidad: Math.min(m.capacidad ?? 5, 5),
+        ocupados: ocupMap[m.id] || 0,
+      }));
+      setMesasDisponibles(lista);
+    } catch { /* tabla no migrada aún */ }
+  }
+
+  async function elegirMesa(mesaId: string, mesaNombre: string) {
+    if (!invitado || asignandoMesa) return;
+    setAsignandoMesa(true);
+    const { data: updated } = await supabase
+      .from("invitados")
+      .update({ mesa_id: mesaId })
+      .eq("id", invitado.id)
+      .select()
+      .single();
+    if (updated) {
+      setInvitado({ ...updated, mesa_nombre: mesaNombre });
+      setMesaConfirmada(mesaNombre);
+      toast.success(`¡Mesa "${mesaNombre}" seleccionada!`);
+      // Refresh occupancy
+      await cargarMesasDisponibles(invitado.evento_id);
+    }
+    setAsignandoMesa(false);
   }
 
   async function confirmarAsistencia() {
@@ -1651,6 +1708,7 @@ export default function ConfirmarPage() {
     if (updated) setInvitado(updated);
     setConfirmando(false);
     setStep("confirmado");
+    if (updated?.evento_id) cargarMesasDisponibles(updated.evento_id);
   }
 
   async function rechazarAsistencia() {
@@ -2061,6 +2119,28 @@ export default function ConfirmarPage() {
     .qr-nombre-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .qr-nombre-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--ink)}
     .qr-hint{font-size:11px;color:var(--ink3);line-height:1.6}
+
+    /* ─── Mesa self-selection ─── */
+    @keyframes mesaIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .mesa-picker-wrap{background:var(--surface);border:1px solid var(--border-mid);border-radius:18px;overflow:hidden;animation:mesaIn .4s cubic-bezier(.22,1,.36,1) both}
+    .mesa-picker-header{padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+    .mesa-picker-ico{width:32px;height:32px;border-radius:9px;background:rgba(201,169,110,0.10);border:1px solid rgba(201,169,110,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .mesa-picker-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--gold-dark);margin-bottom:2px}
+    .mesa-picker-sub{font-size:12px;color:var(--ink3);line-height:1.4}
+    .mesa-list{display:flex;flex-direction:column;gap:0;max-height:320px;overflow-y:auto}
+    .mesa-row{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;gap:12px}
+    .mesa-row:last-child{border-bottom:none}
+    .mesa-row:hover:not(.mesa-row--full):not(.mesa-row--loading){background:var(--gold-pale)}
+    .mesa-row--full{opacity:.45;cursor:not-allowed}
+    .mesa-row--loading{cursor:wait;opacity:.7}
+    .mesa-row-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--ink);line-height:1}
+    .mesa-row-slots{display:flex;align-items:center;gap:6px}
+    .mesa-row-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+    .mesa-row-badge--free{background:rgba(201,169,110,0.12);color:var(--gold-dark);border:1px solid rgba(201,169,110,0.25)}
+    .mesa-row-badge--full{background:rgba(0,0,0,0.05);color:var(--ink3);border:1px solid var(--border)}
+    .mesa-row-arrow{color:rgba(201,169,110,0.5);flex-shrink:0}
+    .mesa-confirmed-card{background:var(--cream);border:1px solid var(--border-mid);border-radius:16px;padding:15px 18px;display:flex;align-items:center;gap:14px;animation:mesaIn .4s cubic-bezier(.22,1,.36,1) both}
+    .mesa-confirmed-ico{width:40px;height:40px;border-radius:11px;background:rgba(201,169,110,0.10);border:1px solid rgba(201,169,110,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
     /* ─── Pantalla de bienvenida ─── */
     @keyframes welcomeFadeIn{from{opacity:0}to{opacity:1}}
@@ -2750,6 +2830,69 @@ export default function ConfirmarPage() {
                         <span className="qr-nombre-text">{invitado.nombre}</span>
                       </div>
                       <p className="qr-hint">Muestra este código en la entrada del evento.<br/>El organizador lo escaneará para registrar tu llegada.</p>
+                    </div>
+                  );
+                })()}
+
+                {/* ─── Selector de Mesa ─── */}
+                {mesasDisponibles.length > 0 && (() => {
+                  const mesaActual = invitado.mesa_id;
+                  const mesaSelInfo = mesasDisponibles.find(m => m.id === mesaActual);
+                  if (mesaActual) {
+                    return (
+                      <div className="mesa-confirmed-card">
+                        <div className="mesa-confirmed-ico">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="20" height="4" rx="2"/><path d="M5 10v8M19 10v8M8 10v8M16 10v8"/></svg>
+                        </div>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:9, fontWeight:700, color:"var(--ink3)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:3 }}>Tu mesa</div>
+                          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, fontWeight:600, color:"var(--ink)" }}>
+                            {mesaSelInfo?.nombre || invitado.mesa_nombre}
+                          </div>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="mesa-picker-wrap">
+                      <div className="mesa-picker-header">
+                        <div className="mesa-picker-ico">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="20" height="4" rx="2"/><path d="M5 10v8M19 10v8"/></svg>
+                        </div>
+                        <div>
+                          <div className="mesa-picker-title">Elige tu lugar</div>
+                          <div className="mesa-picker-sub">Selecciona una mesa disponible</div>
+                        </div>
+                      </div>
+                      <div className="mesa-list">
+                        {mesasDisponibles.map((m) => {
+                          const libre = m.capacidad - m.ocupados;
+                          const llena = libre <= 0;
+                          return (
+                            <div
+                              key={m.id}
+                              className={`mesa-row${llena ? " mesa-row--full" : ""}${asignandoMesa ? " mesa-row--loading" : ""}`}
+                              onClick={() => !llena && !asignandoMesa && elegirMesa(m.id, m.nombre)}
+                            >
+                              <span className="mesa-row-name">{m.nombre}</span>
+                              <div className="mesa-row-slots">
+                                <span className={`mesa-row-badge${llena ? " mesa-row-badge--full" : " mesa-row-badge--free"}`}>
+                                  {llena ? "Llena" : `${libre} ${libre === 1 ? "lugar" : "lugares"}`}
+                                </span>
+                                {!llena && (
+                                  <svg className="mesa-row-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {asignandoMesa && (
+                        <div style={{ textAlign:"center", padding:"10px 0 12px", fontSize:11, color:"var(--gold-dark)", fontWeight:600 }}>
+                          Guardando selección...
+                        </div>
+                      )}
                     </div>
                   );
                 })()}

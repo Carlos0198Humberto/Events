@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { toast } from "@/app/components/Toast";
 
 // ─── AppLogo ──────────────────────────────────────────────────────────────────
 function AppLogo({ size = 36 }: { size?: number }) {
@@ -125,6 +126,7 @@ export default function GestionarMesas() {
     setGuardandoMesa(false);
     setShowModalMesa(false);
     setEditMesa(null);
+    toast.success(editMesa ? "Mesa actualizada" : "Mesa creada correctamente");
   }
 
   async function eliminarMesa(id: string) {
@@ -136,6 +138,7 @@ export default function GestionarMesas() {
     setInvitados((prev) => prev.map((i) => (i.mesa_id === id ? { ...i, mesa_id: null } : i)));
     setEliminando(null);
     setConfirmEliminar(null);
+    toast.info("Mesa eliminada");
   }
 
   // ── Asignación de invitados ────────────────────────────────────────────────
@@ -172,6 +175,7 @@ export default function GestionarMesas() {
     }
     setAsignandoAuto(false);
     setShowAutoPanel(false);
+    toast.success(`¡${pendientes.length} invitados asignados automáticamente!`);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

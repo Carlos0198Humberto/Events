@@ -1,1025 +1,623 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { toast } from "@/app/components/Toast";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface Profile {
+// ─── Types ─────────────────────────────────────────────────────────────────────
+type UsuarioAdmin = {
   id: string;
-  nombre: string;
-  email: string;
-  bloqueado: boolean;
+  nombre: string | null;
+  email: string | null;
   es_admin: boolean;
+  bloqueado: boolean;
+  evento_limit: number | null;
   created_at: string;
-  evento_limit: number | null; // null = sin límite (campo en profiles)
-  total_eventos?: number;
-}
+  total_eventos: number;
+};
 
-// ─── Credenciales hardcodeadas del super-admin ───────────────────────────────
-const ADMIN_NAME = "Admin";
-const ADMIN_PASS = "L1br0$Mus!c@";
-
-// ─── Logo ─────────────────────────────────────────────────────────────────────
-function AppLogo({ size = 36 }: { size?: number }) {
+// ─── Logo ──────────────────────────────────────────────────────────────────────
+function AppLogo({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Background */}
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
       <rect width="64" height="64" rx="18" fill="#140d04"/>
       <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
-      {/* Geometric E — vertical bar */}
       <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
-      {/* Top bar */}
       <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* Middle bar (slightly shorter) */}
       <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
-      {/* Bottom bar */}
       <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* 4-pointed star sparkle — upper right */}
       <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
-      {/* Small accent dot */}
       <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
     </svg>
   );
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
-function Toast({ msg, onHide }: { msg: string; onHide: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onHide, 2800);
-    return () => clearTimeout(t);
-  }, [msg, onHide]);
+// ─── Icons ─────────────────────────────────────────────────────────────────────
+const Icon = {
+  shield: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M12 2l8 3v6c0 5-3.5 9.3-8 10.5C7.5 20.3 4 16 4 11V5l8-3z"/>
+    </svg>
+  ),
+  check: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <path d="M20 6L9 17l-5-5"/>
+    </svg>
+  ),
+  block: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/>
+    </svg>
+  ),
+  back: () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+      <path d="M19 12H5M5 12l7 7M5 12l7-7"/>
+    </svg>
+  ),
+  refresh: () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+    </svg>
+  ),
+  save: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2zM17 21v-8H7v8M7 3v5h8"/>
+    </svg>
+  ),
+  events: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M9 2v4M15 2v4"/>
+    </svg>
+  ),
+  search: () => (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <circle cx="8.5" cy="8.5" r="5.5"/><path d="M15 15l-3-3"/>
+    </svg>
+  ),
+  trash: () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+      <path d="M10 11v6M14 11v6"/>
+    </svg>
+  ),
+  warn: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/>
+    </svg>
+  ),
+};
 
-  return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 24,
-        right: 24,
-        zIndex: 999,
-        background: "#fff",
-        border: "1px solid rgba(201,169,110,0.18)",
-        borderRadius: 12,
-        padding: "10px 18px",
-        fontSize: 13,
-        boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
-        color: "#1a0f04",
-        animation: "toastIn .25s ease",
-      }}
-    >
-      {msg}
-    </div>
-  );
+// ─── Formato de fecha ───────────────────────────────────────────────────────────
+function formatFecha(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-// ─── Confirm Modal ────────────────────────────────────────────────────────────
-function ConfirmModal({
-  title,
-  body,
-  confirmLabel,
-  danger,
-  onConfirm,
-  onCancel,
-}: {
-  title: string;
-  body: string;
-  confirmLabel: string;
-  danger?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div
-      onClick={(e) => e.target === e.currentTarget && onCancel()}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 200,
-        background: "rgba(12,26,25,0.42)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 18,
-          padding: "24px 22px",
-          maxWidth: 320,
-          width: "100%",
-          border: "1.5px solid rgba(201,169,110,0.18)",
-          boxShadow: "0 12px 40px rgba(201,169,110,0.15)",
-        }}
-      >
-        <p
-          style={{
-            fontWeight: 600,
-            fontSize: 15,
-            marginBottom: 8,
-            color: "#1a0f04",
-          }}
-        >
-          {title}
-        </p>
-        <p
-          style={{
-            fontSize: 13,
-            color: "#8B6914",
-            marginBottom: 22,
-            lineHeight: 1.5,
-          }}
-        >
-          {body}
-        </p>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button
-            onClick={onCancel}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 10,
-              border: "1.5px solid rgba(201,169,110,0.30)",
-              background: "none",
-              cursor: "pointer",
-              fontSize: 13,
-              color: "#8B6914",
-              fontFamily: "inherit",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={onConfirm}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 10,
-              border: "none",
-              background: danger ? "#e11d48" : "#C9A96E",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: "inherit",
-            }}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// ─── Main ───────────────────────────────────────────────────────────────────────
+export default function AdminPanel() {
+  const router = useRouter();
+  const [cargando, setCargando] = useState(true);
+  const [acceso, setAcceso] = useState(false);
+  const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([]);
+  const [editLimite, setEditLimite] = useState<Record<string, string>>({});
+  const [guardando, setGuardando] = useState<Record<string, boolean>>({});
+  const [bloqueando, setBloqueando] = useState<Record<string, boolean>>({});
+  const [eliminando, setEliminando] = useState<Record<string, boolean>>({});
+  const [confirmDelete, setConfirmDelete] = useState<UsuarioAdmin | null>(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [filtro, setFiltro] = useState<"todos" | "activos" | "bloqueados">("todos");
 
-// ─── Login Screen ─────────────────────────────────────────────────────────────
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  function handleSubmit() {
-    setLoading(true);
-    setError(false);
-    setTimeout(() => {
-      if (user.trim() === ADMIN_NAME && pass === ADMIN_PASS) {
-        onLogin();
-      } else {
-        setError(true);
-      }
-      setLoading(false);
-    }, 400);
-  }
-
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#FAF6F0",
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 340,
-          background: "#fff",
-          border: "1.5px solid rgba(201,169,110,0.18)",
-          borderRadius: 22,
-          padding: "32px 28px",
-          boxShadow: "0 4px 24px rgba(26,15,4,0.10)",
-        }}
-      >
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginBottom: 12,
-            }}
-          >
-            <AppLogo size={52} />
-          </div>
-          <div
-            style={{
-              fontSize: 22,
-              fontWeight: 600,
-              color: "#1a0f04",
-              letterSpacing: -0.5,
-            }}
-          >
-            Event<span style={{ color: "#C9A96E" }}>ix</span>
-          </div>
-          <div style={{ fontSize: 12, color: "#8B6914", marginTop: 3 }}>
-            Panel de administrador
-          </div>
-          <div
-            style={{
-              display: "inline-block",
-              marginTop: 8,
-              fontSize: 11,
-              padding: "3px 12px",
-              background: "rgba(201,169,110,0.09)",
-              color: "#C9A96E",
-              borderRadius: 100,
-              fontWeight: 600,
-              letterSpacing: 0.3,
-            }}
-          >
-            Acceso restringido
-          </div>
-        </div>
-
-        {error && (
-          <div
-            style={{
-              background: "#fff1f2",
-              border: "1px solid #fecdd3",
-              color: "#e11d48",
-              fontSize: 13,
-              padding: "10px 14px",
-              borderRadius: 12,
-              marginBottom: 16,
-            }}
-          >
-            Usuario o contraseña incorrectos
-          </div>
-        )}
-
-        {/* Fields */}
-        {[
-          {
-            label: "Usuario",
-            value: user,
-            set: setUser,
-            type: "text",
-            placeholder: "Admin",
-            auto: "username",
-          },
-        ].map((f) => (
-          <div key={f.label} style={{ marginBottom: 14 }}>
-            <label
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#C9A96E",
-                display: "block",
-                marginBottom: 6,
-                textTransform: "uppercase",
-              }}
-            >
-              {f.label}
-            </label>
-            <input
-              type={f.type}
-              value={f.value}
-              onChange={(e) => f.set(e.target.value)}
-              placeholder={f.placeholder}
-              autoComplete={f.auto}
-              style={{
-                width: "100%",
-                border: "2px solid rgba(201,169,110,0.30)",
-                borderRadius: 13,
-                padding: "12px 14px",
-                fontSize: 15,
-                background: "rgba(201,169,110,0.09)",
-                color: "#1a0f04",
-                outline: "none",
-                fontFamily: "inherit",
-              }}
-            />
-          </div>
-        ))}
-
-        <div style={{ marginBottom: 20 }}>
-          <label
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: "#C9A96E",
-              display: "block",
-              marginBottom: 6,
-              textTransform: "uppercase",
-            }}
-          >
-            Contraseña
-          </label>
-          <div style={{ position: "relative" }}>
-            <input
-              type={showPass ? "text" : "password"}
-              value={pass}
-              onChange={(e) => setPass(e.target.value)}
-              placeholder="••••••••••"
-              autoComplete="current-password"
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              style={{
-                width: "100%",
-                border: "2px solid rgba(201,169,110,0.30)",
-                borderRadius: 13,
-                padding: "12px 44px 12px 14px",
-                fontSize: 15,
-                background: "rgba(201,169,110,0.09)",
-                color: "#1a0f04",
-                outline: "none",
-                fontFamily: "inherit",
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPass(!showPass)}
-              style={{
-                position: "absolute",
-                right: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "#8B6914",
-                padding: 4,
-              }}
-            >
-              {showPass ? "🙈" : "👁"}
-            </button>
-          </div>
-        </div>
-
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: 14,
-            borderRadius: 13,
-            border: "none",
-            background: "linear-gradient(135deg,#C9A96E 0%,#8B6914 100%)",
-            color: "#fff",
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: "pointer",
-            fontFamily: "inherit",
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? "Verificando..." : "Ingresar al panel"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main Admin Panel ─────────────────────────────────────────────────────────
-function AdminPanel({ onLogout }: { onLogout: () => void }) {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState("");
-  const [search, setSearch] = useState("");
-  const [confirmDel, setConfirmDel] = useState<Profile | null>(null);
-  const [confirmBlock, setConfirmBlock] = useState<Profile | null>(null);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-
-  // ── Load profiles + event count ──────────────────────────────────────────
-  const loadProfiles = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Fetch profiles
-      const { data: profs, error: profErr } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (profErr) throw profErr;
-
-      // Fetch event count per user
-      const { data: evts } = await supabase
-        .from("eventos")
-        .select("organizador_id");
-
-      const countMap: Record<string, number> = {};
-      (evts ?? []).forEach((e: { organizador_id: string }) => {
-        countMap[e.organizador_id] = (countMap[e.organizador_id] ?? 0) + 1;
-      });
-
-      setProfiles(
-        (profs ?? []).map((p: Profile) => ({
-          ...p,
-          total_eventos: countMap[p.id] ?? 0,
-        })),
-      );
-    } catch (err) {
-      console.error(err);
-      showToast("Error al cargar usuarios");
-    } finally {
-      setLoading(false);
+  const cargarUsuarios = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("vista_admin_usuarios")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) {
+      toast.error("Error al cargar usuarios");
+      return;
     }
+    setUsuarios(data ?? []);
+    const limites: Record<string, string> = {};
+    (data ?? []).forEach((u: UsuarioAdmin) => {
+      limites[u.id] = u.evento_limit !== null ? String(u.evento_limit) : "";
+    });
+    setEditLimite(limites);
   }, []);
 
   useEffect(() => {
-    loadProfiles();
-  }, [loadProfiles]);
+    async function verificarAcceso() {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) { router.push("/auth/login"); return; }
 
-  function showToast(msg: string) {
-    setToast(msg);
-  }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("es_admin")
+        .eq("id", authData.user.id)
+        .single();
 
-  // ── Change event limit ────────────────────────────────────────────────────
-  async function changeLimit(profile: Profile, val: string) {
-    const newLimit = val === "unlimited" ? null : parseInt(val);
-    setUpdatingId(profile.id);
+      if (!profile?.es_admin) {
+        router.push("/dashboard");
+        return;
+      }
+
+      setAcceso(true);
+      await cargarUsuarios();
+      setCargando(false);
+    }
+    verificarAcceso();
+  }, [router, cargarUsuarios]);
+
+  async function toggleBloqueado(usuario: UsuarioAdmin) {
+    if (usuario.es_admin) {
+      toast.warning("No puedes bloquear al super administrador");
+      return;
+    }
+    setBloqueando((prev) => ({ ...prev, [usuario.id]: true }));
+    const nuevoBloqueado = !usuario.bloqueado;
     const { error } = await supabase
       .from("profiles")
-      .update({ evento_limit: newLimit })
-      .eq("id", profile.id);
-
+      .update({ bloqueado: nuevoBloqueado })
+      .eq("id", usuario.id);
     if (error) {
-      showToast("Error al actualizar límite");
+      toast.error("Error al actualizar estado");
     } else {
-      setProfiles((prev) =>
-        prev.map((p) =>
-          p.id === profile.id ? { ...p, evento_limit: newLimit } : p,
-        ),
+      toast.success(
+        nuevoBloqueado
+          ? `${usuario.nombre ?? "Usuario"} bloqueado`
+          : `${usuario.nombre ?? "Usuario"} desbloqueado`
       );
-      const label =
-        newLimit === null ? "sin límite" : `máx. ${newLimit} eventos`;
-      showToast(`${profile.nombre} — ${label}`);
+      setUsuarios((prev) =>
+        prev.map((u) => u.id === usuario.id ? { ...u, bloqueado: nuevoBloqueado } : u)
+      );
     }
-    setUpdatingId(null);
+    setBloqueando((prev) => ({ ...prev, [usuario.id]: false }));
   }
 
-  // ── Toggle block ──────────────────────────────────────────────────────────
-  async function toggleBlock(profile: Profile) {
-    const newVal = !profile.bloqueado;
-    setUpdatingId(profile.id);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ bloqueado: newVal })
-      .eq("id", profile.id);
-
-    if (error) {
-      showToast("Error al actualizar estado");
-    } else {
-      setProfiles((prev) =>
-        prev.map((p) =>
-          p.id === profile.id ? { ...p, bloqueado: newVal } : p,
-        ),
-      );
-      showToast(`${profile.nombre} ${newVal ? "bloqueado" : "desbloqueado"}`);
-    }
-    setConfirmBlock(null);
-    setUpdatingId(null);
-  }
-
-  // ── Delete user ───────────────────────────────────────────────────────────
-  async function deleteUser(profile: Profile) {
-    setUpdatingId(profile.id);
-    // Delete from profiles (cascade removes auth user via FK if configured,
-    // otherwise you need a Supabase Edge Function for auth.users deletion)
+  async function eliminarCuenta(usuario: UsuarioAdmin) {
+    setConfirmDelete(null);
+    setEliminando((prev) => ({ ...prev, [usuario.id]: true }));
+    // Eliminar perfil — el CASCADE elimina eventos e invitados relacionados
     const { error } = await supabase
       .from("profiles")
       .delete()
-      .eq("id", profile.id);
-
+      .eq("id", usuario.id);
     if (error) {
-      showToast("Error al eliminar usuario");
-    } else {
-      setProfiles((prev) => prev.filter((p) => p.id !== profile.id));
-      showToast(`Cuenta de ${profile.nombre} eliminada`);
+      toast.error("Error al eliminar la cuenta");
+      setEliminando((prev) => ({ ...prev, [usuario.id]: false }));
+      return;
     }
-    setConfirmDel(null);
-    setUpdatingId(null);
+    toast.success(`Cuenta de ${usuario.nombre ?? usuario.email ?? "usuario"} eliminada`);
+    setUsuarios((prev) => prev.filter((u) => u.id !== usuario.id));
+    setEliminando((prev) => ({ ...prev, [usuario.id]: false }));
   }
 
-  // ── Filtered list ─────────────────────────────────────────────────────────
-  const filtered = profiles.filter((p) => {
-    const q = search.toLowerCase();
-    return (
-      p.nombre?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q)
-    );
+  async function guardarLimite(usuario: UsuarioAdmin) {
+    setGuardando((prev) => ({ ...prev, [usuario.id]: true }));
+    const raw = editLimite[usuario.id];
+    const limite = raw === "" ? null : parseInt(raw, 10);
+    if (raw !== "" && (isNaN(limite!) || limite! < 0)) {
+      toast.error("Límite inválido — usa un número positivo o déjalo vacío para sin límite");
+      setGuardando((prev) => ({ ...prev, [usuario.id]: false }));
+      return;
+    }
+    const { error } = await supabase
+      .from("profiles")
+      .update({ evento_limit: limite })
+      .eq("id", usuario.id);
+    if (error) {
+      toast.error("Error al guardar límite");
+    } else {
+      toast.success("Límite actualizado");
+      setUsuarios((prev) =>
+        prev.map((u) => u.id === usuario.id ? { ...u, evento_limit: limite } : u)
+      );
+    }
+    setGuardando((prev) => ({ ...prev, [usuario.id]: false }));
+  }
+
+  // ── Filtros ─────────────────────────────────────────────────────────────────
+  const usuariosFiltrados = usuarios.filter((u) => {
+    const q = busqueda.toLowerCase();
+    const coincide =
+      !q ||
+      (u.nombre ?? "").toLowerCase().includes(q) ||
+      (u.email ?? "").toLowerCase().includes(q);
+    const estadoOk =
+      filtro === "todos" ||
+      (filtro === "bloqueados" && u.bloqueado) ||
+      (filtro === "activos" && !u.bloqueado);
+    return coincide && estadoOk;
   });
 
-  const stats = {
-    total: profiles.length,
-    unlimited: profiles.filter((p) => p.evento_limit === null).length,
-    limited: profiles.filter((p) => p.evento_limit !== null).length,
-    blocked: profiles.filter((p) => p.bloqueado).length,
-  };
+  const totalUsuarios = usuarios.length;
+  const totalBloqueados = usuarios.filter((u) => u.bloqueado).length;
+  const totalEventos = usuarios.reduce((s, u) => s + (u.total_eventos ?? 0), 0);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function initials(nombre: string) {
-    return nombre
-      .split(" ")
-      .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase() ?? "")
-      .join("");
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (cargando) {
+    return (
+      <>
+        <style>{`
+          *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+          html,body{background:#FAF6F0;font-family:'DM Sans',sans-serif}
+          @keyframes spin{to{transform:rotate(360deg)}}
+        `}</style>
+        <div style={{
+          minHeight: "100vh", display: "flex", alignItems: "center",
+          justifyContent: "center", background: "#FAF6F0",
+        }}>
+          <div style={{ textAlign: "center", opacity: 0.7 }}>
+            <div style={{
+              width: 34, height: 34,
+              border: "2.5px solid rgba(201,169,110,0.2)",
+              borderTop: "2.5px solid #C9A96E",
+              borderRadius: "50%", animation: "spin 0.8s linear infinite",
+              margin: "0 auto 12px",
+            }} />
+            <p style={{ fontFamily: "sans-serif", fontSize: 13, color: "#8B6914" }}>
+              Verificando acceso...
+            </p>
+          </div>
+        </div>
+      </>
+    );
   }
 
-  function fmtDate(iso: string) {
-    return new Date(iso).toLocaleDateString("es-SV", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
+  if (!acceso) return null;
 
-  const avatarColors = [
-    "#C9A96E",
-    "#8B6914",
-    "#0369a1",
-    "#7c3aed",
-    "#be185d",
-    "#d97706",
-    "#16a34a",
-  ];
-  function avatarColor(id: string) {
-    let n = 0;
-    for (let i = 0; i < id.length; i++) n += id.charCodeAt(i);
-    return avatarColors[n % avatarColors.length];
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#FAF6F0",
-        fontFamily: "'DM Sans', sans-serif",
-      }}
-    >
+    <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap');
-        * { box-sizing: border-box; }
-        @keyframes toastIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-        @keyframes spin { to{transform:rotate(360deg)} }
-        .user-row:hover { background: rgba(201,169,110,0.03) !important; }
-        select:focus { outline: 2px solid #C9A96E; outline-offset: 1px; }
-        input:focus { outline: 2px solid #C9A96E; outline-offset: 1px; border-color: #C9A96E !important; }
-        .btn-act { transition: opacity .15s, transform .15s; }
-        .btn-act:hover:not(:disabled) { opacity: 0.82; transform: scale(0.97); }
-        .btn-act:disabled { opacity: 0.45; cursor: not-allowed; }
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+        :root{
+          --bg:#FAF6F0;--surface:#FFFFFF;--surface2:#F7F2EA;
+          --border:rgba(201,169,110,0.16);--border-mid:rgba(201,169,110,0.28);
+          --accent:#C9A96E;--accent2:#8B6914;
+          --accent-soft:rgba(201,169,110,0.08);--accent-soft2:rgba(201,169,110,0.16);
+          --ink:#1a0f04;--ink2:#3d2b0f;--ink3:#8B6914;
+          --danger:#DC2626;--danger-bg:#FEF2F2;--danger-border:rgba(220,38,38,0.25);
+          --success:#059669;--success-bg:rgba(5,150,105,0.08);--success-border:rgba(5,150,105,0.25);
+          --warn:#D97706;--warn-bg:rgba(217,119,6,0.08);--warn-border:rgba(217,119,6,0.25);
+          --shadow:0 2px 16px rgba(26,15,4,0.09),0 1px 4px rgba(26,15,4,0.06);
+          --radius:18px;--radius-sm:12px;
+        }
+
+        html,body{
+          font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);
+          -webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden;
+        }
+
+        .page{min-height:100vh;background:var(--bg)}
+
+        /* Nav */
+        .nav{
+          position:sticky;top:0;z-index:30;height:58px;
+          padding:0 16px;
+          display:flex;align-items:center;justify-content:space-between;gap:10px;
+          background:rgba(250,246,240,0.96);backdrop-filter:blur(20px);
+          border-bottom:1px solid var(--border);
+        }
+        .nav-left{display:flex;align-items:center;gap:10px}
+        .nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none}
+        .nav-logo-text{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);letter-spacing:.02em}
+        .nav-badge{background:rgba(220,38,38,0.1);color:var(--danger);border:1px solid var(--danger-border);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+        .btn-back{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;border:1px solid var(--border-mid);background:var(--surface);color:var(--ink2);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all .2s}
+        .btn-back:hover{background:var(--accent-soft2);border-color:var(--accent)}
+
+        /* Container */
+        .container{max-width:860px;margin:0 auto;padding:24px 16px 60px}
+
+        /* Page header */
+        .page-header{margin-bottom:22px}
+        .page-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:var(--ink);margin-bottom:3px}
+        .page-subtitle{font-size:13px;color:var(--ink3)}
+
+        /* Stats */
+        .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}
+        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;box-shadow:var(--shadow)}
+        .stat-value{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:var(--ink);line-height:1}
+        .stat-label{font-size:10px;color:var(--ink3);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.07em}
+
+        /* Toolbar */
+        .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+        .search-wrap{flex:1;min-width:180px;position:relative}
+        .search-input{width:100%;padding:9px 12px 9px 36px;border:1px solid var(--border-mid);border-radius:10px;background:var(--surface);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);outline:none;transition:border-color .2s}
+        .search-input:focus{border-color:var(--accent)}
+        .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink3);pointer-events:none}
+        .filter-tabs{display:flex;gap:3px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:3px}
+        .filter-tab{padding:5px 11px;border-radius:7px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--ink3);cursor:pointer;transition:all .2s}
+        .filter-tab.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px rgba(26,15,4,0.10)}
+        .btn-refresh{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1px solid var(--border-mid);background:var(--surface);color:var(--ink2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+        .btn-refresh:hover{border-color:var(--accent);background:var(--accent-soft)}
+
+        /* Table */
+        .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+
+        /* User row */
+        .user-row{padding:14px 16px;border-bottom:1px solid var(--border);transition:background .15s;display:flex;flex-direction:column;gap:12px}
+        .user-row:last-child{border-bottom:none}
+        .user-row:hover{background:rgba(201,169,110,0.04)}
+
+        .user-row-top{display:flex;align-items:center;gap:12px}
+        .user-avatar{width:38px;height:38px;border-radius:50%;background:var(--accent-soft2);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--accent2);flex-shrink:0}
+        .user-info{flex:1;min-width:0}
+        .user-nombre{font-size:14px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+        .user-email{font-size:11px;color:var(--ink3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .badge-admin{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:6px;background:rgba(201,169,110,0.12);color:var(--accent2);border:1px solid rgba(201,169,110,0.3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+        .estado-bloqueado{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0}
+        .estado-activo{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0}
+
+        /* User row bottom */
+        .user-row-bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+        .eventos-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;background:var(--accent-soft);border:1px solid var(--border);font-size:12px;color:var(--ink2);font-weight:500}
+        .eventos-badge b{font-weight:700;color:var(--ink)}
+        .badge-fecha{font-size:11px;color:var(--ink3)}
+
+        /* Limit control */
+        .limit-wrap{display:inline-flex;align-items:center;gap:6px}
+        .limit-label{font-size:11px;color:var(--ink3);white-space:nowrap}
+        .limit-input{width:58px;padding:5px 8px;border:1px solid var(--border-mid);border-radius:8px;background:var(--surface);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--ink);text-align:center;outline:none;transition:border-color .2s}
+        .limit-input:focus{border-color:var(--accent)}
+        .btn-save{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;border:1px solid var(--border-mid);background:var(--surface);color:var(--ink2);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+        .btn-save:hover:not(:disabled){background:var(--accent-soft2);border-color:var(--accent);color:var(--accent2)}
+        .btn-save:disabled{opacity:0.5;cursor:not-allowed}
+
+        /* Block button */
+        .btn-block{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;margin-left:auto}
+        .btn-block-danger{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border)}
+        .btn-block-danger:hover:not(:disabled){background:#fee2e2}
+        .btn-block-ok{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
+        .btn-block-ok:hover:not(:disabled){background:rgba(5,150,105,0.14)}
+        .btn-block:disabled{opacity:0.5;cursor:not-allowed}
+
+        /* Delete button */
+        .btn-delete{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;border:1px solid var(--danger-border);background:var(--danger-bg);color:var(--danger);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+        .btn-delete:hover:not(:disabled){background:#fee2e2;border-color:var(--danger)}
+        .btn-delete:disabled{opacity:0.5;cursor:not-allowed}
+
+        /* Confirm modal */
+        .modal-backdrop{position:fixed;inset:0;background:rgba(20,13,4,0.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+        .modal{background:var(--surface);border-radius:20px;padding:28px 24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(20,13,4,0.25);animation:fadeUp .25s ease both}
+        .modal-icon{width:48px;height:48px;border-radius:50%;background:var(--danger-bg);border:1px solid var(--danger-border);display:flex;align-items:center;justify-content:center;color:var(--danger);margin:0 auto 16px}
+        .modal-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);text-align:center;margin-bottom:8px}
+        .modal-body{font-size:13px;color:var(--ink3);text-align:center;line-height:1.6;margin-bottom:24px}
+        .modal-body b{color:var(--ink);font-weight:600}
+        .modal-note{font-size:11px;color:var(--danger);opacity:.8;text-align:center;margin-top:-14px;margin-bottom:20px}
+        .modal-actions{display:flex;gap:10px}
+        .modal-btn-cancel{flex:1;padding:10px;border-radius:11px;border:1px solid var(--border-mid);background:var(--surface2);color:var(--ink2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+        .modal-btn-cancel:hover{border-color:var(--accent);background:var(--accent-soft)}
+        .modal-btn-delete{flex:1;padding:10px;border-radius:11px;border:none;background:var(--danger);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+        .modal-btn-delete:hover{background:#b91c1c}
+
+        /* Empty */
+        .empty{padding:44px 20px;text-align:center;color:var(--ink3);font-size:14px}
+
+        /* Footer */
+        .footer{text-align:center;padding:32px 16px;font-size:11px;color:var(--ink3);opacity:.55}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .page-header{animation:fadeUp .3s ease both}
+        .stats-row{animation:fadeUp .3s .05s ease both}
+        .toolbar{animation:fadeUp .3s .1s ease both}
+        .table-wrap{animation:fadeUp .3s .15s ease both}
       `}</style>
 
-      {/* ── Top bar ── */}
-      <div
-        style={{
-          background: "#fff",
-          borderBottom: "1.5px solid rgba(201,169,110,0.18)",
-          padding: "14px 24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <AppLogo size={36} />
-          <div>
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                color: "#1a0f04",
-                letterSpacing: -0.3,
-              }}
-            >
-              Panel de administrador
-            </div>
-            <div style={{ fontSize: 12, color: "#8B6914" }}>
-              Eventix · Gestión de usuarios
-            </div>
+      <div className="page">
+        {/* Nav */}
+        <nav className="nav">
+          <div className="nav-left">
+            <Link href="/dashboard" className="nav-logo">
+              <AppLogo size={30} />
+              <span className="nav-logo-text">Eventix</span>
+            </Link>
+            <span className="nav-badge">Super Admin</span>
           </div>
-        </div>
-        <button
-          className="btn-act"
-          onClick={onLogout}
-          style={{
-            padding: "7px 16px",
-            borderRadius: 10,
-            border: "1.5px solid rgba(201,169,110,0.30)",
-            background: "none",
-            cursor: "pointer",
-            fontSize: 13,
-            color: "#8B6914",
-            fontFamily: "inherit",
-          }}
-        >
-          Cerrar sesión
-        </button>
-      </div>
+          <Link href="/dashboard" className="btn-back">
+            <Icon.back /> Dashboard
+          </Link>
+        </nav>
 
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
-        {/* ── Stats ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4,1fr)",
-            gap: 12,
-            marginBottom: 24,
-          }}
-        >
-          {[
-            { label: "Total usuarios", value: stats.total, color: "#C9A96E" },
-            { label: "Sin límite", value: stats.unlimited, color: "#16a34a" },
-            { label: "Con límite", value: stats.limited, color: "#d97706" },
-            { label: "Bloqueados", value: stats.blocked, color: "#e11d48" },
-          ].map((s) => (
-            <div
-              key={s.label}
-              style={{
-                background: "#fff",
-                border: "1.5px solid rgba(201,169,110,0.18)",
-                borderRadius: 16,
-                padding: "16px 18px",
-                boxShadow: "0 2px 10px rgba(201,169,110,0.06)",
-              }}
-            >
-              <div style={{ fontSize: 12, color: "#8B6914", marginBottom: 4 }}>
-                {s.label}
+        <div className="container">
+          {/* Header */}
+          <div className="page-header">
+            <h1 className="page-title">Panel de Administración</h1>
+            <p className="page-subtitle">Gestiona cuentas, límites y acceso de todos los usuarios registrados</p>
+          </div>
+
+          {/* Stats */}
+          <div className="stats-row">
+            <div className="stat-card">
+              <div className="stat-value">{totalUsuarios}</div>
+              <div className="stat-label">Usuarios</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{totalEventos}</div>
+              <div className="stat-label">Eventos</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: totalBloqueados > 0 ? "var(--danger)" : "inherit" }}>
+                {totalBloqueados}
               </div>
-              <div style={{ fontSize: 26, fontWeight: 600, color: s.color }}>
-                {s.value}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── Search ── */}
-        <div style={{ marginBottom: 16, position: "relative" }}>
-          <svg
-            style={{
-              position: "absolute",
-              left: 13,
-              top: "50%",
-              transform: "translateY(-50%)",
-              opacity: 0.4,
-            }}
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-          >
-            <circle cx="7" cy="7" r="5" stroke="#C9A96E" strokeWidth="1.5" />
-            <path
-              d="M11 11l3 3"
-              stroke="#C9A96E"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre o correo…"
-            style={{
-              width: "100%",
-              padding: "11px 14px 11px 38px",
-              border: "1.5px solid rgba(201,169,110,0.30)",
-              borderRadius: 13,
-              fontSize: 14,
-              background: "#fff",
-              color: "#1a0f04",
-              fontFamily: "inherit",
-              outline: "none",
-            }}
-          />
-        </div>
-
-        {/* ── Section label ── */}
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: "#8B6914",
-            letterSpacing: 0.8,
-            textTransform: "uppercase",
-            marginBottom: 12,
-          }}
-        >
-          Usuarios registrados ({filtered.length})
-        </div>
-
-        {/* ── User list ── */}
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "48px 0" }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                border: "3px solid rgba(201,169,110,0.2)",
-                borderTopColor: "#C9A96E",
-                margin: "0 auto 12px",
-                animation: "spin 0.8s linear infinite",
-              }}
-            />
-            <div style={{ fontSize: 13, color: "#8B6914" }}>
-              Cargando usuarios…
+              <div className="stat-label">Bloqueados</div>
             </div>
           </div>
-        ) : filtered.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "48px 0",
-              fontSize: 14,
-              color: "#8B6914",
-            }}
-          >
-            {search
-              ? "No se encontraron usuarios con esa búsqueda"
-              : "No hay usuarios registrados"}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {filtered.map((profile) => {
-              const isUpdating = updatingId === profile.id;
-              const limitVal =
-                profile.evento_limit === null
-                  ? "unlimited"
-                  : String(profile.evento_limit);
 
-              return (
-                <div
-                  key={profile.id}
-                  className="user-row"
-                  style={{
-                    background: profile.bloqueado
-                      ? "rgba(225,29,72,0.03)"
-                      : "#fff",
-                    border: `1.5px solid ${profile.bloqueado ? "rgba(225,29,72,0.18)" : "rgba(201,169,110,0.18)"}`,
-                    borderRadius: 16,
-                    padding: "14px 16px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    flexWrap: "wrap",
-                    transition: "background .2s",
-                    opacity: isUpdating ? 0.6 : 1,
-                  }}
+          {/* Toolbar */}
+          <div className="toolbar">
+            <div className="search-wrap">
+              <span className="search-icon"><Icon.search /></span>
+              <input
+                className="search-input"
+                placeholder="Buscar por nombre o email..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+              />
+            </div>
+            <div className="filter-tabs">
+              {(["todos", "activos", "bloqueados"] as const).map((f) => (
+                <button
+                  key={f}
+                  className={`filter-tab ${filtro === f ? "active" : ""}`}
+                  onClick={() => setFiltro(f)}
                 >
-                  {/* Avatar */}
-                  <div
-                    style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: "50%",
-                      flexShrink: 0,
-                      background: avatarColor(profile.id),
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "#fff",
-                    }}
-                  >
-                    {initials(profile.nombre)}
+                  {f === "todos" ? "Todos" : f === "activos" ? "Activos" : "Bloqueados"}
+                </button>
+              ))}
+            </div>
+            <button
+              className="btn-refresh"
+              onClick={async () => { await cargarUsuarios(); toast.info("Lista actualizada"); }}
+            >
+              <Icon.refresh /> Actualizar
+            </button>
+          </div>
+
+          {/* User list */}
+          <div className="table-wrap">
+            {usuariosFiltrados.length === 0 ? (
+              <div className="empty">
+                {busqueda
+                  ? `Sin resultados para "${busqueda}"`
+                  : "No hay usuarios registrados"}
+              </div>
+            ) : (
+              usuariosFiltrados.map((u) => (
+                <div key={u.id} className="user-row">
+                  {/* Top */}
+                  <div className="user-row-top">
+                    <div className="user-avatar">
+                      {(u.nombre ?? u.email ?? "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="user-info">
+                      <div className="user-nombre">
+                        {u.nombre ?? "Sin nombre"}
+                        {u.es_admin && (
+                          <span className="badge-admin">
+                            <Icon.shield /> Admin
+                          </span>
+                        )}
+                      </div>
+                      <div className="user-email">{u.email ?? "—"}</div>
+                    </div>
+                    {u.bloqueado ? (
+                      <span className="estado-bloqueado"><Icon.block /> Bloqueado</span>
+                    ) : (
+                      <span className="estado-activo"><Icon.check /> Activo</span>
+                    )}
                   </div>
 
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 160 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: "#1a0f04",
-                        }}
-                      >
-                        {profile.nombre}
+                  {/* Bottom: controles */}
+                  <div className="user-row-bottom">
+                    {/* Eventos */}
+                    <div className="eventos-badge">
+                      <Icon.events />
+                      <b>{u.total_eventos}</b>
+                      <span style={{ color: "var(--ink3)" }}>
+                        evento{u.total_eventos !== 1 ? "s" : ""}
+                        {u.evento_limit !== null
+                          ? ` · límite: ${u.evento_limit}`
+                          : " · sin límite"}
                       </span>
-                      {profile.bloqueado && (
-                        <span
-                          style={{
-                            fontSize: 10,
-                            padding: "2px 8px",
-                            borderRadius: 100,
-                            background: "rgba(225,29,72,0.1)",
-                            color: "#e11d48",
-                            fontWeight: 600,
-                          }}
+                    </div>
+
+                    {/* Fecha */}
+                    <span className="badge-fecha">Registro: {formatFecha(u.created_at)}</span>
+
+                    {/* Limit input — solo para no-admins */}
+                    {!u.es_admin && (
+                      <div className="limit-wrap">
+                        <span className="limit-label">Límite:</span>
+                        <input
+                          className="limit-input"
+                          type="number"
+                          min="0"
+                          max="999"
+                          placeholder="∞"
+                          value={editLimite[u.id] ?? ""}
+                          onChange={(e) =>
+                            setEditLimite((prev) => ({ ...prev, [u.id]: e.target.value }))
+                          }
+                        />
+                        <button
+                          className="btn-save"
+                          disabled={!!guardando[u.id]}
+                          onClick={() => guardarLimite(u)}
                         >
-                          BLOQUEADO
-                        </span>
-                      )}
-                      {profile.es_admin && (
-                        <span
-                          style={{
-                            fontSize: 10,
-                            padding: "2px 8px",
-                            borderRadius: 100,
-                            background: "rgba(201,169,110,0.09)",
-                            color: "#C9A96E",
-                            fontWeight: 600,
-                          }}
-                        >
-                          ADMIN
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      style={{ fontSize: 12, color: "#8B6914", marginTop: 2 }}
-                    >
-                      {profile.email}
-                    </div>
-                    <div
-                      style={{ fontSize: 11, color: "#8B6914", marginTop: 2 }}
-                    >
-                      {profile.total_eventos ?? 0} evento
-                      {profile.total_eventos !== 1 ? "s" : ""} creado
-                      {profile.total_eventos !== 1 ? "s" : ""} · Registro:{" "}
-                      {fmtDate(profile.created_at)}
-                    </div>
-                  </div>
+                          <Icon.save />
+                          {guardando[u.id] ? "..." : "Guardar"}
+                        </button>
+                      </div>
+                    )}
 
-                  {/* Actions */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {/* Limit badge */}
-                    <span
-                      style={{
-                        fontSize: 11,
-                        padding: "4px 10px",
-                        borderRadius: 100,
-                        fontWeight: 600,
-                        background:
-                          profile.evento_limit === null
-                            ? "rgba(22,163,74,0.1)"
-                            : "rgba(217,119,6,0.1)",
-                        color:
-                          profile.evento_limit === null ? "#16a34a" : "#d97706",
-                      }}
-                    >
-                      {profile.evento_limit === null
-                        ? "Sin límite"
-                        : `Máx. ${profile.evento_limit}`}
-                    </span>
+                    {/* Block toggle — solo para no-admins */}
+                    {!u.es_admin && (
+                      <button
+                        className={`btn-block ${u.bloqueado ? "btn-block-ok" : "btn-block-danger"}`}
+                        disabled={!!bloqueando[u.id]}
+                        onClick={() => toggleBloqueado(u)}
+                      >
+                        {bloqueando[u.id] ? (
+                          "..."
+                        ) : u.bloqueado ? (
+                          <><Icon.check /> Desbloquear</>
+                        ) : (
+                          <><Icon.block /> Bloquear</>
+                        )}
+                      </button>
+                    )}
 
-                    {/* Limit selector */}
-                    <select
-                      value={limitVal}
-                      disabled={isUpdating}
-                      onChange={(e) => changeLimit(profile, e.target.value)}
-                      style={{
-                        fontSize: 12,
-                        padding: "6px 10px",
-                        border: "1.5px solid rgba(201,169,110,0.30)",
-                        borderRadius: 10,
-                        background: "#FAF6F0",
-                        color: "#1a0f04",
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      <option value="unlimited">Sin límite</option>
-                      <option value="1">1 evento</option>
-                      <option value="3">3 eventos</option>
-                      <option value="5">5 eventos</option>
-                      <option value="10">10 eventos</option>
-                      <option value="20">20 eventos</option>
-                      <option value="50">50 eventos</option>
-                    </select>
-
-                    {/* Block / Unblock */}
-                    <button
-                      className="btn-act"
-                      disabled={isUpdating}
-                      onClick={() => setConfirmBlock(profile)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 10,
-                        border: "none",
-                        background: profile.bloqueado
-                          ? "rgba(201,169,110,0.09)"
-                          : "rgba(217,119,6,0.1)",
-                        color: profile.bloqueado ? "#C9A96E" : "#d97706",
-                        cursor: "pointer",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      {profile.bloqueado ? "Desbloquear" : "Bloquear"}
-                    </button>
-
-                    {/* Delete */}
-                    <button
-                      className="btn-act"
-                      disabled={isUpdating}
-                      onClick={() => setConfirmDel(profile)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 10,
-                        border: "none",
-                        background: "rgba(225,29,72,0.08)",
-                        color: "#e11d48",
-                        cursor: "pointer",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      Eliminar
-                    </button>
+                    {/* Delete — solo para no-admins */}
+                    {!u.es_admin && (
+                      <button
+                        className="btn-delete"
+                        disabled={!!eliminando[u.id]}
+                        onClick={() => setConfirmDelete(u)}
+                      >
+                        {eliminando[u.id] ? "..." : <><Icon.trash /> Eliminar</>}
+                      </button>
+                    )}
                   </div>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
-        )}
+
+          <p className="footer">Panel privado · Solo visible para administradores · Humb3rsec 2026</p>
+        </div>
       </div>
 
-      {/* ── Modals ── */}
-      {confirmDel && (
-        <ConfirmModal
-          title={`Eliminar a ${confirmDel.nombre}`}
-          body={`¿Seguro que quieres eliminar la cuenta de ${confirmDel.email}? Sus eventos y datos se perderán permanentemente.`}
-          confirmLabel="Sí, eliminar"
-          danger
-          onConfirm={() => deleteUser(confirmDel)}
-          onCancel={() => setConfirmDel(null)}
-        />
+      {/* ── Modal de confirmación de eliminación ── */}
+      {confirmDelete && (
+        <div className="modal-backdrop" onClick={() => setConfirmDelete(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon">
+              <Icon.warn />
+            </div>
+            <h2 className="modal-title">Eliminar cuenta</h2>
+            <p className="modal-body">
+              ¿Estás seguro de que quieres eliminar la cuenta de{" "}
+              <b>{confirmDelete.nombre ?? confirmDelete.email ?? "este usuario"}</b>?
+            </p>
+            <p className="modal-note">
+              Se eliminarán todos sus eventos, invitados y datos. Esta acción no se puede deshacer.
+            </p>
+            <div className="modal-actions">
+              <button className="modal-btn-cancel" onClick={() => setConfirmDelete(null)}>
+                Cancelar
+              </button>
+              <button
+                className="modal-btn-delete"
+                onClick={() => eliminarCuenta(confirmDelete)}
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-      {confirmBlock && (
-        <ConfirmModal
-          title={
-            confirmBlock.bloqueado
-              ? `Desbloquear a ${confirmBlock.nombre}`
-              : `Bloquear a ${confirmBlock.nombre}`
-          }
-          body={
-            confirmBlock.bloqueado
-              ? "El usuario podrá volver a acceder y crear eventos."
-              : "El usuario no podrá iniciar sesión ni crear nuevos eventos."
-          }
-          confirmLabel={confirmBlock.bloqueado ? "Desbloquear" : "Bloquear"}
-          onConfirm={() => toggleBlock(confirmBlock)}
-          onCancel={() => setConfirmBlock(null)}
-        />
-      )}
-
-      {/* ── Toast ── */}
-      {toast && <Toast msg={toast} onHide={() => setToast("")} />}
-    </div>
+    </>
   );
-}
-
-// ─── Root Component ────────────────────────────────────────────────────────────
-export default function AdminPage() {
-  const router = useRouter();
-  const [authed, setAuthed] = useState(false);
-
-  // Optional: redirect to /dashboard if already logged in as org user
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      // You can optionally check if the session user is allowed here
-      // For now, we just gate with the local password check
-    });
-  }, []);
-
-  if (!authed) {
-    return <LoginScreen onLogin={() => setAuthed(true)} />;
-  }
-
-  return <AdminPanel onLogout={() => setAuthed(false)} />;
 }
