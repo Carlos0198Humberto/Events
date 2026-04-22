@@ -72,7 +72,7 @@ export default function FullscreenManager() {
         @keyframes fsSlideDown{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
         .fs-sheet{
           position:fixed;bottom:0;left:0;right:0;z-index:99999;
-          background:#1a1008;
+          background:#0F172A;
           border-radius:22px 22px 0 0;
           padding:0 20px env(safe-area-inset-bottom,20px);
           box-shadow:0 -8px 48px rgba(0,0,0,0.55);
@@ -83,16 +83,16 @@ export default function FullscreenManager() {
         }
         .fs-drag{width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);margin:14px auto 18px}
         .fs-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-        .fs-icon-wrap{width:48px;height:48px;border-radius:13px;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .fs-title{font-size:16px;font-weight:700;color:#F5EDD8;line-height:1.2;margin-bottom:3px}
-        .fs-sub{font-size:12px;color:rgba(201,169,110,0.65);line-height:1.4}
+        .fs-icon-wrap{width:48px;height:48px;border-radius:13px;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .fs-title{font-size:16px;font-weight:700;color:#F8FAFC;line-height:1.2;margin-bottom:3px}
+        .fs-sub{font-size:12px;color:rgba(124,58,237,0.65);line-height:1.4}
         .fs-steps{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 16px;margin-bottom:16px}
         .fs-step{display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
         .fs-step:last-child{border-bottom:none;padding-bottom:0}
         .fs-step:first-child{padding-top:0}
-        .fs-step-num{width:24px;height:24px;border-radius:50%;background:rgba(201,169,110,0.15);border:1px solid rgba(201,169,110,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:rgba(201,169,110,0.85)}
-        .fs-step-text{font-size:13px;color:rgba(232,213,176,0.8);line-height:1.5;padding-top:3px}
-        .fs-step-text b{color:#F5EDD8;font-weight:600}
+        .fs-step-num{width:24px;height:24px;border-radius:50%;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:rgba(124,58,237,0.85)}
+        .fs-step-text{font-size:13px;color:rgba(236,72,153,0.8);line-height:1.5;padding-top:3px}
+        .fs-step-text b{color:#F8FAFC;font-weight:600}
         .fs-btn-dismiss{width:100%;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:13px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.45);cursor:pointer;margin-bottom:8px}
       `}</style>
 
@@ -112,7 +112,7 @@ export default function FullscreenManager() {
         <div className="fs-row">
           <div className="fs-icon-wrap">
             {/* Expand/fullscreen icon */}
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.9)" strokeWidth="1.8" strokeLinecap="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(124,58,237,0.9)" strokeWidth="1.8" strokeLinecap="round">
               <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
               <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
               <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
@@ -130,7 +130,7 @@ export default function FullscreenManager() {
             <div className="fs-step-num">1</div>
             <div className="fs-step-text">
               Toca el ícono de <b>Compartir</b>{" "}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.75)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display:"inline", verticalAlign:"middle", marginBottom:1 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(124,58,237,0.75)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display:"inline", verticalAlign:"middle", marginBottom:1 }}>
                 <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
                 <polyline points="16 6 12 2 8 6"/>
                 <line x1="12" y1="2" x2="12" y2="15"/>

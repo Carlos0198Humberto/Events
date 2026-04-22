@@ -8,16 +8,7 @@ import { toast } from "@/app/components/Toast";
 // ─── AppLogo ──────────────────────────────────────────────────────────────────
 function AppLogo({ size = 36 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-      <rect width="64" height="64" rx="18" fill="#140d04"/>
-      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
-      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
-      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
   );
 }
 
@@ -219,7 +210,7 @@ export default function GestionarMesas() {
           {invitados.filter(i => i.estado === "confirmado" && !i.mesa_id).length > 0 && mesas.length > 0 && (
             <button
               className="btn-nueva-mesa"
-              style={{ background: "rgba(201,169,110,0.12)", color: "var(--gold)", border: "1.5px solid rgba(201,169,110,0.3)" }}
+              style={{ background: "rgba(124,58,237,0.12)", color: "var(--gold)", border: "1.5px solid rgba(124,58,237,0.3)" }}
               onClick={() => setShowAutoPanel(true)}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -574,7 +565,7 @@ export default function GestionarMesas() {
 
               {invitados.filter(i => i.estado === "confirmado" && !i.mesa_id).length > 0 && (
                 <>
-                  <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 12, lineHeight: 1.5, background: "rgba(201,169,110,0.08)", border: "1px solid rgba(201,169,110,0.2)", borderRadius: 8, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 12, lineHeight: 1.5, background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 8, padding: "10px 12px" }}>
                     Se distribuirán por orden de confirmación, respetando la capacidad de cada mesa.
                   </div>
                   <button
@@ -630,12 +621,12 @@ export default function GestionarMesas() {
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500;600;700&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAF6F0;color:#1a1209}
+  html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAFBFF;color:#1a1209}
   :root{
-    --bg:#FAF6F0;--surface:#fff;--cream:#FAF6F0;--cream2:#F3EDE3;
-    --ink:#1a1209;--ink2:#3d2b0f;--ink3:#8B6914;
-    --gold:#C9A96E;--gold-pale:rgba(201,169,110,0.1);--gold-mid:rgba(201,169,110,0.2);
-    --border:rgba(201,169,110,0.2);--border-mid:rgba(201,169,110,0.35);
+    --bg:#FAFBFF;--surface:#fff;--cream:#FAFBFF;--cream2:#F3EDE3;
+    --ink:#1a1209;--ink2:#475569;--ink3:#5B21B6;
+    --gold:#7C3AED;--gold-pale:rgba(124,58,237,0.1);--gold-mid:rgba(124,58,237,0.2);
+    --border:rgba(124,58,237,0.2);--border-mid:rgba(124,58,237,0.35);
     --shadow:0 4px 20px rgba(26,18,9,0.08);--shadow-lg:0 8px 40px rgba(26,18,9,0.12);
     --r:20px;--r-sm:14px;
   }
@@ -668,12 +659,12 @@ const styles = `
   .top-bar-sub{font-size:10px;color:var(--ink3);text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:180px}
   .btn-nueva-mesa{
     display:flex;align-items:center;gap:5px;
-    background:linear-gradient(135deg,#C9A96E,#E8C97A);
-    color:#140d04;border:none;border-radius:10px;
+    background:linear-gradient(135deg,#7C3AED,#E8C97A);
+    color:#5B21B6;border:none;border-radius:10px;
     padding:8px 13px;font-size:12px;font-weight:700;
     cursor:pointer;font-family:'Jost',sans-serif;
     flex-shrink:0;letter-spacing:.2px;
-    box-shadow:0 2px 8px rgba(201,169,110,0.35);
+    box-shadow:0 2px 8px rgba(124,58,237,0.35);
   }
   .btn-nueva-mesa:active{transform:scale(.97)}
 
@@ -687,7 +678,7 @@ const styles = `
     border-radius:12px;padding:10px 8px;text-align:center;
     box-shadow:var(--shadow);
   }
-  .resumen-chip.warn{border-color:rgba(201,169,110,0.5);background:rgba(201,169,110,0.07)}
+  .resumen-chip.warn{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.07)}
   .resumen-val{display:block;font-size:20px;font-weight:700;color:var(--ink);line-height:1.1}
   .resumen-label{display:block;font-size:10px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 
@@ -700,10 +691,10 @@ const styles = `
   .empty-title{font-size:17px;font-weight:700;color:var(--ink)}
   .empty-sub{font-size:13px;color:var(--ink3);line-height:1.6;max-width:240px}
   .btn-crear-primera{
-    margin-top:8px;background:linear-gradient(135deg,#C9A96E,#E8C97A);
-    color:#140d04;border:none;border-radius:14px;padding:13px 28px;
+    margin-top:8px;background:linear-gradient(135deg,#7C3AED,#E8C97A);
+    color:#5B21B6;border:none;border-radius:14px;padding:13px 28px;
     font-size:14px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;
-    box-shadow:0 4px 16px rgba(201,169,110,0.4);
+    box-shadow:0 4px 16px rgba(124,58,237,0.4);
   }
 
   /* Mesa card */
@@ -712,7 +703,7 @@ const styles = `
     box-shadow:var(--shadow);padding:16px;margin-bottom:14px;
     animation:fadeIn .4s ease both;
   }
-  .mesa-card.llena{border-color:rgba(201,169,110,0.6);background:rgba(201,169,110,0.04)}
+  .mesa-card.llena{border-color:rgba(124,58,237,0.6);background:rgba(124,58,237,0.04)}
   .mesa-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
   .mesa-card-left{display:flex;align-items:center;gap:10px}
   .mesa-icono{font-size:22px;line-height:1}
@@ -734,7 +725,7 @@ const styles = `
 
   /* Barra de ocupación */
   .mesa-barra-bg{height:4px;background:var(--cream2);border-radius:4px;margin-bottom:12px;overflow:hidden}
-  .mesa-barra-fill{height:100%;background:linear-gradient(90deg,#C9A96E,#E8C97A);border-radius:4px;transition:width .4s ease}
+  .mesa-barra-fill{height:100%;background:linear-gradient(90deg,#7C3AED,#E8C97A);border-radius:4px;transition:width .4s ease}
   .mesa-barra-fill.llena{background:linear-gradient(90deg,#B45309,#E57C00)}
 
   /* Invitados en mesa */
@@ -744,11 +735,11 @@ const styles = `
     background:var(--cream);border-radius:10px;padding:8px 10px;
     border:1px solid var(--border);
   }
-  .sin-mesa-row{background:rgba(201,169,110,0.06);border-color:rgba(201,169,110,0.2)}
+  .sin-mesa-row{background:rgba(124,58,237,0.06);border-color:rgba(124,58,237,0.2)}
   .mesa-inv-avatar{
     width:32px;height:32px;border-radius:50%;
-    background:linear-gradient(135deg,#C9A96E,#E8C97A);
-    color:#140d04;font-size:13px;font-weight:700;
+    background:linear-gradient(135deg,#7C3AED,#E8C97A);
+    color:#5B21B6;font-size:13px;font-weight:700;
     display:flex;align-items:center;justify-content:center;flex-shrink:0;
   }
   .mesa-inv-avatar.sm{width:28px;height:28px;font-size:11px}
@@ -782,7 +773,7 @@ const styles = `
     margin-bottom:12px;
   }
   .sin-mesa-count{
-    background:rgba(201,169,110,0.15);color:var(--gold);
+    background:rgba(124,58,237,0.15);color:var(--gold);
     border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;
   }
   .sin-mesa-hint{font-size:12px;color:var(--ink3);padding:8px 4px 4px;line-height:1.5}
@@ -790,7 +781,7 @@ const styles = `
   .est-badge{font-size:10px;font-weight:600;border-radius:6px;padding:2px 6px;margin-left:4px}
   .est-confirmado{background:rgba(45,125,70,0.12);color:#2d7d46}
   .est-rechazado{background:rgba(192,57,43,0.12);color:#c0392b}
-  .est-pendiente{background:rgba(201,169,110,0.15);color:var(--ink3)}
+  .est-pendiente{background:rgba(124,58,237,0.15);color:var(--ink3)}
   .select-mesa{
     font-family:'Jost',sans-serif;font-size:12px;font-weight:500;
     background:var(--cream2);border:1px solid var(--border-mid);
@@ -806,11 +797,11 @@ const styles = `
   }
   .modal-sheet{
     width:100%;max-height:90dvh;overflow-y:auto;
-    background:#FAF6F0;border-radius:24px 24px 0 0;
+    background:#FAFBFF;border-radius:24px 24px 0 0;
     animation:slideUp .35s cubic-bezier(.22,1,.36,1) both;
     max-width:480px;margin:0 auto;
   }
-  .modal-drag{width:36px;height:4px;background:rgba(201,169,110,0.35);border-radius:4px;margin:10px auto 0}
+  .modal-drag{width:36px;height:4px;background:rgba(124,58,237,0.35);border-radius:4px;margin:10px auto 0}
   .modal-header{
     display:flex;align-items:center;justify-content:space-between;
     padding:14px 20px 10px;border-bottom:1px solid var(--border);
@@ -826,11 +817,11 @@ const styles = `
     font-family:'Jost',sans-serif;color:var(--ink);
     outline:none;transition:border-color .15s;
   }
-  .field-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,0.1)}
+  .field-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(124,58,237,0.1)}
   .btn-guardar{
     width:100%;margin-top:16px;
-    background:linear-gradient(135deg,#C9A96E,#E8C97A);
-    color:#140d04;border:none;border-radius:14px;
+    background:linear-gradient(135deg,#7C3AED,#E8C97A);
+    color:#5B21B6;border:none;border-radius:14px;
     padding:14px;font-size:14px;font-weight:700;
     cursor:pointer;font-family:'Jost',sans-serif;
     display:flex;align-items:center;justify-content:center;gap:8px;
@@ -852,7 +843,7 @@ const styles = `
     transition:all .15s;font-family:'Jost',sans-serif;
   }
   .asignar-item:hover{background:var(--gold-pale);border-color:var(--gold)}
-  .asignar-item.activo{background:rgba(201,169,110,0.12);border-color:var(--gold)}
+  .asignar-item.activo{background:rgba(124,58,237,0.12);border-color:var(--gold)}
   .asignar-empty{text-align:center;padding:20px;color:var(--ink3);font-size:13px}
   .asignar-check{
     width:24px;height:24px;border-radius:50%;
@@ -861,9 +852,9 @@ const styles = `
     font-size:12px;font-weight:700;color:var(--ink3);
     flex-shrink:0;transition:all .15s;
   }
-  .asignar-check.activo{background:var(--gold);border-color:var(--gold);color:#140d04}
+  .asignar-check.activo{background:var(--gold);border-color:var(--gold);color:#5B21B6}
 
   /* Spinner */
-  .spinner{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(201,169,110,0.2);border-top-color:var(--gold);animation:spin .75s linear infinite}
+  .spinner{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(124,58,237,0.2);border-top-color:var(--gold);animation:spin .75s linear infinite}
   .spinner.sm{width:16px;height:16px;border-width:2px}
 `;

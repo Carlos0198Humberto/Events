@@ -43,7 +43,7 @@ function FaviconInjector() {
       .querySelectorAll("link[rel~='icon'], link[rel~='shortcut']")
       .forEach((el) => el.parentNode?.removeChild(el));
     const svgFavicon =
-      `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="18" fill="#140d04"/><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" stroke-width="1.2"/><rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/><rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/><rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/><rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/></svg>`.trim();
+      `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="fv-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#EC4899"/></linearGradient></defs><rect width="64" height="64" rx="18" fill="url(%23fv-bg)"/><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.2"/><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF"/><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF"/><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF"/><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF"/><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A"/></svg>`.trim();
     const link = document.createElement("link");
     link.rel = "icon";
     link.type = "image/svg+xml";
@@ -55,16 +55,27 @@ function FaviconInjector() {
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 function AppLogo({ size = 44 }: { size?: number }) {
+  const uid = `lg-${size}`;
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="64" height="64" rx="18" fill="#140d04"/>
-      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
-      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
-      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
+      <defs>
+        <linearGradient id={`${uid}-bg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#7C3AED" />
+          <stop offset="100%" stopColor="#EC4899" />
+        </linearGradient>
+        <linearGradient id={`${uid}-fg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="100%" stopColor="#FDE68A" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="18" fill={`url(#${uid}-bg)`} />
+      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" />
+      <rect x="13" y="14" width="6" height="36" rx="3" fill={`url(#${uid}-fg)`} />
+      <rect x="13" y="14" width="24" height="6" rx="3" fill={`url(#${uid}-fg)`} />
+      <rect x="13" y="29" width="18" height="6" rx="3" fill={`url(#${uid}-fg)`} />
+      <rect x="13" y="44" width="24" height="6" rx="3" fill={`url(#${uid}-fg)`} />
+      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" />
+      <circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" />
     </svg>
   );
 }
@@ -119,21 +130,24 @@ export default function Home() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg:           #FAF6F0;
+          --bg:           #FAFBFF;
           --surface:      #FFFFFF;
-          --border:       rgba(201,169,110,0.22);
-          --border-hover: rgba(201,169,110,0.50);
-          --accent:       #C9A96E;
-          --accent2:      #8B6914;
-          --accent-light: #E8D5B0;
-          --accent-soft:  rgba(201,169,110,0.08);
-          --accent-soft2: rgba(201,169,110,0.16);
-          --text:         #1a0f04;
-          --text2:        #3d2b0f;
-          --text3:        #8B6914;
-          --shadow:       0 4px 28px rgba(26,15,4,0.10);
-          --shadow-sm:    0 2px 10px rgba(26,15,4,0.07);
-          --shadow-btn:   0 6px 28px rgba(201,169,110,0.38);
+          --border:       #E5E7F0;
+          --border-hover: #BFC6DC;
+          --accent:       #7C3AED;
+          --accent2:      #5B21B6;
+          --accent-light: #EDE9FE;
+          --accent-soft:  rgba(124,58,237,0.08);
+          --accent-soft2: rgba(124,58,237,0.14);
+          --text:         #0F172A;
+          --text2:        #475569;
+          --text3:        #64748B;
+          --grad-primary: linear-gradient(135deg,#7C3AED 0%,#EC4899 100%);
+          --grad-secondary: linear-gradient(135deg,#3B82F6 0%,#06B6D4 100%);
+          --grad-warm:    linear-gradient(135deg,#F97316 0%,#EC4899 100%);
+          --shadow:       0 14px 40px -10px rgba(15,23,42,0.14);
+          --shadow-sm:    0 2px 10px rgba(15,23,42,0.06);
+          --shadow-btn:   0 10px 30px -6px rgba(124,58,237,0.38), 0 4px 12px rgba(236,72,153,0.18);
           --transition:   all 0.36s cubic-bezier(.4,0,.2,1);
         }
 
@@ -144,7 +158,6 @@ export default function Home() {
           color: var(--text);
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
-          /* Prevent horizontal scroll on all mobile devices */
           overflow-x: hidden;
           width: 100%;
         }
@@ -152,8 +165,10 @@ export default function Home() {
         body::before {
           content: '';
           position: fixed; inset: 0; pointer-events: none; z-index: 0;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
-          opacity: 0.5;
+          background:
+            radial-gradient(at 15% 0%, rgba(237,233,254,0.8) 0, transparent 55%),
+            radial-gradient(at 85% 10%, rgba(252,231,243,0.7) 0, transparent 50%),
+            radial-gradient(at 50% 100%, rgba(219,234,254,0.6) 0, transparent 55%);
         }
 
         /* ── App shell ── */
@@ -170,9 +185,9 @@ export default function Home() {
 
         /* ── Glows ── */
         .glow { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(90px); }
-        .glow-1 { width: 300px; height: 300px; top: -70px; right: -50px; background: radial-gradient(circle, rgba(201,169,110,0.14) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
-        .glow-2 { width: 240px; height: 240px; bottom: 70px; left: -70px; background: radial-gradient(circle, rgba(232,213,176,0.10) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
-        .glow-3 { width: 170px; height: 170px; bottom: -30px; right: 20px; background: radial-gradient(circle, rgba(201,169,110,0.07) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
+        .glow-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
+        .glow-2 { width: 260px; height: 260px; bottom: 70px; left: -80px; background: radial-gradient(circle, rgba(236,72,153,0.18) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
+        .glow-3 { width: 190px; height: 190px; bottom: -30px; right: 10px; background: radial-gradient(circle, rgba(59,130,246,0.16) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
         @keyframes glowDrift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-18px,28px) scale(1.07)} 66%{transform:translate(14px,-18px) scale(0.95)} }
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(22px,-30px) scale(1.09)} 70%{transform:translate(-8px,18px) scale(0.93)} }
 
@@ -230,14 +245,20 @@ export default function Home() {
         /* ── Logo block ── */
         .logo-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 36px; }
         .logo-container { position: relative; display: flex; align-items: center; justify-content: center; width: 96px; height: 96px; }
-        .logo-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(13,148,136,0.18); animation: ringExpand 3s ease-out infinite; pointer-events: none; width: 82px; height: 82px; }
-        .logo-ring-2 { animation-delay: 1s; }
-        .logo-ring-3 { animation-delay: 2s; }
+        .logo-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(124,58,237,0.22); animation: ringExpand 3s ease-out infinite; pointer-events: none; width: 82px; height: 82px; }
+        .logo-ring-2 { animation-delay: 1s; border-color: rgba(236,72,153,0.22); }
+        .logo-ring-3 { animation-delay: 2s; border-color: rgba(59,130,246,0.22); }
         @keyframes ringExpand { 0%{transform:scale(0.82);opacity:0.7} 100%{transform:scale(2.0);opacity:0} }
-        .logo-pulse { position: relative; z-index: 2; animation: logoPulse 3.5s ease-in-out infinite; filter: drop-shadow(0 4px 20px rgba(13,148,136,0.30)); }
-        @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04);filter:drop-shadow(0 6px 28px rgba(13,148,136,0.48))} }
+        .logo-pulse { position: relative; z-index: 2; animation: logoPulse 3.5s ease-in-out infinite; filter: drop-shadow(0 8px 24px rgba(124,58,237,0.35)); }
+        @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04);filter:drop-shadow(0 12px 32px rgba(236,72,153,0.45))} }
         .logo-name { font-family: 'Cormorant Garamond', serif; font-size: 40px; font-weight: 600; letter-spacing: -1.5px; color: var(--text); line-height: 1; }
-        .logo-name span { color: var(--accent); }
+        .logo-name span {
+          background: var(--grad-primary);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          -webkit-text-fill-color: transparent;
+        }
         .logo-tag { font-size: 10px; font-weight: 500; letter-spacing: 2.2px; text-transform: uppercase; color: var(--text3); margin-top: 3px; }
 
         /* ── Feature pills ── */
@@ -269,7 +290,7 @@ export default function Home() {
         /* ── Main CTA ── */
         .btn-main {
           display: inline-flex; align-items: center; gap: 10px;
-          background: var(--accent); color: white;
+          background: var(--grad-primary); color: white;
           font-family: 'DM Sans', sans-serif;
           font-size: 15px; font-weight: 600;
           padding: 16px 44px; border-radius: 100px;
@@ -279,20 +300,21 @@ export default function Home() {
           position: relative; overflow: hidden; letter-spacing: .3px;
           -webkit-tap-highlight-color: transparent;
           touch-action: manipulation;
-          /* Good tap height */
           min-height: 52px;
         }
-        .btn-main::after { content:''; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(135deg,rgba(255,255,255,0.18) 0%,transparent 55%); pointer-events:none; }
-        .btn-shimmer { position:absolute; inset:0; border-radius:inherit; background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.22) 50%,transparent 62%); background-size:200% 100%; animation:shimmer 3.5s ease-in-out infinite; }
+        .btn-main::after { content:''; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(135deg,rgba(255,255,255,0.22) 0%,transparent 55%); pointer-events:none; }
+        .btn-shimmer { position:absolute; inset:0; border-radius:inherit; background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.26) 50%,transparent 62%); background-size:200% 100%; animation:shimmer 3.5s ease-in-out infinite; }
         @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
-        .btn-main:hover  { transform:translateY(-2px) scale(1.02); box-shadow:0 12px 40px rgba(13,148,136,0.48); }
+        .btn-main:hover  { transform:translateY(-2px) scale(1.02); box-shadow:0 16px 44px -6px rgba(124,58,237,0.48), 0 8px 16px rgba(236,72,153,0.25); }
         .btn-main:active { transform:scale(0.97); }
         .btn-arrow { width:22px; height:22px; background:rgba(255,255,255,0.22); border-radius:50%; display:flex; align-items:center; justify-content:center; transition:transform 0.22s ease; flex-shrink:0; }
         .btn-main:hover .btn-arrow { transform:translateX(3px); }
 
         /* ── Particles ── */
         .particles { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
-        .particle { position:absolute; border-radius:50%; background:var(--accent-light); opacity:0; animation:particleFloat linear infinite; }
+        .particle { position:absolute; border-radius:50%; background:linear-gradient(135deg,#A78BFA 0%,#F9A8D4 100%); opacity:0; animation:particleFloat linear infinite; }
+        .particle:nth-child(3n){ background:linear-gradient(135deg,#60A5FA 0%,#22D3EE 100%); }
+        .particle:nth-child(4n){ background:linear-gradient(135deg,#FB923C 0%,#F472B6 100%); }
         .particle-1{width:4px;height:4px;left:10%;animation-duration:13s;animation-delay:0s}
         .particle-2{width:3px;height:3px;left:27%;animation-duration:16s;animation-delay:2.2s}
         .particle-3{width:5px;height:5px;left:44%;animation-duration:11s;animation-delay:.6s}
@@ -320,9 +342,9 @@ export default function Home() {
           -webkit-tap-highlight-color:transparent;
           touch-action:manipulation;
         }
-        .auth-card:hover { border-color:var(--border-hover); transform:translateY(-2px); box-shadow:0 8px 28px rgba(13,148,136,0.16); }
-        .auth-card.primary { background:var(--accent); border-color:transparent; box-shadow:var(--shadow-btn); }
-        .auth-card.primary:hover { background:var(--accent2); border-color:transparent; box-shadow:0 10px 36px rgba(13,148,136,0.48); }
+        .auth-card:hover { border-color:var(--border-hover); transform:translateY(-2px); box-shadow:0 10px 30px -6px rgba(15,23,42,0.14); }
+        .auth-card.primary { background:var(--grad-primary); border-color:transparent; box-shadow:var(--shadow-btn); }
+        .auth-card.primary:hover { background:var(--grad-primary); border-color:transparent; box-shadow:0 14px 40px -6px rgba(124,58,237,0.48), 0 6px 18px rgba(236,72,153,0.22); }
         .auth-card-left { display:flex; flex-direction:column; gap:3px; }
         .auth-card-label { font-size:15px; font-weight:600; color:var(--text); }
         .auth-card.primary .auth-card-label,

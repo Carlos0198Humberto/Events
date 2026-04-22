@@ -25,15 +25,7 @@ type ScanResult =
 // ─── AppLogo ───────────────────────────────────────────────────────────────
 function AppLogo({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-      <rect width="64" height="64" rx="18" fill="#140d04"/>
-      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
-      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
   );
 }
 
@@ -239,12 +231,12 @@ export default function ScannerPage() {
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Jost:wght@300;400;500;600;700&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAF6F0;color:#1a1209}
+    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAFBFF;color:#1a1209}
     :root{
-      --gold:#C9A96E;--gold-dark:#8B6914;--gold-light:#E8D5B0;--gold-pale:#F5EDD8;
-      --dark:#1a1209;--dark2:#2d1f0a;--ink:#3d2b0f;--ink2:#5a3e1b;--ink3:#8B6914;
-      --cream:#FAF6F0;--cream2:#F0E8D8;--surface:#FFFFFF;
-      --border:rgba(201,169,110,0.25);--border-mid:rgba(201,169,110,0.40);
+      --gold:#7C3AED;--gold-dark:#5B21B6;--gold-light:#FDE68A;--gold-pale:#F5EDD8;
+      --dark:#1a1209;--dark2:#2d1f0a;--ink:#475569;--ink2:#5a3e1b;--ink3:#5B21B6;
+      --cream:#FAFBFF;--cream2:#F0E8D8;--surface:#FFFFFF;
+      --border:rgba(124,58,237,0.25);--border-mid:rgba(124,58,237,0.40);
       --r:20px;--r-sm:14px;
     }
     @keyframes riseUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
@@ -276,17 +268,17 @@ export default function ScannerPage() {
     .cam-video{width:100%;height:100%;object-fit:cover;display:block}
     .cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
     .cam-frame{width:200px;height:200px;position:relative}
-    .cam-frame::before,.cam-frame::after{content:'';position:absolute;width:30px;height:30px;border-color:#C9A96E;border-style:solid;border-width:0}
+    .cam-frame::before,.cam-frame::after{content:'';position:absolute;width:30px;height:30px;border-color:#7C3AED;border-style:solid;border-width:0}
     .cam-frame::before{top:0;left:0;border-top-width:3px;border-left-width:3px;border-radius:4px 0 0 0}
     .cam-frame::after{bottom:0;right:0;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 4px 0}
-    .cam-corner-tr{position:absolute;top:0;right:0;width:30px;height:30px;border-top:3px solid #C9A96E;border-right:3px solid #C9A96E;border-radius:0 4px 0 0}
-    .cam-corner-bl{position:absolute;bottom:0;left:0;width:30px;height:30px;border-bottom:3px solid #C9A96E;border-left:3px solid #C9A96E;border-radius:0 0 0 4px}
-    .cam-scanline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(201,169,110,0.8),transparent);animation:scanLine 2s linear infinite}
-    .cam-hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:11px;color:rgba(232,213,176,0.7);font-weight:500}
+    .cam-corner-tr{position:absolute;top:0;right:0;width:30px;height:30px;border-top:3px solid #7C3AED;border-right:3px solid #7C3AED;border-radius:0 4px 0 0}
+    .cam-corner-bl{position:absolute;bottom:0;left:0;width:30px;height:30px;border-bottom:3px solid #7C3AED;border-left:3px solid #7C3AED;border-radius:0 0 0 4px}
+    .cam-scanline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(124,58,237,0.8),transparent);animation:scanLine 2s linear infinite}
+    .cam-hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:11px;color:rgba(236,72,153,0.7);font-weight:500}
     .cam-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;height:100%;padding:20px}
 
     /* Botones */
-    .btn-primary{width:100%;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(201,169,110,0.35);border-radius:var(--r-sm);padding:16px;font-family:'Jost',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:transform .15s,opacity .15s;letter-spacing:.3px}
+    .btn-primary{width:100%;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(124,58,237,0.35);border-radius:var(--r-sm);padding:16px;font-family:'Jost',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:transform .15s,opacity .15s;letter-spacing:.3px}
     .btn-primary:hover{transform:translateY(-1px)}
     .btn-primary:disabled{opacity:.6;cursor:wait}
     .btn-secondary{width:100%;background:var(--cream);color:var(--ink2);border:1.5px solid var(--border-mid);border-radius:var(--r-sm);padding:14px;font-family:'Jost',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
@@ -316,7 +308,7 @@ export default function ScannerPage() {
     .result-info-row{display:flex;align-items:center;gap:10px;background:var(--cream);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px}
     .result-info-label{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
     .result-info-val{font-size:14px;color:var(--ink);font-weight:500}
-    .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(201,169,110,.3);border-top-color:var(--gold);animation:spin .7s linear infinite}
+    .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(124,58,237,.3);border-top-color:var(--gold);animation:spin .7s linear infinite}
     .no-support-box{background:#fffbeb;border:1px solid rgba(245,158,11,.3);border-radius:var(--r-sm);padding:16px;text-align:center}
   `;
 
@@ -329,7 +321,7 @@ export default function ScannerPage() {
       <div className="topbar">
         <button className="topbar-back" onClick={() => router.push(`/dashboard`)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M15 18l-6-6 6-6" stroke="#8B6914" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M15 18l-6-6 6-6" stroke="#5B21B6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
         <div className="topbar-info">
@@ -367,8 +359,8 @@ export default function ScannerPage() {
                 </div>
               </div>
               {procesando && (
-                <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(20,13,4,0.8)", borderRadius: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 7, color: "#E8D5B0", fontSize: 12, fontWeight: 600 }}>
-                  <div className="spinner" style={{ borderTopColor: "#C9A96E" }} />
+                <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(20,13,4,0.8)", borderRadius: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 7, color: "#FDE68A", fontSize: 12, fontWeight: 600 }}>
+                  <div className="spinner" style={{ borderTopColor: "#7C3AED" }} />
                   Verificando...
                 </div>
               )}
@@ -379,10 +371,10 @@ export default function ScannerPage() {
               {camPermiso === "pendiente" && (
                 <>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="12" cy="13" r="4" stroke="#C9A96E" strokeWidth="1.5"/>
+                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="13" r="4" stroke="#7C3AED" strokeWidth="1.5"/>
                   </svg>
-                  <p style={{ color: "rgba(232,213,176,0.75)", fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
+                  <p style={{ color: "rgba(236,72,153,0.75)", fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
                     Necesitamos acceso a la cámara<br/>para escanear los QR
                   </p>
                   <button className="btn-primary" style={{ maxWidth: 240 }} onClick={iniciarCamara}>
@@ -397,7 +389,7 @@ export default function ScannerPage() {
               {camPermiso === "denegado" && (
                 <>
                   <div style={{ fontSize: 40 }}>🚫</div>
-                  <p style={{ color: "rgba(232,213,176,0.75)", fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
+                  <p style={{ color: "rgba(236,72,153,0.75)", fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
                     Acceso a cámara denegado.<br/>Usa el campo manual abajo.
                   </p>
                 </>
@@ -462,8 +454,8 @@ export default function ScannerPage() {
                 <div className="result-nombre">{resultado.invitado.nombre}</div>
                 <div className="result-info-row">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M9 2C6.38 2 4.25 4.13 4.25 6.75c0 2.57 2.01 4.65 4.63 4.74A4.738 4.738 0 0 0 13.75 6.75C13.75 4.13 11.62 2 9 2Z" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M4.16 14.56c-2.58 1.72-2.58 4.52 0 6.23 2.93 1.95 7.73 1.95 10.66 0 2.58-1.72 2.58-4.52 0-6.23-2.92-1.94-7.72-1.94-10.66 0Z" stroke="#C9A96E" strokeWidth="1.5"/>
+                    <path d="M9 2C6.38 2 4.25 4.13 4.25 6.75c0 2.57 2.01 4.65 4.63 4.74A4.738 4.738 0 0 0 13.75 6.75C13.75 4.13 11.62 2 9 2Z" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M4.16 14.56c-2.58 1.72-2.58 4.52 0 6.23 2.93 1.95 7.73 1.95 10.66 0 2.58-1.72 2.58-4.52 0-6.23-2.92-1.94-7.72-1.94-10.66 0Z" stroke="#7C3AED" strokeWidth="1.5"/>
                   </svg>
                   <div>
                     <div className="result-info-label">Personas</div>
@@ -473,8 +465,8 @@ export default function ScannerPage() {
                 {resultado.invitado.numero_confirmacion && (
                   <div className="result-info-row">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <rect x="2" y="7" width="20" height="10" rx="2" stroke="#C9A96E" strokeWidth="1.5"/>
-                      <path d="M7 12h10" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round"/>
+                      <rect x="2" y="7" width="20" height="10" rx="2" stroke="#7C3AED" strokeWidth="1.5"/>
+                      <path d="M7 12h10" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                     <div>
                       <div className="result-info-label">Confirmación</div>
@@ -500,8 +492,8 @@ export default function ScannerPage() {
                 {resultado.invitado.presente_hora && (
                   <div className="result-info-row">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <path d="M22 12c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2s10 4.48 10 10Z" stroke="#C9A96E" strokeWidth="1.5"/>
-                      <path d="M15.71 15.18 12.61 13.3c-.54-.32-.98-1.09-.98-1.72V7.51" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M22 12c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2s10 4.48 10 10Z" stroke="#7C3AED" strokeWidth="1.5"/>
+                      <path d="M15.71 15.18 12.61 13.3c-.54-.32-.98-1.09-.98-1.72V7.51" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                     <div>
                       <div className="result-info-label">Registrado a las</div>

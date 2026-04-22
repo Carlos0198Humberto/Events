@@ -69,23 +69,7 @@ const PLANTILLAS: Record<string, string[]> = {
 // ─── Logo ─────────────────────────────────────────────────────
 function AppLogo({ size = 34 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Background */}
-      <rect width="64" height="64" rx="18" fill="#140d04"/>
-      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
-      {/* Geometric E — vertical bar */}
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
-      {/* Top bar */}
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* Middle bar (slightly shorter) */}
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
-      {/* Bottom bar */}
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* 4-pointed star sparkle — upper right */}
-      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
-      {/* Small accent dot */}
-      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
   );
 }
 
@@ -150,8 +134,8 @@ function TarjetaAgradecimiento({
         background: "linear-gradient(135deg,#f0fdfa,#ccfbf1)",
         borderRadius: 20,
         padding: 22,
-        border: "2px solid #E8D5B0",
-        boxShadow: "0 8px 32px rgba(13,148,136,0.12)",
+        border: "2px solid #FDE68A",
+        boxShadow: "0 8px 32px rgba(124,58,237,0.12)",
         position: "relative",
         overflow: "hidden",
       }}
@@ -164,7 +148,7 @@ function TarjetaAgradecimiento({
           width: 100,
           height: 100,
           borderRadius: "50%",
-          background: "#E8D5B0",
+          background: "#FDE68A",
           opacity: 0.18,
         }}
       />
@@ -176,7 +160,7 @@ function TarjetaAgradecimiento({
           width: 80,
           height: 80,
           borderRadius: "50%",
-          background: "#C9A96E",
+          background: "#7C3AED",
           opacity: 0.1,
         }}
       />
@@ -206,7 +190,7 @@ function TarjetaAgradecimiento({
         style={{
           fontWeight: 900,
           fontSize: 20,
-          color: "#8B6914",
+          color: "#5B21B6",
           textAlign: "center",
           marginBottom: 3,
           position: "relative",
@@ -219,7 +203,7 @@ function TarjetaAgradecimiento({
         style={{
           fontWeight: 700,
           fontSize: 13,
-          color: "#8B6914",
+          color: "#5B21B6",
           opacity: 0.8,
           textAlign: "center",
           marginBottom: 14,
@@ -264,7 +248,7 @@ function TarjetaAgradecimiento({
             width: 34,
             height: 34,
             borderRadius: "50%",
-            background: "linear-gradient(135deg,#C9A96E,#8B6914)",
+            background: "linear-gradient(135deg,#7C3AED,#5B21B6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -277,10 +261,10 @@ function TarjetaAgradecimiento({
           {invitado.nombre.charAt(0).toUpperCase()}
         </div>
         <div>
-          <p style={{ fontWeight: 700, color: "#8B6914", fontSize: 13 }}>
+          <p style={{ fontWeight: 700, color: "#5B21B6", fontSize: 13 }}>
             {invitado.nombre}
           </p>
-          <p style={{ fontSize: 11, color: "#8B6914", opacity: 0.7 }}>
+          <p style={{ fontSize: 11, color: "#5B21B6", opacity: 0.7 }}>
             {fecha}
           </p>
         </div>
@@ -293,8 +277,8 @@ function TarjetaAgradecimiento({
               padding: "3px 10px",
               fontSize: 11,
               fontWeight: 700,
-              color: "#8B6914",
-              border: "1px solid #E8D5B0",
+              color: "#5B21B6",
+              border: "1px solid #FDE68A",
             }}
           >
             +{invitado.num_personas - 1} más
@@ -449,24 +433,24 @@ export default function AgradecimientosPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#FAF6F0",
+          background: "#FAFBFF",
         }}
       >
         <div style={{ textAlign: "center" }}>
           <AppLogo size={72} />
-          <div style={{marginTop: 14, fontFamily: "Cormorant Garamond, Georgia, serif", fontSize: 26, color: "#1a0f04", letterSpacing: 3}}>Eventix</div>
+          <div style={{marginTop: 14, fontFamily: "Cormorant Garamond, Georgia, serif", fontSize: 26, color: "#0F172A", letterSpacing: 3}}>Eventix</div>
           <div
             style={{
               width: 28,
               height: 28,
               border: "2.5px solid transparent",
-              borderTopColor: "#C9A96E",
+              borderTopColor: "#7C3AED",
               borderRadius: "50%",
               margin: "24px auto 0",
               animation: "spin .8s linear infinite",
             }}
           />
-          <p style={{ color: "rgba(201,169,110,0.7)", fontWeight: 400, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", marginTop: 12 }}>
+          <p style={{ color: "rgba(124,58,237,0.7)", fontWeight: 400, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", marginTop: 12 }}>
             Cargando...
           </p>
         </div>
@@ -504,23 +488,23 @@ export default function AgradecimientosPage() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg:           #FAF6F0;
+          --bg:           #FAFBFF;
           --surface:      #FFFFFF;
-          --surface2:     #F7F2EA;
-          --border:       rgba(201,169,110,0.16);
-          --border-hover: rgba(201,169,110,0.50);
-          --border-input: rgba(201,169,110,0.28);
-          --accent:       #C9A96E;
-          --accent2:      #8B6914;
-          --accent-light: #C9A96E;
-          --accent-soft:  rgba(201,169,110,0.08);
-          --accent-soft2: rgba(201,169,110,0.16);
-          --text:         #1a0f04;
-          --text2:        #3d2b0f;
-          --text3:        #8B6914;
-          --shadow:       0 4px 28px rgba(26,15,4,0.10);
-          --shadow-sm:    0 2px 10px rgba(26,15,4,0.07);
-          --shadow-btn:   0 6px 28px rgba(201,169,110,0.38);
+          --surface2:     #F4F5FB;
+          --border:       rgba(124,58,237,0.16);
+          --border-hover: rgba(124,58,237,0.50);
+          --border-input: rgba(124,58,237,0.28);
+          --accent:       #7C3AED;
+          --accent2:      #5B21B6;
+          --accent-light: #7C3AED;
+          --accent-soft:  rgba(124,58,237,0.08);
+          --accent-soft2: rgba(124,58,237,0.16);
+          --text:         #0F172A;
+          --text2:        #475569;
+          --text3:        #5B21B6;
+          --shadow:       0 4px 28px rgba(15,23,42,0.10);
+          --shadow-sm:    0 2px 10px rgba(15,23,42,0.07);
+          --shadow-btn:   0 6px 28px rgba(124,58,237,0.38);
           --transition:   all 0.36s cubic-bezier(.4,0,.2,1);
         }
 
@@ -539,7 +523,7 @@ export default function AgradecimientosPage() {
         }
 
         .glow { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(90px); }
-        .glow-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: radial-gradient(circle, rgba(13,148,136,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
+        .glow-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: radial-gradient(circle, rgba(124,58,237,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
         .glow-2 { width: 260px; height: 260px; bottom: 80px; left: -80px; background: radial-gradient(circle, rgba(94,234,212,0.11) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
         @keyframes glowDrift1 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-18px,28px)} 66%{transform:translate(14px,-18px)} }
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0)} 40%{transform:translate(22px,-30px)} 70%{transform:translate(-8px,18px)} }
@@ -591,7 +575,7 @@ export default function AgradecimientosPage() {
         .chip-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
         .chip-scroll::-webkit-scrollbar { display: none; }
         .chip { flex-shrink: 0; padding: 6px 16px; border-radius: 99px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; transition: all .15s; -webkit-tap-highlight-color: transparent; }
-        .chip-active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; box-shadow: 0 2px 10px rgba(13,148,136,0.28); }
+        .chip-active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; box-shadow: 0 2px 10px rgba(124,58,237,0.28); }
         .chip-inactive { background: var(--accent-soft); color: var(--accent2); }
 
         /* ── Textarea ── */
@@ -602,7 +586,7 @@ export default function AgradecimientosPage() {
           background: var(--accent-soft); color: var(--text);
           transition: border-color .2s, background .2s; -webkit-appearance: none;
         }
-        .msg-textarea:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(13,148,136,0.10); }
+        .msg-textarea:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(124,58,237,0.10); }
 
         /* ── Botón principal ── */
         .btn-primary {
@@ -637,9 +621,9 @@ export default function AgradecimientosPage() {
           background: linear-gradient(135deg, var(--accent-soft), rgba(94,234,212,0.12));
           border: 2px solid var(--accent-light);
           border-radius: 20px; padding: 20px 18px;
-          box-shadow: 0 4px 24px rgba(13,148,136,0.14);
+          box-shadow: 0 4px 24px rgba(124,58,237,0.14);
         }
-        .cola-progress-bar { background: rgba(13,148,136,0.15); border-radius: 99px; height: 8px; overflow: hidden; margin: 10px 0; }
+        .cola-progress-bar { background: rgba(124,58,237,0.15); border-radius: 99px; height: 8px; overflow: hidden; margin: 10px 0; }
         .cola-progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--accent-light)); transition: width .5s ease; }
 
         /* ── Fila invitado ── */
@@ -647,7 +631,7 @@ export default function AgradecimientosPage() {
           background: var(--surface); border-radius: 16px;
           padding: 13px 14px; border: 1px solid var(--border);
           display: flex; align-items: center; gap: 11px;
-          box-shadow: 0 2px 8px rgba(13,148,136,0.05);
+          box-shadow: 0 2px 8px rgba(124,58,237,0.05);
           transition: all .2s; cursor: pointer;
           -webkit-tap-highlight-color: transparent;
         }
@@ -681,7 +665,7 @@ export default function AgradecimientosPage() {
           background: rgba(240,250,249,0.94);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
           border-top: 1px solid var(--border);
-          box-shadow: 0 -4px 24px rgba(13,148,136,0.09);
+          box-shadow: 0 -4px 24px rgba(124,58,237,0.09);
         }
         .bottom-inner { display: flex; gap: 10px; max-width: 700px; margin: 0 auto; }
 
@@ -689,7 +673,7 @@ export default function AgradecimientosPage() {
         .empty-state { text-align: center; padding: 52px 20px; background: var(--surface); border-radius: 20px; border: 1px solid var(--border); }
 
         /* ── Banner final ── */
-        .banner-done { background: linear-gradient(135deg,#f0fdfa,#ccfbf1); border: 2px solid var(--accent-light); border-radius: 20px; padding: 22px; text-align: center; box-shadow: 0 4px 20px rgba(13,148,136,0.12); }
+        .banner-done { background: linear-gradient(135deg,#f0fdfa,#ccfbf1); border: 2px solid var(--accent-light); border-radius: 20px; padding: 22px; text-align: center; box-shadow: 0 4px 20px rgba(124,58,237,0.12); }
 
         /* ── Mounts ── */
         .anim-in { opacity: 0; transform: translateY(16px); }
@@ -725,7 +709,7 @@ export default function AgradecimientosPage() {
           {/* Stats */}
           <div className="stats-grid anim-in">
             {[
-              { num: invitados.length, label: "Confirmados", color: "#8B6914" },
+              { num: invitados.length, label: "Confirmados", color: "#5B21B6" },
               { num: totalEnviados, label: "Enviados", color: "#1d4ed8" },
               { num: sinTelefono, label: "Sin teléfono", color: "#d97706" },
             ].map((s) => (
@@ -1076,7 +1060,7 @@ export default function AgradecimientosPage() {
                     alignItems: "center",
                     justifyContent: "center",
                     margin: "0 auto 12px",
-                    boxShadow: "0 4px 14px rgba(13,148,136,0.30)",
+                    boxShadow: "0 4px 14px rgba(124,58,237,0.30)",
                   }}
                 >
                   <IconCheck size={26} color="white" />

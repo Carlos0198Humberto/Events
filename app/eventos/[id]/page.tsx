@@ -112,8 +112,8 @@ function abrirGoogleCalendar(evento: Evento) {
 
 function crearParticulas() {
   const colores = [
-    "#C9A96E",
-    "#E8D5B0",
+    "#7C3AED",
+    "#FDE68A",
     "#ffffff",
     "#f472b6",
     "#fbbf24",
@@ -160,8 +160,8 @@ function AppLogo({ size = 32 }: { size?: number }) {
           y2="44"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0%" stopColor="#C9A96E" />
-          <stop offset="100%" stopColor="#E8D5B0" />
+          <stop offset="0%" stopColor="#7C3AED" />
+          <stop offset="100%" stopColor="#FDE68A" />
         </linearGradient>
       </defs>
       <rect width="64" height="64" rx="18" fill="url(#logo-bg)" />
@@ -172,7 +172,7 @@ function AppLogo({ size = 32 }: { size?: number }) {
         height="59"
         rx="16"
         fill="none"
-        stroke="rgba(201,169,110,0.3)"
+        stroke="rgba(124,58,237,0.3)"
         strokeWidth="1.5"
       />
       <path
@@ -185,13 +185,13 @@ function AppLogo({ size = 32 }: { size?: number }) {
       />
       <path
         d="M46 17 L34 32 L46 47"
-        stroke="rgba(201,169,110,0.45)"
+        stroke="rgba(124,58,237,0.45)"
         strokeWidth="5"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
       />
-      <circle cx="32" cy="32" r="4" fill="#C9A96E" opacity="0.95" />
+      <circle cx="32" cy="32" r="4" fill="#7C3AED" opacity="0.95" />
     </svg>
   );
 }
@@ -201,21 +201,21 @@ const IcoFecha = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M11.995 13.7h.01M8.294 13.7h.01M8.294 16.7h.01"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M15.695 13.7h.01M15.695 16.7h.01M11.995 16.7h.01"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -226,14 +226,14 @@ const IcoHora = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M22 12c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2s10 4.48 10 10Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M15.71 15.18 12.61 13.3c-.54-.32-.98-1.09-.98-1.72V7.51"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -244,12 +244,12 @@ const IcoLugar = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M12 13.43a3.12 3.12 0 1 0 0-6.24 3.12 3.12 0 0 0 0 6.24Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
     />
     <path
       d="M3.62 8.49c1.97-8.66 14.8-8.65 16.76.01 1.15 5.08-2.01 9.38-4.78 12.04a5.193 5.193 0 0 1-7.21 0c-2.76-2.66-5.92-6.97-4.77-12.05Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
     />
   </svg>
@@ -258,14 +258,14 @@ const IcoMusica = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M2 9.17v9.71c0 1.18.85 1.65 1.9 1.05l2.74-1.58c.36-.21.96-.23 1.34-.04l6.08 3.04c.38.19.98.17 1.34-.04l5.8-3.34c.38-.22.7-.76.7-1.2V7.06c0-1.18-.85-1.65-1.9-1.05l-2.74 1.58c-.36.21-.96.23-1.34.04L9.94 4.59c-.38-.19-.98-.17-1.34.04L2.7 7.97c-.38.22-.7.76-.7 1.2Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M9 5v14M15 7.5V21"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -294,28 +294,28 @@ const IcoPersonas = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M9 2C6.38 2 4.25 4.13 4.25 6.75c0 2.57 2.01 4.65 4.63 4.74.08-.01.16-.01.22 0h.07A4.738 4.738 0 0 0 13.75 6.75C13.75 4.13 11.62 2 9 2Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M16.41 4c2.07 0 3.74 1.68 3.74 3.75 0 2.02-1.6 3.66-3.6 3.74-.07-.01-.14-.01-.21 0"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M4.16 14.56c-2.58 1.72-2.58 4.52 0 6.23 2.93 1.95 7.73 1.95 10.66 0 2.58-1.72 2.58-4.52 0-6.23-2.92-1.94-7.72-1.94-10.66 0Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M18.34 14c.77.16 1.49.48 2.07.96 1.63 1.3 1.63 3.43 0 4.73-.57.46-1.27.78-2.02.95"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -326,14 +326,14 @@ const IcoCalendario = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M15.695 13.7h.01M15.695 16.7h.01M11.995 13.7h.01M11.995 16.7h.01M8.294 13.7h.01M8.294 16.7h.01"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -344,14 +344,14 @@ const IcoCamera = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <path
       d="M6.76 22h10.48c3 0 4.21-1.74 4.36-3.86l.65-10.14C22.4 5.7 20.54 4 18.25 4c-.61 0-1.17-.35-1.45-.89l-.72-1.45C15.63.96 14.52.5 13.45.5h-2.89C9.48.5 8.38.96 7.92 1.66L7.2 3.11C6.92 3.65 6.36 4 5.75 4 3.46 4 1.6 5.7 1.75 8L2.4 18.14C2.54 20.26 3.76 22 6.76 22Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M10.5 8h3M12 18c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -362,7 +362,7 @@ const IcoCorazon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <path
       d="M12.62 20.81c-.34.12-.9.12-1.24 0C8.48 19.82 2 15.69 2 8.69 2 5.6 4.49 3.1 7.56 3.1c1.82 0 3.43.88 4.44 2.24a5.53 5.53 0 0 1 4.44-2.24C19.51 3.1 22 5.6 22 8.69c0 7-6.48 11.13-9.38 12.12Z"
-      stroke="#C9A96E"
+      stroke="#7C3AED"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -394,7 +394,7 @@ const IcoImages = () => (
     height="18"
     viewBox="0 0 24 24"
     fill="none"
-    stroke="#C9A96E"
+    stroke="#7C3AED"
     strokeWidth="1.8"
     strokeLinecap="round"
     strokeLinejoin="round"
@@ -507,31 +507,31 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
         <svg width="60" height="14" viewBox="0 0 60 14" fill="none">
           <path
             d="M0 7 Q15 0 30 7 Q45 14 60 7"
-            stroke="#C9A96E"
+            stroke="#7C3AED"
             strokeWidth="1"
             fill="none"
             opacity="0.6"
           />
-          <circle cx="0" cy="7" r="1.5" fill="#C9A96E" opacity="0.5" />
-          <circle cx="60" cy="7" r="1.5" fill="#C9A96E" opacity="0.5" />
+          <circle cx="0" cy="7" r="1.5" fill="#7C3AED" opacity="0.5" />
+          <circle cx="60" cy="7" r="1.5" fill="#7C3AED" opacity="0.5" />
         </svg>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path
             d="M8 1 L9.5 6.5 L15 6.5 L10.5 10 L12 15 L8 11.5 L4 15 L5.5 10 L1 6.5 L6.5 6.5 Z"
-            fill="#C9A96E"
+            fill="#7C3AED"
             opacity="0.7"
           />
         </svg>
         <svg width="60" height="14" viewBox="0 0 60 14" fill="none">
           <path
             d="M0 7 Q15 14 30 7 Q45 0 60 7"
-            stroke="#C9A96E"
+            stroke="#7C3AED"
             strokeWidth="1"
             fill="none"
             opacity="0.6"
           />
-          <circle cx="0" cy="7" r="1.5" fill="#C9A96E" opacity="0.5" />
-          <circle cx="60" cy="7" r="1.5" fill="#C9A96E" opacity="0.5" />
+          <circle cx="0" cy="7" r="1.5" fill="#7C3AED" opacity="0.5" />
+          <circle cx="60" cy="7" r="1.5" fill="#7C3AED" opacity="0.5" />
         </svg>
       </div>
     );
@@ -543,10 +543,10 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
           flex: 1,
           height: 1,
           background:
-            "linear-gradient(to right, transparent, rgba(201,169,110,0.4))",
+            "linear-gradient(to right, transparent, rgba(124,58,237,0.4))",
         }}
       />
-      <svg width="8" height="8" viewBox="0 0 8 8" fill="#C9A96E" opacity="0.6">
+      <svg width="8" height="8" viewBox="0 0 8 8" fill="#7C3AED" opacity="0.6">
         <rect x="2" y="0" width="4" height="4" transform="rotate(45 4 4)" />
       </svg>
       <div
@@ -554,7 +554,7 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
           flex: 1,
           height: 1,
           background:
-            "linear-gradient(to left, transparent, rgba(201,169,110,0.4))",
+            "linear-gradient(to left, transparent, rgba(124,58,237,0.4))",
         }}
       />
     </div>
@@ -600,12 +600,12 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
       <audio ref={audioRef} src={url} loop />
       <div className="music-icon-wrap">
         {playing ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#C9A96E">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#7C3AED">
             <rect x="6" y="4" width="4" height="16" rx="1" />
             <rect x="14" y="4" width="4" height="16" rx="1" />
           </svg>
         ) : (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#C9A96E">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#7C3AED">
             <path d="M5 3l14 9-14 9V3z" />
           </svg>
         )}
@@ -978,7 +978,7 @@ function DejarDeseo({
             rows={3}
             style={{
               width: "100%",
-              border: "1.5px solid rgba(201,169,110,0.4)",
+              border: "1.5px solid rgba(124,58,237,0.4)",
               borderRadius: 12,
               padding: "11px 13px",
               fontSize: 14,
@@ -1146,7 +1146,7 @@ export default function ConfirmarPage() {
     }
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    let particulas = crearParticulas();
+    const particulas = crearParticulas();
     let frame = 0;
     function animate() {
       ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
@@ -1202,17 +1202,17 @@ export default function ConfirmarPage() {
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Jost:wght@300;400;500;600;700&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAF6F0;color:#1a1209}
+    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAFBFF;color:#1a1209}
     :root{
-      --gold:#C9A96E;--gold-dark:#8B6914;--gold-light:#E8D5B0;--gold-pale:#F5EDD8;
-      --dark:#1a1209;--dark2:#2d1f0a;--ink:#3d2b0f;--ink2:#5a3e1b;--ink3:#8B6914;
-      --cream:#FAF6F0;--cream2:#F0E8D8;--surface:#FFFFFF;
-      --border:rgba(201,169,110,0.25);--border-mid:rgba(201,169,110,0.40);
+      --gold:#7C3AED;--gold-dark:#5B21B6;--gold-light:#FDE68A;--gold-pale:#F5EDD8;
+      --dark:#1a1209;--dark2:#2d1f0a;--ink:#475569;--ink2:#5a3e1b;--ink3:#5B21B6;
+      --cream:#FAFBFF;--cream2:#F0E8D8;--surface:#FFFFFF;
+      --border:rgba(124,58,237,0.25);--border-mid:rgba(124,58,237,0.40);
       --shadow:0 8px 40px rgba(26,18,9,0.10);--shadow-lg:0 20px 60px rgba(26,18,9,0.16);
       --r:24px;--r-sm:16px;
     }
     .page{min-height:100dvh;background:var(--cream);
-      background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(201,169,110,0.08) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 100%,rgba(201,169,110,0.05) 0%,transparent 60%);
+      background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(124,58,237,0.08) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 100%,rgba(124,58,237,0.05) 0%,transparent 60%);
       padding-bottom:80px;opacity:0;transition:opacity .5s ease;}
     .page.vis{opacity:1}
     .page.destroying{animation:shatter .6s ease forwards}
@@ -1231,7 +1231,7 @@ export default function ConfirmarPage() {
     /* ── Número de orden en topbar ── */
     .topbar-num{
       background:linear-gradient(135deg,var(--dark),var(--dark2));
-      color:var(--gold);border:1px solid rgba(201,169,110,0.3);
+      color:var(--gold);border:1px solid rgba(124,58,237,0.3);
       border-radius:8px;padding:4px 10px;
       font-size:11px;font-weight:800;letter-spacing:.5px;
       font-variant-numeric:tabular-nums;
@@ -1246,7 +1246,7 @@ export default function ConfirmarPage() {
       cursor:pointer;font-family:'Jost',sans-serif;
       transition:all .18s;-webkit-tap-highlight-color:transparent;
     }
-    .btn-salir-muro:hover{background:var(--dark);color:var(--gold);border-color:rgba(201,169,110,0.5)}
+    .btn-salir-muro:hover{background:var(--dark);color:var(--gold);border-color:rgba(124,58,237,0.5)}
 
     .wrap{max-width:430px;margin:0 auto;padding:22px 16px;display:flex;flex-direction:column;gap:20px}
 
@@ -1260,17 +1260,17 @@ export default function ConfirmarPage() {
     .inv-num-badge{
       position:relative;z-index:3;
       display:inline-flex;align-items:center;gap:5px;
-      background:rgba(201,169,110,0.22);border:1px solid rgba(201,169,110,0.6);
+      background:rgba(124,58,237,0.22);border:1px solid rgba(124,58,237,0.6);
       border-radius:99px;padding:4px 13px;
-      font-size:11px;font-weight:800;color:rgba(232,213,176,1);
+      font-size:11px;font-weight:800;color:rgba(236,72,153,1);
       letter-spacing:1px;text-transform:uppercase;
       margin-bottom:10px;
     }
 
-    .inv-tipo-badge{position:relative;z-index:2;display:inline-flex;align-items:center;gap:6px;background:rgba(201,169,110,0.18);border:1px solid rgba(201,169,110,0.55);border-radius:99px;padding:5px 14px;font-family:'Jost',sans-serif;font-size:10px;font-weight:700;color:rgba(232,213,176,1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;text-shadow:0 1px 4px rgba(0,0,0,0.5);}
+    .inv-tipo-badge{position:relative;z-index:2;display:inline-flex;align-items:center;gap:6px;background:rgba(124,58,237,0.18);border:1px solid rgba(124,58,237,0.55);border-radius:99px;padding:5px 14px;font-family:'Jost',sans-serif;font-size:10px;font-weight:700;color:rgba(236,72,153,1);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;text-shadow:0 1px 4px rgba(0,0,0,0.5);}
     .inv-saludo{position:relative;z-index:2;font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:500;font-style:italic;color:#fff;letter-spacing:-.5px;line-height:1.15;margin-bottom:6px;text-shadow:0 2px 16px rgba(0,0,0,0.7),0 1px 4px rgba(0,0,0,0.9);}
-    .inv-anfitrion{position:relative;z-index:2;font-size:12px;color:rgba(232,213,176,0.92);font-weight:500;letter-spacing:.5px;margin-bottom:16px;text-shadow:0 1px 6px rgba(0,0,0,0.7);}
-    .inv-evento-nombre{position:relative;z-index:2;background:rgba(26,18,9,0.65);backdrop-filter:blur(8px);border:1px solid rgba(201,169,110,0.55);border-radius:12px;padding:12px 22px;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#fff;letter-spacing:.3px;text-shadow:0 1px 8px rgba(0,0,0,0.6);}
+    .inv-anfitrion{position:relative;z-index:2;font-size:12px;color:rgba(236,72,153,0.92);font-weight:500;letter-spacing:.5px;margin-bottom:16px;text-shadow:0 1px 6px rgba(0,0,0,0.7);}
+    .inv-evento-nombre{position:relative;z-index:2;background:rgba(26,18,9,0.65);backdrop-filter:blur(8px);border:1px solid rgba(124,58,237,0.55);border-radius:12px;padding:12px 22px;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#fff;letter-spacing:.3px;text-shadow:0 1px 8px rgba(0,0,0,0.6);}
     .inv-body{padding:22px 20px;display:flex;flex-direction:column;gap:16px}
     .inv-frase{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;font-weight:400;color:var(--ink2);text-align:center;line-height:1.6;padding:2px 8px}
     .inv-nombres{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px}
@@ -1301,22 +1301,22 @@ export default function ConfirmarPage() {
     .lightbox-inner{position:relative;width:100%;max-width:480px;display:flex;flex-direction:column;align-items:center;gap:14px}
     .lightbox-img-wrap{width:100%;border-radius:16px;overflow:hidden;box-shadow:0 16px 60px rgba(0,0,0,0.5)}
     .lightbox-img{width:100%;max-height:70vh;object-fit:contain;display:block;background:#000}
-    .lightbox-close{position:absolute;top:-12px;right:-12px;width:36px;height:36px;border-radius:50%;background:rgba(201,169,110,0.15);border:1.5px solid rgba(201,169,110,0.4);color:var(--gold-light);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
-    .lightbox-nav{position:absolute;top:50%;transform:translateY(-60%);width:40px;height:40px;border-radius:50%;background:rgba(26,18,9,0.7);border:1.5px solid rgba(201,169,110,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
-    .lightbox-nav:hover{background:rgba(201,169,110,0.2)}
+    .lightbox-close{position:absolute;top:-12px;right:-12px;width:36px;height:36px;border-radius:50%;background:rgba(124,58,237,0.15);border:1.5px solid rgba(124,58,237,0.4);color:var(--gold-light);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+    .lightbox-nav{position:absolute;top:50%;transform:translateY(-60%);width:40px;height:40px;border-radius:50%;background:rgba(26,18,9,0.7);border:1.5px solid rgba(124,58,237,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+    .lightbox-nav:hover{background:rgba(124,58,237,0.2)}
     .lightbox-prev{left:-20px}
     .lightbox-next{right:-20px}
     .lightbox-dots{display:flex;gap:7px;margin-top:4px}
-    .lightbox-dot{width:7px;height:7px;border-radius:50%;background:rgba(201,169,110,0.3);cursor:pointer;transition:background .15s}
+    .lightbox-dot{width:7px;height:7px;border-radius:50%;background:rgba(124,58,237,0.3);cursor:pointer;transition:background .15s}
     .lightbox-dot.active{background:var(--gold)}
-    .lightbox-caption{font-size:12px;color:rgba(232,213,176,0.7);font-style:italic;text-align:center}
+    .lightbox-caption{font-size:12px;color:rgba(236,72,153,0.7);font-style:italic;text-align:center}
 
     /* Música */
     .music-player{display:flex;align-items:center;gap:13px;background:var(--dark);border-radius:var(--r-sm);padding:14px 16px;cursor:pointer;transition:opacity .15s}
     .music-player:hover{opacity:.92}
-    .music-icon-wrap{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 14px rgba(201,169,110,0.4)}
+    .music-icon-wrap{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 14px rgba(124,58,237,0.4)}
     .music-info{flex:1;min-width:0}
-    .music-label{display:block;font-size:9px;font-weight:700;color:rgba(201,169,110,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+    .music-label{display:block;font-size:9px;font-weight:700;color:rgba(124,58,237,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
     .music-name{display:block;font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--gold-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .music-waves{display:flex;align-items:center;gap:2px;flex-shrink:0}
     .mw{width:3px;border-radius:99px;background:var(--gold);animation:mwave .8s ease-in-out infinite}
@@ -1335,7 +1335,7 @@ export default function ConfirmarPage() {
     .pregunta{font-family:'Cormorant Garamond',serif;font-size:26px;font-style:italic;color:var(--ink);font-weight:400;margin-bottom:4px}
     .pregunta-sub{font-size:11px;color:var(--ink3);font-weight:500;letter-spacing:.5px}
     .grid-decision{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .btn-si{background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(201,169,110,0.4);border-radius:var(--r-sm);padding:18px 12px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;box-shadow:0 5px 22px rgba(26,18,9,0.20);transition:transform .18s,box-shadow .18s,opacity .15s;letter-spacing:.3px}
+    .btn-si{background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(124,58,237,0.4);border-radius:var(--r-sm);padding:18px 12px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;box-shadow:0 5px 22px rgba(26,18,9,0.20);transition:transform .18s,box-shadow .18s,opacity .15s;letter-spacing:.3px}
     .btn-si:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(26,18,9,0.28)}
     .btn-si:disabled{opacity:.65;cursor:wait}
     .btn-no{background:var(--cream);color:var(--ink2);border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:18px 12px;font-family:'Jost',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s;letter-spacing:.2px}
@@ -1350,22 +1350,22 @@ export default function ConfirmarPage() {
     .cnt-btn{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--border-mid);background:var(--cream);color:var(--ink3);font-size:22px;font-weight:400;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;user-select:none;font-family:'Cormorant Garamond',serif;line-height:1}
     .cnt-btn:hover{background:var(--gold-pale);border-color:var(--gold);color:var(--gold-dark)}
     .cnt-val{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:300;color:var(--dark);min-width:50px;text-align:center;font-variant-numeric:tabular-nums}
-    .btn-confirmar-final{width:100%;margin-top:20px;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(201,169,110,0.3);border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.5px;box-shadow:0 5px 20px rgba(26,18,9,0.20);transition:transform .18s,box-shadow .18s;display:flex;align-items:center;justify-content:center;gap:9px}
+    .btn-confirmar-final{width:100%;margin-top:20px;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(124,58,237,0.3);border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.5px;box-shadow:0 5px 20px rgba(26,18,9,0.20);transition:transform .18s,box-shadow .18s;display:flex;align-items:center;justify-content:center;gap:9px}
     .btn-confirmar-final:hover{transform:translateY(-1px)}
     .btn-confirmar-final:disabled{opacity:.65;cursor:wait}
-    .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(201,169,110,0.3);border-top-color:var(--gold);animation:spin .7s linear infinite}
+    .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(124,58,237,0.3);border-top-color:var(--gold);animation:spin .7s linear infinite}
 
     /* Confirmado */
     .conf-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow-lg);overflow:hidden;animation:riseUp .5s cubic-bezier(.22,1,.36,1) both}
     .conf-hero{background:linear-gradient(160deg,var(--dark) 0%,var(--dark2) 100%);padding:36px 24px 30px;text-align:center;position:relative;overflow:hidden}
     .conf-hero::before{content:'';position:absolute;inset:0;opacity:.04;background-image:radial-gradient(circle,var(--gold) 1px,transparent 1px);background-size:28px 28px}
-    .conf-check{position:relative;z-index:1;width:72px;height:72px;border-radius:50%;background:rgba(201,169,110,0.15);border:1.5px solid rgba(201,169,110,0.45);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:popIn .55s .1s cubic-bezier(.22,1,.36,1) both}
+    .conf-check{position:relative;z-index:1;width:72px;height:72px;border-radius:50%;background:rgba(124,58,237,0.15);border:1.5px solid rgba(124,58,237,0.45);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:popIn .55s .1s cubic-bezier(.22,1,.36,1) both}
     .conf-titulo{position:relative;z-index:1;font-family:'Cormorant Garamond',serif;font-size:38px;font-style:italic;font-weight:400;color:var(--gold-light);letter-spacing:-.3px;margin-bottom:8px}
-    .conf-sub{position:relative;z-index:1;font-size:13px;color:rgba(232,213,176,0.7);font-weight:400}
+    .conf-sub{position:relative;z-index:1;font-size:13px;color:rgba(236,72,153,0.7);font-weight:400}
     .conf-body{padding:22px;display:flex;flex-direction:column;gap:16px}
-    .num-badge{background:linear-gradient(135deg,var(--dark),var(--dark2));border-radius:var(--r-sm);border:1px solid rgba(201,169,110,0.3);padding:16px 20px;display:flex;align-items:center;gap:16px}
-    .num-icono{width:46px;height:46px;border-radius:12px;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .num-label{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(201,169,110,0.6);margin-bottom:3px}
+    .num-badge{background:linear-gradient(135deg,var(--dark),var(--dark2));border-radius:var(--r-sm);border:1px solid rgba(124,58,237,0.3);padding:16px 20px;display:flex;align-items:center;gap:16px}
+    .num-icono{width:46px;height:46px;border-radius:12px;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .num-label{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(124,58,237,0.6);margin-bottom:3px}
     .num-val{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:var(--gold);letter-spacing:-1px;line-height:1}
     .resumen{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px 18px;display:flex;flex-direction:column;gap:12px}
     .res-fila{display:flex;align-items:center;gap:11px}
@@ -1390,12 +1390,12 @@ export default function ConfirmarPage() {
     .btn-accion-full:hover{background:var(--gold-pale);border-color:var(--gold)}
 
     /* ── Botón ir al muro ── */
-    .btn-muro{width:100%;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(201,169,110,0.3);border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.3px;box-shadow:0 5px 20px rgba(26,18,9,0.18);transition:transform .18s;display:flex;align-items:center;justify-content:center;gap:9px}
+    .btn-muro{width:100%;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(124,58,237,0.3);border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.3px;box-shadow:0 5px 20px rgba(26,18,9,0.18);transition:transform .18s;display:flex;align-items:center;justify-content:center;gap:9px}
     .btn-muro:hover{transform:translateY(-1px)}
 
     /* ── Botón salir ── */
     .btn-cerrar{width:100%;background:var(--cream);color:var(--ink2);border:1.5px solid var(--border-mid);border-radius:var(--r-sm);padding:14px;font-family:'Jost',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .18s}
-    .btn-cerrar:hover{background:var(--dark);color:var(--gold);border-color:rgba(201,169,110,0.4)}
+    .btn-cerrar:hover{background:var(--dark);color:var(--gold);border-color:rgba(124,58,237,0.4)}
 
     /* Rechazado */
     .rech-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow);padding:40px 26px;text-align:center;animation:riseUp .5s cubic-bezier(.22,1,.36,1) both}
@@ -1404,7 +1404,7 @@ export default function ConfirmarPage() {
 
     /* Loading */
     .loading-screen{min-height:100dvh;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
-    .loading-spinner{width:36px;height:36px;border-radius:50%;border:2.5px solid rgba(201,169,110,0.15);border-top-color:var(--gold);animation:spin .75s linear infinite}
+    .loading-spinner{width:36px;height:36px;border-radius:50%;border:2.5px solid rgba(124,58,237,0.15);border-top-color:var(--gold);animation:spin .75s linear infinite}
     canvas#confetti-canvas{position:fixed;inset:0;z-index:9999;width:100%;height:100%;display:none;pointer-events:none}
 
     /* ── Paso progress ── */
@@ -1778,7 +1778,7 @@ export default function ConfirmarPage() {
                   <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
                     <path
                       d="M7 16l7 7 11-11"
-                      stroke="#C9A96E"
+                      stroke="#7C3AED"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -1789,7 +1789,7 @@ export default function ConfirmarPage() {
                 <p className="conf-sub">
                   Nos vemos en{" "}
                   <strong
-                    style={{ color: "rgba(232,213,176,0.95)", fontWeight: 500 }}
+                    style={{ color: "rgba(236,72,153,0.95)", fontWeight: 500 }}
                   >
                     {evento.nombre}
                   </strong>
@@ -1805,7 +1805,7 @@ export default function ConfirmarPage() {
                       height="22"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="#C9A96E"
+                      stroke="#7C3AED"
                       strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -1826,7 +1826,7 @@ export default function ConfirmarPage() {
                 {invitado.numero_confirmacion && (
                   <div
                     className="num-badge"
-                    style={{ background: "rgba(201,169,110,0.08)" }}
+                    style={{ background: "rgba(124,58,237,0.08)" }}
                   >
                     <div className="num-icono">
                       <IcoCheck />

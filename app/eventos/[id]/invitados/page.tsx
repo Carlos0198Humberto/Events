@@ -7,23 +7,7 @@ import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 
 function AppLogo({ size = 36 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Background */}
-      <rect width="64" height="64" rx="18" fill="#140d04"/>
-      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
-      {/* Geometric E — vertical bar */}
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
-      {/* Top bar */}
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* Middle bar (slightly shorter) */}
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
-      {/* Bottom bar */}
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* 4-pointed star sparkle — upper right */}
-      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
-      {/* Small accent dot */}
-      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
   );
 }
 
@@ -276,23 +260,23 @@ export default function AgregarInvitados() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg:           #FAF6F0;
+          --bg:           #FAFBFF;
           --surface:      #FFFFFF;
-          --surface2:     #F7F2EA;
-          --border:       rgba(201,169,110,0.16);
-          --border-hover: rgba(201,169,110,0.50);
-          --border-input: rgba(201,169,110,0.28);
-          --accent:       #C9A96E;
-          --accent2:      #8B6914;
-          --accent-light: #C9A96E;
-          --accent-soft:  rgba(201,169,110,0.08);
-          --accent-soft2: rgba(201,169,110,0.16);
-          --text:         #1a0f04;
-          --text2:        #3d2b0f;
-          --text3:        #8B6914;
-          --shadow:       0 4px 28px rgba(26,15,4,0.10);
-          --shadow-sm:    0 2px 10px rgba(26,15,4,0.07);
-          --shadow-btn:   0 6px 28px rgba(201,169,110,0.38);
+          --surface2:     #F4F5FB;
+          --border:       rgba(124,58,237,0.16);
+          --border-hover: rgba(124,58,237,0.50);
+          --border-input: rgba(124,58,237,0.28);
+          --accent:       #7C3AED;
+          --accent2:      #5B21B6;
+          --accent-light: #7C3AED;
+          --accent-soft:  rgba(124,58,237,0.08);
+          --accent-soft2: rgba(124,58,237,0.16);
+          --text:         #0F172A;
+          --text2:        #475569;
+          --text3:        #5B21B6;
+          --shadow:       0 4px 28px rgba(15,23,42,0.10);
+          --shadow-sm:    0 2px 10px rgba(15,23,42,0.07);
+          --shadow-btn:   0 6px 28px rgba(124,58,237,0.38);
           --wa-green:     #25D366;
           --wa-dark:      #128C7E;
           --transition:   all 0.36s cubic-bezier(.4,0,.2,1);
@@ -314,8 +298,8 @@ export default function AgregarInvitados() {
         }
 
         .glow { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(90px); }
-        .glow-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: radial-gradient(circle, rgba(201,169,110,0.12) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
-        .glow-2 { width: 260px; height: 260px; bottom: 80px; left: -80px; background: radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
+        .glow-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
+        .glow-2 { width: 260px; height: 260px; bottom: 80px; left: -80px; background: radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
         @keyframes glowDrift1 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-18px,28px)} 66%{transform:translate(14px,-18px)} }
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0)} 40%{transform:translate(22px,-30px)} 70%{transform:translate(-8px,18px)} }
 
@@ -340,13 +324,13 @@ export default function AgregarInvitados() {
         .field-label { font-size:11px; font-weight:600; color:var(--accent); display:block; margin-bottom:7px; letter-spacing:0.6px; text-transform:uppercase; }
         .field-input { width:100%; border:2px solid var(--border-input); border-radius:14px; padding:13px 15px; font-size:15px; background:var(--accent-soft); color:var(--text); outline:none; transition:border-color .22s,box-shadow .22s,background .22s; font-family:'DM Sans',sans-serif; -webkit-appearance:none; }
         .field-input::placeholder { color:var(--text3); }
-        .field-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(13,148,136,0.11); background:var(--surface); }
+        .field-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(124,58,237,0.11); background:var(--surface); }
 
         .btn-submit { width:100%; padding:15px; border-radius:14px; border:none; background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%); color:#fff; font-size:15px; font-weight:600; font-family:'DM Sans',sans-serif; letter-spacing:0.3px; cursor:pointer; margin-top:4px; box-shadow:var(--shadow-btn); transition:transform .2s ease,box-shadow .2s ease,opacity .2s; position:relative; overflow:hidden; -webkit-tap-highlight-color:transparent; }
         .btn-submit::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.14) 0%,transparent 55%); pointer-events:none; border-radius:inherit; }
         .btn-shimmer { position:absolute; inset:0; border-radius:inherit; background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.22) 50%,transparent 62%); background-size:200% 100%; animation:shimmer 3.5s ease-in-out infinite; }
         @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
-        .btn-submit:not(:disabled):hover { transform:translateY(-2px); box-shadow:0 10px 34px rgba(13,148,136,0.50); }
+        .btn-submit:not(:disabled):hover { transform:translateY(-2px); box-shadow:0 10px 34px rgba(124,58,237,0.50); }
         .btn-submit:not(:disabled):active { transform:scale(0.97); }
         .btn-submit:disabled { opacity:0.55; cursor:not-allowed; }
 
@@ -418,7 +402,7 @@ export default function AgregarInvitados() {
         .warn-box { background:#fffbeb; border:1px solid #fcd34d; color:#92400e; font-size:12.5px; padding:9px 13px; border-radius:12px; margin-bottom:10px; font-weight:500; display:flex; align-items:center; gap:7px; }
 
         /* ── Bottom bar ── */
-        .bottom-bar { position:fixed; bottom:0; left:0; right:0; z-index:20; padding:12px 16px; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); background:rgba(250,246,240,0.96); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-top:1px solid var(--border); box-shadow:0 -4px 24px rgba(201,169,110,0.12); }
+        .bottom-bar { position:fixed; bottom:0; left:0; right:0; z-index:20; padding:12px 16px; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); background:rgba(250,246,240,0.96); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-top:1px solid var(--border); box-shadow:0 -4px 24px rgba(124,58,237,0.12); }
         .btn-back { display:flex; align-items:center; justify-content:center; gap:7px; width:100%; max-width:480px; margin:0 auto; padding:14px; background:var(--surface); color:var(--text2); border:1.5px solid var(--border); border-radius:14px; font-size:14px; font-weight:600; font-family:'DM Sans',sans-serif; text-decoration:none; transition:var(--transition); box-shadow:var(--shadow-sm); -webkit-tap-highlight-color:transparent; }
         .btn-back:hover { background:var(--accent-soft2); color:var(--accent); border-color:var(--border-hover); }
 
@@ -685,8 +669,8 @@ export default function AgregarInvitados() {
                 disabled={exportando}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  background: exportando ? "rgba(201,169,110,0.08)" : "rgba(201,169,110,0.12)",
-                  border: "1px solid rgba(201,169,110,0.35)", borderRadius: 10,
+                  background: exportando ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.12)",
+                  border: "1px solid rgba(124,58,237,0.35)", borderRadius: 10,
                   padding: "6px 12px", fontSize: 11, fontWeight: 700,
                   color: "var(--accent2)", cursor: exportando ? "wait" : "pointer",
                   fontFamily: "inherit", transition: "all .15s",

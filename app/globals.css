@@ -2,13 +2,438 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================================
+   EVENTIX — Sistema de diseño (gradientes modernos)
+   Fuente única de verdad para colores, sombras, tipografía y movimiento.
+   Todas las páginas heredan de este :root y pueden usar las utility classes
+   declaradas abajo.
+   ========================================================================= */
+
+:root {
+  /* — Base neutra — */
+  --bg: #FAFBFF;
+  --bg-soft: #F4F5FB;
+  --surface: #FFFFFF;
+  --surface-2: #FBFBFE;
+  --surface-3: #F4F5FB;
+
+  /* — Tinta y texto — */
+  --ink: #0F172A;
+  --ink-2: #1E293B;
+  --text: #0F172A;
+  --text-2: #475569;
+  --text-3: #64748B;
+  --text-muted: #94A3B8;
+
+  /* — Bordes — */
+  --border: #E5E7F0;
+  --border-soft: #EEF0F7;
+  --border-strong: #CBD5E1;
+  --border-hover: #BFC6DC;
+
+  /* — Acento principal (retro-compat con vars antiguas del app) — */
+  --accent: #7C3AED;
+  --accent-2: #5B21B6;
+  --accent-hover: #6D28D9;
+  --accent-soft: rgba(124, 58, 237, 0.08);
+  --accent-soft-2: rgba(124, 58, 237, 0.16);
+  --accent-light: #EDE9FE;
+
+  /* — Paleta de gradientes — */
+  --grad-primary: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);   /* violeta → rosa */
+  --grad-secondary: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%); /* azul → cian */
+  --grad-warm: linear-gradient(135deg, #F97316 0%, #EC4899 100%);      /* naranja → rosa */
+  --grad-success: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);   /* esmeralda → cian */
+  --grad-sunset: linear-gradient(135deg, #F59E0B 0%, #EF4444 100%);    /* ámbar → rojo */
+  --grad-ocean: linear-gradient(135deg, #6366F1 0%, #3B82F6 100%);     /* índigo → azul */
+  --grad-candy: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%);     /* rosa → violeta */
+  --grad-lime: linear-gradient(135deg, #84CC16 0%, #10B981 100%);      /* lima → esmeralda */
+
+  /* — Gradientes sutiles (fondos de tarjetas) — */
+  --grad-surface-primary: linear-gradient(135deg, #FDF4FF 0%, #FCE7F3 100%);
+  --grad-surface-secondary: linear-gradient(135deg, #EFF6FF 0%, #CFFAFE 100%);
+  --grad-surface-warm: linear-gradient(135deg, #FFF7ED 0%, #FFE4E6 100%);
+  --grad-surface-success: linear-gradient(135deg, #ECFDF5 0%, #CFFAFE 100%);
+  --grad-surface-mesh: radial-gradient(at 20% 0%, #EDE9FE 0px, transparent 50%),
+                       radial-gradient(at 80% 0%, #FCE7F3 0px, transparent 50%),
+                       radial-gradient(at 50% 100%, #DBEAFE 0px, transparent 50%);
+
+  /* — Estados semánticos — */
+  --success: #10B981;
+  --success-bg: #ECFDF5;
+  --success-border: #A7F3D0;
+  --warn: #F59E0B;
+  --warn-bg: #FFFBEB;
+  --warn-border: #FDE68A;
+  --danger: #EF4444;
+  --danger-bg: #FEF2F2;
+  --danger-border: #FECACA;
+  --info: #3B82F6;
+  --info-bg: #EFF6FF;
+  --info-border: #BFDBFE;
+
+  /* — Sombras (sistema de elevación) — */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 6px 20px -4px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 16px 40px -12px rgba(15, 23, 42, 0.15), 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-xl: 0 28px 60px -16px rgba(15, 23, 42, 0.22), 0 8px 20px rgba(15, 23, 42, 0.08);
+  --shadow-2xl: 0 40px 90px -20px rgba(15, 23, 42, 0.28);
+
+  /* Sombras coloreadas (para botones/CTAs con gradiente) */
+  --shadow-primary: 0 10px 30px -6px rgba(124, 58, 237, 0.35), 0 4px 12px rgba(236, 72, 153, 0.15);
+  --shadow-secondary: 0 10px 30px -6px rgba(59, 130, 246, 0.35), 0 4px 12px rgba(6, 182, 212, 0.15);
+  --shadow-warm: 0 10px 30px -6px rgba(249, 115, 22, 0.30), 0 4px 12px rgba(236, 72, 153, 0.15);
+  --shadow-success: 0 10px 30px -6px rgba(16, 185, 129, 0.30), 0 4px 12px rgba(6, 182, 212, 0.15);
+
+  /* — Radios — */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-2xl: 36px;
+  --radius-pill: 999px;
+
+  /* — Tipografía — */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* — Movimiento — */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur: 220ms;
+  --dur-med: 320ms;
+  --dur-slow: 480ms;
+  --transition: all var(--dur) var(--ease-out);
+  --transition-fast: all var(--dur-fast) var(--ease-out);
+
+  /* — Alias retro-compat (páginas antiguas) — */
+  --text2: var(--text-2);
+  --text3: var(--text-3);
+  --accent2: var(--accent-2);
+  --shadow: var(--shadow-md);
+  --shadow-btn: var(--shadow-primary);
+  --border-hover-color: var(--border-hover);
+}
+
+/* Reset ligero */
 * {
   box-sizing: border-box;
 }
 
-/* Paleta base Eventix — cream/piel */
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background-color: #FAF6F0;
-  color: #1a0f04;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  line-height: 1.5;
+}
+
+/* Selección */
+::selection {
+  background: var(--accent-soft-2);
+  color: var(--accent-2);
+}
+
+/* Scroll moderno */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Focus ring accesible */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Imágenes responsivas por defecto */
+img, video, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* =========================================================================
+   UTILITY CLASSES (sistema de diseño)
+   Úsalas en cualquier página para heredar consistencia.
+   ========================================================================= */
+
+/* — Superficies — */
+.ev-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.ev-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+.ev-card-flat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.ev-card-mesh {
+  background: var(--grad-surface-mesh), var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* — Botones — */
+.ev-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+.ev-btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+.ev-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ev-btn-primary {
+  color: #fff;
+  background: var(--grad-primary);
+  box-shadow: var(--shadow-primary);
+}
+.ev-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 14px 38px -6px rgba(124, 58, 237, 0.45), 0 6px 16px rgba(236, 72, 153, 0.20);
+  transform: translateY(-1px);
+}
+
+.ev-btn-secondary {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-xs);
+}
+.ev-btn-secondary:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--border-hover);
+}
+
+.ev-btn-ghost {
+  color: var(--text-2);
+  background: transparent;
+}
+.ev-btn-ghost:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.ev-btn-danger {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+.ev-btn-danger:hover:not(:disabled) {
+  background: #FEE2E2;
+}
+
+.ev-btn-sm { padding: 8px 14px; font-size: 13px; border-radius: var(--radius-sm); }
+.ev-btn-lg { padding: 16px 26px; font-size: 16px; border-radius: var(--radius-md); }
+.ev-btn-block { width: 100%; }
+
+/* — Inputs — */
+.ev-input {
+  width: 100%;
+  display: block;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  transition: var(--transition);
+  -webkit-appearance: none;
+}
+.ev-input::placeholder { color: var(--text-muted); }
+.ev-input:hover { border-color: var(--border-hover); }
+.ev-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.ev-input:disabled {
+  background: var(--surface-3);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.ev-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 6px;
+  letter-spacing: -0.005em;
+}
+.ev-hint { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+.ev-error-text { font-size: 12px; color: var(--danger); margin-top: 6px; }
+
+/* — Chips / badges — */
+.ev-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  letter-spacing: 0.01em;
+}
+.ev-chip-primary { background: var(--accent-light); color: var(--accent-2); border-color: transparent; }
+.ev-chip-success { background: var(--success-bg); color: var(--success); border-color: transparent; }
+.ev-chip-warn { background: var(--warn-bg); color: #B45309; border-color: transparent; }
+.ev-chip-danger { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
+.ev-chip-info { background: var(--info-bg); color: var(--info); border-color: transparent; }
+.ev-chip-grad {
+  background: var(--grad-primary);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.20);
+}
+
+/* — Texto gradiente — */
+.ev-text-grad-primary {
+  background: var(--grad-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.ev-text-grad-warm {
+  background: var(--grad-warm);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* — Skeleton — */
+.ev-skeleton {
+  background: linear-gradient(90deg, #EEF0F7 0%, #F8F9FC 50%, #EEF0F7 100%);
+  background-size: 200% 100%;
+  animation: ev-skeleton 1.4s var(--ease-in-out) infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes ev-skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* — Dividers — */
+.ev-divider {
+  height: 1px;
+  background: var(--border);
+  border: 0;
+}
+
+/* — Layout helpers — */
+.ev-container {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 4vw, 32px);
+}
+.ev-container-narrow {
+  width: 100%;
+  max-width: 680px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 4vw, 32px);
+}
+.ev-stack > * + * { margin-top: 16px; }
+.ev-stack-lg > * + * { margin-top: 24px; }
+
+/* — Animaciones base — */
+@keyframes ev-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ev-fade-in-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ev-pop-in {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ev-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes ev-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.ev-animate-in { animation: ev-fade-in-up var(--dur-med) var(--ease-out) both; }
+.ev-animate-pop { animation: ev-pop-in var(--dur-med) var(--ease-spring) both; }
+
+/* — Accesibilidad: respetar preferencia de reducir movimiento — */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* — Mobile polish — */
+@supports (padding: env(safe-area-inset-top)) {
+  .ev-safe-top { padding-top: env(safe-area-inset-top); }
+  .ev-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 }

@@ -311,7 +311,7 @@ export default function SalidaInvitado() {
                   opacity: 0.85,
                 }}
               >
-                "{evento.frase_evento}"
+                &ldquo;{evento.frase_evento}&rdquo;
               </p>
             )}
             <p
@@ -363,11 +363,11 @@ export default function SalidaInvitado() {
         @keyframes aparecer { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes latir { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
         @keyframes parpadear { 0%,100%{opacity:.3;transform:scale(.8)} 50%{opacity:1;transform:scale(1.2)} }
-        @keyframes caer-0 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(${Math.random() * 720}deg);opacity:0} }
-        @keyframes caer-1 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(-${Math.random() * 720}deg);opacity:0} }
-        @keyframes caer-2 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(${Math.random() * 540}deg);opacity:0} }
-        @keyframes caer-3 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(-${Math.random() * 540}deg);opacity:0} }
-        @keyframes caer-4 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(${Math.random() * 360}deg);opacity:0} }
+        @keyframes caer-0 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(640deg);opacity:0} }
+        @keyframes caer-1 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(-580deg);opacity:0} }
+        @keyframes caer-2 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(480deg);opacity:0} }
+        @keyframes caer-3 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(-420deg);opacity:0} }
+        @keyframes caer-4 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(320deg);opacity:0} }
       `}</style>
     </main>
   );

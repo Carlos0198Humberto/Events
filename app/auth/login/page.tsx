@@ -7,23 +7,7 @@ import Link from "next/link";
 // ─── Eventix Logo ─────────────────────────────────────────────────────────────
 function AppLogo({ size = 44 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Background */}
-      <rect width="64" height="64" rx="18" fill="#140d04"/>
-      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
-      {/* Geometric E — vertical bar */}
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
-      {/* Top bar */}
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* Middle bar (slightly shorter) */}
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
-      {/* Bottom bar */}
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* 4-pointed star sparkle — upper right */}
-      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
-      {/* Small accent dot */}
-      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
   );
 }
 
@@ -140,10 +124,10 @@ function ForgotPasswordModal({
         {/* Icon */}
         <div className="modal-icon">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <rect width="28" height="28" rx="10" fill="rgba(201,169,110,0.09)" />
+            <rect width="28" height="28" rx="10" fill="rgba(124,58,237,0.09)" />
             <path
               d="M6 10l8 6 8-6"
-              stroke="#C9A96E"
+              stroke="#7C3AED"
               strokeWidth="1.6"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -154,7 +138,7 @@ function ForgotPasswordModal({
               width="18"
               height="13"
               rx="3"
-              stroke="#C9A96E"
+              stroke="#7C3AED"
               strokeWidth="1.6"
             />
           </svg>
@@ -267,23 +251,25 @@ export default function Login() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --bg:           #FAF6F0;
+          --bg:           #FAFBFF;
           --surface:      #FFFFFF;
-          --surface2:     #F7F2EA;
-          --border:       rgba(201,169,110,0.18);
-          --border-hover: rgba(201,169,110,0.40);
-          --border-input: rgba(201,169,110,0.30);
-          --accent:       #C9A96E;
-          --accent2:      #8B6914;
-          --accent-light: #E8D5B0;
-          --accent-soft:  rgba(201,169,110,0.09);
-          --accent-soft2: rgba(201,169,110,0.17);
-          --text:         #1a0f04;
-          --text2:        #3d2b0f;
-          --text3:        #8B6914;
-          --shadow:       0 4px 24px rgba(26,15,4,0.10);
-          --shadow-sm:    0 2px 10px rgba(26,15,4,0.08);
-          --shadow-btn:   0 6px 28px rgba(201,169,110,0.25);
+          --surface2:     #F4F5FB;
+          --border:       #E5E7F0;
+          --border-hover: #BFC6DC;
+          --border-input: #CBD5E1;
+          --accent:       #7C3AED;
+          --accent2:      #5B21B6;
+          --accent-light: #EDE9FE;
+          --accent-soft:  rgba(124,58,237,0.08);
+          --accent-soft2: rgba(124,58,237,0.14);
+          --text:         #0F172A;
+          --text2:        #475569;
+          --text3:        #64748B;
+          --grad-primary: linear-gradient(135deg,#7C3AED 0%,#EC4899 100%);
+          --grad-secondary: linear-gradient(135deg,#3B82F6 0%,#06B6D4 100%);
+          --shadow:       0 14px 40px -10px rgba(15,23,42,0.14);
+          --shadow-sm:    0 2px 10px rgba(15,23,42,0.06);
+          --shadow-btn:   0 10px 30px -6px rgba(124,58,237,0.38), 0 4px 12px rgba(236,72,153,0.18);
           --transition:   all 0.36s cubic-bezier(.4,0,.2,1);
         }
 
@@ -326,9 +312,9 @@ export default function Login() {
 
         /* ── Glows ── */
         .glow { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(90px); }
-        .glow-1 { width: 280px; height: 280px; top: -60px; right: -40px; background: radial-gradient(circle, rgba(201,169,110,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
+        .glow-1 { width: 280px; height: 280px; top: -60px; right: -40px; background: radial-gradient(circle, rgba(124,58,237,0.16) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
         .glow-2 { width: 220px; height: 220px; bottom: 60px; left: -60px; background: radial-gradient(circle, rgba(232,213,176,0.11) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
-        .glow-3 { width: 180px; height: 180px; bottom: -30px; right: 10px; background: radial-gradient(circle, rgba(201,169,110,0.08) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
+        .glow-3 { width: 180px; height: 180px; bottom: -30px; right: 10px; background: radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%); animation: glowDrift1 13s ease-in-out infinite reverse; }
         @keyframes glowDrift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-18px,28px) scale(1.07)} 66%{transform:translate(14px,-18px) scale(0.95)} }
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(22px,-30px) scale(1.09)} 70%{transform:translate(-8px,18px) scale(0.93)} }
 
@@ -373,12 +359,12 @@ export default function Login() {
         /* ── Logo area ── */
         .logo-area { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 24px; }
         .logo-container { position: relative; display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; }
-        .logo-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(201,169,110,0.18); animation: ringExpand 3s ease-out infinite; width: 68px; height: 68px; }
+        .logo-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(124,58,237,0.18); animation: ringExpand 3s ease-out infinite; width: 68px; height: 68px; }
         .logo-ring-2 { animation-delay: 1s; }
         .logo-ring-3 { animation-delay: 2s; }
         @keyframes ringExpand { 0%{transform:scale(0.82);opacity:0.7} 100%{transform:scale(2.0);opacity:0} }
-        .logo-pulse { position: relative; z-index: 2; animation: logoPulse 3.5s ease-in-out infinite; filter: drop-shadow(0 4px 20px rgba(201,169,110,0.20)); }
-        @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04);filter:drop-shadow(0 6px 28px rgba(201,169,110,0.25))} }
+        .logo-pulse { position: relative; z-index: 2; animation: logoPulse 3.5s ease-in-out infinite; filter: drop-shadow(0 4px 20px rgba(124,58,237,0.20)); }
+        @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04);filter:drop-shadow(0 6px 28px rgba(124,58,237,0.25))} }
         .logo-name { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 600; letter-spacing: -1.2px; color: var(--text); line-height: 1; text-align: center; }
         .logo-name span { color: var(--accent); }
         .logo-tag { font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--text3); margin-top: 3px; text-align: center; }
@@ -416,7 +402,7 @@ export default function Login() {
           touch-action: manipulation;
         }
         .field-input::placeholder { color: var(--text3); }
-        .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201,169,110,0.11); background: var(--surface); }
+        .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,58,237,0.11); background: var(--surface); }
 
         .pass-toggle {
           position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
@@ -457,7 +443,7 @@ export default function Login() {
         .btn-submit::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.16) 0%, transparent 55%); pointer-events: none; border-radius: inherit; }
         .btn-shimmer { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.22) 50%, transparent 62%); background-size: 200% 100%; animation: shimmer 3.5s ease-in-out infinite; }
         @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
-        .btn-submit:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 34px rgba(201,169,110,0.25); }
+        .btn-submit:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 34px rgba(124,58,237,0.25); }
         .btn-submit:not(:disabled):active { transform: scale(0.97); }
         .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -494,7 +480,7 @@ export default function Login() {
           border: 1.5px solid var(--border);
           border-radius: 22px;
           padding: 28px 22px 22px;
-          box-shadow: 0 16px 48px rgba(201,169,110,0.15);
+          box-shadow: 0 16px 48px rgba(124,58,237,0.15);
           position: relative;
           animation: modalSlideUp .28s cubic-bezier(.22,1,.36,1);
         }

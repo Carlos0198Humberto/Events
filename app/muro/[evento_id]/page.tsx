@@ -188,7 +188,7 @@ const COLORES_DESEO = [
   "#e8f8f5",
   "#fff9c4",
   "#fce4ec",
-  "#E8D5B0",
+  "#FDE68A",
   "#e3f2fd",
   "#f3e5f5",
   "#fff3e0",
@@ -206,23 +206,7 @@ const TIPO_EMOJI: Record<string, string> = {
 // ─── Logo Eventix ──────────────────────────────────────────────────────────────
 function AppLogo({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Background */}
-      <rect width="64" height="64" rx="18" fill="#140d04"/>
-      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
-      {/* Geometric E — vertical bar */}
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
-      {/* Top bar */}
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* Middle bar (slightly shorter) */}
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
-      {/* Bottom bar */}
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* 4-pointed star sparkle — upper right */}
-      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
-      {/* Small accent dot */}
-      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
   );
 }
 
@@ -741,7 +725,7 @@ function Lightbox({
                 justifyContent: "center",
               }}
             >
-              {Ico.chevL(18, "#C9A96E")}
+              {Ico.chevL(18, "#7C3AED")}
             </button>
           )}
           {hasNext && (
@@ -763,7 +747,7 @@ function Lightbox({
                 justifyContent: "center",
               }}
             >
-              {Ico.chevR(18, "#C9A96E")}
+              {Ico.chevR(18, "#7C3AED")}
             </button>
           )}
         </div>
@@ -797,8 +781,8 @@ function Lightbox({
                 onClick={() => descargarImagen(foto.url, `foto_${foto.id}.jpg`)}
                 title={t.descargar}
                 style={{
-                  background: "#E8D5B0",
-                  color: "#C9A96E",
+                  background: "#FDE68A",
+                  color: "#7C3AED",
                   border: "none",
                   borderRadius: 10,
                   width: 34,
@@ -809,7 +793,7 @@ function Lightbox({
                   justifyContent: "center",
                 }}
               >
-                {Ico.download(15, "#C9A96E")}
+                {Ico.download(15, "#7C3AED")}
               </button>
               {esOrg && (
                 <button
@@ -988,7 +972,7 @@ function ModalSubirFoto({
           <button
             onClick={onClose}
             style={{
-              background: "#E8D5B0",
+              background: "#FDE68A",
               border: "none",
               borderRadius: 99,
               width: 32,
@@ -999,7 +983,7 @@ function ModalSubirFoto({
               justifyContent: "center",
             }}
           >
-            {Ico.x(15, "#C9A96E")}
+            {Ico.x(15, "#7C3AED")}
           </button>
         </div>
         {yaSubio ? (
@@ -1009,20 +993,20 @@ function ModalSubirFoto({
                 width: 60,
                 height: 60,
                 borderRadius: "50%",
-                background: "#E8D5B0",
-                border: "2px solid #E8D5B0",
+                background: "#FDE68A",
+                border: "2px solid #FDE68A",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 12px",
               }}
             >
-              {Ico.check(26, "#C9A96E")}
+              {Ico.check(26, "#7C3AED")}
             </div>
             <p
               style={{
                 fontWeight: 700,
-                color: "#C9A96E",
+                color: "#7C3AED",
                 fontSize: 15,
                 fontFamily: "'Playfair Display',serif",
               }}
@@ -1076,11 +1060,11 @@ function ModalSubirFoto({
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 9,
-                  border: "2px dashed #E8D5B0",
+                  border: "2px dashed #FDE68A",
                   borderRadius: 16,
                   padding: "28px 16px",
                   cursor: "pointer",
-                  background: "#FAF6F0",
+                  background: "#FAFBFF",
                   marginBottom: 12,
                 }}
               >
@@ -1089,7 +1073,7 @@ function ModalSubirFoto({
                     width: 50,
                     height: 50,
                     borderRadius: "50%",
-                    background: "#C9A96E",
+                    background: "#7C3AED",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1101,7 +1085,7 @@ function ModalSubirFoto({
                   style={{
                     fontSize: 14,
                     fontWeight: 700,
-                    color: "#C9A96E",
+                    color: "#7C3AED",
                     fontFamily: "'Playfair Display',serif",
                   }}
                 >
@@ -1127,14 +1111,14 @@ function ModalSubirFoto({
                 maxLength={120}
                 style={{
                   width: "100%",
-                  border: "1.5px solid #E8D5B0",
+                  border: "1.5px solid #FDE68A",
                   borderRadius: 12,
                   padding: "10px 13px",
                   fontSize: 13,
                   outline: "none",
                   fontFamily: "inherit",
                   boxSizing: "border-box",
-                  background: "#FAF6F0",
+                  background: "#FAFBFF",
                   marginBottom: 12,
                   color: "#0f2422",
                 }}
@@ -1146,7 +1130,7 @@ function ModalSubirFoto({
                 disabled={subiendo}
                 style={{
                   width: "100%",
-                  background: subiendo ? "#E8D5B0" : "#C9A96E",
+                  background: subiendo ? "#FDE68A" : "#7C3AED",
                   color: "white",
                   border: "none",
                   borderRadius: 14,
@@ -1267,7 +1251,7 @@ function ModalDeseo({
           <button
             onClick={onClose}
             style={{
-              background: "#E8D5B0",
+              background: "#FDE68A",
               border: "none",
               borderRadius: 99,
               width: 32,
@@ -1278,7 +1262,7 @@ function ModalDeseo({
               justifyContent: "center",
             }}
           >
-            {Ico.x(15, "#C9A96E")}
+            {Ico.x(15, "#7C3AED")}
           </button>
         </div>
 
@@ -1289,20 +1273,20 @@ function ModalDeseo({
                 width: 60,
                 height: 60,
                 borderRadius: "50%",
-                background: "#E8D5B0",
-                border: "2px solid #E8D5B0",
+                background: "#FDE68A",
+                border: "2px solid #FDE68A",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 12px",
               }}
             >
-              {Ico.heart(26, "#C9A96E")}
+              {Ico.heart(26, "#7C3AED")}
             </div>
             <p
               style={{
                 fontWeight: 700,
-                color: "#C9A96E",
+                color: "#7C3AED",
                 fontSize: 15,
                 fontFamily: "'Playfair Display',serif",
               }}
@@ -1321,14 +1305,14 @@ function ModalDeseo({
                 width: 60,
                 height: 60,
                 borderRadius: "50%",
-                background: "#E8D5B0",
+                background: "#FDE68A",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 14px",
               }}
             >
-              {Ico.lock(26, "#C9A96E")}
+              {Ico.lock(26, "#7C3AED")}
             </div>
             <p
               style={{
@@ -1352,7 +1336,7 @@ function ModalDeseo({
               }}
               style={{
                 marginTop: 18,
-                background: "#C9A96E",
+                background: "#7C3AED",
                 color: "white",
                 border: "none",
                 borderRadius: 14,
@@ -1411,7 +1395,7 @@ function ModalDeseo({
                   marginTop: 9,
                 }}
               >
-                <Avatar nombre={invitadoNombre} size={20} bg="#C9A96E" />
+                <Avatar nombre={invitadoNombre} size={20} bg="#7C3AED" />
                 <span
                   style={{ fontSize: 11, fontWeight: 700, color: "#374151" }}
                 >
@@ -1425,7 +1409,7 @@ function ModalDeseo({
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#C9A96E",
+                  color: "#7C3AED",
                   display: "block",
                   marginBottom: 5,
                   letterSpacing: "0.5px",
@@ -1442,14 +1426,14 @@ function ModalDeseo({
                 rows={3}
                 style={{
                   width: "100%",
-                  border: "1.5px solid #E8D5B0",
+                  border: "1.5px solid #FDE68A",
                   borderRadius: 12,
                   padding: "11px 13px",
                   fontSize: 14,
                   outline: "none",
                   fontFamily: "'Playfair Display',serif",
                   boxSizing: "border-box",
-                  background: "#FAF6F0",
+                  background: "#FAFBFF",
                   resize: "none",
                   lineHeight: 1.6,
                   color: "#0f2422",
@@ -1472,7 +1456,7 @@ function ModalDeseo({
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#C9A96E",
+                  color: "#7C3AED",
                   display: "block",
                   marginBottom: 7,
                   letterSpacing: "0.5px",
@@ -1489,10 +1473,10 @@ function ModalDeseo({
                     style={{
                       fontSize: 20,
                       background:
-                        sticker === s ? "#E8D5B0" : "rgba(0,0,0,0.03)",
+                        sticker === s ? "#FDE68A" : "rgba(0,0,0,0.03)",
                       border:
                         sticker === s
-                          ? "2px solid #E8D5B0"
+                          ? "2px solid #FDE68A"
                           : "2px solid transparent",
                       borderRadius: 9,
                       padding: "3px 7px",
@@ -1510,7 +1494,7 @@ function ModalDeseo({
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#C9A96E",
+                  color: "#7C3AED",
                   display: "block",
                   marginBottom: 7,
                   letterSpacing: "0.5px",
@@ -1531,7 +1515,7 @@ function ModalDeseo({
                       background: c,
                       border:
                         color === c
-                          ? "3px solid #C9A96E"
+                          ? "3px solid #7C3AED"
                           : "3px solid transparent",
                       cursor: "pointer",
                       boxShadow: "0 1px 4px rgba(0,0,0,0.13)",
@@ -1547,7 +1531,7 @@ function ModalDeseo({
               disabled={enviando || !mensaje.trim()}
               style={{
                 width: "100%",
-                background: mensaje.trim() ? "#C9A96E" : "#e2e8f0",
+                background: mensaje.trim() ? "#7C3AED" : "#e2e8f0",
                 color: mensaje.trim() ? "white" : "#9ca3af",
                 border: "none",
                 borderRadius: 14,
@@ -1637,7 +1621,7 @@ function DeseoCard({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Avatar nombre={deseo.nombre_autor} size={24} bg="#C9A96E" />
+          <Avatar nombre={deseo.nombre_autor} size={24} bg="#7C3AED" />
           <div>
             <p style={{ fontWeight: 700, fontSize: 11, color: "#374151" }}>
               {deseo.nombre_autor}
@@ -1649,8 +1633,8 @@ function DeseoCard({
           <button
             onClick={() => onDescargar(deseo)}
             style={{
-              background: "rgba(201,169,110,0.12)",
-              color: "#C9A96E",
+              background: "rgba(124,58,237,0.12)",
+              color: "#7C3AED",
               border: "none",
               borderRadius: 8,
               width: 28,
@@ -1661,7 +1645,7 @@ function DeseoCard({
               justifyContent: "center",
             }}
           >
-            {Ico.download(13, "#C9A96E")}
+            {Ico.download(13, "#7C3AED")}
           </button>
           {esOrg && (
             <button
@@ -1949,7 +1933,7 @@ export default function MuroPublico() {
     canvas.height = 64;
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.fillStyle = "#C9A96E";
+      ctx.fillStyle = "#7C3AED";
       ctx.beginPath();
       ctx.roundRect(0, 0, 64, 64, 14);
       ctx.fill();
@@ -1967,7 +1951,7 @@ export default function MuroPublico() {
     document.title = evento.nombre ? `${evento.nombre} · Eventix` : "Eventix";
   }, [evento]);
 
-  const acento = "#C9A96E";
+  const acento = "#7C3AED";
 
   if (loading)
     return (
@@ -1977,28 +1961,28 @@ export default function MuroPublico() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#FAF6F0",
+          background: "#FAFBFF",
         }}
       >
         <div style={{ textAlign: "center" }}>
           <div style={{ marginBottom: 0 }}>
             <AppLogo size={72} />
           </div>
-          <div style={{marginTop: 14, fontFamily: "Cormorant Garamond, Georgia, serif", fontSize: 26, color: "#1a0f04", letterSpacing: 3}}>Eventix</div>
+          <div style={{marginTop: 14, fontFamily: "Cormorant Garamond, Georgia, serif", fontSize: 26, color: "#0F172A", letterSpacing: 3}}>Eventix</div>
           <div
             style={{
               width: 28,
               height: 28,
               borderRadius: "50%",
               border: "2.5px solid transparent",
-              borderTopColor: "#C9A96E",
+              borderTopColor: "#7C3AED",
               animation: "spin 0.8s linear infinite",
               margin: "24px auto 0",
             }}
           />
           <p
             style={{
-              color: "rgba(201,169,110,0.7)",
+              color: "rgba(124,58,237,0.7)",
               fontWeight: 400,
               fontSize: 11,
               letterSpacing: 1.5,
@@ -2030,9 +2014,9 @@ export default function MuroPublico() {
   // Si el muro está cerrado y el visitante no es el organizador
   if (evento.muro_abierto === false && !esOrg)
     return (
-      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAF6F0", flexDirection: "column", gap: 16, padding: 24 }}>
+      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAFBFF", flexDirection: "column", gap: 16, padding: 24 }}>
         <AppLogo size={52} />
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, color: "#8B6914", textAlign: "center" }}>El muro está cerrado</h2>
+        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, color: "#5B21B6", textAlign: "center" }}>El muro está cerrado</h2>
         <p style={{ color: "#4b5563", fontSize: 14, textAlign: "center", maxWidth: 320 }}>
           El organizador ha cerrado temporalmente el muro de fotos y deseos. Vuelve pronto.
         </p>
@@ -2049,7 +2033,7 @@ export default function MuroPublico() {
     <main
       style={{
         minHeight: "100vh",
-        background: "#FAF6F0",
+        background: "#FAFBFF",
         paddingBottom: 100,
         fontFamily: "'DM Sans',sans-serif",
         opacity: mounted ? 1 : 0,
@@ -2059,7 +2043,7 @@ export default function MuroPublico() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'DM Sans',sans-serif;background:#FAF6F0}
+        body{font-family:'DM Sans',sans-serif;background:#FAFBFF}
         @keyframes spin{to{transform:rotate(360deg)}}
 
         /* ── Borde festivo de colores (top + bottom) ── */
@@ -2086,13 +2070,13 @@ export default function MuroPublico() {
           position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
           background: rgba(255,255,255,0.97);
           backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-          border-top: 1px solid rgba(201,169,110,0.18);
-          box-shadow: 0 -4px 24px rgba(26,15,4,0.08);
+          border-top: 1px solid rgba(124,58,237,0.18);
+          box-shadow: 0 -4px 24px rgba(15,23,42,0.08);
           padding-bottom: env(safe-area-inset-bottom, 0px);
         }
         .nav-guest-row {
           display: flex; gap: 8px; padding: 8px 12px 0;
-          border-bottom: 1px solid rgba(201,169,110,0.10);
+          border-bottom: 1px solid rgba(124,58,237,0.10);
         }
         .nav-guest-btn {
           flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -2117,17 +2101,17 @@ export default function MuroPublico() {
           text-decoration: none;
           position: relative;
         }
-        .nav-tab:active { background: rgba(201,169,110,0.08); }
+        .nav-tab:active { background: rgba(124,58,237,0.08); }
         .nav-tab-icon { line-height: 0; transition: transform .15s; }
         .nav-tab.active .nav-tab-icon { transform: scale(1.1); }
         .nav-tab-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2px; }
-        .nav-tab.active .nav-tab-label { color: #8B6914; }
+        .nav-tab.active .nav-tab-label { color: #5B21B6; }
         .nav-tab:not(.active) .nav-tab-label { color: #94a3b8; }
         .nav-tab:not(.active) .nav-tab-icon { color: #94a3b8; }
-        .nav-tab.active .nav-tab-icon { color: #C9A96E; }
+        .nav-tab.active .nav-tab-icon { color: #7C3AED; }
         .nav-tab-badge {
           position: absolute; top: 4px; right: calc(50% - 14px);
-          background: #C9A96E; color: white;
+          background: #7C3AED; color: white;
           font-size: 8px; font-weight: 800; border-radius: 99px;
           padding: 1px 4px; min-width: 14px; text-align: center;
           border: 1.5px solid white;
@@ -2138,18 +2122,18 @@ export default function MuroPublico() {
           position: sticky; top: 7px; z-index: 150;
           background: rgba(255,255,255,0.95);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-          border-bottom: 1px solid rgba(201,169,110,0.15);
-          box-shadow: 0 2px 12px rgba(26,15,4,0.06);
+          border-bottom: 1px solid rgba(124,58,237,0.15);
+          box-shadow: 0 2px 12px rgba(15,23,42,0.06);
           display: flex; align-items: center; gap: 10px;
           padding: 10px 14px;
         }
         .muro-header-brand { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
-        .muro-header-name { font-family: 'Playfair Display',serif; font-size: 15px; font-weight: 700; color: #1a0f04; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .muro-header-sub { font-size: 10px; color: #8B6914; font-weight: 600; letter-spacing: 0.3px; display: block; }
+        .muro-header-name { font-family: 'Playfair Display',serif; font-size: 15px; font-weight: 700; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .muro-header-sub { font-size: 10px; color: #5B21B6; font-weight: 600; letter-spacing: 0.3px; display: block; }
         .muro-header-btn {
           display: flex; align-items: center; gap: 5px;
-          background: #FAF6F0; color: #8B6914;
-          border: 1.5px solid rgba(201,169,110,0.28);
+          background: #FAFBFF; color: #5B21B6;
+          border: 1.5px solid rgba(124,58,237,0.28);
           border-radius: 10px; padding: 6px 10px;
           font-size: 11px; font-weight: 700;
           cursor: pointer; white-space: nowrap; flex-shrink: 0;
@@ -2159,10 +2143,10 @@ export default function MuroPublico() {
 
         /* ── Org banner ── */
         .org-banner {
-          background: rgba(201,169,110,0.10);
-          border-bottom: 1px solid rgba(201,169,110,0.18);
+          background: rgba(124,58,237,0.10);
+          border-bottom: 1px solid rgba(124,58,237,0.18);
           padding: 8px 16px;
-          font-size: 11px; font-weight: 600; color: #8B6914;
+          font-size: 11px; font-weight: 600; color: #5B21B6;
           display: flex; align-items: center; gap: 6px;
           flex-wrap: wrap;
         }
@@ -2177,7 +2161,7 @@ export default function MuroPublico() {
         style={{
           position: "relative",
           overflow: "hidden",
-          background: "linear-gradient(135deg,#8B6914 0%,#C9A96E 100%)",
+          background: "linear-gradient(135deg,#5B21B6 0%,#7C3AED 100%)",
           color: "white",
           padding: "18px 16px 20px",
           textAlign: "center",
@@ -2272,7 +2256,7 @@ export default function MuroPublico() {
 
       {esOrg && (
         <div className="org-banner">
-          {Ico.check(12, "#8B6914")} {t.modoOrganizador}
+          {Ico.check(12, "#5B21B6")} {t.modoOrganizador}
           <button
             onClick={toggleMuro}
             style={{
@@ -2306,14 +2290,14 @@ export default function MuroPublico() {
                   width: 76,
                   height: 76,
                   borderRadius: "50%",
-                  background: "#E8D5B0",
+                  background: "#FDE68A",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   margin: "0 auto 16px",
                 }}
               >
-                {Ico.camera(34, "#E8D5B0")}
+                {Ico.camera(34, "#FDE68A")}
               </div>
               <p
                 style={{
@@ -2360,14 +2344,14 @@ export default function MuroPublico() {
                   width: 76,
                   height: 76,
                   borderRadius: "50%",
-                  background: "#E8D5B0",
+                  background: "#FDE68A",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   margin: "0 auto 16px",
                 }}
               >
-                {Ico.folder(34, "#E8D5B0")}
+                {Ico.folder(34, "#FDE68A")}
               </div>
               <p
                 style={{
@@ -2392,8 +2376,8 @@ export default function MuroPublico() {
                     background: "white",
                     borderRadius: 18,
                     padding: 14,
-                    border: "1px solid rgba(201,169,110,0.15)",
-                    boxShadow: "0 2px 10px rgba(201,169,110,0.07)",
+                    border: "1px solid rgba(124,58,237,0.15)",
+                    boxShadow: "0 2px 10px rgba(124,58,237,0.07)",
                   }}
                 >
                   <div
@@ -2439,7 +2423,7 @@ export default function MuroPublico() {
                         display: "flex",
                         alignItems: "center",
                         gap: 5,
-                        background: "#E8D5B0",
+                        background: "#FDE68A",
                         color: acento,
                         border: "none",
                         borderRadius: 10,
@@ -2556,10 +2540,10 @@ export default function MuroPublico() {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 7,
-                  background: "#E8D5B0",
+                  background: "#FDE68A",
                   borderRadius: 99,
                   padding: "8px 16px",
-                  border: "1px solid rgba(201,169,110,0.28)",
+                  border: "1px solid rgba(124,58,237,0.28)",
                 }}
               >
                 {Ico.heart(14, acento)}
@@ -2582,9 +2566,9 @@ export default function MuroPublico() {
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    background: "#E8D5B0",
+                    background: "#FDE68A",
                     color: acento,
-                    border: "1px solid rgba(201,169,110,0.28)",
+                    border: "1px solid rgba(124,58,237,0.28)",
                     borderRadius: 10,
                     padding: "8px 14px",
                     fontSize: 12,
@@ -2620,14 +2604,14 @@ export default function MuroPublico() {
                     width: 76,
                     height: 76,
                     borderRadius: "50%",
-                    background: "#E8D5B0",
+                    background: "#FDE68A",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     margin: "0 auto 16px",
                   }}
                 >
-                  {Ico.heart(34, "#E8D5B0")}
+                  {Ico.heart(34, "#FDE68A")}
                 </div>
                 <p
                   style={{
@@ -2721,10 +2705,10 @@ export default function MuroPublico() {
               className="nav-guest-btn"
               onClick={() => setModalSubir(true)}
               style={{
-                background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,#C9A96E,#8B6914)",
+                background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,#7C3AED,#5B21B6)",
                 color: yaFoto ? "#16a34a" : "white",
                 border: yaFoto ? "1.5px solid rgba(22,163,74,0.28)" : "none",
-                boxShadow: yaFoto ? "none" : "0 3px 14px rgba(201,169,110,0.38)",
+                boxShadow: yaFoto ? "none" : "0 3px 14px rgba(124,58,237,0.38)",
               }}
             >
               {yaFoto ? Ico.check(15, "#16a34a") : Ico.camera(15, "white")}
@@ -2735,13 +2719,13 @@ export default function MuroPublico() {
               className="nav-guest-btn"
               onClick={() => setModalDeseo(true)}
               style={{
-                background: yaDeseo ? "rgba(22,163,74,0.10)" : yaFoto ? "linear-gradient(135deg,#C9A96E,#8B6914)" : "#F3EDE4",
-                color: yaDeseo ? "#16a34a" : yaFoto ? "white" : "#C9A96E",
-                border: yaDeseo ? "1.5px solid rgba(22,163,74,0.28)" : yaFoto ? "none" : "1.5px solid rgba(201,169,110,0.28)",
-                boxShadow: yaFoto && !yaDeseo ? "0 3px 14px rgba(201,169,110,0.38)" : "none",
+                background: yaDeseo ? "rgba(22,163,74,0.10)" : yaFoto ? "linear-gradient(135deg,#7C3AED,#5B21B6)" : "#F3EDE4",
+                color: yaDeseo ? "#16a34a" : yaFoto ? "white" : "#7C3AED",
+                border: yaDeseo ? "1.5px solid rgba(22,163,74,0.28)" : yaFoto ? "none" : "1.5px solid rgba(124,58,237,0.28)",
+                boxShadow: yaFoto && !yaDeseo ? "0 3px 14px rgba(124,58,237,0.38)" : "none",
               }}
             >
-              {yaDeseo ? Ico.check(15, "#16a34a") : Ico.heart(15, yaFoto ? "white" : "#C9A96E")}
+              {yaDeseo ? Ico.check(15, "#16a34a") : Ico.heart(15, yaFoto ? "white" : "#7C3AED")}
               {t.miDeseo}
               {yaDeseo && <span style={{ fontSize: 10, background: "#22c55e", color: "white", borderRadius: 99, padding: "1px 5px", marginLeft: 2 }}>✓</span>}
             </button>
@@ -2751,9 +2735,9 @@ export default function MuroPublico() {
         {/* Tabs */}
         <div className="nav-tabs">
           {([
-            { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#C9A96E" : "#94a3b8"), label: t.fotos, count: fotos.length },
-            { key: "albumes" as Vista, icon: Ico.folder(20, vista === "albumes" ? "#C9A96E" : "#94a3b8"), label: t.albumes, count: albumes.length },
-            { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#C9A96E" : "#94a3b8"), label: t.deseos, count: deseos.length },
+            { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#7C3AED" : "#94a3b8"), label: t.fotos, count: fotos.length },
+            { key: "albumes" as Vista, icon: Ico.folder(20, vista === "albumes" ? "#7C3AED" : "#94a3b8"), label: t.albumes, count: albumes.length },
+            { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#7C3AED" : "#94a3b8"), label: t.deseos, count: deseos.length },
           ] as const).map((tab) => (
             <button
               key={tab.key}

@@ -24,7 +24,6 @@ type Stats = {
   total_deseos: number;
 };
 
-// Invitado con número de orden
 type InvitadoResumen = {
   id: string;
   nombre: string;
@@ -32,7 +31,7 @@ type InvitadoResumen = {
   estado: string;
   num_personas: number;
   token: string;
-  orden: number; // #001, #002 ... basado en created_at
+  orden: number;
 };
 
 // ─── Config ────────────────────────────────────────────────────────────────────
@@ -48,412 +47,439 @@ const TIPO_CONFIG: Record<string, { label: string; labelEn: string }> = {
 const translations = {
   es: {
     hello: "Hola",
-    dashboard: "Dashboard",
-    nuevo: "Nuevo",
-    salir: "Salir",
-    eventos: "Eventos",
-    confirmados: "Confirm.",
-    fotos: "Fotos",
-    deseos: "Deseos",
-    asistentes: "Asistentes",
-    crearEvento: "Crear nuevo evento",
-    sinEventos: "Sin eventos todavía",
-    sinEventosSub: "Crea tu primer evento para comenzar",
-    confirm2: "Confirm.",
-    pend: "Pend.",
-    declin: "Declin.",
-    personas: "personas",
-    confirmacion: "Confirmación",
-    verMuro: "Muro",
-    invitados: "Invitados",
-    libro: "Libro",
-    agradecimientos: "Gracias",
-    mesas: "Mesas",
-    configurar: "Configurar",
-    scanner: "Scanner QR",
-    gestionar: "Gestionar",
-    eliminar: "Eliminar",
-    finalizad: "Finalizado",
-    manana: "¡Mañana!",
-    dias: "días",
-    cargando: "Cargando...",
-    elimConfirm: "¿Eliminar este evento y todos sus datos?",
-    totalPersonas: "Total asistentes",
-    verInvitados: "Ver todos",
-    invitadosSin: "Sin invitados aún",
-    num: "N°",
-    estadoPend: "Pendiente",
-    estadoConf: "Confirmado",
-    estadoDecl: "Declinó",
+    signOut: "Salir",
+    newEvent: "Nuevo evento",
+    events: "eventos",
+    eventSingular: "evento",
+    yourEvents: "Tus eventos",
+    youHave: "Tienes",
+    registered: "registrado",
+    registeredPlural: "registrados",
+    confirmed: "confirmados",
+    photos: "fotos",
+    wishes: "deseos",
+    totalAttendees: "Asistentes",
+    noEvents: "Aún no has creado ningún evento",
+    noEventsSub:
+      "Empieza creando tu primer evento para gestionar invitados, fotos y recuerdos en un solo lugar.",
+    createFirst: "Crear mi primer evento",
+    details: "Ver detalles",
+    hideDetails: "Ocultar detalles",
+    tomorrow: "Mañana",
+    past: "Finalizado",
+    days: "días",
+    confirmation: "Confirmación",
+    guestList: "Invitados",
+    viewAll: "Ver todos",
+    noGuests: "Sin invitados aún",
+    wall: "Muro",
+    book: "Libro",
+    tables: "Mesas",
+    settings: "Configurar",
+    thanks: "Gracias",
+    scanner: "Escáner",
+    manage: "Gestionar",
+    delete: "Eliminar",
+    deleteConfirm: "¿Eliminar este evento y todos sus datos?",
+    moreActions: "Más acciones",
+    less: "Menos",
+    summary: "Resumen",
+    adminPanel: "Panel administrador",
+    statePend: "Pendiente",
+    stateConf: "Confirmado",
+    stateDecl: "Declinó",
   },
   en: {
     hello: "Hello",
-    dashboard: "Dashboard",
-    nuevo: "New",
-    salir: "Sign out",
-    eventos: "Events",
-    confirmados: "Confirm.",
-    fotos: "Photos",
-    deseos: "Wishes",
-    asistentes: "Attendees",
-    crearEvento: "Create new event",
-    sinEventos: "No events yet",
-    sinEventosSub: "Create your first event to get started",
-    confirm2: "Confirm.",
-    pend: "Pend.",
-    declin: "Declin.",
-    personas: "people",
-    confirmacion: "Confirmation",
-    verMuro: "Wall",
-    invitados: "Guests",
-    libro: "Book",
-    agradecimientos: "Thank-yous",
-    mesas: "Tables",
-    configurar: "Settings",
-    scanner: "QR Scanner",
-    gestionar: "Manage",
-    eliminar: "Delete",
-    finalizad: "Finished",
-    manana: "Tomorrow!",
-    dias: "days",
-    cargando: "Loading...",
-    elimConfirm: "Delete this event and all its data?",
-    totalPersonas: "Total attendees",
-    verInvitados: "View all",
-    invitadosSin: "No guests yet",
-    num: "No.",
-    estadoPend: "Pending",
-    estadoConf: "Confirmed",
-    estadoDecl: "Declined",
+    signOut: "Sign out",
+    newEvent: "New event",
+    events: "events",
+    eventSingular: "event",
+    yourEvents: "Your events",
+    youHave: "You have",
+    registered: "registered",
+    registeredPlural: "registered",
+    confirmed: "confirmed",
+    photos: "photos",
+    wishes: "wishes",
+    totalAttendees: "Attendees",
+    noEvents: "You haven't created any events yet",
+    noEventsSub:
+      "Start by creating your first event to manage guests, photos and memories in one place.",
+    createFirst: "Create my first event",
+    details: "View details",
+    hideDetails: "Hide details",
+    tomorrow: "Tomorrow",
+    past: "Finished",
+    days: "days",
+    confirmation: "Confirmation",
+    guestList: "Guests",
+    viewAll: "View all",
+    noGuests: "No guests yet",
+    wall: "Wall",
+    book: "Book",
+    tables: "Tables",
+    settings: "Settings",
+    thanks: "Thanks",
+    scanner: "Scanner",
+    manage: "Manage",
+    delete: "Delete",
+    deleteConfirm: "Delete this event and all its data?",
+    moreActions: "More actions",
+    less: "Less",
+    summary: "Summary",
+    adminPanel: "Admin panel",
+    statePend: "Pending",
+    stateConf: "Confirmed",
+    stateDecl: "Declined",
   },
 };
 
 // ─── Logo ──────────────────────────────────────────────────────────────────────
-function AppLogo({ size = 36 }: { size?: number }) {
+function AppLogo({ size = 32 }: { size?: number }) {
+  const uid = `dlg-${size}`;
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Background */}
-      <rect width="64" height="64" rx="18" fill="#140d04"/>
-      <rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" strokeWidth="1.2"/>
-      {/* Geometric E — vertical bar */}
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/>
-      {/* Top bar */}
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* Middle bar (slightly shorter) */}
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/>
-      {/* Bottom bar */}
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/>
-      {/* 4-pointed star sparkle — upper right */}
-      <path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/>
-      {/* Small accent dot */}
-      <circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient id={`${uid}-bg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#7C3AED" />
+          <stop offset="100%" stopColor="#EC4899" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="18" fill={`url(#${uid}-bg)`} />
+      <rect
+        x="2"
+        y="2"
+        width="60"
+        height="60"
+        rx="16"
+        fill="none"
+        stroke="rgba(255,255,255,0.28)"
+        strokeWidth="1.2"
+      />
+      <rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" />
+      <rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" />
+      <rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" />
+      <rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" />
+      <path
+        d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z"
+        fill="#FDE68A"
+      />
+      <circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" />
+    </svg>
+  );
+}
+
+// ─── Ornament divider ──────────────────────────────────────────────────────────
+function Ornament({ width = 120 }: { width?: number }) {
+  const cx = width / 2;
+  return (
+    <svg
+      width={width}
+      height="14"
+      viewBox={`0 0 ${width} 14`}
+      fill="none"
+      aria-hidden="true"
+    >
+      <line
+        x1="0"
+        y1="7"
+        x2={cx - 10}
+        y2="7"
+        stroke="currentColor"
+        strokeWidth="0.7"
+        opacity="0.55"
+      />
+      <path
+        d={`M${cx} 2 L${cx + 2} 6.5 L${cx + 6} 7 L${cx + 2} 7.5 L${cx} 12 L${cx - 2} 7.5 L${cx - 6} 7 L${cx - 2} 6.5 Z`}
+        fill="currentColor"
+        opacity="0.75"
+      />
+      <line
+        x1={cx + 10}
+        y1="7"
+        x2={width}
+        y2="7"
+        stroke="currentColor"
+        strokeWidth="0.7"
+        opacity="0.55"
+      />
     </svg>
   );
 }
 
 // ─── Icons ─────────────────────────────────────────────────────────────────────
+type IconProps = { size?: number };
 const Icon = {
-  calendar: () => (
+  calendar: ({ size = 14 }: IconProps = {}) => (
     <svg
-      width="15"
-      height="15"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.4"
       strokeLinecap="round"
     >
-      <rect x="2" y="3" width="16" height="15" rx="3" />
+      <rect x="2" y="3" width="16" height="15" rx="2" />
       <path d="M2 8h16M7 1v4M13 1v4" />
     </svg>
   ),
-  location: () => (
+  location: ({ size = 14 }: IconProps = {}) => (
     <svg
-      width="13"
-      height="13"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.4"
       strokeLinecap="round"
     >
       <path d="M10 2a6 6 0 016 6c0 5-6 10-6 10S4 13 4 8a6 6 0 016-6z" />
       <circle cx="10" cy="8" r="2" />
     </svg>
   ),
-  users: () => (
+  users: ({ size = 14 }: IconProps = {}) => (
     <svg
-      width="14"
-      height="14"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.4"
       strokeLinecap="round"
     >
       <path d="M13 15c0-2.2-1.3-4-3-4s-3 1.8-3 4M7 7a3 3 0 106 0 3 3 0 00-6 0M16 15c0-1.8-1-3.3-2.5-4M17 6.5a2.5 2.5 0 010 5" />
     </svg>
   ),
-  camera: () => (
+  book: ({ size = 14 }: IconProps = {}) => (
     <svg
-      width="14"
-      height="14"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-    >
-      <path d="M2 7h2l2-3h8l2 3h2a1 1 0 011 1v9a1 1 0 01-1 1H2a1 1 0 01-1-1V8a1 1 0 011-1z" />
-      <circle cx="10" cy="12" r="3" />
-    </svg>
-  ),
-  heart: () => (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-    >
-      <path d="M10 17S2 12 2 6.5A4.5 4.5 0 0110 4a4.5 4.5 0 018 2.5C18 12 10 17 10 17z" />
-    </svg>
-  ),
-  book: () => (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.4"
       strokeLinecap="round"
     >
       <path d="M4 2h10a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2zM8 2v16" />
     </svg>
   ),
-  mail: () => (
+  mail: ({ size = 14 }: IconProps = {}) => (
     <svg
-      width="14"
-      height="14"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.4"
       strokeLinecap="round"
     >
       <rect x="2" y="4" width="16" height="13" rx="2" />
       <path d="M2 7l8 5 8-5" />
     </svg>
   ),
-  wall: () => (
+  wall: ({ size = 14 }: IconProps = {}) => (
     <svg
-      width="14"
-      height="14"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.4"
       strokeLinecap="round"
     >
-      <rect x="2" y="2" width="7" height="7" rx="1.5" />
-      <rect x="11" y="2" width="7" height="7" rx="1.5" />
-      <rect x="2" y="11" width="7" height="7" rx="1.5" />
-      <rect x="11" y="11" width="7" height="7" rx="1.5" />
+      <rect x="2" y="2" width="7" height="7" rx="1" />
+      <rect x="11" y="2" width="7" height="7" rx="1" />
+      <rect x="2" y="11" width="7" height="7" rx="1" />
+      <rect x="11" y="11" width="7" height="7" rx="1" />
     </svg>
   ),
-  settings: () => (
+  table: ({ size = 14 }: IconProps = {}) => (
     <svg
-      width="14"
-      height="14"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+    >
+      <rect x="2" y="4" width="16" height="4" rx="1" />
+      <path d="M5 8v8M15 8v8M8 8v8M12 8v8" />
+    </svg>
+  ),
+  gear: ({ size = 14 }: IconProps = {}) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
       strokeLinecap="round"
     >
       <circle cx="10" cy="10" r="2.5" />
       <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" />
     </svg>
   ),
-  table: () => (
-    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <rect x="2" y="4" width="16" height="4" rx="1.5"/>
-      <path d="M5 8v8M15 8v8M8 8v8M12 8v8"/>
-    </svg>
-  ),
-  gear: () => (
-    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <circle cx="10" cy="10" r="2.5"/>
-      <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/>
-    </svg>
-  ),
-  scanner: () => (
-    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <rect x="2" y="2" width="6" height="6" rx="1.5"/><rect x="12" y="2" width="6" height="6" rx="1.5"/><rect x="2" y="12" width="6" height="6" rx="1.5"/>
-      <rect x="13" y="13" width="2.5" height="2.5" fill="currentColor" stroke="none"/><rect x="15.5" y="15.5" width="2.5" height="2.5" fill="currentColor" stroke="none"/><path d="M12 12h.5"/>
-    </svg>
-  ),
-  trash: () => (
+  scanner: ({ size = 14 }: IconProps = {}) => (
     <svg
-      width="13"
-      height="13"
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+    >
+      <rect x="2" y="2" width="6" height="6" rx="1" />
+      <rect x="12" y="2" width="6" height="6" rx="1" />
+      <rect x="2" y="12" width="6" height="6" rx="1" />
+      <path d="M12 12h6v6h-6z" />
+    </svg>
+  ),
+  plus: ({ size = 14 }: IconProps = {}) => (
+    <svg
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.6"
-      strokeLinecap="round"
-    >
-      <path d="M3 5h14M8 5V3h4v2M6 5l.5 12h7L14 5" />
-    </svg>
-  ),
-  plus: () => (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
       strokeLinecap="round"
     >
       <path d="M10 4v12M4 10h12" />
     </svg>
   ),
-  logout: () => (
+  logout: ({ size = 14 }: IconProps = {}) => (
     <svg
-      width="15"
-      height="15"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.4"
       strokeLinecap="round"
     >
       <path d="M13 10H3M13 10l-3-3M13 10l-3 3M7 4H4a2 2 0 00-2 2v8a2 2 0 002 2h3" />
     </svg>
   ),
-  person: () => (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-    >
-      <circle cx="10" cy="6" r="3.5" />
-      <path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" />
-    </svg>
-  ),
-  whatsapp: () => (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+  whatsapp: ({ size = 12 }: IconProps = {}) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
     </svg>
   ),
-  copy: () => (
+  copy: ({ size = 12 }: IconProps = {}) => (
     <svg
-      width="13"
-      height="13"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.7"
+      strokeWidth="1.5"
       strokeLinecap="round"
     >
       <rect x="7" y="7" width="11" height="11" rx="2" />
       <path d="M4 13H3a2 2 0 01-2-2V3a2 2 0 012-2h8a2 2 0 012 2v1" />
     </svg>
   ),
-  chevron: () => (
+  chevron: ({ size = 12 }: IconProps = {}) => (
     <svg
-      width="14"
-      height="14"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.6"
       strokeLinecap="round"
     >
-      <path d="M7 10l3 3 3-3" />
+      <path d="M5 8l5 5 5-5" />
     </svg>
   ),
 };
 
-// ─── Particles ─────────────────────────────────────────────────────────────────
-function Particles() {
-  return (
-    <div className="particles" aria-hidden="true">
-      {[...Array(8)].map((_, i) => (
-        <div key={i} className={`particle particle-${i + 1}`} />
-      ))}
-    </div>
-  );
-}
-
-// ─── Loading screen ────────────────────────────────────────────────────────────
-function LoadingScreen({ t }: { t: typeof translations.es }) {
+// ─── Loading screen — editorial ─────────────────────────────────────────────────
+function LoadingScreen() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500&family=DM+Sans:wght@400;500&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        html,body{font-family:'DM Sans',sans-serif;background:#FAF6F0;overflow-x:hidden}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        body{background:#FAFBFF;font-family:'DM Sans',sans-serif}
+        @keyframes dotPulse{0%,80%,100%{opacity:.18;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
       `}</style>
       <main
         style={{
-          minHeight: "100vh",
+          minHeight: "100dvh",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "#FAF6F0",
+          gap: 24,
+          background: "#FAFBFF",
+          color: "#0F172A",
         }}
       >
-        <div style={{ textAlign: "center", animation: "fadeIn .6s ease both" }}>
-          <div style={{ marginBottom: 0 }}>
-            <AppLogo size={72} />
-          </div>
-          <div style={{marginTop: 14, fontFamily: "Cormorant Garamond, Georgia, serif", fontSize: 26, color: "#1a0f04", letterSpacing: 3}}>Eventix</div>
-          <div
+        <AppLogo size={52} />
+        <div
+          style={{
+            fontFamily: "'Cormorant Garamond',serif",
+            fontSize: 30,
+            letterSpacing: 6,
+            color: "#0F172A",
+            fontStyle: "italic",
+            fontWeight: 400,
+          }}
+        >
+          Eventix
+        </div>
+        <div style={{ display: "flex", gap: 8 }} aria-label="Cargando">
+          <span
             style={{
-              width: 28,
-              height: 28,
-              border: "2.5px solid transparent",
-              borderTopColor: "#C9A96E",
+              width: 5,
+              height: 5,
               borderRadius: "50%",
-              margin: "24px auto 0",
-              animation: "spin .8s linear infinite",
+              background: "#7C3AED",
+              animation: "dotPulse 1.2s infinite ease-in-out",
             }}
           />
-          <p
+          <span
             style={{
-              color: "rgba(201,169,110,0.7)",
-              fontWeight: 400,
-              fontSize: 11,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              marginTop: 12,
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: "#7C3AED",
+              animation: "dotPulse 1.2s .2s infinite ease-in-out",
             }}
-          >
-            Cargando...
-          </p>
+          />
+          <span
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: "#7C3AED",
+              animation: "dotPulse 1.2s .4s infinite ease-in-out",
+            }}
+          />
         </div>
       </main>
     </>
   );
 }
 
-// ─── Guest number badge ────────────────────────────────────────────────────────
+// ─── Number badge ──────────────────────────────────────────────────────────────
 function NumBadge({ n }: { n: number }) {
-  return <span className="num-badge">#{String(n).padStart(3, "0")}</span>;
+  return <span className="num-badge">{String(n).padStart(3, "0")}</span>;
 }
 
-// ─── Estado badge ──────────────────────────────────────────────────────────────
+// ─── State badge ───────────────────────────────────────────────────────────────
 function EstadoBadge({
   estado,
   t,
@@ -462,15 +488,15 @@ function EstadoBadge({
   t: typeof translations.es;
 }) {
   const map: Record<string, { cls: string; label: string }> = {
-    confirmado: { cls: "badge-conf", label: t.estadoConf },
-    rechazado: { cls: "badge-decl", label: t.estadoDecl },
-    pendiente: { cls: "badge-pend", label: t.estadoPend },
+    confirmado: { cls: "state-conf", label: t.stateConf },
+    rechazado: { cls: "state-decl", label: t.stateDecl },
+    pendiente: { cls: "state-pend", label: t.statePend },
   };
   const info = map[estado] ?? map.pendiente;
-  return <span className={`estado-badge ${info.cls}`}>{info.label}</span>;
+  return <span className={`state-badge ${info.cls}`}>{info.label}</span>;
 }
 
-// ─── Mini guest list inside dashboard card ─────────────────────────────────────
+// ─── Mini guest list ───────────────────────────────────────────────────────────
 function MiniInvitados({
   eventoId,
   lang,
@@ -519,79 +545,73 @@ function MiniInvitados({
     );
   }
 
-  if (loading) return null;
+  if (loading) return <div className="guest-skeleton" aria-hidden="true" />;
 
   const visibles = expanded ? invitados : invitados.slice(0, 3);
 
   return (
-    <div className="mini-inv-wrap">
-      <div className="mini-inv-header">
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Icon.users />
-          <span className="mini-inv-title">{t.invitados}</span>
-          <span className="mini-inv-count">{invitados.length}</span>
-        </div>
-        <Link href={`/eventos/${eventoId}/invitados`} className="mini-inv-ver">
-          {t.verInvitados} →
+    <section className="guest-section">
+      <header className="guest-head">
+        <span className="guest-head-title">
+          {t.guestList}
+          <em> · {invitados.length}</em>
+        </span>
+        <Link
+          href={`/eventos/${eventoId}/invitados`}
+          className="guest-head-all"
+        >
+          {t.viewAll}
         </Link>
-      </div>
+      </header>
 
       {invitados.length === 0 ? (
-        <p className="mini-inv-empty">{t.invitadosSin}</p>
+        <p className="guest-empty">{t.noGuests}</p>
       ) : (
         <>
-          <div className="mini-inv-list">
+          <ul className="guest-list">
             {visibles.map((inv) => (
-              <div key={inv.id} className="mini-inv-row">
-                {/* Número de orden */}
+              <li key={inv.id} className="guest-row">
                 <NumBadge n={inv.orden} />
-
-                {/* Avatar + nombre */}
-                <div className="mini-inv-avatar">
+                <div className="guest-avatar">
                   {inv.nombre.charAt(0).toUpperCase()}
                 </div>
-                <div className="mini-inv-info">
-                  <span className="mini-inv-nombre">{inv.nombre}</span>
+                <div className="guest-info">
+                  <span className="guest-name">{inv.nombre}</span>
                   {inv.telefono && (
-                    <span className="mini-inv-tel">{inv.telefono}</span>
+                    <span className="guest-tel">{inv.telefono}</span>
                   )}
                 </div>
-
-                {/* Estado */}
                 <EstadoBadge estado={inv.estado} t={t} />
-
-                {/* Acciones */}
-                <div className="mini-inv-actions">
+                <div className="guest-actions">
                   <button
-                    className="mini-btn mini-btn-wa"
+                    className="guest-btn guest-btn-wa"
                     title="WhatsApp"
                     onClick={() => abrirWhatsApp(inv)}
                   >
                     <Icon.whatsapp />
                   </button>
                   <button
-                    className={`mini-btn ${copiado === inv.token ? "mini-btn-ok" : "mini-btn-copy"}`}
+                    className={`guest-btn ${copiado === inv.token ? "guest-btn-ok" : ""}`}
                     title="Copiar link"
                     onClick={() => copiarLink(inv.token)}
                   >
                     {copiado === inv.token ? "✓" : <Icon.copy />}
                   </button>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
-
+          </ul>
           {invitados.length > 3 && (
             <button
-              className="mini-inv-toggle"
+              className="guest-toggle"
               onClick={() => setExpanded(!expanded)}
             >
-              {expanded ? "▲ Ver menos" : `▼ Ver ${invitados.length - 3} más`}
+              {expanded ? t.less : `+ ${invitados.length - 3}`}
             </button>
           )}
         </>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -606,21 +626,9 @@ export default function Dashboard() {
   const [lang, setLang] = useState<"es" | "en">("es");
   const [mounted, setMounted] = useState(false);
   const [esAdmin, setEsAdmin] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const t = translations[lang];
-
-  useEffect(() => {
-    const svgFav = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="18" fill="#140d04"/><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(201,169,110,0.20)" stroke-width="1.2"/><rect x="13" y="14" width="6" height="36" rx="3" fill="#C9A96E"/><rect x="13" y="14" width="24" height="6" rx="3" fill="#C9A96E"/><rect x="13" y="29" width="18" height="6" rx="3" fill="#C9A96E"/><rect x="13" y="44" width="24" height="6" rx="3" fill="#C9A96E"/><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E8D5B0"/><circle cx="47" cy="46" r="2.5" fill="#C9A96E" opacity="0.55"/></svg>`;
-    const link = document.createElement("link");
-    link.rel = "icon";
-    link.type = "image/svg+xml";
-    link.href = `data:image/svg+xml,${encodeURIComponent(svgFav.trim())}`;
-    document.head.appendChild(link);
-    document.title = "Eventix — Dashboard";
-    setTimeout(() => setMounted(true), 50);
-    checkUser();
-    cargarEventos();
-  }, []);
 
   async function checkUser() {
     const { data } = await supabase.auth.getUser();
@@ -701,7 +709,7 @@ export default function Dashboard() {
   }
 
   async function eliminarEvento(id: string) {
-    if (!confirm(t.elimConfirm)) return;
+    if (!confirm(t.deleteConfirm)) return;
     setElim(id);
     await supabase.from("eventos").delete().eq("id", id);
     setEventos((prev) => prev.filter((e) => e.id !== id));
@@ -713,7 +721,21 @@ export default function Dashboard() {
     router.push("/");
   }
 
-  if (loading) return <LoadingScreen t={t} />;
+  useEffect(() => {
+    const svgFav = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="18" fill="#5B21B6"/><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(124,58,237,0.20)" stroke-width="1.2"/><rect x="13" y="14" width="6" height="36" rx="3" fill="#7C3AED"/><rect x="13" y="14" width="24" height="6" rx="3" fill="#7C3AED"/><rect x="13" y="29" width="18" height="6" rx="3" fill="#7C3AED"/><rect x="13" y="44" width="24" height="6" rx="3" fill="#7C3AED"/><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A"/><circle cx="47" cy="46" r="2.5" fill="#7C3AED" opacity="0.55"/></svg>`;
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.type = "image/svg+xml";
+    link.href = `data:image/svg+xml,${encodeURIComponent(svgFav.trim())}`;
+    document.head.appendChild(link);
+    document.title = "Eventix — Dashboard";
+    setTimeout(() => setMounted(true), 50);
+    checkUser();
+    cargarEventos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (loading) return <LoadingScreen />;
 
   const hoy = new Date();
   const totConf = Object.values(stats).reduce((s, v) => s + v.confirmados, 0);
@@ -727,309 +749,293 @@ export default function Dashboard() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
         :root{
-          --bg:#FAF6F0;--surface:#FFFFFF;--surface2:#F7F2EA;
-          --border:rgba(201,169,110,0.16);--border-mid:rgba(201,169,110,0.28);--border-hover:rgba(201,169,110,0.50);
-          --accent:#C9A96E;--accent2:#8B6914;--accent-light:#C9A96E;
-          --accent-soft:rgba(201,169,110,0.08);--accent-soft2:rgba(201,169,110,0.16);
-          --text:#1a0f04;--text2:#3d2b0f;--text3:#8B6914;--text4:#8B6914;
-          --danger:#DC2626;--danger-bg:#FEF2F2;--danger-border:#FECACA;
-          --success:#059669;--warn:#D97706;
-          --shadow-card:0 2px 16px rgba(26,15,4,0.09),0 1px 4px rgba(26,15,4,0.06);
-          --shadow-sm:0 2px 8px rgba(26,15,4,0.08);
-          --nav-h:58px;--nav-bg:rgba(250,246,240,0.96);
-          --radius:20px;--radius-sm:13px;
-          --transition:all 0.30s cubic-bezier(.4,0,.2,1);
+          --bg:#FAFBFF;
+          --paper:#FFFFFF;
+          --paper-soft:#F4F5FB;
+          --ink:#0F172A;
+          --ink-soft:#475569;
+          --ink-mute:#64748B;
+          --rule:#E5E7F0;
+          --rule-strong:#CBD5E1;
+          --gold:#7C3AED;
+          --gold-soft:rgba(124,58,237,0.08);
+          --gold-mid:rgba(124,58,237,0.16);
+          --danger:#EF4444;
+          --ok:#10B981;
+          --warn:#F59E0B;
+          --grad-primary:linear-gradient(135deg,#7C3AED 0%,#EC4899 100%);
+          --grad-secondary:linear-gradient(135deg,#3B82F6 0%,#06B6D4 100%);
+          --grad-warm:linear-gradient(135deg,#F97316 0%,#EC4899 100%);
+          --grad-success:linear-gradient(135deg,#10B981 0%,#06B6D4 100%);
+          --shadow-sm:0 2px 10px rgba(15,23,42,0.06);
+          --shadow-md:0 6px 20px -4px rgba(15,23,42,0.10),0 2px 6px rgba(15,23,42,0.05);
+          --shadow-btn:0 10px 30px -6px rgba(124,58,237,0.35),0 4px 12px rgba(236,72,153,0.15);
+          --serif:'Cormorant Garamond',Georgia,serif;
+          --sans:'DM Sans',-apple-system,sans-serif;
+          --ease:cubic-bezier(.4,0,.2,1);
         }
 
-        html,body{
-          font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
+        html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
-          overflow-x:hidden;width:100%;
-        }
+          overflow-x:hidden;width:100%}
 
+        /* Paper grain */
         body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-          background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
-          opacity:0.4}
+          background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+          opacity:.55;mix-blend-mode:multiply;}
 
-        /* ── Borde festivo de colores (top + bottom) ── */
-        .confetti-top, .confetti-bottom {
-          position: fixed; left: 0; right: 0; z-index: 9999;
-          height: 7px; pointer-events: none;
-          background: repeating-linear-gradient(90deg,
-            #F44336 0px,#F44336 12px, #E91E63 12px,#E91E63 24px,
-            #9C27B0 24px,#9C27B0 36px, #3F51B5 36px,#3F51B5 48px,
-            #2196F3 48px,#2196F3 60px, #00BCD4 60px,#00BCD4 72px,
-            #4CAF50 72px,#4CAF50 84px, #8BC34A 84px,#8BC34A 96px,
-            #FFEB3B 96px,#FFEB3B 108px, #FF9800 108px,#FF9800 120px,
-            #FF5722 120px,#FF5722 132px, #F44336 132px,#F44336 144px
-          );
-        }
-        .confetti-top { top: 0; }
-        .confetti-bottom { bottom: 0; }
-
-        .page{min-height:100vh;min-height:100dvh;background:var(--bg);position:relative;overflow-x:hidden}
-
-        .glow{position:fixed;pointer-events:none;z-index:0;border-radius:50%;filter:blur(90px)}
-        .glow-1{width:340px;height:340px;top:-100px;right:-70px;background:radial-gradient(circle,rgba(13,148,136,0.12) 0%,transparent 70%);animation:gd1 9s ease-in-out infinite}
-        .glow-2{width:280px;height:280px;bottom:80px;left:-90px;background:radial-gradient(circle,rgba(94,234,212,0.08) 0%,transparent 70%);animation:gd2 11s ease-in-out infinite}
-        @keyframes gd1{0%,100%{transform:translate(0,0)}40%{transform:translate(-18px,28px)}70%{transform:translate(14px,-18px)}}
-        @keyframes gd2{0%,100%{transform:translate(0,0)}35%{transform:translate(22px,-30px)}65%{transform:translate(-12px,18px)}}
-
-        .particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-        .particle{position:absolute;border-radius:50%;background:var(--accent-light);opacity:0;animation:pf linear infinite}
-        .particle-1{width:3px;height:3px;left:10%;animation-duration:14s;animation-delay:0s}
-        .particle-2{width:2px;height:2px;left:30%;animation-duration:17s;animation-delay:3s}
-        .particle-3{width:4px;height:4px;left:52%;animation-duration:12s;animation-delay:1s}
-        .particle-4{width:2px;height:2px;left:68%;animation-duration:15s;animation-delay:4s}
-        .particle-5{width:3px;height:3px;left:80%;animation-duration:13s;animation-delay:.5s}
-        .particle-6{width:2px;height:2px;left:90%;animation-duration:18s;animation-delay:5s}
-        .particle-7{width:4px;height:4px;left:22%;animation-duration:16s;animation-delay:2s}
-        .particle-8{width:2px;height:2px;left:44%;animation-duration:11s;animation-delay:2.5s}
-        @keyframes pf{0%{transform:translateY(105vh);opacity:0}5%{opacity:.1}90%{opacity:.1}100%{transform:translateY(-8vh) translateX(20px);opacity:0}}
+        .page{min-height:100dvh;position:relative;z-index:1}
 
         /* ── Nav ── */
-        .nav{
-          position:sticky;top:7px;z-index:30;height:var(--nav-h);
-          padding:0 12px;
-          padding-left:max(12px, env(safe-area-inset-left));
-          padding-right:max(12px, env(safe-area-inset-right));
-          display:flex;align-items:center;justify-content:space-between;gap:8px;
-          background:var(--nav-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-          border-bottom:1px solid var(--border);box-shadow:0 1px 12px rgba(13,148,136,0.07);
-        }
-        .nav-brand{display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:0;min-width:0}
-        .nav-brand-text{min-width:0}
-        .nav-brand-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;letter-spacing:-.5px;line-height:1;color:var(--text);white-space:nowrap}
-        .nav-brand-name span{color:var(--accent)}
-        .nav-brand-sub{font-size:9.5px;color:var(--text3);font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
-        .nav-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
-        .ctrl-btn{height:32px;border-radius:100px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--transition);box-shadow:var(--shadow-sm);color:var(--text2);font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:0 11px;font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-        .ctrl-btn:hover{background:var(--accent-soft2);color:var(--accent);border-color:var(--border-hover)}
-        .btn-new{display:flex;align-items:center;gap:5px;background:var(--accent);color:#fff;text-decoration:none;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;box-shadow:0 3px 14px rgba(13,148,136,0.28);transition:transform .2s,box-shadow .2s;border:none;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:34px}
-        .btn-new:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,148,136,0.40)}
-        .btn-salir{display:flex;align-items:center;gap:5px;background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);border-radius:10px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;transition:var(--transition);font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:34px}
-        .btn-salir:hover{opacity:.75}
-        .btn-salir-text{display:none}
-        @media(min-width:420px){.btn-salir-text{display:inline}}
+        .nav{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;
+          height:60px;
+          padding-left:max(20px, env(safe-area-inset-left));
+          padding-right:max(20px, env(safe-area-inset-right));
+          background:rgba(247,241,231,0.85);
+          backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+          border-bottom:1px solid var(--rule);}
+        .nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
+        .nav-brand-name{font-family:var(--serif);font-size:22px;font-weight:500;letter-spacing:2px;line-height:1;color:var(--ink);font-style:italic}
+        .nav-actions{display:flex;align-items:center;gap:6px}
+        .ctrl{height:34px;min-width:40px;padding:0 12px;border:1px solid var(--rule-strong);border-radius:100px;background:transparent;color:var(--ink-soft);font-family:var(--sans);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;font-weight:600;cursor:pointer;transition:all .25s var(--ease);display:flex;align-items:center;justify-content:center;gap:5px;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+        .ctrl:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+        .ctrl-danger:hover{background:var(--danger);border-color:var(--danger);color:var(--paper)}
 
         /* ── Content ── */
-        .content{max-width:540px;margin:0 auto;padding:16px 12px max(56px, calc(env(safe-area-inset-bottom) + 24px));position:relative;z-index:1}
-        @media(min-width:400px){.content{padding-left:16px;padding-right:16px}}
+        .content{max-width:640px;margin:0 auto;padding:32px 20px max(96px, calc(env(safe-area-inset-bottom) + 60px));position:relative;z-index:1}
 
         /* ── Greeting ── */
-        .greeting{margin-bottom:16px;padding:16px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);border-radius:var(--radius);box-shadow:0 4px 20px rgba(13,148,136,0.26);position:relative;overflow:hidden}
-        .greeting::after{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,0.10) 0%,transparent 55%);pointer-events:none}
-        .greeting-name{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;color:white;letter-spacing:-.4px;line-height:1.2;margin-bottom:2px}
-        .greeting-sub{font-size:12px;color:rgba(255,255,255,0.72);font-weight:500}
+        .greeting{margin-bottom:28px;display:flex;flex-direction:column;gap:6px}
+        .greeting-row{display:inline-flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+        .greeting-hello{font-family:var(--sans);font-size:clamp(22px,4.5vw,28px);font-weight:700;color:var(--ink);line-height:1.15;letter-spacing:-.5px}
+        .greeting-name{font-family:var(--sans);font-size:clamp(22px,4.5vw,28px);font-weight:700;color:var(--ink);line-height:1.15;letter-spacing:-.5px;word-break:break-word;max-width:100%}
+        .greeting-name.is-email{
+          font-size:clamp(15px,3.2vw,18px);
+          font-weight:600;
+          color:var(--ink-soft);
+          letter-spacing:-.2px;
+          word-break:break-all;
+        }
+        .greeting-name em{font-style:normal}
+        .greeting-sub{font-family:var(--sans);font-size:14px;color:var(--ink-soft);line-height:1.5;font-weight:400;max-width:42ch;margin-top:4px}
 
-        /* ── Global stats ── */
-        .global-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px}
-        @media(max-width:320px){.global-stats{grid-template-columns:repeat(2,1fr)}}
-        .stat-pill{background:var(--surface);border:1.5px solid var(--border);border-radius:15px;padding:11px 5px 9px;text-align:center;transition:var(--transition);box-shadow:var(--shadow-card)}
-        .stat-pill:hover{border-color:var(--border-mid);transform:translateY(-1px)}
-        .stat-pill-icon{color:var(--accent);display:flex;justify-content:center;margin-bottom:5px}
-        .stat-pill-val{font-weight:800;font-size:20px;color:var(--text);line-height:1;letter-spacing:-.5px}
-        .stat-pill-label{font-size:8.5px;color:var(--text3);font-weight:700;margin-top:2px;letter-spacing:.4px;text-transform:uppercase}
+        /* ── Global stats line ── */
+        .stats-line{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:28px 0 36px;padding:22px 0;border-top:1px solid var(--rule-strong);border-bottom:1px solid var(--rule-strong)}
+        .stat-chunk{display:flex;flex-direction:column;gap:4px;text-align:left}
+        .stat-chunk-val{font-family:var(--serif);font-size:clamp(24px,5.2vw,28px);font-weight:500;color:var(--ink);line-height:1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+        .stat-chunk-label{font-family:var(--sans);font-size:9.5px;font-weight:600;color:var(--ink-mute);letter-spacing:1.3px;text-transform:uppercase}
 
-        /* ── Total attendees ── */
-        .total-banner{display:flex;align-items:center;gap:12px;background:var(--surface);border:1.5px solid var(--border-mid);border-radius:16px;padding:13px 16px;margin-bottom:14px;box-shadow:var(--shadow-card)}
-        .total-banner-icon{width:40px;height:40px;flex-shrink:0;background:var(--accent-soft2);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--accent);border:1px solid var(--border-mid)}
-        .total-banner-val{font-weight:800;font-size:26px;color:var(--text);letter-spacing:-1px;line-height:1}
-        .total-banner-label{font-size:12px;color:var(--text3);font-weight:600;margin-top:1px}
+        /* ── CTA outlined with ink fill ── */
+        .cta{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;
+          background:transparent;color:var(--ink);border:1px solid var(--ink);
+          padding:16px 24px;font-family:var(--sans);font-size:11.5px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;
+          transition:color .3s var(--ease);-webkit-tap-highlight-color:transparent;min-height:52px;
+          position:relative;overflow:hidden;width:100%;}
+        .cta::before{content:'';position:absolute;inset:0;background:var(--ink);transform:translateY(101%);transition:transform .35s var(--ease);z-index:0}
+        .cta:hover::before{transform:translateY(0)}
+        .cta > *{position:relative;z-index:1}
+        .cta:hover{color:var(--paper)}
+        .cta-inline{display:inline-flex;width:auto}
+        .cta-wrap{margin-bottom:48px}
 
-        /* ── CTA ── */
-        .btn-cta{display:flex;align-items:center;justify-content:center;gap:9px;background:var(--accent);color:#fff;text-decoration:none;border-radius:var(--radius);padding:15px 20px;font-size:14px;font-weight:800;margin-bottom:18px;box-shadow:0 4px 20px rgba(13,148,136,0.30);letter-spacing:-.2px;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:52px}
-        .btn-cta::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.16) 50%,transparent 62%);background-size:200% 100%;animation:shimmer 3.5s ease-in-out infinite}
-        .btn-cta:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(13,148,136,0.42)}
+        /* ── Events section header ── */
+        .events-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--rule-strong)}
+        .events-head-title{font-family:var(--serif);font-style:italic;font-size:26px;font-weight:500;color:var(--ink);letter-spacing:.3px;line-height:1}
+        .events-head-count{font-family:var(--serif);font-size:14px;color:var(--ink-mute);font-style:italic;letter-spacing:.3px}
+
+        /* ── Event list ── */
+        .event-list{display:flex;flex-direction:column;gap:40px}
+
+        /* ── Event card — paper / invitation ── */
+        .event-card{background:var(--paper);border:1px solid var(--rule);border-radius:2px;overflow:hidden;
+          box-shadow:0 1px 2px rgba(15,23,42,.04),0 18px 48px -24px rgba(15,23,42,.28);
+          transition:box-shadow .35s var(--ease),transform .35s var(--ease);}
+        .event-card:hover{box-shadow:0 2px 4px rgba(15,23,42,.05),0 22px 56px -20px rgba(15,23,42,.34);transform:translateY(-2px)}
+
+        /* Cover */
+        .event-cover{position:relative;aspect-ratio:3/2;width:100%;overflow:hidden;background:var(--paper-soft);display:flex;align-items:center;justify-content:center;color:var(--gold)}
+        .event-cover img{width:100%;height:100%;object-fit:cover;display:block}
+        .event-cover::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(15,23,42,.12) 100%);pointer-events:none}
+        .event-chip{position:absolute;top:14px;left:14px;z-index:2;display:inline-flex;align-items:center;gap:5px;
+          padding:5px 12px;background:rgba(253,250,244,.94);
+          backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+          font-family:var(--serif);font-style:italic;font-size:13px;font-weight:500;color:var(--ink-soft);letter-spacing:.3px;
+          border-radius:100px;border:1px solid var(--rule);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+        .event-chip.chip-tomorrow{color:var(--ok);border-color:rgba(63,122,78,.25)}
+        .event-chip.chip-soon{color:var(--warn);border-color:rgba(160,115,43,.25)}
+        .event-chip.chip-past{color:var(--ink-mute);opacity:.85}
+
+        /* Event header text */
+        .event-body{padding:26px 22px 22px}
+        .event-type{font-family:var(--serif);font-style:italic;font-size:12px;font-weight:500;color:var(--gold);
+          letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;display:block}
+        .event-name{font-family:var(--serif);font-size:clamp(26px,7vw,32px);font-weight:500;color:var(--ink);
+          line-height:1.1;letter-spacing:-.5px;margin-bottom:16px;word-wrap:break-word}
+        .event-meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-family:var(--sans);font-size:11px;font-weight:600;
+          color:var(--ink-soft);letter-spacing:1.1px;text-transform:uppercase}
+        .event-meta-item{display:inline-flex;align-items:center;gap:6px}
+        .event-meta-item svg{color:var(--gold);flex-shrink:0}
+        .event-meta-dot{color:var(--rule-strong);margin:0 2px}
+
+        /* Progress */
+        .event-progress{margin-top:24px;padding-top:20px;border-top:1px solid var(--rule)}
+        .progress-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:8px}
+        .progress-title{font-family:var(--serif);font-style:italic;font-size:16px;color:var(--ink);font-weight:500}
+        .progress-nums{font-family:var(--serif);font-size:17px;color:var(--ink-soft);font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+        .progress-nums em{font-style:italic;color:var(--gold);font-weight:500}
+        .progress-pct{font-family:var(--serif);font-style:italic;font-size:12px;color:var(--ink-mute);letter-spacing:1.2px;text-transform:uppercase;margin-top:6px;display:block}
+        .progress-track{height:2px;background:var(--rule);overflow:hidden;border-radius:99px}
+        .progress-fill{height:100%;background:linear-gradient(90deg,var(--gold) 0%,#D4B082 100%);transition:width .9s var(--ease);border-radius:99px}
+
+        /* Primary quick links — 4 */
+        .primary-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--paper)}
+        .pa-link{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 4px;text-decoration:none;color:var(--ink-soft);font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;border-right:1px solid var(--rule);transition:all .2s var(--ease);background:transparent;position:relative;-webkit-tap-highlight-color:transparent;min-height:64px}
+        .pa-link:last-child{border-right:none}
+        .pa-link:hover{background:var(--paper-soft);color:var(--ink)}
+        .pa-link svg{color:var(--gold);transition:transform .2s var(--ease)}
+        .pa-link:hover svg{transform:scale(1.08)}
+        .pa-badge{position:absolute;top:10px;right:10px;width:5px;height:5px;background:var(--gold);border-radius:50%}
+
+        /* Expand / details */
+        .expand-wrap{padding:0}
+        .expand-btn{width:100%;background:transparent;border:none;padding:14px 22px;font-family:var(--serif);font-style:italic;font-size:14.5px;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;-webkit-tap-highlight-color:transparent;transition:color .2s;letter-spacing:.2px;border-bottom:1px solid transparent}
+        .expand-btn:hover{color:var(--gold)}
+        .expand-btn svg{transition:transform .3s var(--ease)}
+        .expand-btn.open svg{transform:rotate(180deg)}
+        .expand-btn.open{border-bottom-color:var(--rule)}
+
+        /* Details panel */
+        .details{padding:20px 22px 22px;background:var(--paper);animation:fadeSlide .35s var(--ease)}
+        @keyframes fadeSlide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+        .details-section{margin-bottom:26px}
+        .details-section:last-child{margin-bottom:0}
+        .details-head{font-family:var(--serif);font-style:italic;font-size:13px;color:var(--ink-mute);letter-spacing:2.6px;text-transform:uppercase;margin-bottom:14px;font-weight:500;display:flex;align-items:center;gap:10px}
+        .details-head::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+        /* Stats line in details */
+        .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 14px}
+        .stat-row-item{display:flex;flex-direction:column;gap:0}
+        .stat-row-val{font-family:var(--serif);font-size:24px;font-weight:500;color:var(--ink);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+        .stat-row-val.sv-pend{color:var(--warn)}
+        .stat-row-val.sv-decl{color:var(--danger)}
+        .stat-row-val.sv-ok{color:var(--ok)}
+        .stat-row-label{font-family:var(--sans);font-size:9.5px;color:var(--ink-mute);letter-spacing:1.3px;text-transform:uppercase;font-weight:600;margin-top:5px}
+
+        /* Secondary actions */
+        .secondary-actions{display:flex;flex-wrap:wrap;gap:16px 20px}
+        .sa-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink-soft);text-decoration:none;font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;padding-bottom:3px;border-bottom:1px solid var(--rule-strong);transition:all .2s var(--ease)}
+        .sa-link:hover{color:var(--ink);border-bottom-color:var(--ink)}
+        .sa-link svg{color:var(--gold)}
+
+        /* Manage / Delete */
+        .card-actions{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-top:1px solid var(--rule);background:var(--paper-soft)}
+        .btn-manage{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);
+          font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+          padding-bottom:4px;border-bottom:1.5px solid var(--ink);transition:all .25s var(--ease);-webkit-tap-highlight-color:transparent;min-height:34px}
+        .btn-manage:hover{color:var(--gold);border-color:var(--gold)}
+        .btn-manage svg{transition:transform .25s var(--ease);display:inline-block}
+        .btn-manage:hover svg{transform:translateX(3px)}
+        .btn-del{background:none;border:none;padding:8px 4px;cursor:pointer;color:var(--ink-mute);transition:color .2s var(--ease);display:flex;align-items:center;gap:5px;font-family:var(--sans);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;-webkit-tap-highlight-color:transparent;min-height:34px}
+        .btn-del:hover:not(:disabled){color:var(--danger)}
+        .btn-del:disabled{opacity:.35;cursor:not-allowed}
+
+        /* Guest list inside details */
+        .guest-section{margin:0}
+        .guest-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+        .guest-head-title{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--ink);font-weight:500}
+        .guest-head-title em{color:var(--gold);font-style:italic;font-weight:500;letter-spacing:.3px}
+        .guest-head-all{font-family:var(--sans);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;font-weight:600;color:var(--ink-mute);text-decoration:none;border-bottom:1px solid var(--rule-strong);padding-bottom:2px;transition:all .2s}
+        .guest-head-all:hover{color:var(--ink);border-color:var(--ink)}
+        .guest-skeleton{height:50px;background:linear-gradient(90deg,var(--paper-soft) 0%,var(--paper) 50%,var(--paper-soft) 100%);background-size:200% 100%;animation:shimmer 1.6s infinite;border-radius:2px}
         @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
+        .guest-empty{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--ink-mute);text-align:center;padding:18px 0}
+        .guest-list{list-style:none;display:flex;flex-direction:column}
+        .guest-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--rule)}
+        .guest-row:last-child{border-bottom:none}
+        .num-badge{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums;min-width:36px;font-weight:500;letter-spacing:.3px}
+        .guest-avatar{width:32px;height:32px;border-radius:50%;background:var(--paper-soft);border:1px solid var(--gold-mid);color:var(--ink);font-family:var(--serif);font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .guest-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+        .guest-name{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .guest-tel{font-family:var(--sans);font-size:10.5px;color:var(--ink-mute)}
+        .state-badge{font-family:var(--sans);font-size:8.5px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;padding:3px 8px;border-radius:100px;border:1px solid transparent;flex-shrink:0}
+        .state-conf{background:transparent;color:var(--ok);border-color:rgba(63,122,78,.28)}
+        .state-pend{background:transparent;color:var(--warn);border-color:rgba(160,115,43,.28)}
+        .state-decl{background:transparent;color:var(--danger);border-color:rgba(155,44,44,.24)}
+        .guest-actions{display:flex;gap:4px;flex-shrink:0}
+        .guest-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--rule-strong);background:var(--paper);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s var(--ease);-webkit-tap-highlight-color:transparent}
+        .guest-btn:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+        .guest-btn-wa{color:#128C7E;border-color:rgba(18,140,126,.3)}
+        .guest-btn-wa:hover{background:#128C7E;color:var(--paper);border-color:#128C7E}
+        .guest-btn-ok{color:var(--ok);border-color:rgba(63,122,78,.4);font-size:14px;font-weight:700}
+        .guest-toggle{width:100%;margin-top:10px;padding:10px;background:transparent;border:1px dashed var(--rule-strong);cursor:pointer;font-family:var(--serif);font-style:italic;font-size:13px;color:var(--ink-soft);transition:all .2s var(--ease);-webkit-tap-highlight-color:transparent;letter-spacing:.3px;border-radius:2px}
+        .guest-toggle:hover{background:var(--paper-soft);border-color:var(--ink-mute);color:var(--ink)}
 
-        /* ── Empty ── */
-        .empty{background:var(--surface);border-radius:var(--radius);padding:48px 24px;text-align:center;border:1.5px dashed var(--border-mid);box-shadow:var(--shadow-card)}
-        .empty-icon{width:54px;height:54px;background:var(--accent-soft);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(--accent);border:1px solid var(--border-mid)}
-        .empty-title{font-weight:800;color:var(--text);font-size:16px;margin-bottom:5px}
-        .empty-sub{color:var(--text3);font-size:13px;line-height:1.5}
+        /* Empty state */
+        .empty{text-align:center;padding:60px 28px;border:1px solid var(--rule);border-radius:2px;background:var(--paper);margin-top:8px;box-shadow:0 1px 3px rgba(15,23,42,.03)}
+        .empty-orn{display:flex;justify-content:center;margin-bottom:26px;color:var(--gold)}
+        .empty-title{font-family:var(--serif);font-style:italic;font-size:26px;font-weight:500;color:var(--ink);line-height:1.25;margin-bottom:12px;max-width:22ch;margin-left:auto;margin-right:auto;letter-spacing:-.3px}
+        .empty-sub{font-family:var(--sans);font-size:14px;color:var(--ink-mute);line-height:1.65;max-width:38ch;margin:0 auto 28px;font-weight:400}
 
-        /* ── Event cards ── */
-        .event-list{display:flex;flex-direction:column;gap:13px}
-        .event-card{background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1.5px solid var(--border);box-shadow:var(--shadow-card);transition:var(--transition)}
-        .event-card:hover{box-shadow:0 8px 28px rgba(13,148,136,0.13);transform:translateY(-1px);border-color:var(--border-mid)}
-        .event-strip{height:4px;background:linear-gradient(90deg,var(--accent),var(--accent-light))}
-        .event-header{padding:13px 14px 11px}
-        .event-meta{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-        .event-badge{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;color:var(--accent2);background:var(--accent-soft);border-radius:7px;padding:3px 9px;letter-spacing:.3px;text-transform:uppercase;margin-bottom:5px;border:1px solid var(--border-mid)}
-        .badge-past{color:var(--text3)!important;background:var(--surface2)!important;border-color:var(--border)!important}
-        .badge-soon{color:var(--warn)!important;background:rgba(217,119,6,0.08)!important;border-color:rgba(217,119,6,0.25)!important}
-        .badge-tomorrow{color:var(--success)!important;background:rgba(5,150,105,0.08)!important;border-color:rgba(5,150,105,0.25)!important}
-        .event-name{font-weight:800;font-size:16px;color:var(--text);line-height:1.2;letter-spacing:-.3px;margin-bottom:6px}
-        .event-info{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-        .event-info-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);font-weight:500}
-        .event-thumb{width:46px;height:46px;border-radius:12px;overflow:hidden;flex-shrink:0;border:2px solid var(--border-mid)}
-        .event-thumb img{width:100%;height:100%;object-fit:cover}
+        /* Footer */
+        .footer-line{display:flex;justify-content:center;margin-top:60px;color:var(--gold);opacity:.5}
+        .footer-admin{display:block;text-align:center;margin-top:24px;font-family:var(--sans);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--ink-mute);text-decoration:none;font-weight:600;transition:color .2s}
+        .footer-admin:hover{color:var(--ink)}
+        .footer-copy{text-align:center;margin-top:18px;font-family:var(--serif);font-style:italic;font-size:13px;color:var(--ink-mute);opacity:.7;letter-spacing:1px}
 
-        .stats-body{padding:0 14px 14px}
-        .stats-divider{height:1px;background:var(--border);margin:0 0 11px}
-        .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:11px}
-        @media(max-width:330px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
-        .stat-box{background:var(--surface3);border-radius:10px;padding:8px 3px;text-align:center;border:1.5px solid var(--border);transition:var(--transition)}
-        .stat-box:hover{border-color:var(--border-mid)}
-        .stat-box-val{font-weight:800;font-size:16px;color:var(--text);line-height:1;letter-spacing:-.3px}
-        .stat-box-label{font-size:8px;color:var(--text3);font-weight:700;margin-top:2px;letter-spacing:.3px;text-transform:uppercase}
-        .stat-conf .stat-box-val{color:var(--accent)}
-        .stat-pend .stat-box-val{color:var(--warn)}
-        .stat-decl .stat-box-val{color:var(--danger)}
-        .stat-fotos .stat-box-val{color:var(--accent2)}
-        .stat-deseos .stat-box-val{color:#7C3AED}
+        /* Animations */
+        .anim-in{opacity:0;transform:translateY(14px)}
+        .mounted .anim-in{animation:mountIn .65s cubic-bezier(.22,1,.36,1) both}
+        .mounted .d1{animation-delay:.04s}
+        .mounted .d2{animation-delay:.12s}
+        .mounted .d3{animation-delay:.20s}
+        .mounted .d4{animation-delay:.28s}
+        @keyframes mountIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
-        .event-personas-row{display:flex;align-items:center;justify-content:space-between;background:var(--accent-soft);border:1px solid var(--border-mid);border-radius:11px;padding:8px 13px;margin-bottom:10px}
-        .event-personas-label{font-size:12px;color:var(--text2);font-weight:600;display:flex;align-items:center;gap:6px}
-        .event-personas-val{font-size:17px;font-weight:800;color:var(--accent);letter-spacing:-.5px}
-
-        .progress-row{display:flex;justify-content:space-between;margin-bottom:5px}
-        .progress-label{font-size:11.5px;color:var(--text2);font-weight:600}
-        .progress-value{font-size:11.5px;color:var(--accent);font-weight:700}
-        .progress-track{background:var(--accent-soft);border-radius:99px;height:6px;overflow:hidden;border:1px solid var(--border)}
-        .progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-light));transition:width .7s ease}
-
-        /* ── Mini invitados ── */
-        .mini-inv-wrap{background:var(--surface3);border:1.5px solid var(--border-mid);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:10px}
-        .mini-inv-header{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-bottom:1px solid var(--border)}
-        .mini-inv-title{font-size:10px;font-weight:800;color:var(--accent2);text-transform:uppercase;letter-spacing:.8px}
-        .mini-inv-count{background:var(--accent);color:#fff;font-size:9px;font-weight:800;border-radius:99px;padding:1px 7px;min-width:20px;text-align:center}
-        .mini-inv-ver{font-size:10px;font-weight:700;color:var(--accent);text-decoration:none;letter-spacing:.2px}
-        .mini-inv-ver:hover{text-decoration:underline}
-        .mini-inv-empty{font-size:12px;color:var(--text3);text-align:center;padding:14px;font-style:italic}
-        .mini-inv-list{display:flex;flex-direction:column}
-
-        .mini-inv-row{
-          display:flex;align-items:center;gap:8px;
-          padding:8px 12px;border-bottom:1px solid var(--border);
-          transition:background .15s;
+        /* Smaller phones */
+        @media (max-width: 380px){
+          .content{padding:24px 16px 80px}
+          .event-body{padding:22px 18px 18px}
+          .expand-btn{padding:14px 18px}
+          .details{padding:20px 18px}
+          .card-actions{padding:14px 18px}
+          .stats-line{grid-template-columns:repeat(2,1fr);gap:14px 16px}
+          .stat-row{grid-template-columns:repeat(2,1fr);gap:14px 12px}
         }
-        .mini-inv-row:last-child{border-bottom:none}
-        .mini-inv-row:hover{background:rgba(13,148,136,0.04)}
-
-        /* Número de orden */
-        .num-badge{
-          flex-shrink:0;
-          font-size:9.5px;font-weight:800;
-          color:var(--accent2);
-          background:var(--accent-soft2);
-          border:1px solid var(--border-mid);
-          border-radius:6px;
-          padding:2px 6px;
-          letter-spacing:.3px;
-          font-variant-numeric:tabular-nums;
-          min-width:38px;
-          text-align:center;
+        @media (max-width: 340px){
+          .primary-actions{grid-template-columns:repeat(2,1fr)}
+          .pa-link:nth-child(1),.pa-link:nth-child(2){border-bottom:1px solid var(--rule)}
+          .pa-link:nth-child(2){border-right:none}
+          .pa-link:nth-child(4){border-right:none}
         }
-
-        .mini-inv-avatar{
-          width:28px;height:28px;border-radius:50%;
-          background:linear-gradient(135deg,var(--accent),var(--accent2));
-          color:#fff;font-size:12px;font-weight:800;
-          display:flex;align-items:center;justify-content:center;
-          flex-shrink:0;
-        }
-        .mini-inv-info{flex:1;min-width:0}
-        .mini-inv-nombre{display:block;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .mini-inv-tel{display:block;font-size:10px;color:var(--text3);margin-top:1px}
-
-        /* Estado badges */
-        .estado-badge{flex-shrink:0;font-size:9px;font-weight:700;border-radius:99px;padding:2px 8px;border:1px solid transparent}
-        .badge-conf{background:rgba(5,150,105,0.10);color:var(--success);border-color:rgba(5,150,105,0.22)}
-        .badge-pend{background:rgba(217,119,6,0.08);color:var(--warn);border-color:rgba(217,119,6,0.22)}
-        .badge-decl{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-border)}
-
-        /* Micro action buttons */
-        .mini-inv-actions{display:flex;gap:4px;flex-shrink:0}
-        .mini-btn{
-          width:28px;height:28px;border-radius:8px;border:1px solid var(--border);
-          display:flex;align-items:center;justify-content:center;
-          cursor:pointer;transition:var(--transition);font-size:10px;font-weight:800;
-          -webkit-tap-highlight-color:transparent;
-        }
-        .mini-btn-wa{background:#16a34a;color:#fff;border-color:#16a34a}
-        .mini-btn-wa:hover{background:#15803d}
-        .mini-btn-copy{background:var(--surface);color:var(--accent)}
-        .mini-btn-copy:hover{background:var(--accent-soft2)}
-        .mini-btn-ok{background:rgba(5,150,105,0.12);color:var(--success);border-color:rgba(5,150,105,0.22)}
-
-        .mini-inv-toggle{
-          width:100%;background:none;border:none;border-top:1px solid var(--border);
-          padding:8px;font-size:11px;font-weight:700;color:var(--accent2);
-          cursor:pointer;text-align:center;transition:background .15s;
-          font-family:'DM Sans',sans-serif;
-        }
-        .mini-inv-toggle:hover{background:var(--accent-soft)}
-
-        /* ── Quick links ── */
-        .quick-links{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 9px}
-        .quick-link{position:relative;display:flex;align-items:center;gap:7px;background:var(--surface2);color:var(--text2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:11.5px;font-weight:700;text-decoration:none;transition:var(--transition);-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:42px}
-        .quick-link:hover{background:var(--accent-soft2);color:var(--accent);border-color:var(--border-hover)}
-        .quick-link-icon{color:var(--accent);flex-shrink:0}
-        .quick-link-badge{position:absolute;top:-5px;right:-5px;width:15px;height:15px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:800;border:2px solid var(--surface)}
-
-        /* ── Card actions ── */
-        .card-actions{display:flex;gap:6px}
-        .btn-manage{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--accent-soft2);color:var(--accent);border:1.5px solid var(--border-mid);border-radius:var(--radius-sm);padding:11px;font-size:12px;font-weight:700;text-decoration:none;transition:var(--transition);-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:42px}
-        .btn-manage:hover{background:var(--accent);color:white;border-color:var(--accent)}
-        .btn-delete{display:flex;align-items:center;gap:5px;background:var(--danger-bg);color:var(--danger);border:1.5px solid var(--danger-border);border-radius:var(--radius-sm);padding:11px 14px;font-size:12px;font-weight:700;cursor:pointer;transition:var(--transition);font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:42px}
-        .btn-delete:hover{background:var(--danger);color:white;border-color:var(--danger)}
-        .btn-delete:disabled{opacity:.4;cursor:not-allowed}
-
-        .footer-copy{text-align:center;margin-top:32px;font-size:10px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--text4);opacity:.7}
-
-        .anim-in{opacity:0;transform:translateY(16px)}
-        .mounted .anim-in{animation:mountIn .52s cubic-bezier(.22,1,.36,1) both}
-        .mounted .anim-d1{animation-delay:.06s}
-        .mounted .anim-d2{animation-delay:.14s}
-        .mounted .anim-d3{animation-delay:.22s}
-        .mounted .anim-d4{animation-delay:.30s}
-        @keyframes mountIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes spin{to{transform:rotate(360deg)}}
       `}</style>
 
       <div className={`page${mounted ? " mounted" : ""}`}>
-        <div className="confetti-top" />
-        <div className="confetti-bottom" />
-        <div className="glow glow-1" />
-        <div className="glow glow-2" />
-        <Particles />
-
         {/* ── NAV ── */}
         <nav className="nav">
           <Link href="/dashboard" className="nav-brand">
-            <AppLogo size={34} />
-            <div className="nav-brand-text">
-              <div className="nav-brand-name">
-                Event<span>ix</span>
-              </div>
-              {nombre && (
-                <div className="nav-brand-sub">
-                  {t.hello}, {nombre.split(" ")[0]}
-                </div>
-              )}
-            </div>
+            <AppLogo size={32} />
+            <div className="nav-brand-name">Eventix</div>
           </Link>
           <div className="nav-actions">
             <button
-              className="ctrl-btn"
+              className="ctrl"
               onClick={() => setLang(lang === "es" ? "en" : "es")}
               title="Toggle language"
+              aria-label="Toggle language"
             >
               {lang === "es" ? "EN" : "ES"}
             </button>
             <button
+              className="ctrl ctrl-danger"
               onClick={cerrarSesion}
-              className="btn-salir"
-              title={t.salir}
+              title={t.signOut}
+              aria-label={t.signOut}
             >
               <Icon.logout />
-              <span className="btn-salir-text">{t.salir}</span>
             </button>
           </div>
         </nav>
@@ -1037,312 +1043,374 @@ export default function Dashboard() {
         {/* ── CONTENT ── */}
         <div className="content">
           {/* Greeting */}
-          {nombre && (
-            <div className="greeting anim-in anim-d1">
-              <div className="greeting-name">
-                {t.hello}, {nombre.split(" ")[0]} 👋
-              </div>
-              <div className="greeting-sub">
-                {lang === "es"
-                  ? `Tienes ${eventos.length} evento${eventos.length !== 1 ? "s" : ""} registrado${eventos.length !== 1 ? "s" : ""}`
-                  : `You have ${eventos.length} registered event${eventos.length !== 1 ? "s" : ""}`}
-              </div>
-            </div>
-          )}
-
-          {/* Global stats */}
-          {eventos.length > 0 && (
-            <div className="global-stats anim-in anim-d2">
-              {[
-                {
-                  val: eventos.length,
-                  label: t.eventos,
-                  icon: <Icon.calendar />,
-                },
-                { val: totConf, label: t.confirmados, icon: <Icon.users /> },
-                { val: totFotos, label: t.fotos, icon: <Icon.camera /> },
-                { val: totDes, label: t.deseos, icon: <Icon.heart /> },
-              ].map((s) => (
-                <div key={s.label} className="stat-pill">
-                  <div className="stat-pill-icon">{s.icon}</div>
-                  <div className="stat-pill-val">{s.val}</div>
-                  <div className="stat-pill-label">{s.label}</div>
+          {nombre && (() => {
+            const looksLikeEmail = nombre.includes("@");
+            const displayName = looksLikeEmail
+              ? nombre.split("@")[0]
+              : nombre.split(" ")[0];
+            const prettyName = looksLikeEmail
+              ? displayName
+                  .replace(/[._-]+/g, " ")
+                  .replace(/\d+/g, "")
+                  .trim()
+              : displayName;
+            const finalName = prettyName || displayName;
+            return (
+              <header className="greeting anim-in d1">
+                <div className="greeting-row">
+                  <span className="greeting-hello">{t.hello},</span>
+                  <span
+                    className={`greeting-name${looksLikeEmail && finalName === displayName ? " is-email" : ""}`}
+                  >
+                    {finalName}
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
+                <p className="greeting-sub">
+                  {lang === "es"
+                    ? `${t.youHave} ${eventos.length} ${eventos.length === 1 ? t.eventSingular : t.events} ${eventos.length === 1 ? t.registered : t.registeredPlural} en tu agenda.`
+                    : `${t.youHave} ${eventos.length} ${eventos.length === 1 ? t.eventSingular : t.events} ${t.registered} on your calendar.`}
+                </p>
+              </header>
+            );
+          })()}
 
-          {/* Total attendees */}
+          {/* Global stats — editorial row */}
           {eventos.length > 0 && (
-            <div className="total-banner anim-in anim-d2">
-              <div className="total-banner-icon">
-                <Icon.person />
+            <div className="stats-line anim-in d2">
+              <div className="stat-chunk">
+                <span className="stat-chunk-val">{totPersonas}</span>
+                <span className="stat-chunk-label">{t.totalAttendees}</span>
               </div>
-              <div>
-                <div className="total-banner-val">{totPersonas}</div>
-                <div className="total-banner-label">{t.totalPersonas}</div>
+              <div className="stat-chunk">
+                <span className="stat-chunk-val">{totConf}</span>
+                <span className="stat-chunk-label">{t.confirmed}</span>
+              </div>
+              <div className="stat-chunk">
+                <span className="stat-chunk-val">{totFotos}</span>
+                <span className="stat-chunk-label">{t.photos}</span>
+              </div>
+              <div className="stat-chunk">
+                <span className="stat-chunk-val">{totDes}</span>
+                <span className="stat-chunk-label">{t.wishes}</span>
               </div>
             </div>
           )}
 
-          {/* Create CTA */}
-          <Link href="/eventos/nuevo" className="btn-cta anim-in anim-d3">
-            <Icon.plus /> {t.crearEvento}
-          </Link>
+          {/* CTA */}
+          <div className="cta-wrap anim-in d3">
+            <Link href="/eventos/nuevo" className="cta">
+              <Icon.plus />
+              <span>{t.newEvent}</span>
+            </Link>
+          </div>
 
-          {/* Event list */}
+          {/* Empty state or event list */}
           {eventos.length === 0 ? (
-            <div className="empty anim-in anim-d4">
-              <div className="empty-icon">
-                <Icon.calendar />
+            <div className="empty anim-in d4">
+              <div className="empty-orn">
+                <Ornament width={110} />
               </div>
-              <p className="empty-title">{t.sinEventos}</p>
-              <p className="empty-sub">{t.sinEventosSub}</p>
+              <h2 className="empty-title">{t.noEvents}</h2>
+              <p className="empty-sub">{t.noEventsSub}</p>
+              <Link href="/eventos/nuevo" className="cta cta-inline">
+                <Icon.plus />
+                <span>{t.createFirst}</span>
+              </Link>
             </div>
           ) : (
-            <div className="event-list anim-in anim-d4">
-              {eventos.map((evento) => {
-                const s = stats[evento.id];
-                const tipo = TIPO_CONFIG[evento.tipo] || TIPO_CONFIG.otro;
-                const total = s
-                  ? s.confirmados + s.declinados + s.pendientes
-                  : 0;
-                const pct =
-                  total > 0 ? Math.round((s.confirmados / total) * 100) : 0;
-                const esPasado = new Date(evento.fecha) < hoy;
-                const dias = Math.ceil(
-                  (new Date(evento.fecha).getTime() - hoy.getTime()) / 86400000,
-                );
-                const tipoLabel = lang === "es" ? tipo.label : tipo.labelEn;
+            <>
+              <div className="events-head anim-in d4">
+                <div className="events-head-title">{t.yourEvents}</div>
+                <div className="events-head-count">
+                  {eventos.length}{" "}
+                  {eventos.length === 1 ? t.eventSingular : t.events}
+                </div>
+              </div>
 
-                return (
-                  <div key={evento.id} className="event-card">
-                    <div className="event-strip" />
+              <div className="event-list anim-in d4">
+                {eventos.map((evento) => {
+                  const s = stats[evento.id];
+                  const tipo = TIPO_CONFIG[evento.tipo] || TIPO_CONFIG.otro;
+                  const total = s
+                    ? s.confirmados + s.declinados + s.pendientes
+                    : 0;
+                  const pct =
+                    s && total > 0
+                      ? Math.round((s.confirmados / total) * 100)
+                      : 0;
+                  const esPasado = new Date(evento.fecha) < hoy;
+                  const dias = Math.ceil(
+                    (new Date(evento.fecha).getTime() - hoy.getTime()) /
+                      86400000,
+                  );
+                  const tipoLabel = lang === "es" ? tipo.label : tipo.labelEn;
+                  const isOpen = !!expanded[evento.id];
 
-                    {/* Header */}
-                    <div className="event-header">
-                      <div className="event-meta">
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 5,
-                              flexWrap: "wrap",
-                              marginBottom: 5,
-                            }}
-                          >
-                            <span className="event-badge">{tipoLabel}</span>
-                            {esPasado && (
-                              <span className="event-badge badge-past">
-                                {t.finalizad}
-                              </span>
-                            )}
-                            {!esPasado && dias === 1 && (
-                              <span className="event-badge badge-tomorrow">
-                                {t.manana}
-                              </span>
-                            )}
-                            {!esPasado && dias > 1 && dias <= 7 && (
-                              <span className="event-badge badge-soon">
-                                {dias} {t.dias}
-                              </span>
-                            )}
-                          </div>
-                          <p className="event-name">{evento.nombre}</p>
-                          <div className="event-info">
-                            <span className="event-info-item">
-                              <Icon.calendar />
-                              {new Date(evento.fecha).toLocaleDateString(
-                                lang === "es" ? "es-ES" : "en-US",
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                },
-                              )}
-                            </span>
-                            <span className="event-info-item">
-                              <Icon.location /> {evento.lugar}
-                            </span>
-                          </div>
-                        </div>
-                        {evento.imagen_url && (
-                          <div className="event-thumb">
-                            <img src={evento.imagen_url} alt="" />
-                          </div>
+                  let chipText = "";
+                  let chipCls = "";
+                  if (esPasado) {
+                    chipText = t.past;
+                    chipCls = "chip-past";
+                  } else if (dias === 1) {
+                    chipText = t.tomorrow;
+                    chipCls = "chip-tomorrow";
+                  } else if (dias > 1 && dias <= 7) {
+                    chipText = `${dias} ${t.days}`;
+                    chipCls = "chip-soon";
+                  }
+
+                  return (
+                    <article key={evento.id} className="event-card">
+                      {/* Cover */}
+                      <div className="event-cover">
+                        {evento.imagen_url ? (
+                          <img
+                            src={evento.imagen_url}
+                            alt=""
+                            loading="lazy"
+                          />
+                        ) : (
+                          <Ornament width={160} />
+                        )}
+                        {chipText && (
+                          <span className={`event-chip ${chipCls}`}>
+                            {chipText}
+                          </span>
                         )}
                       </div>
-                    </div>
 
-                    {/* Stats */}
-                    {s && (
-                      <div className="stats-body">
-                        <div className="stats-divider" />
-                        <div className="stats-grid">
-                          {[
-                            {
-                              val: s.confirmados,
-                              label: t.confirm2,
-                              cls: "stat-conf",
-                            },
-                            {
-                              val: s.pendientes,
-                              label: t.pend,
-                              cls: "stat-pend",
-                            },
-                            {
-                              val: s.declinados,
-                              label: t.declin,
-                              cls: "stat-decl",
-                            },
-                            {
-                              val: s.total_fotos,
-                              label: t.fotos,
-                              cls: "stat-fotos",
-                            },
-                            {
-                              val: s.total_deseos,
-                              label: t.deseos,
-                              cls: "stat-deseos",
-                            },
-                          ].map((st) => (
-                            <div
-                              key={st.label}
-                              className={`stat-box ${st.cls}`}
-                            >
-                              <div className="stat-box-val">{st.val}</div>
-                              <div className="stat-box-label">{st.label}</div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Total personas */}
-                        <div className="event-personas-row">
-                          <span className="event-personas-label">
-                            <Icon.person />
-                            {t.totalPersonas}
+                      {/* Body */}
+                      <div className="event-body">
+                        <span className="event-type">— {tipoLabel} —</span>
+                        <h2 className="event-name">{evento.nombre}</h2>
+                        <div className="event-meta">
+                          <span className="event-meta-item">
+                            <Icon.calendar size={12} />
+                            {new Date(evento.fecha).toLocaleDateString(
+                              lang === "es" ? "es-ES" : "en-US",
+                              {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              },
+                            )}
                           </span>
-                          <span className="event-personas-val">
-                            {s.total_personas}
+                          <span className="event-meta-dot">·</span>
+                          <span className="event-meta-item">
+                            <Icon.location size={12} />
+                            {evento.lugar}
                           </span>
                         </div>
 
                         {/* Progress */}
-                        <div style={{ marginBottom: 10 }}>
-                          <div className="progress-row">
-                            <span className="progress-label">
-                              {t.confirmacion} · {pct}%
-                            </span>
-                            <span className="progress-value">
-                              {s.confirmados} / {total}
-                            </span>
+                        {s && total > 0 && (
+                          <div className="event-progress">
+                            <div className="progress-head">
+                              <span className="progress-title">
+                                {t.confirmation}
+                              </span>
+                              <span className="progress-nums">
+                                {s.confirmados} <em>/ {total}</em>
+                              </span>
+                            </div>
+                            <div className="progress-track">
+                              <div
+                                className="progress-fill"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="progress-pct">{pct}%</span>
                           </div>
-                          <div className="progress-track">
-                            <div
-                              className="progress-fill"
-                              style={{ width: `${pct}%` }}
+                        )}
+                      </div>
+
+                      {/* Primary actions */}
+                      <div className="primary-actions">
+                        <Link
+                          href={`/eventos/${evento.id}/invitados`}
+                          className="pa-link"
+                        >
+                          <Icon.users />
+                          {t.guestList}
+                        </Link>
+                        <Link
+                          href={`/muro/${evento.id}`}
+                          className="pa-link"
+                        >
+                          <Icon.wall />
+                          {t.wall}
+                        </Link>
+                        <Link
+                          href={`/eventos/${evento.id}/mesas`}
+                          className="pa-link"
+                        >
+                          <Icon.table />
+                          {t.tables}
+                        </Link>
+                        <Link
+                          href={`/eventos/${evento.id}/configurar`}
+                          className="pa-link"
+                        >
+                          <Icon.gear />
+                          {t.settings}
+                        </Link>
+                      </div>
+
+                      {/* Expand */}
+                      <div className="expand-wrap">
+                        <button
+                          className={`expand-btn${isOpen ? " open" : ""}`}
+                          onClick={() =>
+                            setExpanded((p) => ({
+                              ...p,
+                              [evento.id]: !p[evento.id],
+                            }))
+                          }
+                          aria-expanded={isOpen}
+                        >
+                          {isOpen ? t.hideDetails : t.details}
+                          <Icon.chevron size={11} />
+                        </button>
+                      </div>
+
+                      {/* Details panel */}
+                      {isOpen && s && (
+                        <div className="details">
+                          <div className="details-section">
+                            <div className="details-head">{t.summary}</div>
+                            <div className="stat-row">
+                              <div className="stat-row-item">
+                                <span className="stat-row-val sv-ok">
+                                  {s.confirmados}
+                                </span>
+                                <span className="stat-row-label">
+                                  {t.stateConf}
+                                </span>
+                              </div>
+                              <div className="stat-row-item">
+                                <span className="stat-row-val sv-pend">
+                                  {s.pendientes}
+                                </span>
+                                <span className="stat-row-label">
+                                  {t.statePend}
+                                </span>
+                              </div>
+                              <div className="stat-row-item">
+                                <span className="stat-row-val sv-decl">
+                                  {s.declinados}
+                                </span>
+                                <span className="stat-row-label">
+                                  {t.stateDecl}
+                                </span>
+                              </div>
+                              <div className="stat-row-item">
+                                <span className="stat-row-val">
+                                  {s.total_personas}
+                                </span>
+                                <span className="stat-row-label">
+                                  {t.totalAttendees}
+                                </span>
+                              </div>
+                              <div className="stat-row-item">
+                                <span className="stat-row-val">
+                                  {s.total_fotos}
+                                </span>
+                                <span className="stat-row-label">
+                                  {t.photos}
+                                </span>
+                              </div>
+                              <div className="stat-row-item">
+                                <span className="stat-row-val">
+                                  {s.total_deseos}
+                                </span>
+                                <span className="stat-row-label">
+                                  {t.wishes}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="details-section">
+                            <MiniInvitados
+                              eventoId={evento.id}
+                              lang={lang}
+                              t={t}
                             />
                           </div>
-                        </div>
 
-                        {/* ── MINI LISTA DE INVITADOS CON NÚMERO DE ORDEN ── */}
-                        <MiniInvitados eventoId={evento.id} lang={lang} t={t} />
-
-                        {/* Quick links */}
-                        <div className="quick-links">
-                          {[
-                            {
-                              href: `/muro/${evento.id}`,
-                              icon: <Icon.wall />,
-                              label: t.verMuro,
-                            },
-                            {
-                              href: `/eventos/${evento.id}/invitados`,
-                              icon: <Icon.users />,
-                              label: t.invitados,
-                            },
-                            {
-                              href: `/libro/${evento.id}`,
-                              icon: <Icon.book />,
-                              label: t.libro,
-                            },
-                            {
-                              href: `/eventos/${evento.id}/agradecimientos`,
-                              icon: <Icon.mail />,
-                              label: t.agradecimientos,
-                              badge: evento.agradecimiento_enviado,
-                            },
-                            {
-                              href: `/eventos/${evento.id}/mesas`,
-                              icon: <Icon.table />,
-                              label: t.mesas,
-                            },
-                            {
-                              href: `/eventos/${evento.id}/configurar`,
-                              icon: <Icon.gear />,
-                              label: t.configurar,
-                            },
-                            {
-                              href: `/eventos/${evento.id}/scanner`,
-                              icon: <Icon.scanner />,
-                              label: t.scanner,
-                            },
-                          ].map(({ href, icon, label, badge }) => (
-                            <Link key={href} href={href} className="quick-link">
-                              <span className="quick-link-icon">{icon}</span>
-                              {label}
-                              {badge && (
-                                <span className="quick-link-badge">✓</span>
-                              )}
-                            </Link>
-                          ))}
+                          <div className="details-section">
+                            <div className="details-head">{t.moreActions}</div>
+                            <div className="secondary-actions">
+                              <Link
+                                href={`/libro/${evento.id}`}
+                                className="sa-link"
+                              >
+                                <Icon.book />
+                                {t.book}
+                              </Link>
+                              <Link
+                                href={`/eventos/${evento.id}/agradecimientos`}
+                                className="sa-link"
+                              >
+                                <Icon.mail />
+                                {t.thanks}
+                                {evento.agradecimiento_enviado && (
+                                  <span
+                                    style={{
+                                      width: 5,
+                                      height: 5,
+                                      background: "var(--gold)",
+                                      borderRadius: "50%",
+                                      marginLeft: 3,
+                                      marginBottom: 2,
+                                    }}
+                                  />
+                                )}
+                              </Link>
+                              <Link
+                                href={`/eventos/${evento.id}/scanner`}
+                                className="sa-link"
+                              >
+                                <Icon.scanner />
+                                {t.scanner}
+                              </Link>
+                            </div>
+                          </div>
                         </div>
+                      )}
 
-                        {/* Actions */}
-                        <div className="card-actions">
-                          <Link
-                            href={`/eventos/${evento.id}/invitados`}
-                            className="btn-manage"
-                          >
-                            <Icon.settings /> {t.gestionar}
-                          </Link>
-                          <button
-                            onClick={() => eliminarEvento(evento.id)}
-                            disabled={eliminando === evento.id}
-                            className="btn-delete"
-                          >
-                            <Icon.trash />
-                            {eliminando === evento.id ? "..." : ""}
-                          </button>
-                        </div>
+                      {/* Footer actions */}
+                      <div className="card-actions">
+                        <Link
+                          href={`/eventos/${evento.id}/invitados`}
+                          className="btn-manage"
+                        >
+                          {t.manage} <span aria-hidden="true">→</span>
+                        </Link>
+                        <button
+                          className="btn-del"
+                          onClick={() => eliminarEvento(evento.id)}
+                          disabled={eliminando === evento.id}
+                        >
+                          {eliminando === evento.id ? "..." : t.delete}
+                        </button>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
           )}
 
+          <div className="footer-line">
+            <Ornament width={80} />
+          </div>
           {esAdmin && (
-            <Link
-              href="/admin"
-              style={{
-                display: "block",
-                textAlign: "center",
-                marginTop: 8,
-                marginBottom: 4,
-                fontSize: 11,
-                color: "var(--text3)",
-                opacity: 0.55,
-                textDecoration: "none",
-                letterSpacing: ".04em",
-              }}
-            >
-              ⬡ Panel Admin
+            <Link href="/admin" className="footer-admin">
+              {t.adminPanel}
             </Link>
           )}
-          <p className="footer-copy">Humb3rsec 2026</p>
+          <p className="footer-copy">Eventix · Humb3rsec 2026</p>
         </div>
       </div>
     </>
