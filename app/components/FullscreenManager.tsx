@@ -36,7 +36,9 @@ export default function FullscreenManager() {
         if (window.scrollY === 0) window.scrollTo(0, 1);
       }, 400);
 
-      // ② Fullscreen API on first user touch (requires user gesture)
+      // ② Fullscreen API on first user tap (requires user gesture)
+      // Use 'touchend' (not touchstart + capture) so we don't intercept swipe gestures
+      // that could interfere with page interaction before fullscreen resolves.
       const tryFullscreen = () => {
         const el = document.documentElement;
         if (el.requestFullscreen) {
@@ -45,8 +47,8 @@ export default function FullscreenManager() {
           });
         }
       };
-      document.addEventListener("touchstart", tryFullscreen, { once: true, capture: true });
-      return () => document.removeEventListener("touchstart", tryFullscreen, { capture: true });
+      document.addEventListener("touchend", tryFullscreen, { once: true, passive: true });
+      return () => document.removeEventListener("touchend", tryFullscreen);
     }
 
     if (os === "ios") {

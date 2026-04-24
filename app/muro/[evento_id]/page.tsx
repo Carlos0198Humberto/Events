@@ -2052,13 +2052,14 @@ export default function MuroPublico() {
 
         /* ── Compact sticky header ── */
         .muro-header {
-          position: sticky; top: 7px; z-index: 150;
+          position: sticky; top: 0; z-index: 150;
           background: rgba(255,255,255,0.95);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
           border-bottom: 1px solid rgba(79, 70, 229,0.15);
           box-shadow: 0 2px 12px rgba(15,23,42,0.06);
           display: flex; align-items: center; gap: 10px;
-          padding: 10px 14px;
+          padding: max(10px, env(safe-area-inset-top, 0px)) 14px 10px;
+          box-sizing: border-box; width: 100%;
         }
         .muro-header-brand { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
         .muro-header-name { font-family: 'Playfair Display',serif; font-size: 15px; font-weight: 700; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

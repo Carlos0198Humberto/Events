@@ -791,12 +791,15 @@ export default function Dashboard() {
 
         /* ── Nav ── */
         .nav{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;
-          height:60px;
+          min-height:60px;
+          padding-top:max(10px, env(safe-area-inset-top, 0px));
+          padding-bottom:10px;
           padding-left:max(20px, env(safe-area-inset-left));
           padding-right:max(20px, env(safe-area-inset-right));
           background:rgba(255,255,255,0.88);
           backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-          border-bottom:1px solid var(--rule);}
+          border-bottom:1px solid var(--rule);
+          box-sizing:border-box;}
         .nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
         .nav-brand-name{font-family:var(--serif);font-size:22px;font-weight:500;letter-spacing:2px;line-height:1;color:var(--ink);font-style:italic}
         .nav-actions{display:flex;align-items:center;gap:6px}

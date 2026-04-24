@@ -1204,7 +1204,7 @@ export default function ConfirmarPage() {
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Jost:wght@300;400;500;600;700&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAFBFF;color:#1a1209}
+    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAFBFF;color:#1a1209;overflow-x:hidden;max-width:100vw;-webkit-text-size-adjust:100%}
     :root{
       --gold:#4F46E5;--gold-dark:#3730A3;--gold-light:#E0E7FF;--gold-pale:#F8FAFF;
       --dark:#1a1209;--dark2:#2d1f0a;--ink:#475569;--ink2:#5a3e1b;--ink3:#3730A3;
@@ -1215,7 +1215,7 @@ export default function ConfirmarPage() {
     }
     .page{min-height:100dvh;background:var(--cream);
       background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(79,70,229,0.08) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 100%,rgba(79,70,229,0.05) 0%,transparent 60%);
-      padding-bottom:80px;opacity:0;transition:opacity .5s ease;}
+      padding-bottom:80px;opacity:0;transition:opacity .5s ease;overflow-x:hidden;max-width:100vw;}
     .page.vis{opacity:1}
     .page.destroying{animation:shatter .6s ease forwards}
     @keyframes shatter{0%{opacity:1;transform:scale(1)}30%{opacity:1;transform:scale(1.03)}60%{opacity:.5;transform:scale(.95)}100%{opacity:0;transform:scale(.8)}}
@@ -1225,7 +1225,7 @@ export default function ConfirmarPage() {
     @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
 
     /* ── Topbar ── */
-    .topbar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;justify-content:space-between;}
+    .topbar{display:flex;align-items:center;gap:10px;padding:11px 16px;padding-top:max(11px,env(safe-area-inset-top,11px));background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;justify-content:space-between;width:100%;box-sizing:border-box;}
     .topbar-left{display:flex;align-items:center;gap:10px}
     .topbar-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;line-height:1}
     .topbar-sub{font-size:9px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-top:1px}

@@ -740,10 +740,10 @@ export default function NuevoEvento() {
         @keyframes pf{0%{transform:translateY(110vh);opacity:0}5%{opacity:.12}90%{opacity:.12}100%{transform:translateY(-10vh) translateX(16px);opacity:0}}
 
         /* ── Nav ── */
-        .nav{position:sticky;top:0;z-index:30;height:56px;padding:0 16px;
+        .nav{position:sticky;top:0;z-index:30;min-height:56px;padding:max(10px,env(safe-area-inset-top,0px)) 16px 10px;
           display:flex;align-items:center;justify-content:space-between;
           background:var(--nav-bg);backdrop-filter:blur(18px);
-          border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm)}
+          border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm);box-sizing:border-box;}
         .nav-left{display:flex;align-items:center;gap:10px;min-width:0}
         .nav-back{width:34px;height:34px;border-radius:10px;background:var(--surface);
           border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
@@ -1162,7 +1162,6 @@ export default function NuevoEvento() {
                       onChange={(e) => setCupo(e.target.value)}
                       placeholder={t.cupoPH}
                     />
-                    <span className="cupo-tag">{t.cupoDesc}</span>
                   </div>
                 </div>
               </Campo>
