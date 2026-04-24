@@ -791,9 +791,9 @@ export default function Dashboard() {
         .page{min-height:100dvh;position:relative;z-index:1}
 
         /* ── Nav ── */
-        .nav{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;
+        .nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;justify-content:space-between;
           min-height:60px;
-          padding-top:max(10px, env(safe-area-inset-top, 0px));
+          padding-top:10px;
           padding-bottom:10px;
           padding-left:max(20px, env(safe-area-inset-left));
           padding-right:max(20px, env(safe-area-inset-right));

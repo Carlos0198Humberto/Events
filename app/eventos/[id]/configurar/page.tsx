@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { QuickNav } from "@/app/components/QuickNav";
 
 function AppLogo({ size = 36 }: { size?: number }) {
   return (
@@ -198,8 +197,6 @@ export default function ConfigurarEvento() {
           </div>
         </div>
       </div>
-
-      <QuickNav eventoId={eventoId} active="configurar" />
 
       <div className="content">
         {loading ? (
@@ -432,7 +429,7 @@ const styles = `
   .page-wrap{min-height:100dvh;background:var(--bg);opacity:0;transition:opacity .35s}
   .page-wrap.vis{opacity:1}
 
-  .top-bar{display:flex;align-items:center;gap:8px;padding:max(10px,env(safe-area-inset-top,0px)) 14px 10px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:30;box-sizing:border-box;width:100%;}
+  .top-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:30;box-sizing:border-box;width:100%;}
   .back-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink2);text-decoration:none;flex-shrink:0;transition:background .15s}
   .back-btn:hover{background:var(--gold-pale);color:var(--gold)}
   .top-bar-logo{display:flex;align-items:center;gap:8px;flex:1;min-width:0}

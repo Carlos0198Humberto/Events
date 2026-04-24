@@ -54,7 +54,10 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body
+        className="min-h-full flex flex-col"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         {children}
         <ToastProvider />
         <FullscreenManager />

@@ -1999,7 +1999,7 @@ export default function ConfirmarPage() {
     @keyframes spin{to{transform:rotate(360deg)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-    .topbar{display:flex;align-items:center;gap:10px;padding:max(11px,env(safe-area-inset-top,0px)) 16px 11px;background:rgba(255,255,255,0.90);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;justify-content:space-between;box-sizing:border-box;width:100%;}
+    .topbar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:rgba(255,255,255,0.90);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:20;justify-content:space-between;box-sizing:border-box;width:100%;}
     .topbar-left{display:flex;align-items:center;gap:10px}
     .topbar-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;line-height:1}
     .topbar-sub{font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-top:1px}

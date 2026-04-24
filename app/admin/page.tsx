@@ -307,8 +307,8 @@ export default function AdminPanel() {
 
         /* Nav */
         .nav{
-          position:sticky;top:0;z-index:30;min-height:58px;
-          padding:max(10px,env(safe-area-inset-top,0px)) 16px 10px;
+          position:sticky;top:env(safe-area-inset-top,0px);z-index:30;min-height:58px;
+          padding:10px 16px;
           display:flex;align-items:center;justify-content:space-between;gap:10px;
           background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);
           border-bottom:1px solid var(--border);box-sizing:border-box;

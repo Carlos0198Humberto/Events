@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-import { QuickNav } from "@/app/components/QuickNav";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Evento = {
@@ -532,12 +531,11 @@ export default function LibroRecuerdosPage() {
 
         /* ── Header ── */
         .libro-header {
-          position: sticky; top: 0; z-index: 20;
+          position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
           background: rgba(255,255,255,0.92);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
           border-bottom: 1px solid var(--border);
           box-shadow: var(--shadow-sm);
-          padding-top: env(safe-area-inset-top, 0px);
         }
         .header-top {
           display: flex; align-items: center; gap: 8px;
@@ -748,8 +746,6 @@ export default function LibroRecuerdosPage() {
           ))}
         </div>
       </div>
-
-      <QuickNav eventoId={eventoId} active="libro" topOffset={108} />
 
       {/* ── Acciones de sección (descargas) ── */}
       {vista === "fotos" && fotos.length > 0 && (

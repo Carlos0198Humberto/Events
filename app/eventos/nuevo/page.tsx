@@ -740,7 +740,7 @@ export default function NuevoEvento() {
         @keyframes pf{0%{transform:translateY(110vh);opacity:0}5%{opacity:.12}90%{opacity:.12}100%{transform:translateY(-10vh) translateX(16px);opacity:0}}
 
         /* ── Nav ── */
-        .nav{position:sticky;top:0;z-index:30;min-height:56px;padding:max(10px,env(safe-area-inset-top,0px)) 16px 10px;
+        .nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;min-height:56px;padding:10px 16px;
           display:flex;align-items:center;justify-content:space-between;
           background:var(--nav-bg);backdrop-filter:blur(18px);
           border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm);box-sizing:border-box;}

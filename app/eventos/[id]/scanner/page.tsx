@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
-import { QuickNav } from "@/app/components/QuickNav";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -248,7 +247,7 @@ export default function ScannerPage() {
     @keyframes popIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 
     .page{min-height:100dvh;background:#FFFFFF;padding-bottom:env(safe-area-inset-bottom,20px)}
-    .topbar{display:flex;align-items:center;gap:10px;padding:max(11px,env(safe-area-inset-top,0px)) 14px 11px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;box-sizing:border-box;width:100%;}
+    .topbar{display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:20;box-sizing:border-box;width:100%;}
     .topbar-back{width:36px;height:36px;border-radius:10px;background:var(--cream);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
     .topbar-info{flex:1;min-width:0}
     .topbar-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -354,8 +353,6 @@ export default function ScannerPage() {
         </div>
         <AppLogo size={34} />
       </div>
-
-      <QuickNav eventoId={eventoId} active="scanner" />
 
       <div className="wrap">
         {/* Stats */}

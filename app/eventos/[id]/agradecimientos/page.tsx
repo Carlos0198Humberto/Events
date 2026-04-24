@@ -540,9 +540,8 @@ export default function AgradecimientosPage() {
           backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
           border-bottom: 1px solid var(--border);
           padding: 13px 18px;
-          padding-top: calc(13px + env(safe-area-inset-top, 0px));
           display: flex; align-items: center; gap: 11px;
-          position: sticky; top: 0; z-index: 10;
+          position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
           box-shadow: var(--shadow-sm);
         }
         .top-bar > div:last-child { min-width: 0; flex: 1; }

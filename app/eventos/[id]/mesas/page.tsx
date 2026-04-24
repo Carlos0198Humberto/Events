@@ -4,7 +4,6 @@ import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/app/components/Toast";
-import { QuickNav } from "@/app/components/QuickNav";
 
 // ─── AppLogo ──────────────────────────────────────────────────────────────────
 function AppLogo({ size = 36 }: { size?: number }) {
@@ -255,8 +254,6 @@ export default function GestionarMesas() {
           </button>
         </div>
       </div>
-
-      <QuickNav eventoId={eventoId} active="mesas" />
 
       <div className="content">
         {loading ? (
@@ -699,11 +696,11 @@ const styles = `
   /* Top bar */
   .top-bar{
     display:flex;align-items:center;gap:8px;
-    padding:max(10px,env(safe-area-inset-top,0px)) 14px 10px;
+    padding:10px 14px;
     background:rgba(255,255,255,0.92);
     backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
     border-bottom:1px solid var(--border);
-    position:sticky;top:0;z-index:30;
+    position:sticky;top:env(safe-area-inset-top,0px);z-index:30;
     box-sizing:border-box;width:100%;
   }
   .back-btn{
