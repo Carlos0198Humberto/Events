@@ -625,6 +625,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   const [esAdmin, setEsAdmin] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [showStats, setShowStats] = useState(false);
 
   const t = translations[lang];
 
@@ -1076,25 +1077,50 @@ export default function Dashboard() {
             );
           })()}
 
-          {/* Global stats — editorial row */}
+          {/* Resumen global — botón que despliega stats */}
           {eventos.length > 0 && (
-            <div className="stats-line anim-in d2">
-              <div className="stat-chunk">
-                <span className="stat-chunk-val">{totPersonas}</span>
-                <span className="stat-chunk-label">{t.totalAttendees}</span>
-              </div>
-              <div className="stat-chunk">
-                <span className="stat-chunk-val">{totConf}</span>
-                <span className="stat-chunk-label">{t.confirmed}</span>
-              </div>
-              <div className="stat-chunk">
-                <span className="stat-chunk-val">{totFotos}</span>
-                <span className="stat-chunk-label">{t.photos}</span>
-              </div>
-              <div className="stat-chunk">
-                <span className="stat-chunk-val">{totDes}</span>
-                <span className="stat-chunk-label">{t.wishes}</span>
-              </div>
+            <div className="anim-in d2" style={{margin:"20px 0 32px"}}>
+              <button
+                onClick={() => setShowStats(s => !s)}
+                style={{
+                  display:"flex",alignItems:"center",gap:10,
+                  background:"transparent",border:"1px solid var(--rule-strong)",
+                  borderRadius:12,padding:"12px 18px",cursor:"pointer",
+                  fontFamily:"var(--sans)",fontSize:13,fontWeight:600,
+                  color:"var(--ink-soft)",transition:"all .2s",width:"100%",
+                  justifyContent:"space-between",
+                }}
+              >
+                <span style={{display:"flex",alignItems:"center",gap:8}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                  {lang === "es" ? "Ver resumen global" : "View global summary"}
+                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                  style={{transition:"transform .25s",transform:showStats?"rotate(180deg)":"rotate(0deg)"}}>
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+
+              {showStats && (
+                <div className="stats-line" style={{marginTop:0,borderTop:"none",borderRadius:"0 0 12px 12px",border:"1px solid var(--rule-strong)",borderTop:"none",padding:"18px 18px 18px",background:"var(--paper)"}}>
+                  <div className="stat-chunk">
+                    <span className="stat-chunk-val">{totPersonas}</span>
+                    <span className="stat-chunk-label">{t.totalAttendees}</span>
+                  </div>
+                  <div className="stat-chunk">
+                    <span className="stat-chunk-val">{totConf}</span>
+                    <span className="stat-chunk-label">{t.confirmed}</span>
+                  </div>
+                  <div className="stat-chunk">
+                    <span className="stat-chunk-val">{totFotos}</span>
+                    <span className="stat-chunk-label">{t.photos}</span>
+                  </div>
+                  <div className="stat-chunk">
+                    <span className="stat-chunk-val">{totDes}</span>
+                    <span className="stat-chunk-label">{t.wishes}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
