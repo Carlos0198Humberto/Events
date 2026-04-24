@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { QuickNav } from "@/app/components/QuickNav";
 
 function AppLogo({ size = 36 }: { size?: number }) {
   return (
@@ -197,6 +198,8 @@ export default function ConfigurarEvento() {
           </div>
         </div>
       </div>
+
+      <QuickNav eventoId={eventoId} active="configurar" />
 
       <div className="content">
         {loading ? (

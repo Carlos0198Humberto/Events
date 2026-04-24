@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import Link from "next/link";
+import { QuickNav } from "@/app/components/QuickNav";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 type Foto = {
@@ -2206,6 +2207,9 @@ export default function MuroPublico() {
           </button>
         </div>
       )}
+
+      {/* ══ QuickNav (solo organizador) ══ */}
+      {esOrg && <QuickNav eventoId={eventoId} active="muro" topOffset={0} />}
 
       {/* ══ CONTENIDO ══ */}
       <div style={{ padding: "12px 10px 0", maxWidth: 600, margin: "0 auto", paddingBottom: invId ? "160px" : "100px", width: "100%", boxSizing: "border-box" }}>

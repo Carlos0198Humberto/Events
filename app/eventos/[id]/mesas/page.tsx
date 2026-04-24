@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/app/components/Toast";
+import { QuickNav } from "@/app/components/QuickNav";
 
 // ─── AppLogo ──────────────────────────────────────────────────────────────────
 function AppLogo({ size = 36 }: { size?: number }) {
@@ -254,6 +255,8 @@ export default function GestionarMesas() {
           </button>
         </div>
       </div>
+
+      <QuickNav eventoId={eventoId} active="mesas" />
 
       <div className="content">
         {loading ? (

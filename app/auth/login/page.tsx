@@ -299,15 +299,10 @@ export default function Login() {
           display: flex;
           align-items: flex-start;
           justify-content: center;
-          padding: 72px 16px 32px;
+          padding: 48px 16px 32px;
           padding-bottom: max(32px, env(safe-area-inset-bottom));
           position: relative;
           overflow-x: hidden;
-        }
-
-        /* On taller screens, center vertically */
-        @media (min-height: 700px) {
-          .page-wrap { align-items: center; padding-top: 24px; }
         }
 
         /* ── Glows ── */
@@ -587,6 +582,7 @@ export default function Login() {
                   placeholder={t.emailPlaceholder}
                   autoComplete="email"
                   inputMode="email"
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                 />
               </div>
 

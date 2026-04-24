@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { QuickNav } from "@/app/components/QuickNav";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Evento = {
@@ -747,6 +748,8 @@ export default function LibroRecuerdosPage() {
           ))}
         </div>
       </div>
+
+      <QuickNav eventoId={eventoId} active="libro" topOffset={108} />
 
       {/* ── Acciones de sección (descargas) ── */}
       {vista === "fotos" && fotos.length > 0 && (

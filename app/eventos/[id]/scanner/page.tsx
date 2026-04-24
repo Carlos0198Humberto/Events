@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
+import { QuickNav } from "@/app/components/QuickNav";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -353,6 +354,8 @@ export default function ScannerPage() {
         </div>
         <AppLogo size={34} />
       </div>
+
+      <QuickNav eventoId={eventoId} active="scanner" />
 
       <div className="wrap">
         {/* Stats */}
