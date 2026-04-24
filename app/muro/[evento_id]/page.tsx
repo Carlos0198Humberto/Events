@@ -506,133 +506,65 @@ function FotoCard({
   t: (typeof T)["es"];
 }) {
   const nombre = foto.invitados?.nombre ?? "Invitado";
+  const fechaStr = foto.created_at
+    ? new Date(foto.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+    : "";
   return (
     <div
-      className="foto-card break-inside-avoid mb-3"
+      className="foto-card"
       style={{
-        position: "relative",
-        borderRadius: 16,
+        background: "white",
+        borderRadius: 18,
         overflow: "hidden",
-        boxShadow: "0 3px 14px rgba(0,0,0,0.10)",
+        boxShadow: "0 2px 16px rgba(0,0,0,0.09)",
+        border: "1px solid rgba(79,70,229,0.09)",
       }}
     >
-      <div
-        onClick={onClick}
-        style={{ cursor: "pointer", position: "relative" }}
-      >
-        <Image
-          src={foto.url}
-          alt=""
-          width={400}
-          height={400}
-          className="w-full h-auto object-cover block"
-          unoptimized
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 52%)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
-            padding: "10px 10px",
-          }}
-        >
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              background: "rgba(255,255,255,0.96)",
-              borderRadius: 99,
-              padding: "3px 9px 3px 4px",
-              boxShadow: "0 1px 6px rgba(0,0,0,0.10)",
-              alignSelf: "flex-start",
-            }}
-          >
-            <Avatar nombre={nombre} size={20} bg={acento} />
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: "#374151",
-                maxWidth: 90,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {nombre}
-            </span>
+      {/* Header estilo FB */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px 10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Avatar nombre={nombre} size={36} bg={acento} />
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "#111827" }}>{nombre}</div>
+            {fechaStr && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1 }}>{fechaStr}</div>}
           </div>
-          {foto.caption && (
-            <p
-              style={{
-                color: "rgba(255,255,255,0.85)",
-                fontSize: 10,
-                marginTop: 4,
-                fontStyle: "italic",
-              }}
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); descargarImagen(foto.url, `foto_${foto.id}.jpg`); }}
+            title={t.descargar}
+            style={{ background: "#F3F4F6", color: acento, border: "none", borderRadius: 99, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {Ico.download(14, acento)}
+          </button>
+          {esOrg && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(foto.id); }}
+              style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "none", borderRadius: 99, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
             >
-              {foto.caption}
-            </p>
+              {Ico.trash(14, "#DC2626")}
+            </button>
           )}
         </div>
       </div>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          descargarImagen(foto.url, `foto_${foto.id}.jpg`);
-        }}
-        title={t.descargar}
-        style={{
-          position: "absolute",
-          top: 8,
-          left: 8,
-          background: "rgba(255,255,255,0.92)",
-          color: acento,
-          border: "none",
-          borderRadius: 99,
-          width: 30,
-          height: 30,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 1px 6px rgba(0,0,0,0.12)",
-          zIndex: 10,
-        }}
-      >
-        {Ico.download(13, acento)}
-      </button>
-      {esOrg && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(foto.id);
-          }}
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            background: "rgba(220,38,38,0.88)",
-            color: "white",
-            border: "none",
-            borderRadius: 99,
-            padding: "5px 9px",
-            fontSize: 11,
-            fontWeight: 700,
-            cursor: "pointer",
-            zIndex: 10,
-            display: "flex",
-            alignItems: "center",
-            gap: 3,
-          }}
-        >
-          {Ico.trash(12, "white")}
-        </button>
+
+      {/* Foto full-width */}
+      <div onClick={onClick} style={{ cursor: "pointer", width: "100%" }}>
+        <Image
+          src={foto.url}
+          alt=""
+          width={600}
+          height={600}
+          style={{ width: "100%", height: "auto", maxHeight: "75vw", objectFit: "cover", display: "block" }}
+          unoptimized
+        />
+      </div>
+
+      {/* Caption */}
+      {foto.caption && (
+        <div style={{ padding: "10px 14px 12px", fontSize: 13, color: "#374151", lineHeight: 1.5 }}>
+          {foto.caption}
+        </div>
       )}
     </div>
   );
@@ -2043,6 +1975,7 @@ export default function MuroPublico() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html,body{overflow-x:hidden;-webkit-text-size-adjust:100%;max-width:100vw}
         body{font-family:'DM Sans',sans-serif;background:#FAFBFF}
         @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -2274,7 +2207,7 @@ export default function MuroPublico() {
       )}
 
       {/* ══ CONTENIDO ══ */}
-      <div style={{ padding: "14px 14px 0", maxWidth: 640, margin: "0 auto", paddingBottom: invId ? "160px" : "100px" }}>
+      <div style={{ padding: "12px 10px 0", maxWidth: 600, margin: "0 auto", paddingBottom: invId ? "160px" : "100px", width: "100%", boxSizing: "border-box" }}>
         {/* ── FOTOS ── */}
         {vista === "fotos" &&
           (fotos.length === 0 ? (
@@ -2314,7 +2247,7 @@ export default function MuroPublico() {
               </p>
             </div>
           ) : (
-            <div style={{ columns: "2 150px", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {fotos.map((foto, idx) => (
                 <FotoCard
                   key={foto.id}

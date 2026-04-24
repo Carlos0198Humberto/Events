@@ -55,6 +55,11 @@ export default function GestionarMesas() {
   const [confirmEliminar, setConfirmEliminar] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState<string | null>(null);
 
+  // Plano de mesas
+  const [planoUrl, setPlanoUrl] = useState<string | null>(null);
+  const [subiendoPlano, setSubiendoPlano] = useState(false);
+  const planoInputRef = { current: null as HTMLInputElement | null };
+
   useEffect(() => {
     document.title = "Eventix — Mesas";
     setTimeout(() => setMounted(true), 60);
@@ -64,7 +69,7 @@ export default function GestionarMesas() {
   async function cargarDatos() {
     setLoading(true);
     const [{ data: ev }, { data: ms }, { data: inv }] = await Promise.all([
-      supabase.from("eventos").select("nombre").eq("id", eventoId).single(),
+      supabase.from("eventos").select("nombre, plano_mesas_url").eq("id", eventoId).single(),
       supabase.from("mesas").select("*").eq("evento_id", eventoId).order("created_at"),
       supabase
         .from("invitados")
@@ -72,10 +77,32 @@ export default function GestionarMesas() {
         .eq("evento_id", eventoId)
         .order("nombre"),
     ]);
-    if (ev) setEventoNombre(ev.nombre);
+    if (ev) { setEventoNombre(ev.nombre); setPlanoUrl(ev.plano_mesas_url ?? null); }
     if (ms) setMesas(ms);
     if (inv) setInvitados(inv);
     setLoading(false);
+  }
+
+  // ── Plano de mesas ──────────────────────────────────────────────────────────
+  async function subirPlano(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSubiendoPlano(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `planos/${eventoId}_plano_${Date.now()}.${ext}`;
+      const { data: up, error } = await supabase.storage.from("fotos-eventos").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("fotos-eventos").getPublicUrl(up.path);
+      const url = urlData?.publicUrl;
+      await supabase.from("eventos").update({ plano_mesas_url: url }).eq("id", eventoId);
+      setPlanoUrl(url);
+      toast.success("Plano de mesas guardado");
+    } catch {
+      toast.error("Error al subir el plano");
+    }
+    setSubiendoPlano(false);
+    if (e.target) e.target.value = "";
   }
 
   // ── CRUD Mesas ─────────────────────────────────────────────────────────────
@@ -253,6 +280,35 @@ export default function GestionarMesas() {
                 <span className="resumen-val">{sinMesa.length}</span>
                 <span className="resumen-label">sin mesa</span>
               </div>
+            </div>
+
+            {/* ─ Plano de distribución de mesas ─ */}
+            <div style={{ background: "#F8FAFF", border: "1px dashed rgba(79,70,229,0.3)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 3 }}>
+                  📐 Plano de distribución
+                </div>
+                <div style={{ fontSize: 12, color: "#6B7280" }}>
+                  {planoUrl ? "Plano guardado — los invitados pueden verlo" : "Subí una imagen del plano de mesas para tus invitados"}
+                </div>
+              </div>
+              <input
+                ref={(el) => { planoInputRef.current = el; }}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={subirPlano}
+              />
+              {planoUrl && (
+                <img src={planoUrl} alt="Plano" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", border: "1.5px solid rgba(79,70,229,0.25)", cursor: "pointer" }} onClick={() => window.open(planoUrl!, "_blank")} />
+              )}
+              <button
+                onClick={() => planoInputRef.current?.click()}
+                disabled={subiendoPlano}
+                style={{ background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "white", border: "none", borderRadius: 10, padding: "9px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}
+              >
+                {subiendoPlano ? "Subiendo..." : planoUrl ? "Cambiar" : "Subir plano"}
+              </button>
             </div>
 
             {/* ─ Invitados sin mesa — SIEMPRE visible al tope ─ */}

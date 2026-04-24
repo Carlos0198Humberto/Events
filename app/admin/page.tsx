@@ -168,18 +168,40 @@ export default function AdminPanel() {
   async function eliminarCuenta(usuario: UsuarioAdmin) {
     setConfirmDelete(null);
     setEliminando((prev) => ({ ...prev, [usuario.id]: true }));
-    // Eliminar perfil — el CASCADE elimina eventos e invitados relacionados
-    const { error } = await supabase
-      .from("profiles")
-      .delete()
-      .eq("id", usuario.id);
-    if (error) {
-      toast.error("Error al eliminar la cuenta");
-      setEliminando((prev) => ({ ...prev, [usuario.id]: false }));
-      return;
+
+    try {
+      // Obtener el token de sesión actual para enviarlo al endpoint server-side
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error("Sesión expirada — recargá la página");
+        setEliminando((prev) => ({ ...prev, [usuario.id]: false }));
+        return;
+      }
+
+      // Llamar a la API route server-side que usa service_role para borrar de auth.users
+      const res = await fetch("/api/admin/delete-user", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId: usuario.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al eliminar la cuenta");
+        setEliminando((prev) => ({ ...prev, [usuario.id]: false }));
+        return;
+      }
+
+      toast.success(`Cuenta de ${usuario.nombre ?? usuario.email ?? "usuario"} eliminada`);
+      setUsuarios((prev) => prev.filter((u) => u.id !== usuario.id));
+    } catch {
+      toast.error("Error de red — intentá de nuevo");
     }
-    toast.success(`Cuenta de ${usuario.nombre ?? usuario.email ?? "usuario"} eliminada`);
-    setUsuarios((prev) => prev.filter((u) => u.id !== usuario.id));
+
     setEliminando((prev) => ({ ...prev, [usuario.id]: false }));
   }
 
@@ -502,16 +524,28 @@ export default function AdminPanel() {
 
                   {/* Bottom: controles */}
                   <div className="user-row-bottom">
-                    {/* Eventos */}
-                    <div className="eventos-badge">
-                      <Icon.events />
-                      <b>{u.total_eventos}</b>
-                      <span style={{ color: "var(--ink3)" }}>
-                        evento{u.total_eventos !== 1 ? "s" : ""}
-                        {u.evento_limit !== null
-                          ? ` · límite: ${u.evento_limit}`
-                          : " · sin límite"}
-                      </span>
+                    {/* Eventos usados / límite — con barra visual */}
+                    <div className="eventos-badge" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4, padding: "8px 12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Icon.events />
+                        <span>
+                          <b>{u.total_eventos}</b>
+                          {" "}evento{u.total_eventos !== 1 ? "s" : ""}
+                          {" "}<span style={{ color: "var(--ink3)" }}>
+                            {u.evento_limit !== null ? `de ${u.evento_limit} permitido${u.evento_limit !== 1 ? "s" : ""}` : "— sin límite"}
+                          </span>
+                        </span>
+                      </div>
+                      {u.evento_limit !== null && (
+                        <div style={{ width: "100%", height: 4, borderRadius: 99, background: "rgba(79,70,229,0.12)", overflow: "hidden" }}>
+                          <div style={{
+                            height: "100%", borderRadius: 99,
+                            width: `${Math.min(100, Math.round((u.total_eventos / u.evento_limit) * 100))}%`,
+                            background: u.total_eventos >= u.evento_limit ? "var(--danger)" : "var(--accent)",
+                            transition: "width .3s"
+                          }} />
+                        </div>
+                      )}
                     </div>
 
                     {/* Fecha */}
@@ -519,18 +553,20 @@ export default function AdminPanel() {
 
                     {/* Limit input — solo para no-admins */}
                     {!u.es_admin && (
-                      <div className="limit-wrap">
-                        <span className="limit-label">Límite:</span>
+                      <div className="limit-wrap" style={{ alignItems: "center" }}>
+                        <span className="limit-label">Máx. eventos:</span>
                         <input
                           className="limit-input"
                           type="number"
                           min="0"
                           max="999"
                           placeholder="∞"
+                          title="Dejá vacío para sin límite"
                           value={editLimite[u.id] ?? ""}
                           onChange={(e) =>
                             setEditLimite((prev) => ({ ...prev, [u.id]: e.target.value }))
                           }
+                          onKeyDown={(e) => e.key === "Enter" && guardarLimite(u)}
                         />
                         <button
                           className="btn-save"

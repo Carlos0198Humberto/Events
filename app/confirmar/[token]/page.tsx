@@ -54,6 +54,7 @@ type Evento = {
   vestimenta_tipo?: string | null;
   vestimenta_colores?: string | null;
   vestimenta_nota?: string | null;
+  plano_mesas_url?: string | null;
 };
 
 type ItemItinerario = {
@@ -735,7 +736,7 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
 
   return (
     <div className="music-player" onClick={toggle}>
-      <audio ref={audioRef} src={url} loop />
+      <audio ref={audioRef} src={url} loop playsInline />
       <div className="music-icon-wrap">
         {playing ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#4F46E5">
@@ -779,26 +780,8 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
 
   return (
     <>
-      {/* Thumbnails */}
+      {/* Solo botón — fotos ocultas por defecto */}
       <div>
-        <div className="foto-lugar-label">{lugar || "El lugar"}</div>
-        <div className="galeria-thumbs">
-          {validas.slice(0, 3).map((src, i) => (
-            <div
-              key={i}
-              className="galeria-thumb"
-              onClick={() => {
-                setIndice(i);
-                setModalOpen(true);
-              }}
-            >
-              <img src={src} alt={`Foto ${i + 1}`} />
-              {i === 2 && validas.length > 3 && (
-                <div className="galeria-thumb-more">+{validas.length - 3}</div>
-              )}
-            </div>
-          ))}
-        </div>
         <button
           className="btn-ver-fotos"
           onClick={() => {
@@ -807,10 +790,8 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
           }}
         >
           <IcoImages />
-          Ver{" "}
-          {validas.length === 1
-            ? "la foto del lugar"
-            : `todas las fotos (${validas.length})`}
+          {lugar ? `📍 Ver fotos de ${lugar}` : `📸 Ver fotos del lugar`}
+          {validas.length > 1 && ` (${validas.length})`}
         </button>
       </div>
 
@@ -865,10 +846,12 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
 function SubirFotosInvitado({
   invitadoId,
   eventoId,
+  onFotoSubida,
 }: {
   invitadoId: string;
   eventoId: string;
   token?: string;
+  onFotoSubida?: () => void;
 }) {
   const [fotos, setFotos] = useState<string[]>([]);
   const [subiendo, setSubiendo] = useState(false);
@@ -922,6 +905,7 @@ function SubirFotosInvitado({
     }
     setSubiendo(false);
     if (fileRef.current) fileRef.current.value = "";
+    if (onFotoSubida) onFotoSubida();
   }
 
   if (!cargado) return null;
@@ -1541,6 +1525,113 @@ function ProgramaCard({ items }: { items: ItemItinerario[] }) {
   );
 }
 
+// ─── Botón ver plano de mesas ─────────────────────────────────────────────────
+function PlanoMesasBtn({ url }: { url: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        style={{ background: "var(--gold-pale)", border: "1px solid var(--border-mid)", borderRadius: 8, padding: "5px 10px", fontSize: 10, fontWeight: 700, color: "var(--gold-dark)", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", flexShrink: 0 }}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Ver plano
+      </button>
+      {open && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9800, background: "rgba(15,23,42,0.88)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setOpen(false)}>
+          <div style={{ position: "relative", maxWidth: 480, width: "100%" }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setOpen(false)} style={{ position: "absolute", top: -14, right: -14, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.15)", border: "1.5px solid rgba(255,255,255,0.3)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2, fontSize: 18 }}>×</button>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "1px", textAlign: "center", marginBottom: 12 }}>Distribución de mesas</div>
+            <img src={url} alt="Plano de mesas" style={{ width: "100%", borderRadius: 16, display: "block", maxHeight: "70vh", objectFit: "contain", background: "#000" }} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── Modal "¿Querés dejar tu deseo?" ─────────────────────────────────────────
+function DeseoModal({ eventoId, token, onClose }: { eventoId: string; token: string; onClose: () => void }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 9500, background: "rgba(15,23,42,0.72)", backdropFilter: "blur(12px)", display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadeIn .22s ease" }}>
+      <div style={{ width: "100%", maxWidth: 480, background: "var(--surface)", borderRadius: "28px 28px 0 0", padding: "0 0 max(24px, env(safe-area-inset-bottom))", boxShadow: "0 -16px 60px rgba(15,23,42,0.20)", animation: "slideUp .32s cubic-bezier(.22,1,.36,1)" }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: "#CBD5E1", margin: "14px auto 0" }} />
+        <div style={{ padding: "22px 24px 20px", textAlign: "center" }}>
+          <div style={{ fontSize: 42, marginBottom: 12 }}>💌</div>
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26, fontStyle: "italic", color: "var(--ink)", marginBottom: 8 }}>
+            ¿Querés dejar tu deseo?
+          </div>
+          <p style={{ fontSize: 13, color: "var(--ink3)", lineHeight: 1.6, marginBottom: 24 }}>
+            Ya subiste tu foto. ¿Querés escribir un mensaje especial para los anfitriones?
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              style={{ width: "100%", background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontStyle: "italic", fontWeight: 600, cursor: "pointer", boxShadow: "0 8px 22px -6px rgba(79,70,229,0.40)" }}
+              onClick={() => { window.location.href = `/muro/${eventoId}?token=${token}&tab=deseos`; }}
+            >
+              Sí, quiero dejar mi deseo 💌
+            </button>
+            <button
+              style={{ width: "100%", background: "transparent", border: "none", padding: "12px", fontSize: 13, fontWeight: 500, color: "var(--ink3)", cursor: "pointer", fontFamily: "'Jost',sans-serif" }}
+              onClick={onClose}
+            >
+              No, gracias
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Recordatorio de foto y deseo ─────────────────────────────────────────────
+function RecordatorioAccion({ eventoId, invitadoId, token }: { eventoId: string; invitadoId: string; token: string }) {
+  const [tieneFoto, setTieneFoto] = useState<boolean | null>(null);
+  const [tieneDeseo, setTieneDeseo] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    async function check() {
+      const [{ data: fotos }, { data: deseos }] = await Promise.all([
+        supabase.from("fotos").select("id").eq("invitado_id", invitadoId).limit(1),
+        supabase.from("deseos").select("id").eq("invitado_id", invitadoId).limit(1),
+      ]);
+      setTieneFoto(!!(fotos && fotos.length > 0));
+      setTieneDeseo(!!(deseos && deseos.length > 0));
+    }
+    check();
+  }, [invitadoId]);
+
+  if (tieneFoto === null) return null;
+  if (tieneFoto && tieneDeseo) return null;
+
+  return (
+    <div style={{ background: "linear-gradient(135deg,#EEF2FF,#F5F3FF)", border: "1px solid rgba(79,70,229,0.2)", borderRadius: 16, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold-dark)", textTransform: "uppercase", letterSpacing: "1px" }}>
+        ✨ Completá tu experiencia
+      </div>
+      {!tieneFoto && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(79,70,229,0.10)", border: "1px solid rgba(79,70,229,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <IcoCamera />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Subí tu foto del evento</div>
+            <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 2 }}>Compartí el momento con los demás invitados</div>
+          </div>
+        </div>
+      )}
+      {tieneFoto && !tieneDeseo && (
+        <button
+          style={{ width: "100%", background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontStyle: "italic", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          onClick={() => { window.location.href = `/muro/${eventoId}?token=${token}&tab=deseos`; }}
+        >
+          💌 Escribí tu deseo
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 export default function ConfirmarPage() {
   const params = useParams();
@@ -1567,6 +1658,8 @@ export default function ConfirmarPage() {
   const [mesasDisponibles, setMesasDisponibles] = useState<MesaConOcupacion[]>([]);
   const [asignandoMesa, setAsignandoMesa] = useState(false);
   const [mesaConfirmada, setMesaConfirmada] = useState<string | null>(null);
+  // Modal deseo post-foto
+  const [showDeseoModal, setShowDeseoModal] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
@@ -2051,6 +2144,15 @@ export default function ConfirmarPage() {
     .btn-cerrar{width:100%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.3px;box-shadow:0 8px 22px -6px rgba(79,70,229,0.40);transition:transform .18s;display:flex;align-items:center;justify-content:center;gap:9px}
     .btn-cerrar:hover{transform:translateY(-1px)}
 
+    /* Mesa row mejorado */
+    .mesa-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;gap:12px}
+
+    /* Mobile global */
+    html,body{overflow-x:hidden;-webkit-text-size-adjust:100%}
+    .page{min-height:100dvh;overflow-x:hidden}
+    .wrap{width:100%;box-sizing:border-box}
+    img,video{max-width:100%}
+
     /* Modal tarjeta */
     .modal-overlay{position:fixed;inset:0;z-index:9000;background:rgba(15,23,42,0.75);backdrop-filter:blur(14px);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .22s ease}
     .modal-sheet{width:100%;max-width:480px;background:var(--surface);border-radius:28px 28px 0 0;padding:0 0 env(safe-area-inset-bottom,20px);box-shadow:0 -16px 60px rgba(15,23,42,0.20);animation:slideUp .32s cubic-bezier(.22,1,.36,1)}
@@ -2122,8 +2224,7 @@ export default function ConfirmarPage() {
     .mesa-picker-ico{width:32px;height:32px;border-radius:9px;background:rgba(79,70,229,0.10);border:1px solid rgba(79,70,229,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .mesa-picker-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--gold-dark);margin-bottom:2px}
     .mesa-picker-sub{font-size:12px;color:var(--ink3);line-height:1.4}
-    .mesa-list{display:flex;flex-direction:column;gap:0;max-height:320px;overflow-y:auto}
-    .mesa-row{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;gap:12px}
+    .mesa-list{display:flex;flex-direction:column;gap:0;max-height:380px;overflow-y:auto}
     .mesa-row:last-child{border-bottom:none}
     .mesa-row:hover:not(.mesa-row--full):not(.mesa-row--loading){background:var(--gold-pale)}
     .mesa-row--full{opacity:.45;cursor:not-allowed}
@@ -2387,6 +2488,15 @@ export default function ConfirmarPage() {
             </svg>
           </button>
         </div>
+      )}
+
+      {/* Modal deseo post-foto */}
+      {showDeseoModal && invitado && (
+        <DeseoModal
+          eventoId={invitado.evento_id}
+          token={invitado.token}
+          onClose={() => setShowDeseoModal(false)}
+        />
       )}
 
       {/* Modal tarjeta */}
@@ -2858,30 +2968,43 @@ export default function ConfirmarPage() {
                         <div className="mesa-picker-ico">
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="20" height="4" rx="2"/><path d="M5 10v8M19 10v8"/></svg>
                         </div>
-                        <div>
+                        <div style={{ flex: 1 }}>
                           <div className="mesa-picker-title">Elige tu lugar</div>
-                          <div className="mesa-picker-sub">Selecciona una mesa disponible</div>
+                          <div className="mesa-picker-sub">Seleccioná una mesa disponible</div>
                         </div>
+                        {evento.plano_mesas_url && (
+                          <PlanoMesasBtn url={evento.plano_mesas_url!} />
+                        )}
                       </div>
                       <div className="mesa-list">
                         {mesasDisponibles.map((m) => {
                           const libre = m.capacidad - m.ocupados;
                           const llena = libre <= 0;
+                          const pct = Math.min(100, Math.round((m.ocupados / m.capacidad) * 100));
                           return (
                             <div
                               key={m.id}
                               className={`mesa-row${llena ? " mesa-row--full" : ""}${asignandoMesa ? " mesa-row--loading" : ""}`}
                               onClick={() => !llena && !asignandoMesa && elegirMesa(m.id, m.nombre)}
                             >
-                              <span className="mesa-row-name">{m.nombre}</span>
-                              <div className="mesa-row-slots">
-                                <span className={`mesa-row-badge${llena ? " mesa-row-badge--full" : " mesa-row-badge--free"}`}>
-                                  {llena ? "Llena" : `${libre} ${libre === 1 ? "lugar" : "lugares"}`}
-                                </span>
-                                {!llena && (
-                                  <svg className="mesa-row-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-                                )}
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                                  <span className="mesa-row-name">{m.nombre}</span>
+                                  <span className={`mesa-row-badge${llena ? " mesa-row-badge--full" : " mesa-row-badge--free"}`}>
+                                    {llena ? "Llena" : `${libre} libre${libre !== 1 ? "s" : ""}`}
+                                  </span>
+                                </div>
+                                {/* Barra de capacidad */}
+                                <div style={{ height: 5, borderRadius: 99, background: "var(--border)", overflow: "hidden" }}>
+                                  <div style={{ height: "100%", width: `${pct}%`, borderRadius: 99, background: llena ? "#9CA3AF" : "var(--gold)", transition: "width .4s" }} />
+                                </div>
+                                <div style={{ fontSize: 10, color: "var(--ink3)", marginTop: 3 }}>
+                                  {m.ocupados} de {m.capacidad} lugares ocupados
+                                </div>
                               </div>
+                              {!llena && (
+                                <svg className="mesa-row-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                              )}
                             </div>
                           );
                         })}
@@ -2895,11 +3018,19 @@ export default function ConfirmarPage() {
                   );
                 })()}
 
+                {/* Recordatorio: si no subió foto aún */}
+                <RecordatorioAccion
+                  eventoId={invitado.evento_id}
+                  invitadoId={invitado.id}
+                  token={invitado.token}
+                />
+
                 {/* Subir fotos — máx 5, opcional */}
                 <SubirFotosInvitado
                   invitadoId={invitado.id}
                   eventoId={invitado.evento_id}
                   token={token}
+                  onFotoSubida={() => setShowDeseoModal(true)}
                 />
 
                 {/* Dejar deseo en el muro */}

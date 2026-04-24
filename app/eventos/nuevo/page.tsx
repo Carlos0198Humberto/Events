@@ -666,7 +666,26 @@ export default function NuevoEvento() {
     }).select("id").single();
 
     if (insertError) {
-      setError(t.errorCrear + insertError.message);
+      // Detectar violación de límite de eventos (RLS policy) o cuenta bloqueada
+      const msg = insertError.message ?? "";
+      if (msg.includes("row-level security") || msg.includes("policy") || insertError.code === "42501") {
+        // Verificar si es por límite o por bloqueo
+        const { data: perfil } = await supabase
+          .from("profiles")
+          .select("bloqueado, evento_limit")
+          .eq("id", user.id)
+          .single();
+        if (perfil?.bloqueado) {
+          setError("Tu cuenta está bloqueada. Contactá al administrador.");
+        } else if (perfil?.evento_limit != null) {
+          const lim = perfil.evento_limit as number;
+          setError(`Alcanzaste el límite de ${lim} evento${lim !== 1 ? "s" : ""} permitido${lim !== 1 ? "s" : ""}. Contactá al administrador para ampliar tu plan.`);
+        } else {
+          setError("No tenés permiso para crear eventos. Contactá al administrador.");
+        }
+      } else {
+        setError(t.errorCrear + insertError.message);
+      }
       setLoading(false);
       return;
     }
