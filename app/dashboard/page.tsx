@@ -1102,7 +1102,7 @@ export default function Dashboard() {
               </button>
 
               {showStats && (
-                <div className="stats-line" style={{marginTop:0,borderTop:"none",borderRadius:"0 0 12px 12px",border:"1px solid var(--rule-strong)",borderTop:"none",padding:"18px 18px 18px",background:"var(--paper)"}}>
+                <div className="stats-line" style={{marginTop:0,borderRadius:"0 0 12px 12px",border:"1px solid var(--rule-strong)",borderTop:"none",padding:"18px 18px 18px",background:"var(--paper)"}}>
                   <div className="stat-chunk">
                     <span className="stat-chunk-val">{totPersonas}</span>
                     <span className="stat-chunk-label">{t.totalAttendees}</span>
