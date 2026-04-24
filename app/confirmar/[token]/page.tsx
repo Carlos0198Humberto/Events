@@ -139,19 +139,19 @@ const CONFETTI_PIECES = Array.from({ length: 42 }, (_, i) => ({
   delay: (i * 0.12) % 3.8,
   dur: 2.6 + (i % 6) * 0.35,
   size: 5 + (i % 5) * 2.5,
-  color: ["#7C3AED","#FDE68A","#ffffff","#f9a8d4","#fbbf24","#ddd6fe","#86efac","#93c5fd","#fca5a5","#a5f3fc"][i % 10],
+  color: ["#4F46E5","#6366F1","#818CF8","#A5B4FC","#C7D2FE","#E0E7FF","#F59E0B","#FCD34D","#10B981","#A78BFA"][i % 10],
   rot: (i * 53) % 360,
   wide: i % 3 !== 0,
 }));
 
 function crearParticulas() {
   const colores = [
-    "#7C3AED",
-    "#FDE68A",
-    "#ffffff",
-    "#f472b6",
-    "#fbbf24",
-    "#ddd6fe",
+    "#4F46E5",
+    "#6366F1",
+    "#818CF8",
+    "#A5B4FC",
+    "#F59E0B",
+    "#10B981",
   ];
   return Array.from({ length: 80 }, () => ({
     x: window.innerWidth / 2 + (Math.random() - 0.5) * 300,
@@ -167,7 +167,7 @@ function crearParticulas() {
 // ─── AppLogo ──────────────────────────────────────────────────────────────────
 function AppLogo({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#312E81" /><stop offset="100%" stopColor="#4F46E5" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><circle cx="48" cy="19" r="3" fill="#E0E7FF" /><circle cx="48" cy="19" r="1.4" fill="#FFFFFF" /><circle cx="47" cy="46" r="2" fill="#FFFFFF" opacity="0.55" /></svg>
   );
 }
 
@@ -176,21 +176,21 @@ const IcoFecha = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M11.995 13.7h.01M8.294 13.7h.01M8.294 16.7h.01"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M15.695 13.7h.01M15.695 16.7h.01M11.995 16.7h.01"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -201,14 +201,14 @@ const IcoHora = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M22 12c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2s10 4.48 10 10Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M15.71 15.18 12.61 13.3c-.54-.32-.98-1.09-.98-1.72V7.51"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -219,12 +219,12 @@ const IcoLugar = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M12 13.43a3.12 3.12 0 1 0 0-6.24 3.12 3.12 0 0 0 0 6.24Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
     />
     <path
       d="M3.62 8.49c1.97-8.66 14.8-8.65 16.76.01 1.15 5.08-2.01 9.38-4.78 12.04a5.193 5.193 0 0 1-7.21 0c-2.76-2.66-5.92-6.97-4.77-12.05Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
     />
   </svg>
@@ -233,14 +233,14 @@ const IcoMusica = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M2 9.17v9.71c0 1.18.85 1.65 1.9 1.05l2.74-1.58c.36-.21.96-.23 1.34-.04l6.08 3.04c.38.19.98.17 1.34-.04l5.8-3.34c.38-.22.7-.76.7-1.2V7.06c0-1.18-.85-1.65-1.9-1.05l-2.74 1.58c-.36.21-.96.23-1.34.04L9.94 4.59c-.38-.19-.98-.17-1.34.04L2.7 7.97c-.38.22-.7.76-.7 1.2Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M9 5v14M15 7.5V21"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -269,28 +269,28 @@ const IcoPersonas = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M9 2C6.38 2 4.25 4.13 4.25 6.75c0 2.57 2.01 4.65 4.63 4.74.08-.01.16-.01.22 0h.07A4.738 4.738 0 0 0 13.75 6.75C13.75 4.13 11.62 2 9 2Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M16.41 4c2.07 0 3.74 1.68 3.74 3.75 0 2.02-1.6 3.66-3.6 3.74-.07-.01-.14-.01-.21 0"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M4.16 14.56c-2.58 1.72-2.58 4.52 0 6.23 2.93 1.95 7.73 1.95 10.66 0 2.58-1.72 2.58-4.52 0-6.23-2.92-1.94-7.72-1.94-10.66 0Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M18.34 14c.77.16 1.49.48 2.07.96 1.63 1.3 1.63 3.43 0 4.73-.57.46-1.27.78-2.02.95"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -301,14 +301,14 @@ const IcoCalendario = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
     <path
       d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M15.695 13.7h.01M15.695 16.7h.01M11.995 13.7h.01M11.995 16.7h.01M8.294 13.7h.01M8.294 16.7h.01"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -319,14 +319,14 @@ const IcoCamera = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <path
       d="M6.76 22h10.48c3 0 4.21-1.74 4.36-3.86l.65-10.14C22.4 5.7 20.54 4 18.25 4c-.61 0-1.17-.35-1.45-.89l-.72-1.45C15.63.96 14.52.5 13.45.5h-2.89C9.48.5 8.38.96 7.92 1.66L7.2 3.11C6.92 3.65 6.36 4 5.75 4 3.46 4 1.6 5.7 1.75 8L2.4 18.14C2.54 20.26 3.76 22 6.76 22Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
     <path
       d="M10.5 8h3M12 18c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -337,7 +337,7 @@ const IcoCorazon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <path
       d="M12.62 20.81c-.34.12-.9.12-1.24 0C8.48 19.82 2 15.69 2 8.69 2 5.6 4.49 3.1 7.56 3.1c1.82 0 3.43.88 4.44 2.24a5.53 5.53 0 0 1 4.44-2.24C19.51 3.1 22 5.6 22 8.69c0 7-6.48 11.13-9.38 12.12Z"
-      stroke="#7C3AED"
+      stroke="#4F46E5"
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -369,7 +369,7 @@ const IcoImages = () => (
     height="18"
     viewBox="0 0 24 24"
     fill="none"
-    stroke="#7C3AED"
+    stroke="#4F46E5"
     strokeWidth="1.8"
     strokeLinecap="round"
     strokeLinejoin="round"
@@ -444,33 +444,33 @@ function DecoracionEvento({ tipo }: { tipo: string }) {
         {/* Anillos de boda */}
         <svg width="110" height="56" viewBox="0 0 110 56" fill="none">
           {/* Anillo izquierdo */}
-          <circle cx="36" cy="30" r="20" stroke="#7C3AED" strokeWidth="5" fill="none" opacity="0.85" />
-          <circle cx="36" cy="30" r="13" stroke="#FDE68A" strokeWidth="1.5" fill="none" opacity="0.4" />
+          <circle cx="36" cy="30" r="20" stroke="#4F46E5" strokeWidth="5" fill="none" opacity="0.85" />
+          <circle cx="36" cy="30" r="13" stroke="#E0E7FF" strokeWidth="1.5" fill="none" opacity="0.4" />
           {/* Diamante */}
-          <path d="M32 10 L36 4 L40 10 L36 15 Z" fill="#7C3AED" opacity="0.9" />
-          <path d="M32 10 L36 15 L40 10" fill="#FDE68A" opacity="0.6" />
+          <path d="M32 10 L36 4 L40 10 L36 15 Z" fill="#4F46E5" opacity="0.9" />
+          <path d="M32 10 L36 15 L40 10" fill="#E0E7FF" opacity="0.6" />
           {/* Anillo derecho */}
-          <circle cx="74" cy="30" r="20" stroke="#7C3AED" strokeWidth="5" fill="none" opacity="0.85" />
-          <circle cx="74" cy="30" r="13" stroke="#FDE68A" strokeWidth="1.5" fill="none" opacity="0.4" />
+          <circle cx="74" cy="30" r="20" stroke="#4F46E5" strokeWidth="5" fill="none" opacity="0.85" />
+          <circle cx="74" cy="30" r="13" stroke="#E0E7FF" strokeWidth="1.5" fill="none" opacity="0.4" />
           {/* Destello */}
-          <path d="M70 10 L74 4 L78 10 L74 15 Z" fill="#7C3AED" opacity="0.9" />
-          <path d="M70 10 L74 15 L78 10" fill="#FDE68A" opacity="0.6" />
+          <path d="M70 10 L74 4 L78 10 L74 15 Z" fill="#4F46E5" opacity="0.9" />
+          <path d="M70 10 L74 15 L78 10" fill="#E0E7FF" opacity="0.6" />
           {/* Enlace */}
-          <path d="M52 28 Q55 22 58 28" stroke="#7C3AED" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
+          <path d="M52 28 Q55 22 58 28" stroke="#4F46E5" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
         </svg>
         {/* Flores decorativas */}
         <svg width="200" height="28" viewBox="0 0 200 28" fill="none">
-          <path d="M0 14 Q25 4 50 14 Q75 24 100 14 Q125 4 150 14 Q175 24 200 14" stroke="#7C3AED" strokeWidth="1" fill="none" opacity="0.5" />
+          <path d="M0 14 Q25 4 50 14 Q75 24 100 14 Q125 4 150 14 Q175 24 200 14" stroke="#4F46E5" strokeWidth="1" fill="none" opacity="0.5" />
           {[25, 75, 125, 175].map((x) => (
             <g key={x} transform={`translate(${x},14)`}>
-              <circle cx="0" cy="0" r="2.5" fill="#7C3AED" opacity="0.7" />
-              <circle cx="0" cy="-5" r="2" fill="#FDE68A" opacity="0.6" />
-              <circle cx="5" cy="0" r="2" fill="#FDE68A" opacity="0.6" />
-              <circle cx="0" cy="5" r="2" fill="#FDE68A" opacity="0.6" />
-              <circle cx="-5" cy="0" r="2" fill="#FDE68A" opacity="0.6" />
+              <circle cx="0" cy="0" r="2.5" fill="#4F46E5" opacity="0.7" />
+              <circle cx="0" cy="-5" r="2" fill="#E0E7FF" opacity="0.6" />
+              <circle cx="5" cy="0" r="2" fill="#E0E7FF" opacity="0.6" />
+              <circle cx="0" cy="5" r="2" fill="#E0E7FF" opacity="0.6" />
+              <circle cx="-5" cy="0" r="2" fill="#E0E7FF" opacity="0.6" />
             </g>
           ))}
-          <circle cx="100" cy="14" r="3" fill="#7C3AED" opacity="0.9" />
+          <circle cx="100" cy="14" r="3" fill="#4F46E5" opacity="0.9" />
         </svg>
       </div>
     );
@@ -482,43 +482,43 @@ function DecoracionEvento({ tipo }: { tipo: string }) {
         {/* Corona */}
         <svg width="90" height="52" viewBox="0 0 90 52" fill="none">
           {/* Base de la corona */}
-          <path d="M8 44 L8 28 L22 8 L45 22 L68 8 L82 28 L82 44 Z" stroke="#7C3AED" strokeWidth="2.5" fill="rgba(124,58,237,0.12)" strokeLinejoin="round" />
+          <path d="M8 44 L8 28 L22 8 L45 22 L68 8 L82 28 L82 44 Z" stroke="#4F46E5" strokeWidth="2.5" fill="rgba(79,70,229,0.12)" strokeLinejoin="round" />
           {/* Puntas de la corona */}
-          <circle cx="22" cy="8" r="4" fill="#7C3AED" opacity="0.85" />
-          <circle cx="45" cy="4" r="5" fill="#7C3AED" opacity="0.95" />
-          <circle cx="68" cy="8" r="4" fill="#7C3AED" opacity="0.85" />
+          <circle cx="22" cy="8" r="4" fill="#4F46E5" opacity="0.85" />
+          <circle cx="45" cy="4" r="5" fill="#4F46E5" opacity="0.95" />
+          <circle cx="68" cy="8" r="4" fill="#4F46E5" opacity="0.85" />
           {/* Joyas en la corona */}
-          <ellipse cx="45" cy="36" rx="8" ry="6" fill="rgba(124,58,237,0.25)" stroke="#7C3AED" strokeWidth="1.5" />
-          <ellipse cx="24" cy="38" rx="5" ry="4" fill="rgba(124,58,237,0.15)" stroke="#7C3AED" strokeWidth="1" />
-          <ellipse cx="66" cy="38" rx="5" ry="4" fill="rgba(124,58,237,0.15)" stroke="#7C3AED" strokeWidth="1" />
+          <ellipse cx="45" cy="36" rx="8" ry="6" fill="rgba(79,70,229,0.25)" stroke="#4F46E5" strokeWidth="1.5" />
+          <ellipse cx="24" cy="38" rx="5" ry="4" fill="rgba(79,70,229,0.15)" stroke="#4F46E5" strokeWidth="1" />
+          <ellipse cx="66" cy="38" rx="5" ry="4" fill="rgba(79,70,229,0.15)" stroke="#4F46E5" strokeWidth="1" />
           {/* Destellos */}
-          <path d="M45 0 L46 3 L45 4 L44 3 Z" fill="#FDE68A" opacity="0.9" />
+          <path d="M45 0 L46 3 L45 4 L44 3 Z" fill="#E0E7FF" opacity="0.9" />
         </svg>
         {/* Mariposas y flores */}
         <svg width="200" height="32" viewBox="0 0 200 32" fill="none">
-          <path d="M0 16 Q50 6 100 16 Q150 26 200 16" stroke="#7C3AED" strokeWidth="0.8" fill="none" opacity="0.4" />
+          <path d="M0 16 Q50 6 100 16 Q150 26 200 16" stroke="#4F46E5" strokeWidth="0.8" fill="none" opacity="0.4" />
           {/* Mariposa izq */}
           <g transform="translate(40,16)">
-            <path d="M0 0 Q-10 -10 -18 -4 Q-10 2 0 0" fill="#7C3AED" opacity="0.5" />
-            <path d="M0 0 Q-10 10 -18 4 Q-10 -2 0 0" fill="#7C3AED" opacity="0.35" />
-            <path d="M0 0 Q10 -10 18 -4 Q10 2 0 0" fill="#7C3AED" opacity="0.5" />
-            <path d="M0 0 Q10 10 18 4 Q10 -2 0 0" fill="#7C3AED" opacity="0.35" />
-            <circle cx="0" cy="0" r="2" fill="#7C3AED" opacity="0.8" />
+            <path d="M0 0 Q-10 -10 -18 -4 Q-10 2 0 0" fill="#4F46E5" opacity="0.5" />
+            <path d="M0 0 Q-10 10 -18 4 Q-10 -2 0 0" fill="#4F46E5" opacity="0.35" />
+            <path d="M0 0 Q10 -10 18 -4 Q10 2 0 0" fill="#4F46E5" opacity="0.5" />
+            <path d="M0 0 Q10 10 18 4 Q10 -2 0 0" fill="#4F46E5" opacity="0.35" />
+            <circle cx="0" cy="0" r="2" fill="#4F46E5" opacity="0.8" />
           </g>
           {/* Flor central */}
           <g transform="translate(100,16)">
             {[0,60,120,180,240,300].map((a) => (
-              <ellipse key={a} cx={Math.cos(a*Math.PI/180)*7} cy={Math.sin(a*Math.PI/180)*7} rx="4" ry="3" fill="#7C3AED" opacity="0.5" transform={`rotate(${a} ${Math.cos(a*Math.PI/180)*7} ${Math.sin(a*Math.PI/180)*7})`} />
+              <ellipse key={a} cx={Math.cos(a*Math.PI/180)*7} cy={Math.sin(a*Math.PI/180)*7} rx="4" ry="3" fill="#4F46E5" opacity="0.5" transform={`rotate(${a} ${Math.cos(a*Math.PI/180)*7} ${Math.sin(a*Math.PI/180)*7})`} />
             ))}
-            <circle cx="0" cy="0" r="3.5" fill="#FDE68A" opacity="0.85" />
+            <circle cx="0" cy="0" r="3.5" fill="#E0E7FF" opacity="0.85" />
           </g>
           {/* Mariposa der */}
           <g transform="translate(160,16)">
-            <path d="M0 0 Q-10 -10 -18 -4 Q-10 2 0 0" fill="#7C3AED" opacity="0.5" />
-            <path d="M0 0 Q-10 10 -18 4 Q-10 -2 0 0" fill="#7C3AED" opacity="0.35" />
-            <path d="M0 0 Q10 -10 18 -4 Q10 2 0 0" fill="#7C3AED" opacity="0.5" />
-            <path d="M0 0 Q10 10 18 4 Q10 -2 0 0" fill="#7C3AED" opacity="0.35" />
-            <circle cx="0" cy="0" r="2" fill="#7C3AED" opacity="0.8" />
+            <path d="M0 0 Q-10 -10 -18 -4 Q-10 2 0 0" fill="#4F46E5" opacity="0.5" />
+            <path d="M0 0 Q-10 10 -18 4 Q-10 -2 0 0" fill="#4F46E5" opacity="0.35" />
+            <path d="M0 0 Q10 -10 18 -4 Q10 2 0 0" fill="#4F46E5" opacity="0.5" />
+            <path d="M0 0 Q10 10 18 4 Q10 -2 0 0" fill="#4F46E5" opacity="0.35" />
+            <circle cx="0" cy="0" r="2" fill="#4F46E5" opacity="0.8" />
           </g>
         </svg>
       </div>
@@ -531,26 +531,26 @@ function DecoracionEvento({ tipo }: { tipo: string }) {
         {/* Birrete de graduación */}
         <svg width="90" height="60" viewBox="0 0 90 60" fill="none">
           {/* Borla */}
-          <line x1="68" y1="18" x2="72" y2="38" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-          <circle cx="72" cy="40" r="4" fill="#7C3AED" opacity="0.75" />
+          <line x1="68" y1="18" x2="72" y2="38" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
+          <circle cx="72" cy="40" r="4" fill="#4F46E5" opacity="0.75" />
           {/* Tablero superior */}
-          <path d="M45 6 L82 22 L45 38 L8 22 Z" fill="rgba(124,58,237,0.18)" stroke="#7C3AED" strokeWidth="2.2" strokeLinejoin="round" />
+          <path d="M45 6 L82 22 L45 38 L8 22 Z" fill="rgba(79,70,229,0.18)" stroke="#4F46E5" strokeWidth="2.2" strokeLinejoin="round" />
           {/* Parte superior brillante */}
-          <path d="M45 6 L82 22 L45 26 L8 22 Z" fill="rgba(124,58,237,0.12)" />
+          <path d="M45 6 L82 22 L45 26 L8 22 Z" fill="rgba(79,70,229,0.12)" />
           {/* Cuerpo del birrete */}
-          <path d="M24 26 L24 42 Q45 50 66 42 L66 26" stroke="#7C3AED" strokeWidth="2" fill="rgba(124,58,237,0.1)" strokeLinejoin="round" />
+          <path d="M24 26 L24 42 Q45 50 66 42 L66 26" stroke="#4F46E5" strokeWidth="2" fill="rgba(79,70,229,0.1)" strokeLinejoin="round" />
           {/* Diploma */}
-          <rect x="12" y="40" width="22" height="14" rx="2" stroke="#7C3AED" strokeWidth="1.5" fill="rgba(124,58,237,0.08)" />
-          <line x1="15" y1="45" x2="31" y2="45" stroke="#7C3AED" strokeWidth="1" opacity="0.5" />
-          <line x1="15" y1="49" x2="28" y2="49" stroke="#7C3AED" strokeWidth="1" opacity="0.4" />
-          <path d="M29 38 Q33 36 34 40 Q33 44 29 42 Z" fill="#7C3AED" opacity="0.6" />
+          <rect x="12" y="40" width="22" height="14" rx="2" stroke="#4F46E5" strokeWidth="1.5" fill="rgba(79,70,229,0.08)" />
+          <line x1="15" y1="45" x2="31" y2="45" stroke="#4F46E5" strokeWidth="1" opacity="0.5" />
+          <line x1="15" y1="49" x2="28" y2="49" stroke="#4F46E5" strokeWidth="1" opacity="0.4" />
+          <path d="M29 38 Q33 36 34 40 Q33 44 29 42 Z" fill="#4F46E5" opacity="0.6" />
         </svg>
         {/* Estrellas y destellos */}
         <svg width="200" height="28" viewBox="0 0 200 28" fill="none">
-          <path d="M0 14 Q50 5 100 14 Q150 23 200 14" stroke="#7C3AED" strokeWidth="0.8" fill="none" opacity="0.4" />
+          <path d="M0 14 Q50 5 100 14 Q150 23 200 14" stroke="#4F46E5" strokeWidth="0.8" fill="none" opacity="0.4" />
           {[20, 60, 100, 140, 180].map((x, i) => (
             <g key={x} transform={`translate(${x},14)`}>
-              <path d={`M0 -${i===2?7:5} L1.5 -2 L${i===2?7:5} 0 L1.5 2 L0 ${i===2?7:5} L-1.5 2 L-${i===2?7:5} 0 L-1.5 -2 Z`} fill="#7C3AED" opacity={i===2?0.9:0.6} />
+              <path d={`M0 -${i===2?7:5} L1.5 -2 L${i===2?7:5} 0 L1.5 2 L0 ${i===2?7:5} L-1.5 2 L-${i===2?7:5} 0 L-1.5 -2 Z`} fill="#4F46E5" opacity={i===2?0.9:0.6} />
             </g>
           ))}
         </svg>
@@ -564,28 +564,28 @@ function DecoracionEvento({ tipo }: { tipo: string }) {
         {/* Pastel con globos */}
         <svg width="110" height="60" viewBox="0 0 110 60" fill="none">
           {/* Globo izq */}
-          <ellipse cx="20" cy="20" rx="12" ry="15" fill="rgba(124,58,237,0.25)" stroke="#7C3AED" strokeWidth="1.8" />
-          <line x1="20" y1="35" x2="30" y2="52" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+          <ellipse cx="20" cy="20" rx="12" ry="15" fill="rgba(79,70,229,0.25)" stroke="#4F46E5" strokeWidth="1.8" />
+          <line x1="20" y1="35" x2="30" y2="52" stroke="#4F46E5" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
           {/* Globo der */}
-          <ellipse cx="90" cy="18" rx="12" ry="15" fill="rgba(124,58,237,0.2)" stroke="#7C3AED" strokeWidth="1.8" />
-          <line x1="90" y1="33" x2="80" y2="52" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+          <ellipse cx="90" cy="18" rx="12" ry="15" fill="rgba(79,70,229,0.2)" stroke="#4F46E5" strokeWidth="1.8" />
+          <line x1="90" y1="33" x2="80" y2="52" stroke="#4F46E5" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
           {/* Pastel */}
-          <rect x="28" y="38" width="54" height="20" rx="4" fill="rgba(124,58,237,0.18)" stroke="#7C3AED" strokeWidth="2" />
-          <rect x="32" y="30" width="46" height="12" rx="3" fill="rgba(124,58,237,0.12)" stroke="#7C3AED" strokeWidth="1.5" />
+          <rect x="28" y="38" width="54" height="20" rx="4" fill="rgba(79,70,229,0.18)" stroke="#4F46E5" strokeWidth="2" />
+          <rect x="32" y="30" width="46" height="12" rx="3" fill="rgba(79,70,229,0.12)" stroke="#4F46E5" strokeWidth="1.5" />
           {/* Velas */}
           {[40, 55, 70].map((x) => (
             <g key={x}>
-              <rect x={x-2} y="18" width="4" height="13" rx="2" fill="#7C3AED" opacity="0.7" />
-              <ellipse cx={x} cy="17" rx="3" ry="4" fill="#FDE68A" opacity="0.9" />
+              <rect x={x-2} y="18" width="4" height="13" rx="2" fill="#4F46E5" opacity="0.7" />
+              <ellipse cx={x} cy="17" rx="3" ry="4" fill="#E0E7FF" opacity="0.9" />
             </g>
           ))}
           {/* Decoración pastel */}
-          <path d="M28 42 Q55 36 82 42" stroke="#FDE68A" strokeWidth="1" fill="none" opacity="0.5" />
+          <path d="M28 42 Q55 36 82 42" stroke="#E0E7FF" strokeWidth="1" fill="none" opacity="0.5" />
         </svg>
         {/* Confeti */}
         <svg width="200" height="24" viewBox="0 0 200 24" fill="none">
           {[15,35,55,80,100,120,145,165,185].map((x,i) => (
-            <rect key={x} x={x} y={i%2===0?4:10} width="6" height="6" rx="1" fill="#7C3AED" opacity={0.4+i*0.05} transform={`rotate(${i*25} ${x+3} ${(i%2===0?4:10)+3})`} />
+            <rect key={x} x={x} y={i%2===0?4:10} width="6" height="6" rx="1" fill="#4F46E5" opacity={0.4+i*0.05} transform={`rotate(${i*25} ${x+3} ${(i%2===0?4:10)+3})`} />
           ))}
         </svg>
       </div>
@@ -596,10 +596,10 @@ function DecoracionEvento({ tipo }: { tipo: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "6px 0" }}>
       <svg width="160" height="36" viewBox="0 0 160 36" fill="none">
-        <path d="M0 18 Q40 6 80 18 Q120 30 160 18" stroke="#7C3AED" strokeWidth="1" fill="none" opacity="0.5" />
+        <path d="M0 18 Q40 6 80 18 Q120 30 160 18" stroke="#4F46E5" strokeWidth="1" fill="none" opacity="0.5" />
         {[20,50,80,110,140].map((x,i) => (
           <g key={x} transform={`translate(${x},18)`}>
-            <path d={`M0 -${i===2?8:5} L1.8 -2 L${i===2?8:5} 0 L1.8 2 L0 ${i===2?8:5} L-1.8 2 L-${i===2?8:5} 0 L-1.8 -2 Z`} fill="#7C3AED" opacity={i===2?0.9:0.55} />
+            <path d={`M0 -${i===2?8:5} L1.8 -2 L${i===2?8:5} 0 L1.8 2 L0 ${i===2?8:5} L-1.8 2 L-${i===2?8:5} 0 L-1.8 -2 Z`} fill="#4F46E5" opacity={i===2?0.9:0.55} />
           </g>
         ))}
       </svg>
@@ -623,31 +623,31 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
         <svg width="60" height="14" viewBox="0 0 60 14" fill="none">
           <path
             d="M0 7 Q15 0 30 7 Q45 14 60 7"
-            stroke="#7C3AED"
+            stroke="#4F46E5"
             strokeWidth="1"
             fill="none"
             opacity="0.6"
           />
-          <circle cx="0" cy="7" r="1.5" fill="#7C3AED" opacity="0.5" />
-          <circle cx="60" cy="7" r="1.5" fill="#7C3AED" opacity="0.5" />
+          <circle cx="0" cy="7" r="1.5" fill="#4F46E5" opacity="0.5" />
+          <circle cx="60" cy="7" r="1.5" fill="#4F46E5" opacity="0.5" />
         </svg>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path
             d="M8 1 L9.5 6.5 L15 6.5 L10.5 10 L12 15 L8 11.5 L4 15 L5.5 10 L1 6.5 L6.5 6.5 Z"
-            fill="#7C3AED"
+            fill="#4F46E5"
             opacity="0.7"
           />
         </svg>
         <svg width="60" height="14" viewBox="0 0 60 14" fill="none">
           <path
             d="M0 7 Q15 14 30 7 Q45 0 60 7"
-            stroke="#7C3AED"
+            stroke="#4F46E5"
             strokeWidth="1"
             fill="none"
             opacity="0.6"
           />
-          <circle cx="0" cy="7" r="1.5" fill="#7C3AED" opacity="0.5" />
-          <circle cx="60" cy="7" r="1.5" fill="#7C3AED" opacity="0.5" />
+          <circle cx="0" cy="7" r="1.5" fill="#4F46E5" opacity="0.5" />
+          <circle cx="60" cy="7" r="1.5" fill="#4F46E5" opacity="0.5" />
         </svg>
       </div>
     );
@@ -659,10 +659,10 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
           flex: 1,
           height: 1,
           background:
-            "linear-gradient(to right, transparent, rgba(124,58,237,0.4))",
+            "linear-gradient(to right, transparent, rgba(79,70,229,0.4))",
         }}
       />
-      <svg width="8" height="8" viewBox="0 0 8 8" fill="#7C3AED" opacity="0.6">
+      <svg width="8" height="8" viewBox="0 0 8 8" fill="#4F46E5" opacity="0.6">
         <rect x="2" y="0" width="4" height="4" transform="rotate(45 4 4)" />
       </svg>
       <div
@@ -670,7 +670,7 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
           flex: 1,
           height: 1,
           background:
-            "linear-gradient(to left, transparent, rgba(124,58,237,0.4))",
+            "linear-gradient(to left, transparent, rgba(79,70,229,0.4))",
         }}
       />
     </div>
@@ -738,12 +738,12 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
       <audio ref={audioRef} src={url} loop />
       <div className="music-icon-wrap">
         {playing ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#7C3AED">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#4F46E5">
             <rect x="6" y="4" width="4" height="16" rx="1" />
             <rect x="14" y="4" width="4" height="16" rx="1" />
           </svg>
         ) : (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#7C3AED">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#4F46E5">
             <path d="M5 3l14 9-14 9V3z" />
           </svg>
         )}
@@ -1010,10 +1010,11 @@ async function generarTarjetaCanvas(
       resolve(null);
       return;
     }
+    // Fondo exterior: beige muy suave para enmarcar la tarjeta
     const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-    bgGrad.addColorStop(0, "#1a1209");
-    bgGrad.addColorStop(0.5, "#2d1f0a");
-    bgGrad.addColorStop(1, "#1a1209");
+    bgGrad.addColorStop(0, "#F8FAFC");
+    bgGrad.addColorStop(0.5, "#EEF2FF");
+    bgGrad.addColorStop(1, "#F8FAFC");
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
     const cX = 50,
@@ -1021,21 +1022,23 @@ async function generarTarjetaCanvas(
       cW = W - 100,
       cH = H - 160,
       r = 36;
+    // Sombra suave de la tarjeta
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.50)";
-    ctx.shadowBlur = 60;
-    ctx.shadowOffsetY = 20;
-    rrFill(ctx, cX, cY, cW, cH, r, "#FAFBFF");
+    ctx.shadowColor = "rgba(15,23,42,0.18)";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 14;
+    rrFill(ctx, cX, cY, cW, cH, r, "#FFFFFF");
     ctx.restore();
-    rrFill(ctx, cX, cY, cW, cH, r, "#FAFBFF");
+    rrFill(ctx, cX, cY, cW, cH, r, "#FFFFFF");
+    // Header: gradiente índigo sólido (profesional, contrastado)
     const hH = 260;
     ctx.save();
     ctx.beginPath();
     rrPath(ctx, cX, cY, cW, hH, { tl: r, tr: r, bl: 0, br: 0 });
     ctx.clip();
     const hGrad = ctx.createLinearGradient(cX, cY, cX + cW, cY + hH);
-    hGrad.addColorStop(0, "#1a1209");
-    hGrad.addColorStop(1, "#2d1f0a");
+    hGrad.addColorStop(0, "#3730A3");
+    hGrad.addColorStop(1, "#4F46E5");
     ctx.fillStyle = hGrad;
     ctx.fillRect(cX, cY, cW, hH);
     const nombres = (() => {
@@ -1051,37 +1054,39 @@ async function generarTarjetaCanvas(
       nombres.length > 1
         ? `${nombres.slice(0, 2).join(" & ")}`
         : `${invitado.nombre}`;
+    // Textos del header (blanco sobre índigo)
     ctx.font = "italic 20px 'Georgia',serif";
-    ctx.fillStyle = "rgba(124,58,237,0.75)";
+    ctx.fillStyle = "rgba(255,255,255,0.80)";
     ctx.textAlign = "center";
     ctx.fillText(TIPO_LABEL[evento.tipo] || "Invitación", cX + cW / 2, cY + 50);
     ctx.font = "bold 52px 'Georgia',serif";
-    ctx.fillStyle = "#7C3AED";
+    ctx.fillStyle = "#FFFFFF";
     ctx.fillText(saludo, cX + cW / 2, cY + 118, cW - 80);
     ctx.font = "300 22px 'Arial'";
-    ctx.fillStyle = "rgba(236,72,153,0.80)";
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
     ctx.fillText(`Invitación de ${evento.anfitriones}`, cX + cW / 2, cY + 158);
     ctx.font = "bold 28px 'Georgia',serif";
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#E0E7FF";
     ctx.fillText(evento.nombre, cX + cW / 2, cY + 205, cW - 80);
     ctx.restore();
+    // Cuerpo (texto oscuro sobre blanco)
     let dY = cY + hH + 32;
     const dX = cX + 44,
       colW = cW - 88;
     if (evento.frase_evento) {
       ctx.font = "italic 20px 'Georgia',serif";
-      ctx.fillStyle = "#5B21B6";
+      ctx.fillStyle = "#334155";
       ctx.textAlign = "center";
       ctx.fillText(`❝ ${evento.frase_evento} ❞`, cX + cW / 2, dY, colW);
       dY += 40;
     }
     const drawRow = (label: string, val: string) => {
       ctx.font = "700 11px 'Arial'";
-      ctx.fillStyle = "#7C3AED";
+      ctx.fillStyle = "#4F46E5";
       ctx.textAlign = "left";
       ctx.fillText(label.toUpperCase(), dX, dY - 4);
       ctx.font = "500 22px 'Arial'";
-      ctx.fillStyle = "#2d1f0a";
+      ctx.fillStyle = "#0F172A";
       ctx.fillText(val, dX, dY + 20, colW);
       dY += 52;
     };
@@ -1098,50 +1103,53 @@ async function generarTarjetaCanvas(
     ctx.beginPath();
     ctx.moveTo(cX + 44, dY);
     ctx.lineTo(cX + cW - 44, dY);
-    ctx.strokeStyle = "rgba(124,58,237,0.25)";
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(79,70,229,0.22)";
+    ctx.lineWidth = 1;
     ctx.stroke();
     dY += 22;
     if (evento.mensaje_invitacion) {
       ctx.font = "italic 18px 'Georgia',serif";
-      ctx.fillStyle = "#5a3e1b";
+      ctx.fillStyle = "#475569";
       ctx.textAlign = "center";
       ctx.fillText(`"${evento.mensaje_invitacion}"`, cX + cW / 2, dY, colW);
       dY += 36;
     }
+    // CTA primario (índigo lleno, texto blanco)
     const bW = colW,
       bH = 60,
       bR = 14,
       bGap = 10;
     const gBtn = ctx.createLinearGradient(dX, dY, dX + bW, dY + bH);
-    gBtn.addColorStop(0, "#7C3AED");
-    gBtn.addColorStop(1, "#5B21B6");
+    gBtn.addColorStop(0, "#3730A3");
+    gBtn.addColorStop(1, "#4F46E5");
     rrFill(ctx, dX, dY, bW, bH, bR, gBtn);
     ctx.font = "bold 24px 'Arial'";
-    ctx.fillStyle = "#1a1209";
+    ctx.fillStyle = "#FFFFFF";
     ctx.textAlign = "center";
     ctx.fillText("✅  Confirmar asistencia", dX + bW / 2, dY + 38);
     dY += bH + bGap;
-    rrFill(ctx, dX, dY, bW, bH, bR, "#F5EDD8");
-    ctx.strokeStyle = "rgba(124,58,237,0.40)";
+    // CTA secundarios (outline índigo sobre fondo pálido)
+    rrFill(ctx, dX, dY, bW, bH, bR, "#EEF2FF");
+    ctx.strokeStyle = "rgba(79,70,229,0.45)";
     ctx.lineWidth = 1.5;
     rrStroke(ctx, dX, dY, bW, bH, bR);
-    ctx.font = "bold 24px 'Arial'";
-    ctx.fillStyle = "#5B21B6";
+    ctx.font = "bold 22px 'Arial'";
+    ctx.fillStyle = "#3730A3";
     ctx.textAlign = "center";
     ctx.fillText("📸  Subir foto al muro", dX + bW / 2, dY + 38);
     dY += bH + bGap;
-    rrFill(ctx, dX, dY, bW, bH, bR, "#F5EDD8");
-    ctx.strokeStyle = "rgba(124,58,237,0.40)";
+    rrFill(ctx, dX, dY, bW, bH, bR, "#EEF2FF");
+    ctx.strokeStyle = "rgba(79,70,229,0.45)";
     ctx.lineWidth = 1.5;
     rrStroke(ctx, dX, dY, bW, bH, bR);
-    ctx.font = "bold 24px 'Arial'";
-    ctx.fillStyle = "#5B21B6";
+    ctx.font = "bold 22px 'Arial'";
+    ctx.fillStyle = "#3730A3";
     ctx.textAlign = "center";
     ctx.fillText("💌  Dejar mi deseo", dX + bW / 2, dY + 38);
     dY += bH + 14;
-    ctx.font = "400 16px 'Arial'";
-    ctx.fillStyle = "#7C3AED";
+    // Link + firma
+    ctx.font = "400 15px 'Arial'";
+    ctx.fillStyle = "#64748B";
     ctx.textAlign = "center";
     ctx.fillText(
       `${origin}/confirmar/${invitado.token}`,
@@ -1150,7 +1158,7 @@ async function generarTarjetaCanvas(
       colW,
     );
     ctx.font = "bold 17px 'Arial'";
-    ctx.fillStyle = "#7C3AED";
+    ctx.fillStyle = "#4F46E5";
     ctx.textAlign = "center";
     ctx.fillText("Eventix · Invitaciones digitales", cX + cW / 2, cY + cH - 28);
     canvas.toBlob((blob) => resolve(blob), "image/png", 0.95);
@@ -1292,15 +1300,15 @@ function VestimentaCard({ evento }: { evento: { vestimenta_tipo?: string | null;
 
   return (
     <div style={{
-      background: "linear-gradient(135deg,rgba(124,58,237,0.06) 0%,rgba(236,72,153,0.10) 100%)",
-      border: "1.5px solid rgba(124,58,237,0.28)",
+      background: "linear-gradient(135deg,rgba(79,70,229,0.06) 0%,rgba(79,70,229,0.10) 100%)",
+      border: "1.5px solid rgba(79,70,229,0.28)",
       borderRadius: 18,
       padding: "16px 18px",
       margin: "4px 0 8px",
     }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-        <div style={{ width:36, height:36, borderRadius:10, background:"rgba(124,58,237,0.10)", border:"1px solid rgba(124,58,237,0.22)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        <div style={{ width:36, height:36, borderRadius:10, background:"rgba(79,70,229,0.10)", border:"1px solid rgba(79,70,229,0.22)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20.5 18H3.5a1 1 0 0 1-.78-1.63L12 6.5"/>
             <path d="M12 6.5V4.5"/>
@@ -1318,8 +1326,8 @@ function VestimentaCard({ evento }: { evento: { vestimenta_tipo?: string | null;
       {tipo && (
         <div style={{
           display:"flex", alignItems:"center", gap:12,
-          background:"rgba(250,246,240,0.7)", borderRadius:12,
-          border:"1px solid rgba(124,58,237,0.15)",
+          background:"rgba(238,242,255,0.7)", borderRadius:12,
+          border:"1px solid rgba(79,70,229,0.15)",
           padding:"12px 14px", marginBottom: colores.length > 0 || evento.vestimenta_nota ? 10 : 0,
         }}>
           <div style={{ width:8, height:8, borderRadius:"50%", background:"var(--gold-dark)", flexShrink:0, opacity:0.7 }}/>
@@ -1353,7 +1361,7 @@ function VestimentaCard({ evento }: { evento: { vestimenta_tipo?: string | null;
       {evento.vestimenta_nota && (
         <p style={{
           fontSize:12, fontStyle:"italic", color:"var(--ink2)", lineHeight:1.6,
-          borderTop:"1px solid rgba(124,58,237,0.2)", paddingTop:10, marginTop:4,
+          borderTop:"1px solid rgba(79,70,229,0.2)", paddingTop:10, marginTop:4,
         }}>
           {evento.vestimenta_nota}
         </p>
@@ -1386,14 +1394,14 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
 
   return (
     <div style={{
-      background: "linear-gradient(135deg,rgba(124,58,237,0.08) 0%,rgba(236,72,153,0.12) 100%)",
-      border: "1.5px solid rgba(124,58,237,0.3)",
+      background: "linear-gradient(135deg,rgba(79,70,229,0.08) 0%,rgba(79,70,229,0.12) 100%)",
+      border: "1.5px solid rgba(79,70,229,0.3)",
       borderRadius: 18,
       padding: "18px 18px 16px",
       margin: "4px 0 8px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <div style={{ width:36, height:36, borderRadius:10, background:"rgba(124,58,237,0.10)", border:"1px solid rgba(124,58,237,0.22)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        <div style={{ width:36, height:36, borderRadius:10, background:"rgba(79,70,229,0.10)", border:"1px solid rgba(79,70,229,0.22)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="7" width="20" height="14" rx="2"/>
             <line x1="2" y1="12" x2="22" y2="12"/>
@@ -1408,7 +1416,7 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
       </div>
 
       {evento.regalo_mensaje && (
-        <p style={{ fontSize: 12, fontStyle: "italic", color: "var(--ink2)", lineHeight: 1.6, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(124,58,237,0.2)" }}>
+        <p style={{ fontSize: 12, fontStyle: "italic", color: "var(--ink2)", lineHeight: 1.6, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(79,70,229,0.2)" }}>
           {evento.regalo_mensaje}
         </p>
       )}
@@ -1427,7 +1435,7 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
           </div>
         )}
         {evento.regalo_cuenta && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 4, background: "rgba(250,246,240,0.8)", border: "1px solid rgba(124,58,237,0.25)", borderRadius: 10, padding: "10px 12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 4, background: "rgba(238,242,255,0.7)", border: "1px solid rgba(79,70,229,0.25)", borderRadius: 10, padding: "10px 12px" }}>
             <div>
               <div style={{ fontSize: 10, fontWeight: 600, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 3 }}>Cuenta / CLABE</div>
               <div style={{ fontFamily: "'Courier New',monospace", fontSize: 13, fontWeight: 600, color: "var(--ink)", letterSpacing: ".5px", wordBreak: "break-all" }}>
@@ -1437,8 +1445,8 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
             <button
               onClick={copiarCuenta}
               style={{
-                background: copiado ? "linear-gradient(135deg,#2d7d46,#38a85c)" : "linear-gradient(135deg,#7C3AED,#E8C97A)",
-                color: copiado ? "#fff" : "#5B21B6",
+                background: copiado ? "linear-gradient(135deg,#2d7d46,#38a85c)" : "linear-gradient(135deg,#4F46E5,#E0E7FF)",
+                color: copiado ? "#fff" : "#3730A3",
                 border: "none", borderRadius: 10, padding: "8px 13px",
                 fontSize: 12, fontWeight: 700, cursor: "pointer",
                 fontFamily: "'Jost',sans-serif", whiteSpace: "nowrap",
@@ -1469,7 +1477,7 @@ function ProgramaCard({ items }: { items: ItemItinerario[] }) {
       }}>
         <div style={{
           width: 34, height: 34, borderRadius: 10,
-          background: "rgba(124,58,237,0.10)", border: "1px solid rgba(124,58,237,0.22)",
+          background: "rgba(79,70,229,0.10)", border: "1px solid rgba(79,70,229,0.22)",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
         }}>
@@ -1497,8 +1505,8 @@ function ProgramaCard({ items }: { items: ItemItinerario[] }) {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: 32 }}>
               <div style={{
                 width: 32, height: 32, borderRadius: "50%",
-                background: "rgba(124,58,237,0.12)",
-                border: "1.5px solid rgba(124,58,237,0.35)",
+                background: "rgba(79,70,229,0.12)",
+                border: "1.5px solid rgba(79,70,229,0.35)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 14, lineHeight: 1,
               }}>
@@ -1507,7 +1515,7 @@ function ProgramaCard({ items }: { items: ItemItinerario[] }) {
                 )}
               </div>
               {idx < items.length - 1 && (
-                <div style={{ width: 1, flex: 1, minHeight: 12, background: "linear-gradient(180deg,rgba(124,58,237,0.3),transparent)", marginTop: 4 }} />
+                <div style={{ width: 1, flex: 1, minHeight: 12, background: "linear-gradient(180deg,rgba(79,70,229,0.3),transparent)", marginTop: 4 }} />
               )}
             </div>
             {/* Contenido */}
@@ -1850,28 +1858,31 @@ export default function ConfirmarPage() {
       ].filter(Boolean) as string[])
     : [];
 
-  // ─── TEMAS ─────────────────────────────────────────────────────────────────
+  // ─── TEMAS (rediseño UX/UI profesional, paleta clara) ──────────────────────
   const TEMAS: Record<string, string> = {
     clasico: `
-      --gold:#7C3AED;--gold-dark:#5B21B6;--gold-light:#FDE68A;--gold-pale:#F5EDD8;
-      --dark:#1a1209;--dark2:#2d1f0a;--ink:#475569;--ink2:#5a3e1b;--ink3:#5B21B6;
-      --cream:#FAFBFF;--cream2:#F0E8D8;--surface:#FFFFFF;
-      --border:rgba(124,58,237,0.25);--border-mid:rgba(124,58,237,0.40);
-      --shadow:0 8px 40px rgba(26,18,9,0.10);--shadow-lg:0 20px 60px rgba(26,18,9,0.16);
+      --gold:#4F46E5;--gold-dark:#3730A3;--gold-light:#E0E7FF;--gold-pale:#EEF2FF;
+      --dark:#F8FAFC;--dark2:#EEF2FF;--ink:#0F172A;--ink2:#334155;--ink3:#4F46E5;
+      --cream:#F8FAFC;--cream2:#F1F5F9;--surface:#FFFFFF;
+      --on-dark:#1E1B4B;--on-dark-sub:#4338CA;
+      --border:rgba(79,70,229,0.14);--border-mid:rgba(79,70,229,0.28);
+      --shadow:0 8px 28px rgba(15,23,42,0.06);--shadow-lg:0 20px 48px rgba(15,23,42,0.10);
     `,
     rosado: `
-      --gold:#d4847a;--gold-dark:#9c3f36;--gold-light:#f0b8b3;--gold-pale:#FDF0EF;
-      --dark:#4a1535;--dark2:#6b1f4a;--ink:#5c1f3d;--ink2:#8a3b62;--ink3:#b06a8a;
-      --cream:#FDF5F5;--cream2:#F7E8E8;--surface:#FFFFFF;
-      --border:rgba(212,132,122,0.25);--border-mid:rgba(212,132,122,0.40);
-      --shadow:0 8px 40px rgba(74,21,53,0.10);--shadow-lg:0 20px 60px rgba(74,21,53,0.16);
+      --gold:#E11D74;--gold-dark:#9D174D;--gold-light:#FCE7F3;--gold-pale:#FDF2F8;
+      --dark:#FFF7FB;--dark2:#FCE7F3;--ink:#1F1226;--ink2:#4B2545;--ink3:#9D174D;
+      --cream:#FFF7FB;--cream2:#FCE7F3;--surface:#FFFFFF;
+      --on-dark:#4A1042;--on-dark-sub:#9D174D;
+      --border:rgba(225,29,116,0.14);--border-mid:rgba(225,29,116,0.28);
+      --shadow:0 8px 28px rgba(74,16,66,0.06);--shadow-lg:0 20px 48px rgba(74,16,66,0.10);
     `,
     esmeralda: `
-      --gold:#4caf82;--gold-dark:#2d7a57;--gold-light:#8fd5b5;--gold-pale:#E8F7F0;
-      --dark:#0d2d1e;--dark2:#1a4a30;--ink:#1b4332;--ink2:#2d6a4f;--ink3:#52b788;
-      --cream:#F2FAF6;--cream2:#E0F2EA;--surface:#FFFFFF;
-      --border:rgba(76,175,130,0.25);--border-mid:rgba(76,175,130,0.40);
-      --shadow:0 8px 40px rgba(13,45,30,0.10);--shadow-lg:0 20px 60px rgba(13,45,30,0.16);
+      --gold:#059669;--gold-dark:#065F46;--gold-light:#D1FAE5;--gold-pale:#ECFDF5;
+      --dark:#F0FDF6;--dark2:#D1FAE5;--ink:#0F172A;--ink2:#334155;--ink3:#065F46;
+      --cream:#F0FDF6;--cream2:#D1FAE5;--surface:#FFFFFF;
+      --on-dark:#064E3B;--on-dark-sub:#059669;
+      --border:rgba(5,150,105,0.14);--border-mid:rgba(5,150,105,0.28);
+      --shadow:0 8px 28px rgba(6,78,59,0.06);--shadow-lg:0 20px 48px rgba(6,78,59,0.10);
     `,
   };
   const temaVars = TEMAS[evento?.tema ?? "clasico"] ?? TEMAS.clasico;
@@ -1880,13 +1891,13 @@ export default function ConfirmarPage() {
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Jost:wght@300;400;500;600;700&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAFBFF;color:#1a1209}
+    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A}
     :root{
       ${temaVars}
       --r:24px;--r-sm:16px;
     }
     .page{min-height:100dvh;background:var(--cream);
-      background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(124,58,237,0.08) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 100%,rgba(124,58,237,0.05) 0%,transparent 60%);
+      background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(79,70,229,0.08) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 100%,rgba(79,70,229,0.05) 0%,transparent 60%);
       padding-bottom:80px;opacity:0;transition:opacity .5s ease;}
     .page.vis{opacity:1}
     .page.destroying{animation:shatter .6s ease forwards}
@@ -1895,20 +1906,20 @@ export default function ConfirmarPage() {
     @keyframes spin{to{transform:rotate(360deg)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-    .topbar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:rgba(250,246,240,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;justify-content:space-between;}
+    .topbar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:rgba(255,255,255,0.90);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;justify-content:space-between;}
     .topbar-left{display:flex;align-items:center;gap:10px}
     .topbar-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;line-height:1}
     .topbar-sub{font-size:9px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-top:1px}
 
     .wrap{max-width:430px;margin:0 auto;padding:22px 16px;display:flex;flex-direction:column;gap:20px}
 
-    .inv-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:0 8px 48px rgba(26,18,9,.13),0 2px 8px rgba(26,18,9,.06);overflow:hidden;animation:riseUp .6s cubic-bezier(.22,1,.36,1) both;}
+    .inv-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:0 8px 48px rgba(15,23,42,.13),0 2px 8px rgba(15,23,42,.06);overflow:hidden;animation:riseUp .6s cubic-bezier(.22,1,.36,1) both;}
     /* Hero foto — limpia, sin overlays ni texto encima */
     .inv-hero{position:relative;overflow:hidden;width:100%;background:var(--dark)}
     .inv-hero-foto{width:100%;height:100%;object-fit:cover;display:block;object-position:center top;}
     .inv-hero-bg{min-height:200px;background:linear-gradient(160deg,var(--dark) 0%,var(--dark2) 100%)}
     /* Sección debajo del hero */
-    .inv-tipo-badge{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid rgba(124,58,237,0.35);border-radius:99px;padding:5px 14px 5px 10px;font-family:'Jost',sans-serif;font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:1.2px;text-transform:uppercase;}
+    .inv-tipo-badge{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid rgba(79,70,229,0.35);border-radius:99px;padding:5px 14px 5px 10px;font-family:'Jost',sans-serif;font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:1.2px;text-transform:uppercase;}
     .inv-tipo-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dark);opacity:.7;display:inline-block}
     .inv-saludo{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:500;font-style:italic;color:var(--ink);letter-spacing:-.3px;line-height:1.2;margin-top:8px}
     .inv-anfitrion{font-size:12px;color:var(--ink3);font-weight:400;letter-spacing:.3px;margin-top:4px}
@@ -1919,10 +1930,10 @@ export default function ConfirmarPage() {
     .inv-nombres-title{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:12px}
     .inv-nombre-item{display:flex;align-items:center;gap:11px;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--ink);font-weight:500;margin-bottom:8px}
     .inv-nombre-item:last-child{margin-bottom:0}
-    .inv-nombre-av{width:30px;height:30px;border-radius:50%;background:var(--dark);color:rgba(236,72,153,0.85);font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(124,58,237,0.25)}
+    .inv-nombre-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#FFFFFF;font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:none;box-shadow:0 2px 6px rgba(79,70,229,0.25)}
     .detalles{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:18px 18px;display:flex;flex-direction:column;gap:16px}
     .detalle-fila{display:flex;align-items:flex-start;gap:14px}
-    .detalle-ico-wrap{width:38px;height:38px;border-radius:11px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(26,18,9,.05)}
+    .detalle-ico-wrap{width:38px;height:38px;border-radius:11px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(15,23,42,.05)}
     .detalle-label{font-size:9px;color:var(--ink3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
     .detalle-texto{font-size:14px;color:var(--ink);font-weight:400;line-height:1.4;text-transform:capitalize}
     .maps-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;letter-spacing:.3px;text-decoration:none;margin-top:7px;transition:opacity .15s;font-family:'Jost',sans-serif;}
@@ -1934,32 +1945,32 @@ export default function ConfirmarPage() {
     .galeria-thumb{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer;border:1.5px solid var(--border-mid);transition:transform .15s}
     .galeria-thumb:hover{transform:scale(1.02)}
     .galeria-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-    .galeria-thumb-more{position:absolute;inset:0;background:rgba(26,18,9,0.60);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--gold-light)}
+    .galeria-thumb-more{position:absolute;inset:0;background:rgba(15,23,42,0.60);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--gold-light)}
     .btn-ver-fotos{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--cream);border:1.5px solid var(--border-mid);border-radius:12px;padding:11px 16px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .15s;font-family:'Jost',sans-serif;}
     .btn-ver-fotos:hover{background:var(--gold-pale);border-color:var(--gold);color:var(--gold-dark)}
 
     /* Lightbox */
-    .lightbox-overlay{position:fixed;inset:0;z-index:9999;background:rgba(10,8,4,0.92);display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease;padding:16px}
+    .lightbox-overlay{position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.92);display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease;padding:16px}
     .lightbox-inner{position:relative;width:100%;max-width:480px;display:flex;flex-direction:column;align-items:center;gap:14px}
     .lightbox-img-wrap{width:100%;border-radius:16px;overflow:hidden;box-shadow:0 16px 60px rgba(0,0,0,0.5)}
     .lightbox-img{width:100%;max-height:70vh;object-fit:contain;display:block;background:#000}
-    .lightbox-close{position:absolute;top:-12px;right:-12px;width:36px;height:36px;border-radius:50%;background:rgba(124,58,237,0.15);border:1.5px solid rgba(124,58,237,0.4);color:var(--gold-light);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
-    .lightbox-nav{position:absolute;top:50%;transform:translateY(-60%);width:40px;height:40px;border-radius:50%;background:rgba(26,18,9,0.7);border:1.5px solid rgba(124,58,237,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
-    .lightbox-nav:hover{background:rgba(124,58,237,0.2)}
+    .lightbox-close{position:absolute;top:-12px;right:-12px;width:36px;height:36px;border-radius:50%;background:rgba(79,70,229,0.15);border:1.5px solid rgba(79,70,229,0.4);color:var(--gold-light);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+    .lightbox-nav{position:absolute;top:50%;transform:translateY(-60%);width:40px;height:40px;border-radius:50%;background:rgba(15,23,42,0.7);border:1.5px solid rgba(79,70,229,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+    .lightbox-nav:hover{background:rgba(79,70,229,0.2)}
     .lightbox-prev{left:-20px}
     .lightbox-next{right:-20px}
     .lightbox-dots{display:flex;gap:7px;margin-top:4px}
-    .lightbox-dot{width:7px;height:7px;border-radius:50%;background:rgba(124,58,237,0.3);cursor:pointer;transition:background .15s}
+    .lightbox-dot{width:7px;height:7px;border-radius:50%;background:rgba(79,70,229,0.3);cursor:pointer;transition:background .15s}
     .lightbox-dot.active{background:var(--gold)}
-    .lightbox-caption{font-size:12px;color:rgba(236,72,153,0.7);font-style:italic;text-align:center}
+    .lightbox-caption{font-size:12px;color:rgba(79,70,229,0.7);font-style:italic;text-align:center}
 
     /* Música */
-    .music-player{display:flex;align-items:center;gap:13px;background:var(--dark);border-radius:var(--r-sm);padding:14px 16px;cursor:pointer;transition:opacity .15s}
-    .music-player:hover{opacity:.92}
-    .music-icon-wrap{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 14px rgba(124,58,237,0.4)}
+    .music-player{display:flex;align-items:center;gap:13px;background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px;cursor:pointer;transition:background .18s,border-color .18s}
+    .music-player:hover{background:var(--gold-pale);border-color:var(--border-mid)}
+    .music-icon-wrap{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(79,70,229,0.28)}
     .music-info{flex:1;min-width:0}
-    .music-label{display:block;font-size:9px;font-weight:700;color:rgba(124,58,237,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
-    .music-name{display:block;font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--gold-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .music-label{display:block;font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+    .music-name{display:block;font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .music-waves{display:flex;align-items:center;gap:2px;flex-shrink:0}
     .mw{width:3px;border-radius:99px;background:var(--gold);animation:mwave .8s ease-in-out infinite}
     .mw-1{height:8px;animation-delay:0s}.mw-2{height:14px;animation-delay:.1s}.mw-3{height:10px;animation-delay:.2s}.mw-4{height:16px;animation-delay:.15s}.mw-5{height:8px;animation-delay:.05s}
@@ -1980,8 +1991,8 @@ export default function ConfirmarPage() {
     .pregunta{font-family:'Cormorant Garamond',serif;font-size:26px;font-style:italic;color:var(--ink);font-weight:400;margin-bottom:4px}
     .pregunta-sub{font-size:11px;color:var(--ink3);font-weight:500;letter-spacing:.5px}
     .grid-decision{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .btn-si{background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(124,58,237,0.4);border-radius:var(--r-sm);padding:18px 12px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;box-shadow:0 5px 22px rgba(26,18,9,0.20);transition:transform .18s,box-shadow .18s,opacity .15s;letter-spacing:.3px}
-    .btn-si:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(26,18,9,0.28)}
+    .btn-si{background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:var(--r-sm);padding:18px 12px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;box-shadow:0 8px 22px -6px rgba(79,70,229,0.40), 0 2px 6px rgba(79,70,229,0.14);transition:transform .18s,box-shadow .18s,opacity .15s;letter-spacing:.3px}
+    .btn-si:hover{transform:translateY(-2px);box-shadow:0 12px 30px -6px rgba(79,70,229,0.48), 0 4px 10px rgba(79,70,229,0.18)}
     .btn-si:disabled{opacity:.65;cursor:wait}
     .btn-no{background:var(--cream);color:var(--ink2);border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:18px 12px;font-family:'Jost',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s;letter-spacing:.2px}
     .btn-no:hover{background:#fef2f2;color:#b45309;border-color:rgba(180,83,9,0.25)}
@@ -1994,28 +2005,28 @@ export default function ConfirmarPage() {
     .counter-row{display:flex;align-items:center;gap:20px;padding:2px 0}
     .cnt-btn{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--border-mid);background:var(--cream);color:var(--ink3);font-size:22px;font-weight:400;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;user-select:none;font-family:'Cormorant Garamond',serif;line-height:1}
     .cnt-btn:hover{background:var(--gold-pale);border-color:var(--gold);color:var(--gold-dark)}
-    .cnt-val{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:300;color:var(--dark);min-width:50px;text-align:center;font-variant-numeric:tabular-nums}
-    .btn-confirmar-final{width:100%;margin-top:20px;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(124,58,237,0.3);border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.5px;box-shadow:0 5px 20px rgba(26,18,9,0.20);transition:transform .18s,box-shadow .18s;display:flex;align-items:center;justify-content:center;gap:9px}
+    .cnt-val{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:400;color:var(--ink);min-width:50px;text-align:center;font-variant-numeric:tabular-nums}
+    .btn-confirmar-final{width:100%;margin-top:20px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.5px;box-shadow:0 8px 22px -6px rgba(79,70,229,0.42), 0 2px 6px rgba(79,70,229,0.16);transition:transform .18s,box-shadow .18s;display:flex;align-items:center;justify-content:center;gap:9px}
     .btn-confirmar-final:hover{transform:translateY(-1px)}
     .btn-confirmar-final:disabled{opacity:.65;cursor:wait}
-    .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(124,58,237,0.3);border-top-color:var(--gold);animation:spin .7s linear infinite}
+    .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(79,70,229,0.3);border-top-color:var(--gold);animation:spin .7s linear infinite}
 
     /* Confirmado */
     .conf-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow-lg);overflow:hidden;animation:riseUp .5s cubic-bezier(.22,1,.36,1) both}
-    .conf-hero{background:linear-gradient(155deg,#1a1108 0%,#251907 100%);padding:40px 24px 32px;text-align:center;position:relative;overflow:hidden}
-    .conf-hero::before{content:'';position:absolute;inset:0;opacity:.025;background-image:radial-gradient(circle,#7C3AED 1px,transparent 1px);background-size:32px 32px}
-    .conf-check{position:relative;z-index:1;width:68px;height:68px;border-radius:50%;background:rgba(124,58,237,0.10);border:1px solid rgba(124,58,237,0.35);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;animation:popIn .55s .1s cubic-bezier(.22,1,.36,1) both}
+    .conf-hero{background:linear-gradient(155deg,#F8FAFC 0%,#EEF2FF 100%);padding:40px 24px 32px;text-align:center;position:relative;overflow:hidden}
+    .conf-hero::before{content:'';position:absolute;inset:0;opacity:.025;background-image:radial-gradient(circle,#4F46E5 1px,transparent 1px);background-size:32px 32px}
+    .conf-check{position:relative;z-index:1;width:68px;height:68px;border-radius:50%;background:rgba(79,70,229,0.10);border:1px solid rgba(79,70,229,0.35);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;animation:popIn .55s .1s cubic-bezier(.22,1,.36,1) both}
     @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
-    .conf-titulo{position:relative;z-index:1;font-family:'Cormorant Garamond',serif;font-size:40px;font-style:italic;font-weight:300;color:rgba(236,72,153,0.95);letter-spacing:-.5px;margin-bottom:8px}
-    .conf-sub{position:relative;z-index:1;font-size:12px;color:rgba(236,72,153,0.5);font-weight:400;letter-spacing:.3px}
+    .conf-titulo{position:relative;z-index:1;font-family:'Cormorant Garamond',serif;font-size:40px;font-style:italic;font-weight:400;color:var(--ink);letter-spacing:-.5px;margin-bottom:8px}
+    .conf-sub{position:relative;z-index:1;font-size:12px;color:var(--ink3);font-weight:500;letter-spacing:.3px}
     .conf-body{padding:22px;display:flex;flex-direction:column;gap:16px}
-    .num-badge{background:linear-gradient(145deg,#1e1409,#2a1c0a);border-radius:var(--r-sm);border:1px solid rgba(124,58,237,0.2);padding:16px 20px;display:flex;align-items:center;gap:16px}
-    .num-icono{width:46px;height:46px;border-radius:12px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .num-label{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(124,58,237,0.5);margin-bottom:3px}
-    .num-val{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;color:rgba(236,72,153,0.9);letter-spacing:-1px;line-height:1}
+    .num-badge{background:var(--cream);border-radius:var(--r-sm);border:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;gap:16px}
+    .num-icono{width:46px;height:46px;border-radius:12px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold-dark)}
+    .num-label{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+    .num-val{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:500;color:var(--ink);letter-spacing:-1px;line-height:1}
     .resumen{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px 18px;display:flex;flex-direction:column;gap:13px}
     .res-fila{display:flex;align-items:center;gap:12px}
-    .res-ico{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(26,18,9,.05)}
+    .res-ico{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(15,23,42,.05)}
     .res-texto{font-size:13px;color:var(--ink2);font-weight:400;text-transform:capitalize}
     .acciones-titulo{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px}
 
@@ -2027,7 +2038,7 @@ export default function ConfirmarPage() {
     .fotos-inv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:12px}
     .fotos-inv-thumb{border-radius:8px;overflow:hidden;aspect-ratio:1;border:1px solid var(--border-mid)}
     .fotos-inv-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-    .btn-subir-foto{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:none;border-radius:12px;padding:13px;font-size:13px;font-weight:600;font-family:'Jost',sans-serif;cursor:pointer;box-shadow:0 3px 14px rgba(26,18,9,0.18);transition:transform .15s}
+    .btn-subir-foto{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:12px;padding:13px;font-size:13px;font-weight:600;font-family:'Jost',sans-serif;cursor:pointer;box-shadow:0 6px 16px -4px rgba(79,70,229,0.38);transition:transform .15s}
     .btn-subir-foto:hover{transform:translateY(-1px)}
     .btn-subir-foto:disabled{opacity:.65;cursor:wait}
 
@@ -2037,21 +2048,21 @@ export default function ConfirmarPage() {
     .btn-wa{width:100%;background:linear-gradient(135deg,#1a5c36,#128C7E);color:#fff;border:none;border-radius:var(--r-sm);padding:16px;font-family:'Jost',sans-serif;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.3px;box-shadow:0 5px 20px rgba(18,140,126,0.32);transition:transform .18s;display:flex;align-items:center;justify-content:center;gap:9px}
     .btn-wa:hover{transform:translateY(-1px)}
     .btn-wa:disabled{opacity:.7;cursor:wait}
-    .btn-cerrar{width:100%;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(124,58,237,0.3);border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.3px;box-shadow:0 5px 20px rgba(26,18,9,0.18);transition:transform .18s;display:flex;align-items:center;justify-content:center;gap:9px}
+    .btn-cerrar{width:100%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.3px;box-shadow:0 8px 22px -6px rgba(79,70,229,0.40);transition:transform .18s;display:flex;align-items:center;justify-content:center;gap:9px}
     .btn-cerrar:hover{transform:translateY(-1px)}
 
     /* Modal tarjeta */
-    .modal-overlay{position:fixed;inset:0;z-index:9000;background:rgba(10,8,4,0.75);backdrop-filter:blur(14px);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .22s ease}
-    .modal-sheet{width:100%;max-width:480px;background:var(--surface);border-radius:28px 28px 0 0;padding:0 0 env(safe-area-inset-bottom,20px);box-shadow:0 -16px 60px rgba(26,18,9,0.20);animation:slideUp .32s cubic-bezier(.22,1,.36,1)}
+    .modal-overlay{position:fixed;inset:0;z-index:9000;background:rgba(15,23,42,0.75);backdrop-filter:blur(14px);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .22s ease}
+    .modal-sheet{width:100%;max-width:480px;background:var(--surface);border-radius:28px 28px 0 0;padding:0 0 env(safe-area-inset-bottom,20px);box-shadow:0 -16px 60px rgba(15,23,42,0.20);animation:slideUp .32s cubic-bezier(.22,1,.36,1)}
     @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-    .modal-drag{width:36px;height:4px;border-radius:2px;background:#D4C4B0;margin:14px auto 0}
+    .modal-drag{width:36px;height:4px;border-radius:2px;background:#CBD5E1;margin:14px auto 0}
     .modal-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between}
     .modal-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-style:italic;color:var(--ink)}
     .modal-close{width:32px;height:32px;border-radius:50%;background:var(--cream);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:18px;line-height:1}
-    .tarjeta-img-wrap{margin:0 16px 14px;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(26,18,9,0.15);background:var(--dark);min-height:200px;display:flex;align-items:center;justify-content:center}
+    .tarjeta-img-wrap{margin:0 16px 14px;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,0.10);background:var(--cream);border:1px solid var(--border);min-height:200px;display:flex;align-items:center;justify-content:center}
     .tarjeta-img-wrap img{width:100%;display:block;border-radius:18px}
-    .tarjeta-skeleton{width:100%;aspect-ratio:8/9;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:rgba(124,58,237,0.7);font-size:13px;font-weight:500}
-    .tarjeta-spinner{width:34px;height:34px;border-radius:50%;border:2.5px solid rgba(124,58,237,0.2);border-top-color:var(--gold);animation:spin .75s linear infinite}
+    .tarjeta-skeleton{width:100%;aspect-ratio:8/9;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:rgba(79,70,229,0.7);font-size:13px;font-weight:500}
+    .tarjeta-spinner{width:34px;height:34px;border-radius:50%;border:2.5px solid rgba(79,70,229,0.2);border-top-color:var(--gold);animation:spin .75s linear infinite}
     .modal-btns{padding:0 16px 8px;display:flex;flex-direction:column;gap:10px}
     .btn-compartir-wa{width:100%;background:linear-gradient(135deg,#1a5c36,#128C7E);color:#fff;border:none;border-radius:16px;padding:16px;font-size:14px;font-weight:600;font-family:'Jost',sans-serif;cursor:pointer;box-shadow:0 5px 18px rgba(18,140,126,0.30);display:flex;align-items:center;justify-content:center;gap:9px;transition:transform .18s}
     .btn-compartir-wa:hover{transform:translateY(-1px)}
@@ -2063,12 +2074,12 @@ export default function ConfirmarPage() {
 
     /* Countdown */
     @keyframes cdPulse{0%,100%{opacity:1}50%{opacity:.75}}
-    .countdown-wrap{background:linear-gradient(150deg,#1e1409 0%,#291a08 100%);border-radius:18px;padding:20px 12px 16px;margin:4px 0 8px;text-align:center;border:1px solid rgba(124,58,237,0.15)}
-    .countdown-label{font-size:9px;font-weight:700;color:rgba(124,58,237,0.55);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
+    .countdown-wrap{background:linear-gradient(150deg,#F8FAFC 0%,#EEF2FF 100%);border-radius:18px;padding:20px 12px 16px;margin:4px 0 8px;text-align:center;border:1px solid rgba(79,70,229,0.15)}
+    .countdown-label{font-size:9px;font-weight:700;color:rgba(79,70,229,0.55);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
     .countdown-grid{display:flex;justify-content:center;gap:8px}
-    .countdown-block{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,0.04);border:1px solid rgba(124,58,237,0.15);border-radius:14px;padding:12px 10px 9px;min-width:60px}
-    .countdown-num{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:400;color:rgba(236,72,153,0.92);line-height:1;letter-spacing:-1px;animation:cdPulse 2s ease infinite}
-    .countdown-unit{font-size:8px;font-weight:700;color:rgba(124,58,237,0.45);text-transform:uppercase;letter-spacing:1px;margin-top:5px}
+    .countdown-block{display:flex;flex-direction:column;align-items:center;background:#FFFFFF;border:1px solid rgba(79,70,229,0.14);border-radius:14px;padding:12px 10px 9px;min-width:60px;box-shadow:0 2px 6px rgba(15,23,42,0.04)}
+    .countdown-num{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:500;color:var(--gold-dark);line-height:1;letter-spacing:-1px;animation:cdPulse 2s ease infinite}
+    .countdown-unit{font-size:8px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-top:5px}
 
     /* Tu Mesa */
     .tu-mesa-card{
@@ -2076,9 +2087,9 @@ export default function ConfirmarPage() {
       background:var(--cream);
       border:1px solid var(--border-mid);
       border-radius:16px;padding:16px 18px;margin:4px 0 8px;
-      box-shadow:0 2px 12px rgba(26,18,9,.06);
+      box-shadow:0 2px 12px rgba(15,23,42,.06);
     }
-    .tu-mesa-icon{width:42px;height:42px;border-radius:12px;background:rgba(124,58,237,0.10);border:1px solid rgba(124,58,237,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold-dark)}
+    .tu-mesa-icon{width:42px;height:42px;border-radius:12px;background:rgba(79,70,229,0.10);border:1px solid rgba(79,70,229,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold-dark)}
     .tu-mesa-info{flex:1}
     .tu-mesa-label{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
     .tu-mesa-nombre{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);letter-spacing:.3px}
@@ -2090,14 +2101,14 @@ export default function ConfirmarPage() {
 
     /* Loading */
     .loading-screen{min-height:100dvh;background:#FAFBFF;display:flex;flex-direction:column;align-items:center;justify-content:center}
-    .loading-spinner{width:28px;height:28px;border-radius:50%;border:2.5px solid transparent;border-top-color:#7C3AED;animation:spin 0.8s linear infinite}
+    .loading-spinner{width:28px;height:28px;border-radius:50%;border:2.5px solid transparent;border-top-color:#4F46E5;animation:spin 0.8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     canvas#confetti-canvas{position:fixed;inset:0;z-index:9999;width:100%;height:100%;display:none;pointer-events:none}
 
     /* ─── QR de entrada ─── */
-    .qr-entry-card{background:var(--surface);border:1.5px solid rgba(124,58,237,0.28);border-radius:18px;padding:20px 18px;text-align:center}
+    .qr-entry-card{background:var(--surface);border:1.5px solid rgba(79,70,229,0.28);border-radius:18px;padding:20px 18px;text-align:center}
     .qr-entry-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--gold-dark);margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:7px}
-    .qr-img-wrap{width:164px;height:164px;margin:0 auto 14px;border-radius:14px;overflow:hidden;background:#fff;padding:8px;box-shadow:0 4px 18px rgba(0,0,0,.10);border:1.5px solid rgba(124,58,237,0.2)}
+    .qr-img-wrap{width:164px;height:164px;margin:0 auto 14px;border-radius:14px;overflow:hidden;background:#fff;padding:8px;box-shadow:0 4px 18px rgba(0,0,0,.10);border:1.5px solid rgba(79,70,229,0.2)}
     .qr-img-wrap img{width:100%;height:100%;display:block;border-radius:6px}
     .qr-nombre-badge{display:inline-flex;align-items:center;gap:8px;background:var(--cream2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:10px}
     .qr-nombre-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -2108,7 +2119,7 @@ export default function ConfirmarPage() {
     @keyframes mesaIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     .mesa-picker-wrap{background:var(--surface);border:1px solid var(--border-mid);border-radius:18px;overflow:hidden;animation:mesaIn .4s cubic-bezier(.22,1,.36,1) both}
     .mesa-picker-header{padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
-    .mesa-picker-ico{width:32px;height:32px;border-radius:9px;background:rgba(124,58,237,0.10);border:1px solid rgba(124,58,237,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .mesa-picker-ico{width:32px;height:32px;border-radius:9px;background:rgba(79,70,229,0.10);border:1px solid rgba(79,70,229,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .mesa-picker-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--gold-dark);margin-bottom:2px}
     .mesa-picker-sub{font-size:12px;color:var(--ink3);line-height:1.4}
     .mesa-list{display:flex;flex-direction:column;gap:0;max-height:320px;overflow-y:auto}
@@ -2120,11 +2131,11 @@ export default function ConfirmarPage() {
     .mesa-row-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--ink);line-height:1}
     .mesa-row-slots{display:flex;align-items:center;gap:6px}
     .mesa-row-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
-    .mesa-row-badge--free{background:rgba(124,58,237,0.12);color:var(--gold-dark);border:1px solid rgba(124,58,237,0.25)}
+    .mesa-row-badge--free{background:rgba(79,70,229,0.12);color:var(--gold-dark);border:1px solid rgba(79,70,229,0.25)}
     .mesa-row-badge--full{background:rgba(0,0,0,0.05);color:var(--ink3);border:1px solid var(--border)}
-    .mesa-row-arrow{color:rgba(124,58,237,0.5);flex-shrink:0}
+    .mesa-row-arrow{color:rgba(79,70,229,0.5);flex-shrink:0}
     .mesa-confirmed-card{background:var(--cream);border:1px solid var(--border-mid);border-radius:16px;padding:15px 18px;display:flex;align-items:center;gap:14px;animation:mesaIn .4s cubic-bezier(.22,1,.36,1) both}
-    .mesa-confirmed-ico{width:40px;height:40px;border-radius:11px;background:rgba(124,58,237,0.10);border:1px solid rgba(124,58,237,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .mesa-confirmed-ico{width:40px;height:40px;border-radius:11px;background:rgba(79,70,229,0.10);border:1px solid rgba(79,70,229,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
     /* ─── Pantalla de bienvenida ─── */
     @keyframes welcomeFadeIn{from{opacity:0}to{opacity:1}}
@@ -2137,7 +2148,10 @@ export default function ConfirmarPage() {
 
     .welcome-overlay{
       position:fixed;inset:0;z-index:9990;
-      background:linear-gradient(160deg,var(--dark) 0%,var(--dark2) 55%,#1e1208 100%);
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 0%,rgba(79,70,229,0.09) 0%,transparent 70%),
+        radial-gradient(ellipse 60% 40% at 50% 100%,rgba(129,140,248,0.07) 0%,transparent 70%),
+        #FFFFFF;
       display:flex;flex-direction:column;align-items:center;justify-content:center;
       padding:env(safe-area-inset-top,20px) 24px env(safe-area-inset-bottom,24px);
       animation:welcomeFadeIn .55s ease both;
@@ -2152,69 +2166,69 @@ export default function ConfirmarPage() {
     .welcome-logo-ring{
       position:relative;z-index:1;
       width:90px;height:90px;border-radius:24px;
-      background:rgba(124,58,237,0.10);
-      border:1.5px solid rgba(124,58,237,0.35);
+      background:#FFFFFF;
+      border:1px solid rgba(79,70,229,0.18);
       display:flex;align-items:center;justify-content:center;
       margin-bottom:24px;
-      box-shadow:0 0 40px rgba(124,58,237,0.18), 0 8px 32px rgba(0,0,0,0.4);
+      box-shadow:0 10px 36px -6px rgba(79,70,229,0.22), 0 2px 8px rgba(15,23,42,0.06);
       animation:starPop .7s .1s cubic-bezier(.22,1,.36,1) both;
     }
     .welcome-hola{
       position:relative;z-index:1;
       font-family:'Jost',sans-serif;font-size:11px;font-weight:700;
-      color:rgba(124,58,237,0.8);text-transform:uppercase;letter-spacing:2.5px;
+      color:var(--gold-dark);text-transform:uppercase;letter-spacing:2.5px;
       margin-bottom:10px;
       animation:welcomeSlideUp .6s .25s cubic-bezier(.22,1,.36,1) both;
     }
     .welcome-nombre{
       position:relative;z-index:1;
       font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:600;font-style:italic;
-      color:#F5EDD8;letter-spacing:-.5px;line-height:1.1;text-align:center;
+      color:var(--ink);letter-spacing:-.5px;line-height:1.1;text-align:center;
       margin-bottom:16px;
       animation:welcomeSlideUp .6s .35s cubic-bezier(.22,1,.36,1) both;
     }
     .welcome-divider{
       position:relative;z-index:1;
-      width:60px;height:1px;background:linear-gradient(90deg,transparent,rgba(124,58,237,0.6),transparent);
+      width:60px;height:1px;background:linear-gradient(90deg,transparent,rgba(79,70,229,0.45),transparent);
       margin:0 auto 16px;
       animation:welcomeSlideUp .6s .45s cubic-bezier(.22,1,.36,1) both;
     }
     .welcome-evento-nombre{
       position:relative;z-index:1;
       font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;
-      color:rgba(236,72,153,0.9);text-align:center;line-height:1.3;letter-spacing:.3px;
+      color:var(--ink);text-align:center;line-height:1.3;letter-spacing:.3px;
       margin-bottom:6px;
       animation:welcomeSlideUp .6s .5s cubic-bezier(.22,1,.36,1) both;
     }
     .welcome-anfitrion{
       position:relative;z-index:1;
-      font-size:12px;color:rgba(124,58,237,0.65);font-weight:500;
+      font-size:12px;color:var(--ink3);font-weight:500;
       text-align:center;letter-spacing:.5px;margin-bottom:48px;
       animation:welcomeSlideUp .6s .58s cubic-bezier(.22,1,.36,1) both;
     }
     .welcome-btn{
       position:relative;z-index:1;
-      background:linear-gradient(135deg,#7C3AED,#E8C97A);
-      color:#5B21B6;border:none;border-radius:16px;
+      background:linear-gradient(135deg,var(--gold-dark),var(--gold));
+      color:#FFFFFF;border:none;border-radius:16px;
       padding:17px 40px;
       font-family:'Jost',sans-serif;font-size:15px;font-weight:700;letter-spacing:.5px;
       cursor:pointer;
-      box-shadow:0 6px 28px rgba(124,58,237,0.40), 0 2px 8px rgba(0,0,0,0.3);
+      box-shadow:0 10px 28px -6px rgba(79,70,229,0.42), 0 2px 6px rgba(79,70,229,0.16);
       transition:transform .18s,box-shadow .18s;
       animation:welcomeSlideUp .6s .68s cubic-bezier(.22,1,.36,1) both;
       display:flex;align-items:center;gap:8px;
     }
-    .welcome-btn:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(124,58,237,0.50), 0 2px 8px rgba(0,0,0,0.3)}
+    .welcome-btn:hover{transform:translateY(-2px);box-shadow:0 14px 36px -6px rgba(79,70,229,0.50), 0 4px 10px rgba(79,70,229,0.20)}
     .welcome-btn:active{transform:translateY(0)}
     .welcome-dots{
       position:absolute;inset:0;pointer-events:none;
-      background-image:radial-gradient(circle,rgba(124,58,237,0.07) 1px,transparent 1px);
+      background-image:radial-gradient(circle,rgba(79,70,229,0.06) 1px,transparent 1px);
       background-size:30px 30px;
     }
     .welcome-glow{
       position:absolute;bottom:-80px;left:50%;transform:translateX(-50%);
       width:300px;height:300px;border-radius:50%;
-      background:radial-gradient(circle,rgba(124,58,237,0.12) 0%,transparent 70%);
+      background:radial-gradient(circle,rgba(79,70,229,0.10) 0%,transparent 70%);
       pointer-events:none;
     }
   `;
@@ -2232,7 +2246,7 @@ export default function ConfirmarPage() {
               fontSize: 11,
               letterSpacing: 1.5,
               textTransform: "uppercase",
-              color: "rgba(124,58,237,0.7)",
+              color: "rgba(79,70,229,0.7)",
               marginTop: 12,
             }}
           >
@@ -2369,7 +2383,7 @@ export default function ConfirmarPage() {
           >
             Ver mi invitación
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M5 12h14M13 6l6 6-6 6" stroke="#5B21B6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
         </div>
@@ -2527,7 +2541,7 @@ export default function ConfirmarPage() {
                         <div className="detalle-ico-wrap">
                           {/* Sin ícono en la dirección — solo texto */}
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                            <path d="M4 10h16M4 14h10" stroke="#7C3AED" strokeWidth="1.8" strokeLinecap="round"/>
+                            <path d="M4 10h16M4 14h10" stroke="#4F46E5" strokeWidth="1.8" strokeLinecap="round"/>
                           </svg>
                         </div>
                         <div>
@@ -2707,7 +2721,7 @@ export default function ConfirmarPage() {
                   <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
                     <path
                       d="M7 16l7 7 11-11"
-                      stroke="#7C3AED"
+                      stroke="#4F46E5"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -2718,7 +2732,7 @@ export default function ConfirmarPage() {
                 <p className="conf-sub">
                   Nos vemos en{" "}
                   <strong
-                    style={{ color: "rgba(236,72,153,0.95)", fontWeight: 500 }}
+                    style={{ color: "rgba(79,70,229,0.95)", fontWeight: 500 }}
                   >
                     {evento.nombre}
                   </strong>
@@ -2733,7 +2747,7 @@ export default function ConfirmarPage() {
                         height="22"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="#7C3AED"
+                        stroke="#4F46E5"
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -3044,7 +3058,7 @@ export default function ConfirmarPage() {
       {showEventixPromo && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 9999,
-          background: "#5B21B6",
+          background: "#3730A3",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           padding: "32px 24px",
           animation: "fadeInPromo .5s ease both",
@@ -3052,18 +3066,18 @@ export default function ConfirmarPage() {
           <style>{`
             @keyframes fadeInPromo { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
             @keyframes shimmerP { 0%,100%{opacity:.6} 50%{opacity:1} }
-            .promo-card{width:100%;max-width:360px;background:linear-gradient(160deg,#1e1308 0%,#5B21B6 100%);border:1.5px solid rgba(124,58,237,0.25);border-radius:24px;padding:36px 28px 32px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.5),0 0 0 1px rgba(124,58,237,0.08);}
-            .promo-logo-ring{width:72px;height:72px;border-radius:22px;background:rgba(124,58,237,0.08);border:1.5px solid rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
-            .promo-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#FDE68A;letter-spacing:.3px;line-height:1.15;margin-bottom:8px;}
-            .promo-sub{font-size:13px;color:rgba(236,72,153,0.55);line-height:1.6;margin-bottom:28px;font-family:'Jost',sans-serif;}
+            .promo-card{width:100%;max-width:360px;background:linear-gradient(160deg,#1e1308 0%,#3730A3 100%);border:1.5px solid rgba(79,70,229,0.25);border-radius:24px;padding:36px 28px 32px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.5),0 0 0 1px rgba(79,70,229,0.08);}
+            .promo-logo-ring{width:72px;height:72px;border-radius:22px;background:rgba(79,70,229,0.08);border:1.5px solid rgba(79,70,229,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+            .promo-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#E0E7FF;letter-spacing:.3px;line-height:1.15;margin-bottom:8px;}
+            .promo-sub{font-size:13px;color:rgba(79,70,229,0.55);line-height:1.6;margin-bottom:28px;font-family:'Jost',sans-serif;}
             .promo-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:24px;}
-            .promo-tag{background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.22);border-radius:20px;padding:5px 13px;font-size:11px;font-weight:600;color:#7C3AED;letter-spacing:.3px;font-family:'Jost',sans-serif;}
-            .promo-divider{width:40px;height:1px;background:rgba(124,58,237,0.25);margin:0 auto 20px;}
+            .promo-tag{background:rgba(79,70,229,0.1);border:1px solid rgba(79,70,229,0.22);border-radius:20px;padding:5px 13px;font-size:11px;font-weight:600;color:#4F46E5;letter-spacing:.3px;font-family:'Jost',sans-serif;}
+            .promo-divider{width:40px;height:1px;background:rgba(79,70,229,0.25);margin:0 auto 20px;}
             .promo-features{display:flex;flex-direction:column;gap:10px;margin-bottom:28px;text-align:left;}
-            .promo-feature{display:flex;align-items:center;gap:12px;font-size:12.5px;color:rgba(236,72,153,0.7);font-family:'Jost',sans-serif;}
-            .promo-dot{width:6px;height:6px;border-radius:50%;background:#7C3AED;flex-shrink:0;}
-            .promo-btn{width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,#7C3AED,#E8C97A);color:#5B21B6;font-size:14px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;letter-spacing:.4px;box-shadow:0 6px 20px rgba(124,58,237,0.3);margin-bottom:10px;}
-            .promo-btn-sec{width:100%;padding:12px;border:1.5px solid rgba(124,58,237,0.2);border-radius:14px;background:transparent;color:rgba(236,72,153,0.45);font-size:12px;font-weight:500;cursor:pointer;font-family:'Jost',sans-serif;}
+            .promo-feature{display:flex;align-items:center;gap:12px;font-size:12.5px;color:rgba(79,70,229,0.7);font-family:'Jost',sans-serif;}
+            .promo-dot{width:6px;height:6px;border-radius:50%;background:#4F46E5;flex-shrink:0;}
+            .promo-btn{width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,#4F46E5,#E0E7FF);color:#3730A3;font-size:14px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;letter-spacing:.4px;box-shadow:0 6px 20px rgba(79,70,229,0.3);margin-bottom:10px;}
+            .promo-btn-sec{width:100%;padding:12px;border:1.5px solid rgba(79,70,229,0.2);border-radius:14px;background:transparent;color:rgba(79,70,229,0.45);font-size:12px;font-weight:500;cursor:pointer;font-family:'Jost',sans-serif;}
           `}</style>
           <div className="promo-card">
             <div className="promo-logo-ring"><AppLogo size={48} /></div>

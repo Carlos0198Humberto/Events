@@ -25,7 +25,7 @@ type ScanResult =
 // ─── AppLogo ───────────────────────────────────────────────────────────────
 function AppLogo({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#4F46E5" /><stop offset="100%" stopColor="#6366F1" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E0E7FF" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
   );
 }
 
@@ -231,13 +231,13 @@ export default function ScannerPage() {
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Jost:wght@300;400;500;600;700&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FAFBFF;color:#1a1209}
+    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A}
     :root{
-      --gold:#7C3AED;--gold-dark:#5B21B6;--gold-light:#FDE68A;--gold-pale:#F5EDD8;
-      --dark:#1a1209;--dark2:#2d1f0a;--ink:#475569;--ink2:#5a3e1b;--ink3:#5B21B6;
-      --cream:#FAFBFF;--cream2:#F0E8D8;--surface:#FFFFFF;
-      --border:rgba(124,58,237,0.25);--border-mid:rgba(124,58,237,0.40);
-      --r:20px;--r-sm:14px;
+      --gold:#4F46E5;--gold-dark:#3730A3;--gold-light:#E0E7FF;--gold-pale:#EEF2FF;
+      --dark:#312E81;--dark2:#3730A3;--ink:#0F172A;--ink2:#475569;--ink3:#64748B;
+      --cream:#F8FAFF;--cream2:#EEF2FF;--surface:#FFFFFF;
+      --border:rgba(15,23,42,0.08);--border-mid:rgba(79,70,229,0.22);
+      --r:18px;--r-sm:12px;
     }
     @keyframes riseUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{to{transform:rotate(360deg)}}
@@ -246,14 +246,14 @@ export default function ScannerPage() {
     @keyframes scanLine{0%{top:0}100%{top:100%}}
     @keyframes popIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 
-    .page{min-height:100dvh;background:var(--cream);padding-bottom:env(safe-area-inset-bottom,20px)}
-    .topbar{display:flex;align-items:center;gap:12px;padding:12px 18px;background:rgba(250,246,240,0.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
-    .topbar-back{width:36px;height:36px;border-radius:10px;background:var(--cream2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
-    .topbar-info{flex:1}
-    .topbar-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);line-height:1}
-    .topbar-sub{font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+    .page{min-height:100dvh;background:#FFFFFF;padding-bottom:env(safe-area-inset-bottom,20px)}
+    .topbar{display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
+    .topbar-back{width:36px;height:36px;border-radius:10px;background:var(--cream);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .topbar-info{flex:1;min-width:0}
+    .topbar-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .topbar-sub{font-size:10px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-    .wrap{max-width:480px;margin:0 auto;padding:20px 16px;display:flex;flex-direction:column;gap:16px}
+    .wrap{max-width:520px;margin:0 auto;padding:18px 14px;display:flex;flex-direction:column;gap:14px}
 
     /* Stats */
     .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -268,21 +268,21 @@ export default function ScannerPage() {
     .cam-video{width:100%;height:100%;object-fit:cover;display:block}
     .cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
     .cam-frame{width:200px;height:200px;position:relative}
-    .cam-frame::before,.cam-frame::after{content:'';position:absolute;width:30px;height:30px;border-color:#7C3AED;border-style:solid;border-width:0}
+    .cam-frame::before,.cam-frame::after{content:'';position:absolute;width:30px;height:30px;border-color:#4F46E5;border-style:solid;border-width:0}
     .cam-frame::before{top:0;left:0;border-top-width:3px;border-left-width:3px;border-radius:4px 0 0 0}
     .cam-frame::after{bottom:0;right:0;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 4px 0}
-    .cam-corner-tr{position:absolute;top:0;right:0;width:30px;height:30px;border-top:3px solid #7C3AED;border-right:3px solid #7C3AED;border-radius:0 4px 0 0}
-    .cam-corner-bl{position:absolute;bottom:0;left:0;width:30px;height:30px;border-bottom:3px solid #7C3AED;border-left:3px solid #7C3AED;border-radius:0 0 0 4px}
-    .cam-scanline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(124,58,237,0.8),transparent);animation:scanLine 2s linear infinite}
-    .cam-hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:11px;color:rgba(236,72,153,0.7);font-weight:500}
+    .cam-corner-tr{position:absolute;top:0;right:0;width:30px;height:30px;border-top:3px solid #4F46E5;border-right:3px solid #4F46E5;border-radius:0 4px 0 0}
+    .cam-corner-bl{position:absolute;bottom:0;left:0;width:30px;height:30px;border-bottom:3px solid #4F46E5;border-left:3px solid #4F46E5;border-radius:0 0 0 4px}
+    .cam-scanline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(79, 70, 229,0.8),transparent);animation:scanLine 2s linear infinite}
+    .cam-hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:11px;color:rgba(99, 102, 241,0.7);font-weight:500}
     .cam-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;height:100%;padding:20px}
 
     /* Botones */
-    .btn-primary{width:100%;background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:1px solid rgba(124,58,237,0.35);border-radius:var(--r-sm);padding:16px;font-family:'Jost',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:transform .15s,opacity .15s;letter-spacing:.3px}
+    .btn-primary{width:100%;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;border-radius:var(--r-sm);padding:14px;font-family:'Jost',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:transform .15s,opacity .15s;letter-spacing:.2px;box-shadow:0 10px 24px -6px rgba(79,70,229,0.35)}
     .btn-primary:hover{transform:translateY(-1px)}
     .btn-primary:disabled{opacity:.6;cursor:wait}
-    .btn-secondary{width:100%;background:var(--cream);color:var(--ink2);border:1.5px solid var(--border-mid);border-radius:var(--r-sm);padding:14px;font-family:'Jost',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
-    .btn-secondary:hover{background:var(--gold-pale);border-color:var(--gold)}
+    .btn-secondary{width:100%;background:var(--cream);color:var(--ink2);border:1.5px solid var(--border-mid);border-radius:var(--r-sm);padding:13px;font-family:'Jost',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+    .btn-secondary:hover{background:var(--gold-pale);border-color:var(--gold);color:var(--gold)}
     .btn-danger{width:100%;background:#fef2f2;color:#b91c1c;border:1.5px solid rgba(185,28,28,.2);border-radius:var(--r-sm);padding:14px;font-family:'Jost',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
     .btn-danger:hover{background:#fee2e2}
 
@@ -293,7 +293,7 @@ export default function ScannerPage() {
     .manual-input{flex:1;background:var(--cream);border:1.5px solid var(--border-mid);border-radius:10px;padding:11px 14px;font-family:'Jost',sans-serif;font-size:13px;color:var(--ink);outline:none;transition:border-color .15s}
     .manual-input:focus{border-color:var(--gold)}
     .manual-input::placeholder{color:var(--ink3);opacity:.6}
-    .manual-btn{background:linear-gradient(135deg,var(--dark),var(--dark2));color:var(--gold);border:none;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Jost',sans-serif;transition:opacity .15s;white-space:nowrap}
+    .manual-btn{background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;transition:opacity .15s;white-space:nowrap;box-shadow:0 6px 14px -4px rgba(79,70,229,0.35)}
     .manual-btn:disabled{opacity:.6;cursor:wait}
 
     /* Resultado */
@@ -308,8 +308,31 @@ export default function ScannerPage() {
     .result-info-row{display:flex;align-items:center;gap:10px;background:var(--cream);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px}
     .result-info-label{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
     .result-info-val{font-size:14px;color:var(--ink);font-weight:500}
-    .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(124,58,237,.3);border-top-color:var(--gold);animation:spin .7s linear infinite}
-    .no-support-box{background:#fffbeb;border:1px solid rgba(245,158,11,.3);border-radius:var(--r-sm);padding:16px;text-align:center}
+    .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(79, 70, 229,.3);border-top-color:var(--gold);animation:spin .7s linear infinite}
+    .no-support-box{background:#fffbeb;border:1px solid rgba(99, 102, 241,.3);border-radius:var(--r-sm);padding:16px;text-align:center}
+
+    /* ─── Responsive: teléfonos pequeños ─── */
+    @media (max-width: 420px){
+      .topbar{padding:10px 12px;gap:8px}
+      .topbar-title{font-size:16px}
+      .topbar-sub{font-size:9px;letter-spacing:.8px}
+      .wrap{padding:14px 12px;gap:12px}
+      .stat-card{padding:12px 14px}
+      .stat-num{font-size:30px}
+      .stat-label{font-size:9.5px;letter-spacing:.6px}
+      .cam-frame{width:170px;height:170px}
+      .manual-section{padding:14px}
+      .manual-btn{padding:11px 12px;font-size:12px}
+      .btn-primary{padding:13px;font-size:13.5px}
+      .btn-secondary{padding:12px;font-size:12.5px}
+      .result-sheet{padding:20px 18px calc(24px + env(safe-area-inset-bottom,0px))}
+      .result-titulo{font-size:24px}
+      .result-nombre{font-size:20px}
+    }
+    @media (max-width: 340px){
+      .stats-row{grid-template-columns:1fr}
+      .cam-frame{width:150px;height:150px}
+    }
   `;
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
@@ -321,7 +344,7 @@ export default function ScannerPage() {
       <div className="topbar">
         <button className="topbar-back" onClick={() => router.push(`/dashboard`)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M15 18l-6-6 6-6" stroke="#5B21B6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M15 18l-6-6 6-6" stroke="#3730A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
         <div className="topbar-info">
@@ -359,8 +382,8 @@ export default function ScannerPage() {
                 </div>
               </div>
               {procesando && (
-                <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(20,13,4,0.8)", borderRadius: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 7, color: "#FDE68A", fontSize: 12, fontWeight: 600 }}>
-                  <div className="spinner" style={{ borderTopColor: "#7C3AED" }} />
+                <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(20,13,4,0.8)", borderRadius: 10, padding: "6px 12px", display: "flex", alignItems: "center", gap: 7, color: "#E0E7FF", fontSize: 12, fontWeight: 600 }}>
+                  <div className="spinner" style={{ borderTopColor: "#4F46E5" }} />
                   Verificando...
                 </div>
               )}
@@ -371,10 +394,10 @@ export default function ScannerPage() {
               {camPermiso === "pendiente" && (
                 <>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="12" cy="13" r="4" stroke="#7C3AED" strokeWidth="1.5"/>
+                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#4F46E5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="13" r="4" stroke="#4F46E5" strokeWidth="1.5"/>
                   </svg>
-                  <p style={{ color: "rgba(236,72,153,0.75)", fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
+                  <p style={{ color: "rgba(99, 102, 241,0.75)", fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
                     Necesitamos acceso a la cámara<br/>para escanear los QR
                   </p>
                   <button className="btn-primary" style={{ maxWidth: 240 }} onClick={iniciarCamara}>
@@ -389,7 +412,7 @@ export default function ScannerPage() {
               {camPermiso === "denegado" && (
                 <>
                   <div style={{ fontSize: 40 }}>🚫</div>
-                  <p style={{ color: "rgba(236,72,153,0.75)", fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
+                  <p style={{ color: "rgba(99, 102, 241,0.75)", fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
                     Acceso a cámara denegado.<br/>Usa el campo manual abajo.
                   </p>
                 </>
@@ -454,8 +477,8 @@ export default function ScannerPage() {
                 <div className="result-nombre">{resultado.invitado.nombre}</div>
                 <div className="result-info-row">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M9 2C6.38 2 4.25 4.13 4.25 6.75c0 2.57 2.01 4.65 4.63 4.74A4.738 4.738 0 0 0 13.75 6.75C13.75 4.13 11.62 2 9 2Z" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M4.16 14.56c-2.58 1.72-2.58 4.52 0 6.23 2.93 1.95 7.73 1.95 10.66 0 2.58-1.72 2.58-4.52 0-6.23-2.92-1.94-7.72-1.94-10.66 0Z" stroke="#7C3AED" strokeWidth="1.5"/>
+                    <path d="M9 2C6.38 2 4.25 4.13 4.25 6.75c0 2.57 2.01 4.65 4.63 4.74A4.738 4.738 0 0 0 13.75 6.75C13.75 4.13 11.62 2 9 2Z" stroke="#4F46E5" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M4.16 14.56c-2.58 1.72-2.58 4.52 0 6.23 2.93 1.95 7.73 1.95 10.66 0 2.58-1.72 2.58-4.52 0-6.23-2.92-1.94-7.72-1.94-10.66 0Z" stroke="#4F46E5" strokeWidth="1.5"/>
                   </svg>
                   <div>
                     <div className="result-info-label">Personas</div>
@@ -465,8 +488,8 @@ export default function ScannerPage() {
                 {resultado.invitado.numero_confirmacion && (
                   <div className="result-info-row">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <rect x="2" y="7" width="20" height="10" rx="2" stroke="#7C3AED" strokeWidth="1.5"/>
-                      <path d="M7 12h10" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
+                      <rect x="2" y="7" width="20" height="10" rx="2" stroke="#4F46E5" strokeWidth="1.5"/>
+                      <path d="M7 12h10" stroke="#4F46E5" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                     <div>
                       <div className="result-info-label">Confirmación</div>
@@ -492,8 +515,8 @@ export default function ScannerPage() {
                 {resultado.invitado.presente_hora && (
                   <div className="result-info-row">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <path d="M22 12c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2s10 4.48 10 10Z" stroke="#7C3AED" strokeWidth="1.5"/>
-                      <path d="M15.71 15.18 12.61 13.3c-.54-.32-.98-1.09-.98-1.72V7.51" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M22 12c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2s10 4.48 10 10Z" stroke="#4F46E5" strokeWidth="1.5"/>
+                      <path d="M15.71 15.18 12.61 13.3c-.54-.32-.98-1.09-.98-1.72V7.51" stroke="#4F46E5" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                     <div>
                       <div className="result-info-label">Registrado a las</div>

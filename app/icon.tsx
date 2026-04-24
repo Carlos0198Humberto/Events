@@ -11,7 +11,7 @@ export default function Icon() {
           width: 32,
           height: 32,
           borderRadius: 9,
-          background: "linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)",
+          background: "linear-gradient(135deg, #312E81 0%, #4F46E5 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -27,11 +27,9 @@ export default function Icon() {
           <rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" />
           {/* E bottom */}
           <rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" />
-          {/* Star */}
-          <path
-            d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z"
-            fill="#FDE68A"
-          />
+          {/* Accent sparkle — tono neutro, misma familia índigo */}
+          <circle cx="48" cy="19" r="3" fill="#E0E7FF" />
+          <circle cx="48" cy="19" r="1.4" fill="#FFFFFF" />
         </svg>
       </div>
     ),

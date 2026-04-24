@@ -20,7 +20,7 @@ type UsuarioAdmin = {
 // ─── Logo ──────────────────────────────────────────────────────────────────────
 function AppLogo({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#4F46E5" /><stop offset="100%" stopColor="#6366F1" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E0E7FF" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
   );
 }
 
@@ -241,12 +241,12 @@ export default function AdminPanel() {
           <div style={{ textAlign: "center", opacity: 0.7 }}>
             <div style={{
               width: 34, height: 34,
-              border: "2.5px solid rgba(124,58,237,0.2)",
-              borderTop: "2.5px solid #7C3AED",
+              border: "2.5px solid rgba(79, 70, 229,0.2)",
+              borderTop: "2.5px solid #4F46E5",
               borderRadius: "50%", animation: "spin 0.8s linear infinite",
               margin: "0 auto 12px",
             }} />
-            <p style={{ fontFamily: "sans-serif", fontSize: 13, color: "#5B21B6" }}>
+            <p style={{ fontFamily: "sans-serif", fontSize: 13, color: "#3730A3" }}>
               Verificando acceso...
             </p>
           </div>
@@ -265,10 +265,10 @@ export default function AdminPanel() {
 
         :root{
           --bg:#FAFBFF;--surface:#FFFFFF;--surface2:#F4F5FB;
-          --border:rgba(124,58,237,0.16);--border-mid:rgba(124,58,237,0.28);
-          --accent:#7C3AED;--accent2:#5B21B6;
-          --accent-soft:rgba(124,58,237,0.08);--accent-soft2:rgba(124,58,237,0.16);
-          --ink:#0F172A;--ink2:#475569;--ink3:#5B21B6;
+          --border:rgba(79, 70, 229,0.16);--border-mid:rgba(79, 70, 229,0.28);
+          --accent:#4F46E5;--accent2:#3730A3;
+          --accent-soft:rgba(79, 70, 229,0.08);--accent-soft2:rgba(79, 70, 229,0.16);
+          --ink:#0F172A;--ink2:#475569;--ink3:#3730A3;
           --danger:#DC2626;--danger-bg:#FEF2F2;--danger-border:rgba(220,38,38,0.25);
           --success:#059669;--success-bg:rgba(5,150,105,0.08);--success-border:rgba(5,150,105,0.25);
           --warn:#D97706;--warn-bg:rgba(217,119,6,0.08);--warn-border:rgba(217,119,6,0.25);
@@ -288,7 +288,7 @@ export default function AdminPanel() {
           position:sticky;top:0;z-index:30;height:58px;
           padding:0 16px;
           display:flex;align-items:center;justify-content:space-between;gap:10px;
-          background:rgba(250,246,240,0.96);backdrop-filter:blur(20px);
+          background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);
           border-bottom:1px solid var(--border);
         }
         .nav-left{display:flex;align-items:center;gap:10px}
@@ -330,14 +330,14 @@ export default function AdminPanel() {
         /* User row */
         .user-row{padding:14px 16px;border-bottom:1px solid var(--border);transition:background .15s;display:flex;flex-direction:column;gap:12px}
         .user-row:last-child{border-bottom:none}
-        .user-row:hover{background:rgba(124,58,237,0.04)}
+        .user-row:hover{background:rgba(79, 70, 229,0.04)}
 
         .user-row-top{display:flex;align-items:center;gap:12px}
         .user-avatar{width:38px;height:38px;border-radius:50%;background:var(--accent-soft2);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--accent2);flex-shrink:0}
         .user-info{flex:1;min-width:0}
         .user-nombre{font-size:14px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
         .user-email{font-size:11px;color:var(--ink3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .badge-admin{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:6px;background:rgba(124,58,237,0.12);color:var(--accent2);border:1px solid rgba(124,58,237,0.3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+        .badge-admin{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:6px;background:rgba(79, 70, 229,0.12);color:var(--accent2);border:1px solid rgba(79, 70, 229,0.3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
         .estado-bloqueado{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0}
         .estado-activo{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0}
 

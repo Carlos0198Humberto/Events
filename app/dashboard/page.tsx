@@ -148,8 +148,8 @@ function AppLogo({ size = 32 }: { size?: number }) {
     >
       <defs>
         <linearGradient id={`${uid}-bg`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#7C3AED" />
-          <stop offset="100%" stopColor="#EC4899" />
+          <stop offset="0%" stopColor="#312E81" />
+          <stop offset="100%" stopColor="#4F46E5" />
         </linearGradient>
       </defs>
       <rect width="64" height="64" rx="18" fill={`url(#${uid}-bg)`} />
@@ -167,10 +167,8 @@ function AppLogo({ size = 32 }: { size?: number }) {
       <rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" />
       <rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" />
       <rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" />
-      <path
-        d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z"
-        fill="#FDE68A"
-      />
+      <circle cx="48" cy="19" r="3" fill="#E0E7FF" />
+      <circle cx="48" cy="19" r="1.4" fill="#FFFFFF" />
       <circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" />
     </svg>
   );
@@ -446,7 +444,7 @@ function LoadingScreen() {
               width: 5,
               height: 5,
               borderRadius: "50%",
-              background: "#7C3AED",
+              background: "#4F46E5",
               animation: "dotPulse 1.2s infinite ease-in-out",
             }}
           />
@@ -455,7 +453,7 @@ function LoadingScreen() {
               width: 5,
               height: 5,
               borderRadius: "50%",
-              background: "#7C3AED",
+              background: "#4F46E5",
               animation: "dotPulse 1.2s .2s infinite ease-in-out",
             }}
           />
@@ -464,7 +462,7 @@ function LoadingScreen() {
               width: 5,
               height: 5,
               borderRadius: "50%",
-              background: "#7C3AED",
+              background: "#4F46E5",
               animation: "dotPulse 1.2s .4s infinite ease-in-out",
             }}
           />
@@ -722,7 +720,7 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    const svgFav = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" rx="18" fill="#5B21B6"/><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(124,58,237,0.20)" stroke-width="1.2"/><rect x="13" y="14" width="6" height="36" rx="3" fill="#7C3AED"/><rect x="13" y="14" width="24" height="6" rx="3" fill="#7C3AED"/><rect x="13" y="29" width="18" height="6" rx="3" fill="#7C3AED"/><rect x="13" y="44" width="24" height="6" rx="3" fill="#7C3AED"/><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A"/><circle cx="47" cy="46" r="2.5" fill="#7C3AED" opacity="0.55"/></svg>`;
+    const svgFav = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="dfv" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#312E81"/><stop offset="100%" stop-color="#4F46E5"/></linearGradient></defs><rect width="64" height="64" rx="18" fill="url(%23dfv)"/><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.2"/><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF"/><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF"/><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF"/><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF"/><circle cx="48" cy="19" r="3" fill="#E0E7FF"/><circle cx="48" cy="19" r="1.4" fill="#FFFFFF"/></svg>`;
     const link = document.createElement("link");
     link.rel = "icon";
     link.type = "image/svg+xml";
@@ -761,19 +759,20 @@ export default function Dashboard() {
           --ink-mute:#64748B;
           --rule:#E5E7F0;
           --rule-strong:#CBD5E1;
-          --gold:#7C3AED;
-          --gold-soft:rgba(124,58,237,0.08);
-          --gold-mid:rgba(124,58,237,0.16);
+          --gold:#4F46E5;
+          --gold-soft:rgba(79,70,229,0.06);
+          --gold-mid:rgba(79,70,229,0.14);
+          --gold-dark:#3730A3;
           --danger:#EF4444;
           --ok:#10B981;
           --warn:#F59E0B;
-          --grad-primary:linear-gradient(135deg,#7C3AED 0%,#EC4899 100%);
-          --grad-secondary:linear-gradient(135deg,#3B82F6 0%,#06B6D4 100%);
-          --grad-warm:linear-gradient(135deg,#F97316 0%,#EC4899 100%);
+          --grad-primary:linear-gradient(135deg,#312E81 0%,#4F46E5 100%);
+          --grad-secondary:linear-gradient(135deg,#4F46E5 0%,#6366F1 100%);
+          --grad-warm:linear-gradient(135deg,#4F46E5 0%,#818CF8 100%);
           --grad-success:linear-gradient(135deg,#10B981 0%,#06B6D4 100%);
-          --shadow-sm:0 2px 10px rgba(15,23,42,0.06);
+          --shadow-sm:0 2px 10px rgba(15,23,42,0.05);
           --shadow-md:0 6px 20px -4px rgba(15,23,42,0.10),0 2px 6px rgba(15,23,42,0.05);
-          --shadow-btn:0 10px 30px -6px rgba(124,58,237,0.35),0 4px 12px rgba(236,72,153,0.15);
+          --shadow-btn:0 10px 30px -6px rgba(79,70,229,0.35),0 4px 12px rgba(79,70,229,0.15);
           --serif:'Cormorant Garamond',Georgia,serif;
           --sans:'DM Sans',-apple-system,sans-serif;
           --ease:cubic-bezier(.4,0,.2,1);
@@ -795,7 +794,7 @@ export default function Dashboard() {
           height:60px;
           padding-left:max(20px, env(safe-area-inset-left));
           padding-right:max(20px, env(safe-area-inset-right));
-          background:rgba(247,241,231,0.85);
+          background:rgba(255,255,255,0.88);
           backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
           border-bottom:1px solid var(--rule);}
         .nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}

@@ -7,7 +7,7 @@ import Link from "next/link";
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 function AppLogo({ size = 34 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#FDE68A" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#312E81" /><stop offset="100%" stopColor="#4F46E5" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><circle cx="48" cy="19" r="3" fill="#E0E7FF" /><circle cx="48" cy="19" r="1.4" fill="#FFFFFF" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
   );
 }
 
@@ -693,19 +693,19 @@ export default function NuevoEvento() {
 
         :root{
           --bg:#FAFBFF;--surface:#FFFFFF;--surface2:#F4F5FB;
-          --border:rgba(124,58,237,0.16);--border-mid:rgba(124,58,237,0.28);
-          --accent:#7C3AED;--accent2:#5B21B6;--accent3:#5a3e1b;
-          --accent-soft:rgba(124,58,237,0.08);--accent-soft2:rgba(124,58,237,0.16);
-          --text:#0F172A;--text2:#475569;--text3:#5B21B6;
+          --border:rgba(79,70,229,0.16);--border-mid:rgba(79,70,229,0.28);
+          --accent:#4F46E5;--accent2:#3730A3;--accent3:#5a3e1b;
+          --accent-soft:rgba(79,70,229,0.08);--accent-soft2:rgba(79,70,229,0.16);
+          --text:#0F172A;--text2:#475569;--text3:#3730A3;
           --danger:#dc2626;--danger-bg:#fef2f2;--danger-border:#fecaca;
           --shadow:0 4px 24px rgba(15,23,42,0.10);--shadow-sm:0 2px 10px rgba(15,23,42,0.07);
-          --nav-bg:rgba(250,246,240,0.95);--transition:all 0.35s cubic-bezier(.4,0,.2,1);
+          --nav-bg:rgba(255,255,255,0.92);--transition:all 0.35s cubic-bezier(.4,0,.2,1);
           --radius:18px;
         }
 
         .page{min-height:100vh;background:var(--bg);position:relative;overflow-x:hidden;padding-bottom:60px}
         .glow{position:fixed;pointer-events:none;z-index:0;border-radius:50%;filter:blur(90px)}
-        .glow-1{width:320px;height:320px;top:-100px;right:-80px;background:radial-gradient(circle,rgba(124,58,237,0.14) 0%,transparent 70%);animation:gd1 9s ease-in-out infinite}
+        .glow-1{width:320px;height:320px;top:-100px;right:-80px;background:radial-gradient(circle,rgba(79,70,229,0.14) 0%,transparent 70%);animation:gd1 9s ease-in-out infinite}
         .glow-2{width:260px;height:260px;bottom:100px;left:-80px;background:radial-gradient(circle,rgba(94,234,212,0.09) 0%,transparent 70%);animation:gd2 11s ease-in-out infinite}
         @keyframes gd1{0%,100%{transform:translate(0,0)}40%{transform:translate(-16px,24px)}70%{transform:translate(12px,-16px)}}
         @keyframes gd2{0%,100%{transform:translate(0,0)}35%{transform:translate(20px,-26px)}65%{transform:translate(-10px,16px)}}
@@ -753,7 +753,7 @@ export default function NuevoEvento() {
         .tipos-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
         .tipo-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 3px;border-radius:12px;font-size:9.5px;font-weight:700;border:2px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:var(--transition);font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;text-align:center;line-height:1.2}
         .tipo-btn:hover{border-color:var(--accent2);color:var(--accent);background:var(--accent-soft)}
-        .tipo-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 12px rgba(124,58,237,0.38)}
+        .tipo-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 3px 12px rgba(79,70,229,0.38)}
 
         /* ── Photo portada (grande) ── */
         .photo-upload{cursor:pointer;display:block;border-radius:12px;overflow:hidden;border:2px dashed var(--border-mid);transition:var(--transition)}
@@ -776,7 +776,7 @@ export default function NuevoEvento() {
         .photo-preview-overlay-text{color:white;font-size:11px;font-weight:700}
 
         /* ── Badge destacada ── */
-        .venue-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(124,58,237,0.10);color:var(--accent2);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 9px;border-radius:100px;margin-bottom:8px;border:1px solid var(--border-mid)}
+        .venue-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(79,70,229,0.10);color:var(--accent2);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:3px 9px;border-radius:100px;margin-bottom:8px;border:1px solid var(--border-mid)}
 
         /* ── File pick ── */
         .file-pick-row{display:flex;align-items:center;gap:9px;background:var(--accent-soft);border:2px dashed var(--border-mid);border-radius:11px;padding:10px 11px;cursor:pointer;transition:var(--transition)}
@@ -800,7 +800,7 @@ export default function NuevoEvento() {
         .field-label{font-size:10px;font-weight:700;color:var(--accent2);display:block;margin-bottom:5px;letter-spacing:.2px;text-transform:uppercase}
         .field-input{width:100%;border:2px solid var(--border-mid);border-radius:11px;padding:10px 12px;font-size:14px;background:var(--accent-soft);color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s,background .2s;font-family:'DM Sans',sans-serif;-webkit-appearance:none;touch-action:manipulation}
         .field-input::placeholder{color:var(--text3)}
-        .field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,0.10);background:var(--surface)}
+        .field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,0.10);background:var(--surface)}
         .field-hint{font-size:10px;color:var(--text3);margin-top:4px;padding:0 2px;line-height:1.4}
         .field-textarea{resize:none}
         .input-icon-wrap{position:relative}
@@ -813,12 +813,12 @@ export default function NuevoEvento() {
         .btn-submit{width:100%;padding:14px;border-radius:var(--radius);border:none;
           background:linear-gradient(135deg,var(--accent) 0%,var(--accent3) 100%);
           color:#fff;font-size:15px;font-weight:800;font-family:'DM Sans',sans-serif;
-          cursor:pointer;box-shadow:0 6px 22px rgba(124,58,237,0.36);
+          cursor:pointer;box-shadow:0 6px 22px rgba(79,70,229,0.36);
           transition:transform .2s,box-shadow .2s,opacity .2s;position:relative;overflow:hidden;
           display:flex;align-items:center;justify-content:center;gap:8px;
           -webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:50px}
         .btn-submit::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.15) 50%,transparent 60%);background-size:200% 100%;animation:shimmer 3.5s ease-in-out infinite}
-        .btn-submit:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(124,58,237,0.46)}
+        .btn-submit:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(79,70,229,0.46)}
         .btn-submit:not(:disabled):active{transform:scale(0.98)}
         .btn-submit:disabled{opacity:.55;cursor:not-allowed}
         @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
@@ -1171,7 +1171,7 @@ export default function NuevoEvento() {
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {([
-                { id: "clasico", label: lang === "es" ? "Clásico" : "Classic", colors: ["#1a1209", "#7C3AED", "#FAFBFF"], desc: lang === "es" ? "Dorado elegante" : "Elegant gold" },
+                { id: "clasico", label: lang === "es" ? "Clásico" : "Classic", colors: ["#1a1209", "#4F46E5", "#FAFBFF"], desc: lang === "es" ? "Dorado elegante" : "Elegant gold" },
                 { id: "rosado", label: lang === "es" ? "Rosado" : "Blush", colors: ["#4a1535", "#d4847a", "#FDF5F5"], desc: lang === "es" ? "Rosa romántico" : "Romantic blush" },
                 { id: "esmeralda", label: lang === "es" ? "Esmeralda" : "Emerald", colors: ["#0d2d1e", "#4caf82", "#F2FAF6"], desc: lang === "es" ? "Verde sofisticado" : "Sophisticated green" },
               ] as { id: string; label: string; colors: string[]; desc: string }[]).map((t2) => (

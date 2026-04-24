@@ -129,22 +129,22 @@ export default function QRScanner({ onClose, onCheckin }: Props) {
         .qr-close-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.6)}
         .qr-viewport{position:relative;width:100%;aspect-ratio:1;border-radius:20px;overflow:hidden;background:#000;margin-bottom:18px}
         .qr-video{width:100%;height:100%;object-fit:cover;display:block}
-        .qr-frame{position:absolute;inset:14%;border-radius:12px;border:2.5px solid rgba(124,58,237,0.8);box-shadow:0 0 0 9999px rgba(0,0,0,0.45)}
-        .qr-scanline{position:absolute;left:14%;right:14%;height:3px;background:linear-gradient(90deg,transparent,rgba(124,58,237,0.9),transparent);border-radius:2px;animation:qrScan 2s ease-in-out infinite}
-        .qr-corner{position:absolute;width:24px;height:24px;border-color:var(--gold,#7C3AED);border-style:solid}
+        .qr-frame{position:absolute;inset:14%;border-radius:12px;border:2.5px solid rgba(79, 70, 229,0.8);box-shadow:0 0 0 9999px rgba(0,0,0,0.45)}
+        .qr-scanline{position:absolute;left:14%;right:14%;height:3px;background:linear-gradient(90deg,transparent,rgba(79, 70, 229,0.9),transparent);border-radius:2px;animation:qrScan 2s ease-in-out infinite}
+        .qr-corner{position:absolute;width:24px;height:24px;border-color:var(--gold,#4F46E5);border-style:solid}
         .qr-corner-tl{top:14%;left:14%;border-width:3px 0 0 3px;border-radius:6px 0 0 0}
         .qr-corner-tr{top:14%;right:14%;border-width:3px 3px 0 0;border-radius:0 6px 0 0}
         .qr-corner-bl{bottom:14%;left:14%;border-width:0 0 3px 3px;border-radius:0 0 0 6px}
         .qr-corner-br{bottom:14%;right:14%;border-width:0 3px 3px 0;border-radius:0 0 6px 0}
-        .qr-hint{font-size:12px;color:rgba(124,58,237,0.65);text-align:center;letter-spacing:.3px}
+        .qr-hint{font-size:12px;color:rgba(79, 70, 229,0.65);text-align:center;letter-spacing:.3px}
         .qr-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:40px 0}
-        .qr-spinner{width:40px;height:40px;border-radius:50%;border:3px solid rgba(124,58,237,0.2);border-top-color:#7C3AED;animation:spin .75s linear infinite}
+        .qr-spinner{width:40px;height:40px;border-radius:50%;border:3px solid rgba(79, 70, 229,0.2);border-top-color:#4F46E5;animation:spin .75s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
         .qr-result{background:rgba(255,255,255,0.05);border-radius:18px;padding:24px;text-align:center}
         .qr-result-ico{width:72px;height:72px;border-radius:50%;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;animation:qrSuccessPop .5s cubic-bezier(.22,1,.36,1) both}
         .qr-result-name{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:#F8FAFC;margin-bottom:4px}
-        .qr-result-sub{font-size:12px;color:rgba(124,58,237,0.65);margin-bottom:20px}
-        .qr-result-personas{display:inline-flex;align-items:center;gap:7px;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.25);border-radius:99px;padding:6px 14px;font-size:12px;font-weight:600;color:rgba(124,58,237,0.8);margin-bottom:20px}
+        .qr-result-sub{font-size:12px;color:rgba(79, 70, 229,0.65);margin-bottom:20px}
+        .qr-result-personas{display:inline-flex;align-items:center;gap:7px;background:rgba(79, 70, 229,0.12);border:1px solid rgba(79, 70, 229,0.25);border-radius:99px;padding:6px 14px;font-size:12px;font-weight:600;color:rgba(79, 70, 229,0.8);margin-bottom:20px}
         .qr-btn-next{width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px;font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);cursor:pointer;font-family:inherit}
         .qr-btn-next:hover{background:rgba(255,255,255,0.12)}
       `}</style>
@@ -164,7 +164,7 @@ export default function QRScanner({ onClose, onCheckin }: Props) {
             <>
               <div className="qr-viewport">
                 {camError ? (
-                  <div style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:12,color:"rgba(124,58,237,0.7)",fontSize:13,textAlign:"center",padding:20 }}>
+                  <div style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:12,color:"rgba(79, 70, 229,0.7)",fontSize:13,textAlign:"center",padding:20 }}>
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                     <span>Activa el permiso de cámara para usar el escáner</span>
                   </div>
@@ -188,7 +188,7 @@ export default function QRScanner({ onClose, onCheckin }: Props) {
           {status === "loading" && (
             <div className="qr-loading">
               <div className="qr-spinner" />
-              <span style={{ fontSize:13, color:"rgba(124,58,237,0.65)" }}>Verificando invitado...</span>
+              <span style={{ fontSize:13, color:"rgba(79, 70, 229,0.65)" }}>Verificando invitado...</span>
             </div>
           )}
 
