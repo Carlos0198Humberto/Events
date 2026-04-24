@@ -231,7 +231,7 @@ export default function ScannerPage() {
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Jost:wght@300;400;500;600;700&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A}
+    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A;overflow-x:hidden;max-width:100vw;-webkit-text-size-adjust:100%}
     :root{
       --gold:#4F46E5;--gold-dark:#3730A3;--gold-light:#E0E7FF;--gold-pale:#EEF2FF;
       --dark:#312E81;--dark2:#3730A3;--ink:#0F172A;--ink2:#475569;--ink3:#64748B;
@@ -247,7 +247,7 @@ export default function ScannerPage() {
     @keyframes popIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 
     .page{min-height:100dvh;background:#FFFFFF;padding-bottom:env(safe-area-inset-bottom,20px)}
-    .topbar{display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
+    .topbar{display:flex;align-items:center;gap:10px;padding:max(11px,env(safe-area-inset-top,0px)) 14px 11px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;box-sizing:border-box;width:100%;}
     .topbar-back{width:36px;height:36px;border-radius:10px;background:var(--cream);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
     .topbar-info{flex:1;min-width:0}
     .topbar-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

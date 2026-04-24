@@ -677,7 +677,7 @@ export default function GestionarMesas() {
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500;600;700&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A}
+  html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A;overflow-x:hidden;max-width:100vw;-webkit-text-size-adjust:100%}
   :root{
     --bg:#FFFFFF;--surface:#fff;--surface-2:#F8FAFF;--surface-3:#EEF2FF;
     --ink:#0F172A;--ink2:#475569;--ink3:#64748B;
@@ -696,11 +696,12 @@ const styles = `
   /* Top bar */
   .top-bar{
     display:flex;align-items:center;gap:8px;
-    padding:10px 14px;
+    padding:max(10px,env(safe-area-inset-top,0px)) 14px 10px;
     background:rgba(255,255,255,0.92);
     backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
     border-bottom:1px solid var(--border);
     position:sticky;top:0;z-index:30;
+    box-sizing:border-box;width:100%;
   }
   .back-btn{
     display:flex;align-items:center;justify-content:center;
