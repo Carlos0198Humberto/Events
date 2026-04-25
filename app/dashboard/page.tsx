@@ -811,7 +811,7 @@ export default function Dashboard() {
         .ctrl-danger:hover{background:var(--danger);border-color:var(--danger);color:var(--paper)}
 
         /* ── Content ── */
-        .content{max-width:640px;margin:0 auto;padding:32px 20px max(96px, calc(env(safe-area-inset-bottom) + 60px));position:relative;z-index:1}
+        .content{max-width:640px;margin:0 auto;padding:52px 20px max(96px, calc(env(safe-area-inset-bottom) + 60px));position:relative;z-index:1}
 
         /* ── Greeting ── */
         .greeting{margin-bottom:28px;display:flex;flex-direction:column;gap:6px}
@@ -1009,7 +1009,7 @@ export default function Dashboard() {
 
         /* Smaller phones */
         @media (max-width: 380px){
-          .content{padding:24px 16px 80px}
+          .content{padding:44px 16px 80px}
           .event-body{padding:22px 18px 18px}
           .expand-btn{padding:14px 18px}
           .details{padding:20px 18px}

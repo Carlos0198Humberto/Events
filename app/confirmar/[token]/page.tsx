@@ -1584,6 +1584,36 @@ function DeseoModal({ eventoId, token, onClose }: { eventoId: string; token: str
   );
 }
 
+// ─── Recordatorio final de deseo (antes del botón Listo) ─────────────────────
+function RecordatorioDeseoFinal({ eventoId, invitadoId, token }: { eventoId: string; invitadoId: string; token: string }) {
+  const [tieneDeseo, setTieneDeseo] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.from("deseos").select("id").eq("invitado_id", invitadoId).limit(1)
+      .then(({ data }) => setTieneDeseo(!!(data && data.length > 0)));
+  }, [invitadoId]);
+
+  if (tieneDeseo === null || tieneDeseo) return null;
+
+  return (
+    <div style={{ background: "linear-gradient(135deg,#FDF4FF,#EEF2FF)", border: "1.5px solid rgba(139,92,246,0.25)", borderRadius: 18, padding: "20px 18px", display: "flex", flexDirection: "column", gap: 12, textAlign: "center" }}>
+      <div style={{ fontSize: 28 }}>💌</div>
+      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontStyle: "italic", color: "var(--ink)", lineHeight: 1.3 }}>
+        ¿Querés dejar un mensaje?
+      </div>
+      <p style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.6, margin: 0 }}>
+        Todavía podés escribir un deseo o dedicatoria especial para los anfitriones.
+      </p>
+      <button
+        style={{ width: "100%", background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", color: "#fff", border: "none", borderRadius: 13, padding: "15px", fontFamily: "'Jost',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 6px 20px -4px rgba(79,70,229,0.38)", letterSpacing: ".2px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        onClick={() => { window.location.href = `/muro/${eventoId}?token=${token}&tab=deseos`; }}
+      >
+        💌 Sí, escribir mi deseo
+      </button>
+    </div>
+  );
+}
+
 // ─── Recordatorio de foto y deseo ─────────────────────────────────────────────
 function RecordatorioAccion({ eventoId, invitadoId, token }: { eventoId: string; invitadoId: string; token: string }) {
   const [tieneFoto, setTieneFoto] = useState<boolean | null>(null);
@@ -1605,29 +1635,56 @@ function RecordatorioAccion({ eventoId, invitadoId, token }: { eventoId: string;
   if (tieneFoto && tieneDeseo) return null;
 
   return (
-    <div style={{ background: "linear-gradient(135deg,#EEF2FF,#F5F3FF)", border: "1px solid rgba(79,70,229,0.2)", borderRadius: 16, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ background: "linear-gradient(135deg,#EEF2FF,#F5F3FF)", border: "1px solid rgba(79,70,229,0.2)", borderRadius: 18, padding: "18px", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold-dark)", textTransform: "uppercase", letterSpacing: "1px" }}>
         ✨ Completá tu experiencia
       </div>
-      {!tieneFoto && (
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(79,70,229,0.10)", border: "1px solid rgba(79,70,229,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <IcoCamera />
+
+      {/* Foto */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: tieneFoto ? "rgba(34,197,94,0.12)" : "rgba(79,70,229,0.10)", border: `1px solid ${tieneFoto ? "rgba(34,197,94,0.3)" : "rgba(79,70,229,0.22)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>
+          {tieneFoto ? "✓" : <IcoCamera />}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: tieneFoto ? "#16a34a" : "var(--ink)", textDecoration: tieneFoto ? "line-through" : "none", opacity: tieneFoto ? 0.7 : 1 }}>
+            Subí tu foto del evento
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Subí tu foto del evento</div>
-            <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 2 }}>Compartí el momento con los demás invitados</div>
+          <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 1 }}>
+            {tieneFoto ? "Ya subiste tu foto" : "Compartí el momento con los demás"}
           </div>
         </div>
-      )}
-      {tieneFoto && !tieneDeseo && (
-        <button
-          style={{ width: "100%", background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontStyle: "italic", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-          onClick={() => { window.location.href = `/muro/${eventoId}?token=${token}&tab=deseos`; }}
-        >
-          💌 Escribí tu deseo
-        </button>
-      )}
+        {!tieneFoto && (
+          <button
+            style={{ flexShrink: 0, background: "rgba(79,70,229,0.10)", border: "1px solid rgba(79,70,229,0.22)", borderRadius: 10, padding: "7px 13px", fontSize: 12, fontWeight: 700, color: "var(--gold-dark)", cursor: "pointer", fontFamily: "'Jost',sans-serif", whiteSpace: "nowrap" }}
+            onClick={() => { document.getElementById("subir-fotos-inv")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+          >
+            Subir foto
+          </button>
+        )}
+      </div>
+
+      {/* Deseo */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: tieneDeseo ? "rgba(34,197,94,0.12)" : "rgba(79,70,229,0.10)", border: `1px solid ${tieneDeseo ? "rgba(34,197,94,0.3)" : "rgba(79,70,229,0.22)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: tieneDeseo ? 16 : 14 }}>
+          {tieneDeseo ? "✓" : "💌"}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: tieneDeseo ? "#16a34a" : "var(--ink)", textDecoration: tieneDeseo ? "line-through" : "none", opacity: tieneDeseo ? 0.7 : 1 }}>
+            Dejá tu deseo
+          </div>
+          <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 1 }}>
+            {tieneDeseo ? "Ya enviaste tu mensaje" : "Un mensaje especial para los anfitriones"}
+          </div>
+        </div>
+        {!tieneDeseo && (
+          <button
+            style={{ flexShrink: 0, background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", border: "none", borderRadius: 10, padding: "7px 13px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", fontFamily: "'Jost',sans-serif", whiteSpace: "nowrap", boxShadow: "0 3px 10px rgba(79,70,229,0.30)" }}
+            onClick={() => { window.location.href = `/muro/${eventoId}?token=${token}&tab=deseos`; }}
+          >
+            Escribir
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -3026,57 +3083,29 @@ export default function ConfirmarPage() {
                 />
 
                 {/* Subir fotos — máx 5, opcional */}
-                <SubirFotosInvitado
-                  invitadoId={invitado.id}
-                  eventoId={invitado.evento_id}
-                  token={token}
-                  onFotoSubida={() => setShowDeseoModal(true)}
-                />
+                <div id="subir-fotos-inv">
+                  <SubirFotosInvitado
+                    invitadoId={invitado.id}
+                    eventoId={invitado.evento_id}
+                    token={token}
+                    onFotoSubida={() => setShowDeseoModal(true)}
+                  />
+                </div>
 
-                {/* Dejar deseo en el muro */}
+                {/* Dejar deseo en el muro — botón prominente */}
                 <button
-                  className="btn-accion-full"
-                  onClick={() => {
-                    window.location.href = `/muro/${invitado.evento_id}?token=${invitado.token}&tab=deseos`;
-                  }}
+                  style={{ width: "100%", background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "17px 20px", fontFamily: "'Jost',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 6px 22px -4px rgba(79,70,229,0.40)", letterSpacing: ".2px", transition: "transform .18s, box-shadow .18s" }}
+                  onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 9px 28px -4px rgba(79,70,229,0.48)"; }}
+                  onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.transform = ""; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 22px -4px rgba(79,70,229,0.40)"; }}
+                  onClick={() => { window.location.href = `/muro/${invitado.evento_id}?token=${invitado.token}&tab=deseos`; }}
                 >
-                  <div className="btn-accion-ico">
-                    <IcoCorazon />
+                  <span style={{ fontSize: 18, lineHeight: 1 }}>💌</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }}>
+                    <span>Escribir mi deseo</span>
+                    <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.82 }}>Un mensaje especial para los anfitriones</span>
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 2,
-                      textAlign: "left",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "var(--ink2)",
-                      }}
-                    >
-                      Dejar mi deseo
-                    </span>
-                    <span style={{ fontSize: 11, color: "var(--ink3)" }}>
-                      Escribe un mensaje especial
-                    </span>
-                  </div>
-                  <svg
-                    style={{ marginLeft: "auto" }}
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="var(--gold)"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  >
-                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-                    <polyline points="15 3 21 3 21 9" />
-                    <line x1="10" y1="14" x2="21" y2="3" />
+                  <svg style={{ marginLeft: "auto", flexShrink: 0 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </button>
 
@@ -3137,6 +3166,13 @@ export default function ConfirmarPage() {
                   </svg>
                   Ver muro de fotos del evento
                 </button>
+
+                {/* Recordatorio final — solo si no dejó deseo */}
+                <RecordatorioDeseoFinal
+                  eventoId={invitado.evento_id}
+                  invitadoId={invitado.id}
+                  token={invitado.token}
+                />
 
                 <button className="btn-cerrar" onClick={confirmarYCerrar}>
                   Listo, cerrar esta ventana

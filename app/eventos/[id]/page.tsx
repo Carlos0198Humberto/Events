@@ -578,23 +578,23 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
   const [leaving, setLeaving] = useState(false);
 
   function dismiss(withMusic: boolean) {
-    setLeaving(true);
-    setTimeout(() => {
-      if (withMusic) {
-        // Este código corre DENTRO del event handler → iOS lo permite
-        if (!audioRef.current) {
-          audioRef.current = new Audio(url);
-          audioRef.current.loop = true;
-          audioRef.current.volume = 0.35;
-        }
-        audioRef.current
-          .play()
-          .then(() => setState("playing"))
-          .catch(() => setState("muted")); // Si falla igual (edge case), sin romper
-      } else {
-        setState("muted");
+    if (withMusic) {
+      // CRÍTICO iOS: audio.play() DEBE llamarse sincrónicamente dentro del onClick.
+      // Mover esto a setTimeout rompe la cadena de gesto → iOS bloquea el audio.
+      if (!audioRef.current) {
+        audioRef.current = new Audio(url);
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.35;
       }
-    }, 280); // Espera a que termine la animación de salida
+      // Iniciamos el audio AHORA (dentro del gesto) → iOS lo permite
+      audioRef.current.play().catch(() => {/* silencioso — estado actualiza abajo */});
+      // El estado "playing"/"muted" se actualiza después de la animación
+      setLeaving(true);
+      setTimeout(() => setState("playing"), 280);
+    } else {
+      setLeaving(true);
+      setTimeout(() => setState("muted"), 280);
+    }
   }
 
   function togglePlay() {
