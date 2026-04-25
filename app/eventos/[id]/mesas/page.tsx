@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/app/components/Toast";
+import { BottomNav } from "@/app/components/BottomNav";
 
 // ─── AppLogo ──────────────────────────────────────────────────────────────────
 function AppLogo({ size = 36 }: { size?: number }) {
@@ -216,7 +217,7 @@ export default function GestionarMesas() {
   const sinMesa = invitadosSinMesa();
 
   return (
-    <div className={`page-wrap${mounted ? " vis" : ""}`}>
+    <div className={`page-wrap ev-page-with-nav${mounted ? " vis" : ""}`}>
       <style>{styles}</style>
 
       {/* Top bar */}
@@ -669,6 +670,8 @@ export default function GestionarMesas() {
           </div>
         </div>
       )}
+
+      <BottomNav eventoId={eventoId} active="mesas" />
     </div>
   );
 }

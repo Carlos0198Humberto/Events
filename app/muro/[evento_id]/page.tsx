@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import Link from "next/link";
+import { BottomNav } from "@/app/components/BottomNav";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 type Foto = {
@@ -1963,10 +1964,11 @@ export default function MuroPublico() {
 
   return (
     <main
+      className={esOrg ? "ev-page-with-nav" : undefined}
       style={{
         minHeight: "100vh",
         background: "#FAFBFF",
-        paddingBottom: 100,
+        paddingBottom: esOrg ? undefined : 100,
         fontFamily: "'DM Sans',sans-serif",
         opacity: mounted ? 1 : 0,
         transition: "opacity 0.3s ease",
@@ -2083,6 +2085,39 @@ export default function MuroPublico() {
           font-size: 11px; font-weight: 600; color: #3730A3;
           display: flex; align-items: center; gap: 6px;
           flex-wrap: wrap;
+        }
+
+        /* ── Org content tabs (sticky strip, org mode only) ── */
+        .org-tabs-strip {
+          position: sticky; top: calc(env(safe-area-inset-top, 0px) + 52px); z-index: 140;
+          background: rgba(255,255,255,0.97);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+          border-bottom: 1px solid rgba(79,70,229,0.12);
+          display: grid; grid-template-columns: repeat(3, 1fr);
+          padding: 4px 0 2px;
+        }
+        .org-tab {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 2px; padding: 8px 4px 6px;
+          border: none; background: transparent; cursor: pointer;
+          font-family: 'DM Sans',sans-serif;
+          -webkit-tap-highlight-color: transparent;
+          transition: background .15s;
+          position: relative;
+        }
+        .org-tab:active { background: rgba(79,70,229,0.08); }
+        .org-tab-icon { line-height: 0; transition: transform .15s; }
+        .org-tab.active .org-tab-icon { transform: scale(1.1); color: #4F46E5; }
+        .org-tab:not(.active) .org-tab-icon { color: #94a3b8; }
+        .org-tab-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2px; }
+        .org-tab.active .org-tab-label { color: #3730A3; }
+        .org-tab:not(.active) .org-tab-label { color: #94a3b8; }
+        .org-tab-badge {
+          position: absolute; top: 4px; right: calc(50% - 14px);
+          background: #4F46E5; color: white;
+          font-size: 8px; font-weight: 800; border-radius: 99px;
+          padding: 1px 4px; min-width: 14px; text-align: center;
+          border: 1.5px solid white;
         }
       `}</style>
 
@@ -2207,8 +2242,29 @@ export default function MuroPublico() {
         </div>
       )}
 
+      {/* ── Org content tabs strip (visible solo en modo organizador) ── */}
+      {esOrg && (
+        <div className="org-tabs-strip">
+          {([
+            { key: "fotos" as Vista, icon: Ico.grid(18, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
+            { key: "albumes" as Vista, icon: Ico.folder(18, vista === "albumes" ? "#4F46E5" : "#94a3b8"), label: t.albumes, count: albumes.length },
+            { key: "deseos" as Vista, icon: Ico.heart(18, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              className={`org-tab${vista === tab.key ? " active" : ""}`}
+              onClick={() => setVista(tab.key)}
+            >
+              {tab.count > 0 && <span className="org-tab-badge">{tab.count}</span>}
+              <span className="org-tab-icon">{tab.icon}</span>
+              <span className="org-tab-label">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ══ CONTENIDO ══ */}
-      <div style={{ padding: "12px 10px 0", maxWidth: 600, margin: "0 auto", paddingBottom: invId ? "160px" : "100px", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ padding: "12px 10px 0", maxWidth: 600, margin: "0 auto", paddingBottom: esOrg ? "var(--nav-total-height, 100px)" : invId ? "160px" : "100px", width: "100%", boxSizing: "border-box" }}>
         {/* ── FOTOS ── */}
         {vista === "fotos" &&
           (fotos.length === 0 ? (
@@ -2631,67 +2687,71 @@ export default function MuroPublico() {
       )}
 
       {/* ══ BOTTOM NAV ══ */}
-      <nav className="bottom-nav">
-        {/* Acciones del invitado */}
-        {invId && (
-          <div className="nav-guest-row">
-            <button
-              className="nav-guest-btn"
-              onClick={() => setModalSubir(true)}
-              style={{
-                background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,#4F46E5,#3730A3)",
-                color: yaFoto ? "#16a34a" : "white",
-                border: yaFoto ? "1.5px solid rgba(22,163,74,0.28)" : "none",
-                boxShadow: yaFoto ? "none" : "0 3px 14px rgba(79, 70, 229,0.38)",
-              }}
-            >
-              {yaFoto ? Ico.check(15, "#16a34a") : Ico.camera(15, "white")}
-              {t.subirMiFoto}
-              {yaFoto && <span style={{ fontSize: 10, background: "#22c55e", color: "white", borderRadius: 99, padding: "1px 5px", marginLeft: 2 }}>✓</span>}
-            </button>
-            <button
-              className="nav-guest-btn"
-              onClick={() => setModalDeseo(true)}
-              style={{
-                background: yaDeseo ? "rgba(22,163,74,0.10)" : yaFoto ? "linear-gradient(135deg,#4F46E5,#3730A3)" : "#F3EDE4",
-                color: yaDeseo ? "#16a34a" : yaFoto ? "white" : "#4F46E5",
-                border: yaDeseo ? "1.5px solid rgba(22,163,74,0.28)" : yaFoto ? "none" : "1.5px solid rgba(79, 70, 229,0.28)",
-                boxShadow: yaFoto && !yaDeseo ? "0 3px 14px rgba(79, 70, 229,0.38)" : "none",
-              }}
-            >
-              {yaDeseo ? Ico.check(15, "#16a34a") : Ico.heart(15, yaFoto ? "white" : "#4F46E5")}
-              {t.miDeseo}
-              {yaDeseo && <span style={{ fontSize: 10, background: "#22c55e", color: "white", borderRadius: 99, padding: "1px 5px", marginLeft: 2 }}>✓</span>}
-            </button>
-          </div>
-        )}
+      {esOrg ? (
+        <BottomNav eventoId={eventoId} active="muro" />
+      ) : (
+        <nav className="bottom-nav">
+          {/* Acciones del invitado */}
+          {invId && (
+            <div className="nav-guest-row">
+              <button
+                className="nav-guest-btn"
+                onClick={() => setModalSubir(true)}
+                style={{
+                  background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,#4F46E5,#3730A3)",
+                  color: yaFoto ? "#16a34a" : "white",
+                  border: yaFoto ? "1.5px solid rgba(22,163,74,0.28)" : "none",
+                  boxShadow: yaFoto ? "none" : "0 3px 14px rgba(79, 70, 229,0.38)",
+                }}
+              >
+                {yaFoto ? Ico.check(15, "#16a34a") : Ico.camera(15, "white")}
+                {t.subirMiFoto}
+                {yaFoto && <span style={{ fontSize: 10, background: "#22c55e", color: "white", borderRadius: 99, padding: "1px 5px", marginLeft: 2 }}>✓</span>}
+              </button>
+              <button
+                className="nav-guest-btn"
+                onClick={() => setModalDeseo(true)}
+                style={{
+                  background: yaDeseo ? "rgba(22,163,74,0.10)" : yaFoto ? "linear-gradient(135deg,#4F46E5,#3730A3)" : "#F3EDE4",
+                  color: yaDeseo ? "#16a34a" : yaFoto ? "white" : "#4F46E5",
+                  border: yaDeseo ? "1.5px solid rgba(22,163,74,0.28)" : yaFoto ? "none" : "1.5px solid rgba(79, 70, 229,0.28)",
+                  boxShadow: yaFoto && !yaDeseo ? "0 3px 14px rgba(79, 70, 229,0.38)" : "none",
+                }}
+              >
+                {yaDeseo ? Ico.check(15, "#16a34a") : Ico.heart(15, yaFoto ? "white" : "#4F46E5")}
+                {t.miDeseo}
+                {yaDeseo && <span style={{ fontSize: 10, background: "#22c55e", color: "white", borderRadius: 99, padding: "1px 5px", marginLeft: 2 }}>✓</span>}
+              </button>
+            </div>
+          )}
 
-        {/* Tabs */}
-        <div className="nav-tabs">
-          {([
-            { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
-            { key: "albumes" as Vista, icon: Ico.folder(20, vista === "albumes" ? "#4F46E5" : "#94a3b8"), label: t.albumes, count: albumes.length },
-            { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
-          ] as const).map((tab) => (
-            <button
-              key={tab.key}
-              className={`nav-tab${vista === tab.key ? " active" : ""}`}
-              onClick={() => setVista(tab.key)}
+          {/* Tabs */}
+          <div className="nav-tabs">
+            {([
+              { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
+              { key: "albumes" as Vista, icon: Ico.folder(20, vista === "albumes" ? "#4F46E5" : "#94a3b8"), label: t.albumes, count: albumes.length },
+              { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                className={`nav-tab${vista === tab.key ? " active" : ""}`}
+                onClick={() => setVista(tab.key)}
+              >
+                {tab.count > 0 && <span className="nav-tab-badge">{tab.count}</span>}
+                <span className="nav-tab-icon">{tab.icon}</span>
+                <span className="nav-tab-label">{tab.label}</span>
+              </button>
+            ))}
+            <Link
+              href={`/libro/${eventoId}${tokenParam ? `?token=${tokenParam}` : ""}`}
+              className="nav-tab"
             >
-              {tab.count > 0 && <span className="nav-tab-badge">{tab.count}</span>}
-              <span className="nav-tab-icon">{tab.icon}</span>
-              <span className="nav-tab-label">{tab.label}</span>
-            </button>
-          ))}
-          <Link
-            href={`/libro/${eventoId}${tokenParam ? `?token=${tokenParam}` : ""}`}
-            className="nav-tab"
-          >
-            <span className="nav-tab-icon" style={{ color: "#94a3b8" }}>{Ico.book(20, "#94a3b8")}</span>
-            <span className="nav-tab-label">{t.libro}</span>
-          </Link>
-        </div>
-      </nav>
+              <span className="nav-tab-icon" style={{ color: "#94a3b8" }}>{Ico.book(20, "#94a3b8")}</span>
+              <span className="nav-tab-label">{t.libro}</span>
+            </Link>
+          </div>
+        </nav>
+      )}
     </main>
   );
 }

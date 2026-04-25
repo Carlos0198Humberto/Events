@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { BottomNav } from "@/app/components/BottomNav";
 
 function AppLogo({ size = 36 }: { size?: number }) {
   return (
@@ -31,7 +32,7 @@ const PALETAS_PRESET: Record<string, string[][]> = {
 };
 
 const COLORES_SUGERIDOS = [
-  "#FAFBFF","#E0E7FF","#4F46E5","#3730A3","#3730A3",
+  "#FAFBFF","#E0E7FF","#4F46E5","#3730A3","#312E81",
   "#FFFFFF","#F5E6CC","#D4A96A","#8B7355","#475569",
   "#FFC0CB","#FFB6C1","#FF69B4","#C71585","#8B0057",
   "#E6E6FA","#9370DB","#6A0DAD","#4B0082","#2E004B",
@@ -179,7 +180,7 @@ export default function ConfigurarEvento() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className={`page-wrap${mounted ? " vis" : ""}`}>
+    <div className={`page-wrap ev-page-with-nav${mounted ? " vis" : ""}`}>
       <style>{styles}</style>
 
       {/* Top bar */}
@@ -397,6 +398,8 @@ export default function ConfigurarEvento() {
           </>
         )}
       </div>
+
+      <BottomNav eventoId={eventoId} active="configurar" />
     </div>
   );
 }

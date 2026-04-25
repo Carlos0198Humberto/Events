@@ -4,6 +4,9 @@ import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
+import { BottomNav } from "@/app/components/BottomNav";
+import { PhoneInput } from "@/app/components/PhoneInput";
+import { toast } from "@/app/components/Toast";
 
 function AppLogo({ size = 36 }: { size?: number }) {
   return (
@@ -41,7 +44,7 @@ export default function AgregarInvitados() {
   const id = params.id as string;
 
   const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("");
+  const [telefono, setTelefono] = useState(""); // E.164, ej: "+5491112345678"
   const [numPersonas, setNumPersonas] = useState("1");
   const [cupoElijeInvitado, setCupoElijeInvitado] = useState(false);
   const [agregados, setAgregados] = useState<Invitado[]>([]);
@@ -60,6 +63,39 @@ export default function AgregarInvitados() {
   const [exportando, setExportando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const bulkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [lastAdded, setLastAdded] = useState<string | null>(null); // token del último agregado (para animaciones)
+  const [btnSuccess, setBtnSuccess] = useState(false);
+
+  // Genera los dots del confetti en el DOM (CSS puro, sin canvas)
+  type ConfettiDot = {
+    id: number; color: string; size: string; borderRadius: string;
+    cx: string; cy: string; cr: string; delay: string; duration: string;
+  };
+  const [confettiDots, setConfettiDots] = useState<ConfettiDot[]>([]);
+  const confettiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function spawnConfetti() {
+    const colors = ["#4F46E5","#818CF8","#F472B6","#34D399","#FBBF24","#60A5FA","#F87171"];
+    const dots: ConfettiDot[] = Array.from({ length: 18 }, (_, i) => {
+      const angle = (i / 18) * 360 + Math.random() * 20;
+      const dist  = 60 + Math.random() * 80;
+      const rad   = (angle * Math.PI) / 180;
+      return {
+        id:           i,
+        color:        colors[Math.floor(Math.random() * colors.length)],
+        size:         `${4 + Math.random() * 5}px`,
+        borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+        cx:           `${Math.cos(rad) * dist}px`,
+        cy:           `${Math.sin(rad) * dist}px`,
+        cr:           `${Math.random() * 540 - 270}deg`,
+        delay:        `${Math.random() * 80}ms`,
+        duration:     `${500 + Math.random() * 200}ms`,
+      };
+    });
+    setConfettiDots(dots);
+    if (confettiTimer.current) clearTimeout(confettiTimer.current);
+    confettiTimer.current = setTimeout(() => setConfettiDots([]), 900);
+  }
 
   useEffect(() => {
     document.title = "Eventix — Gestionar invitados";
@@ -132,16 +168,27 @@ export default function AgregarInvitados() {
 
   function buildWhatsAppUrl(inv: Invitado) {
     const link = buildLink(inv.token);
-    let fechaTexto = "";
-    if (evento?.fecha_limite_confirmacion) {
-      const d = new Date(evento.fecha_limite_confirmacion);
-      fechaTexto = d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
-    }
     const tipoLabel = evento ? (TIPO_LABEL[evento.tipo] || "evento especial") : "evento especial";
     const anfitriones = evento?.anfitriones ?? "";
-    const mensajeBase = evento
-      ? `Hola ${inv.nombre}, te saluda ${anfitriones}, con relación a nuestra ${tipoLabel}, te invitamos a confirmar${fechaTexto ? ` antes del ${fechaTexto}` : ""}:\n${link}`
-      : `Hola ${inv.nombre}, estás invitado a nuestro evento. Confirma tu asistencia aquí:\n${link}`;
+    const nombreEvento = evento?.nombre ?? tipoLabel;
+
+    let deadlineLinea = "";
+    if (evento?.fecha_limite_confirmacion) {
+      const d = new Date(evento.fecha_limite_confirmacion);
+      const fecha = d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+      deadlineLinea = `\nConfirmá antes del ${fecha}.`;
+    }
+
+    const mensajeBase =
+`*${nombreEvento}*
+
+Hola ${inv.nombre}, te enviamos tu invitación personal para ${tipoLabel}.
+
+Confirmá tu asistencia aquí:
+${link}
+${deadlineLinea}
+— ${anfitriones}`;
+
     const msg = encodeURIComponent(mensajeBase);
     const rawPhone = inv.telefono ?? "";
     const phone = rawPhone.replace(/[^\d+]/g, "").replace(/(?!^\+)\+/g, "");
@@ -173,12 +220,13 @@ export default function AgregarInvitados() {
 
     if (error) {
       setError("Error al agregar invitado. Intenta de nuevo.");
+      toast.error("No se pudo agregar. Intentá de nuevo.");
     } else {
       const nuevo: Invitado = {
         id: data.id,
         nombre: nombre.trim(),
         token: data.token,
-        telefono: telefono.trim() || undefined,
+        telefono: telefono || undefined,
         num_personas: personas ?? 1,
         cupo_elije_invitado: cupoElijeInvitado,
         estado: "pendiente",
@@ -189,6 +237,13 @@ export default function AgregarInvitados() {
       setTelefono("");
       setNumPersonas("1");
       setCupoElijeInvitado(false);
+      // Feedback visual + háptico
+      toast.success(`¡${nombre.trim()} agregado a la lista! 🎉`);
+      if ("vibrate" in navigator) navigator.vibrate(80);
+      setLastAdded(data.token);
+      spawnConfetti();
+      setBtnSuccess(true);
+      setTimeout(() => setBtnSuccess(false), 600);
     }
     setLoading(false);
   }
@@ -418,6 +473,97 @@ export default function AgregarInvitados() {
         /* ── Empty state ── */
         .empty-state { text-align: center; padding: 24px 0; color: var(--text3); font-size: 13px; }
 
+        /* ── Confetti burst ── */
+        @keyframes confetti-fly {
+          0%   { transform: translate(0, 0) rotate(0deg) scale(1);   opacity: 1; }
+          80%  { opacity: 1; }
+          100% { transform: translate(var(--cx), var(--cy)) rotate(var(--cr)) scale(0.4); opacity: 0; }
+        }
+        .confetti-wrap {
+          position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+          z-index: 10; border-radius: inherit;
+        }
+        .confetti-dot {
+          position: absolute; top: 50%; left: 50%;
+          width: var(--cs, 6px); height: var(--cs, 6px);
+          border-radius: var(--cbr, 50%);
+          background: var(--cc, #4F46E5);
+          animation: confetti-fly var(--cd, 600ms) cubic-bezier(.22,1,.36,1) both;
+        }
+
+        /* ── WA button wiggle (aparece nuevo) ── */
+        @keyframes wa-pop {
+          0%   { transform: scale(0.7); opacity: 0; }
+          55%  { transform: scale(1.12); }
+          75%  { transform: scale(0.95); }
+          100% { transform: scale(1);   opacity: 1; }
+        }
+        .btn-wa-new { animation: wa-pop 400ms cubic-bezier(.22,1,.36,1) both; }
+
+        /* ── Submit button success pulse ── */
+        @keyframes submit-success {
+          0%   { transform: scale(1); }
+          30%  { transform: scale(1.04); box-shadow: 0 0 0 6px rgba(79,70,229,0.18); }
+          100% { transform: scale(1); }
+        }
+        .btn-success-pulse { animation: submit-success 500ms cubic-bezier(.22,1,.36,1) both; }
+
+        /* ── Hero metrics card ── */
+        .hero-card {
+          background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+          border-radius: 22px;
+          padding: 20px 20px 18px;
+          color: #fff;
+          box-shadow: 0 8px 32px rgba(79,70,229,0.38);
+          position: relative;
+          overflow: hidden;
+        }
+        .hero-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+          pointer-events: none;
+          z-index: 0;
+        }
+        .hero-card > * { position: relative; z-index: 1; }
+        .hero-tipo {
+          font-size: 10px; font-weight: 700; letter-spacing: 1.8px;
+          text-transform: uppercase; color: rgba(255,255,255,0.70);
+          margin-bottom: 6px;
+        }
+        .hero-nombre {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 26px; font-weight: 600; line-height: 1.15;
+          letter-spacing: -0.4px; color: #fff;
+          margin-bottom: 4px;
+        }
+        .hero-anfitriones {
+          font-size: 12px; color: rgba(255,255,255,0.70); margin-bottom: 18px;
+        }
+        .hero-pills {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        }
+        .hero-pill {
+          background: rgba(255,255,255,0.14);
+          border: 1px solid rgba(255,255,255,0.20);
+          border-radius: 14px;
+          padding: 10px 8px;
+          text-align: center;
+          backdrop-filter: blur(4px);
+        }
+        .hero-pill-num {
+          font-size: 22px; font-weight: 700; line-height: 1;
+          color: #fff; margin-bottom: 3px;
+        }
+        .hero-pill-label {
+          font-size: 9.5px; font-weight: 600; letter-spacing: 0.5px;
+          color: rgba(255,255,255,0.72); text-transform: uppercase;
+        }
+        .hero-pill.pill-ok   .hero-pill-num { color: #86efac; }
+        .hero-pill.pill-pend .hero-pill-num { color: #fde68a; }
+        .hero-pill.pill-no   .hero-pill-num { color: #fca5a5; }
+
         /* ── Overlay confirm ── */
         .overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; }
         .confirm-card { background: var(--surface); border-radius: 24px; padding: 28px 24px; max-width: 340px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,0.22); border: 1.5px solid var(--border); text-align: center; }
@@ -482,7 +628,7 @@ export default function AgregarInvitados() {
         </div>
       )}
 
-      <div className={`page-wrap${mounted ? " mounted" : ""}`}>
+      <div className={`page-wrap ev-page-with-nav${mounted ? " mounted" : ""}`}>
         <div className="glow glow-1" />
         <div className="glow glow-2" />
 
@@ -499,6 +645,39 @@ export default function AgregarInvitados() {
 
         {/* ── Content ── */}
         <div className="scroll-area">
+
+          {/* ── Hero metrics card ── */}
+          {evento && (
+            <div className="hero-card anim-card">
+              <div className="hero-tipo">
+                {TIPO_LABEL[evento.tipo] ?? "Evento especial"}
+              </div>
+              <div className="hero-nombre">{evento.nombre}</div>
+              <div className="hero-anfitriones">
+                {evento.anfitriones}
+              </div>
+              <div className="hero-pills">
+                <div className="hero-pill pill-ok">
+                  <div className="hero-pill-num">
+                    {todosInvitados.filter(i => i.estado === "confirmado").length}
+                  </div>
+                  <div className="hero-pill-label">Confirm.</div>
+                </div>
+                <div className="hero-pill pill-pend">
+                  <div className="hero-pill-num">
+                    {todosInvitados.filter(i => i.estado === "pendiente" || !i.estado).length}
+                  </div>
+                  <div className="hero-pill-label">Pendientes</div>
+                </div>
+                <div className="hero-pill pill-no">
+                  <div className="hero-pill-num">
+                    {todosInvitados.filter(i => i.estado === "rechazado").length}
+                  </div>
+                  <div className="hero-pill-label">Rechazaron</div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── Agregar invitado ── */}
           <div className="card anim-card">
@@ -523,15 +702,10 @@ export default function AgregarInvitados() {
 
               <div>
                 <label className="field-label">Teléfono (WhatsApp)</label>
-                <input
-                  className="field-input"
-                  type="tel"
+                <PhoneInput
                   value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
-                  placeholder="+54 9 11 1234-5678"
-                  autoComplete="off"
-                  inputMode="tel"
-                  onKeyDown={(e) => e.key === "Enter" && handleAgregar()}
+                  onChange={setTelefono}
+                  defaultCountry="AR"
                 />
               </div>
 
@@ -566,13 +740,35 @@ export default function AgregarInvitados() {
               </div>
 
               <button
-                className="btn-submit"
+                className={`btn-submit${btnSuccess ? " btn-success-pulse" : ""}`}
                 onClick={handleAgregar}
                 disabled={loading || !nombre.trim()}
                 type="button"
+                style={{ position: "relative" }}
               >
                 <span className="btn-shimmer" />
                 {loading ? "Agregando..." : "Agregar invitado"}
+                {/* Confetti burst */}
+                {confettiDots.length > 0 && (
+                  <div className="confetti-wrap" aria-hidden="true">
+                    {confettiDots.map((d) => (
+                      <div
+                        key={d.id}
+                        className="confetti-dot"
+                        style={{
+                          "--cc": d.color,
+                          "--cs": d.size,
+                          "--cbr": d.borderRadius,
+                          "--cx": d.cx,
+                          "--cy": d.cy,
+                          "--cr": d.cr,
+                          "--cd": d.duration,
+                          animationDelay: d.delay,
+                        } as React.CSSProperties}
+                      />
+                    ))}
+                  </div>
+                )}
               </button>
             </div>
           </div>
@@ -625,9 +821,10 @@ export default function AgregarInvitados() {
                       </button>
                       {inv.telefono && (
                         <button
-                          className={`btn-action ${enviados.has(inv.token) ? "btn-wa-done" : "btn-wa"}`}
+                          className={`btn-action ${enviados.has(inv.token) ? "btn-wa-done" : "btn-wa"}${lastAdded === inv.token && !enviados.has(inv.token) ? " btn-wa-new" : ""}`}
                           onClick={() => enviarWhatsApp(inv)}
                           type="button"
+                          aria-label={`Enviar WhatsApp a ${inv.nombre}`}
                         >
                           {enviados.has(inv.token) ? "✓" : "WA"}
                         </button>
@@ -793,6 +990,8 @@ export default function AgregarInvitados() {
 
         </div>
       </div>
+
+      <BottomNav eventoId={id} active="invitados" />
     </>
   );
 }

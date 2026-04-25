@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
+import { BottomNav } from "@/app/components/BottomNav";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -337,7 +338,7 @@ export default function ScannerPage() {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
-    <div className="page">
+    <div className="page ev-page-with-nav">
       <style>{styles}</style>
 
       {/* Header */}
@@ -577,6 +578,8 @@ export default function ScannerPage() {
           </div>
         </div>
       )}
+
+      <BottomNav eventoId={eventoId} />
     </div>
   );
 }

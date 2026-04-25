@@ -437,3 +437,194 @@ img, video, svg {
   .ev-safe-top { padding-top: env(safe-area-inset-top); }
   .ev-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 }
+
+/* =========================================================================
+   BOTTOM NAVIGATION — tokens y layout helpers
+   Todas las páginas que usen BottomNav deben incluir .ev-page-with-nav
+   en su contenedor raíz para respetar el espacio del nav inferior.
+   ========================================================================= */
+
+:root {
+  /* Altura fija del bottom nav (icon + label) */
+  --bottom-nav-height: 60px;
+
+  /* Altura del secondary strip (Libro / Gracias / Escáner) */
+  --secondary-strip-height: 40px;
+
+  /* Total de espacio reservado cuando ambas barras están presentes */
+  --nav-total-height: calc(var(--bottom-nav-height) + var(--secondary-strip-height));
+}
+
+/*
+  Wrapper para páginas con bottom nav.
+  Aplica padding-bottom = nav + safe-area para que el contenido
+  nunca quede tapado por la barra de sistema en iPhone/Android.
+*/
+.ev-page-with-nav {
+  padding-bottom: calc(
+    var(--nav-total-height) +
+    env(safe-area-inset-bottom, 16px) +
+    16px
+  );
+}
+
+/* Solo bottom nav (sin secondary strip) */
+.ev-page-with-nav-simple {
+  padding-bottom: calc(
+    var(--bottom-nav-height) +
+    env(safe-area-inset-bottom, 16px) +
+    16px
+  );
+}
+
+/*
+  Contenedor de contenido — mobile-first, centrado en tablet+.
+  Reemplaza los max-width: 480px hardcodeados por página.
+*/
+.ev-content {
+  width: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+@media (min-width: 640px) {
+  .ev-content { max-width: 600px; padding-inline: 24px; }
+}
+
+/* Grid de 2 columnas disponible en tablet */
+@media (min-width: 640px) {
+  .ev-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}
+
+/* =========================================================================
+   BOTTOM NAV — estilos del componente (única fuente de verdad)
+   Definidos aquí para que el componente no tenga CSS inline.
+   ========================================================================= */
+
+.ev-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-nav, 20);
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border-soft);
+  box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.06);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Strip secundario (Libro / Gracias / Escáner) — encima del bottom nav */
+.ev-secondary-strip {
+  position: fixed;
+  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  z-index: calc(var(--z-nav, 20) - 1);
+  height: var(--secondary-strip-height);
+  background: rgba(248, 250, 255, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-inline: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.ev-secondary-strip::-webkit-scrollbar { display: none; }
+
+/* Tab item primario */
+.ev-nav-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  height: var(--bottom-nav-height);
+  padding: 8px 4px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text-3);
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: color var(--dur-fast) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  /* WCAG 2.5.5 — touch target mínimo 44×44px */
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.ev-nav-tab:hover { color: var(--accent); }
+
+.ev-nav-tab[data-active="true"] { color: var(--accent); }
+
+/* Indicador de pestaña activa — línea superior animable con CSS */
+.ev-nav-tab[data-active="true"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 3px;
+  background: var(--grad-secondary);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.ev-nav-tab svg {
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.ev-nav-tab[data-active="true"] svg {
+  transform: scale(1.12);
+}
+
+/* Chip del strip secundario */
+.ev-secondary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  color: var(--text-2);
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all var(--dur-fast) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 30px;
+}
+.ev-secondary-chip:hover,
+.ev-secondary-chip[data-active="true"] {
+  color: var(--accent);
+  background: var(--accent-light);
+  border-color: var(--accent-soft-2);
+}
+
+.ev-strip-separator {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+  margin-inline: 2px;
+}

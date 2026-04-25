@@ -497,10 +497,12 @@ function EstadoBadge({
 // ─── Mini guest list ───────────────────────────────────────────────────────────
 function MiniInvitados({
   eventoId,
+  eventoNombre,
   lang,
   t,
 }: {
   eventoId: string;
+  eventoNombre: string;
   lang: "es" | "en";
   t: typeof translations.es;
 }) {
@@ -534,8 +536,8 @@ function MiniInvitados({
     const link = `${window.location.origin}/confirmar/${inv.token}`;
     const msg =
       lang === "es"
-        ? `🎟️ *Invitación #${String(inv.orden).padStart(3, "0")}*\n\nHola *${inv.nombre}*, aquí está tu invitación personal 👇\n\n${link}\n\nAbre el enlace para:\n✅ Confirmar tu asistencia\n📸 Subir tu foto\n💌 Dejar tu deseo`
-        : `🎟️ *Invitation #${String(inv.orden).padStart(3, "0")}*\n\nHi *${inv.nombre}*, here's your personal invitation 👇\n\n${link}\n\nOpen the link to:\n✅ Confirm attendance\n📸 Upload your photo\n💌 Leave a wish`;
+        ? `*${eventoNombre}*\n\nHola ${inv.nombre}, te enviamos tu invitación personal.\n\nConfirmá tu asistencia aquí:\n${link}\n\n— Eventix`
+        : `*${eventoNombre}*\n\nHi ${inv.nombre}, here is your personal invitation.\n\nConfirm your attendance here:\n${link}\n\n— Eventix`;
     const tel = inv.telefono?.replace(/\D/g, "") ?? "";
     window.open(
       `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,
@@ -860,8 +862,8 @@ export default function Dashboard() {
         .event-card:hover{box-shadow:0 2px 4px rgba(15,23,42,.05),0 22px 56px -20px rgba(15,23,42,.34);transform:translateY(-2px)}
 
         /* Cover */
-        .event-cover{position:relative;aspect-ratio:3/2;width:100%;overflow:hidden;background:var(--paper-soft);display:flex;align-items:center;justify-content:center;color:var(--gold)}
-        .event-cover img{width:100%;height:100%;object-fit:cover;display:block}
+        .event-cover{position:relative;aspect-ratio:4/3;width:100%;overflow:hidden;background:var(--paper-soft);display:flex;align-items:center;justify-content:center;color:var(--gold)}
+        .event-cover img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
         .event-cover::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(15,23,42,.12) 100%);pointer-events:none}
         .event-chip{position:absolute;top:14px;left:14px;z-index:2;display:inline-flex;align-items:center;gap:5px;
           padding:5px 12px;background:rgba(253,250,244,.94);
@@ -895,12 +897,19 @@ export default function Dashboard() {
         .progress-fill{height:100%;background:linear-gradient(90deg,var(--gold) 0%,#D4B082 100%);transition:width .9s var(--ease);border-radius:99px}
 
         /* Primary quick links — 4 */
-        .primary-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--paper)}
+        .primary-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--rule);background:var(--paper)}
         .pa-link{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 4px;text-decoration:none;color:var(--ink-soft);font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;border-right:1px solid var(--rule);transition:all .2s var(--ease);background:transparent;position:relative;-webkit-tap-highlight-color:transparent;min-height:64px}
         .pa-link:last-child{border-right:none}
         .pa-link:hover{background:var(--paper-soft);color:var(--ink)}
         .pa-link svg{color:var(--gold);transition:transform .2s var(--ease)}
         .pa-link:hover svg{transform:scale(1.08)}
+        .secondary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--paper-soft)}
+        .sr-link{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 4px;text-decoration:none;color:var(--ink-mute);font-family:var(--sans);font-size:9.5px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;border-right:1px solid var(--rule);transition:all .2s var(--ease);background:transparent;-webkit-tap-highlight-color:transparent;min-height:50px;position:relative}
+        .sr-link:last-child{border-right:none}
+        .sr-link:hover{background:var(--paper);color:var(--ink)}
+        .sr-link svg{color:var(--gold);transition:transform .2s var(--ease)}
+        .sr-link:hover svg{color:var(--gold);transform:scale(1.08)}
+        .sr-dot{position:absolute;top:8px;right:calc(50% - 10px);width:5px;height:5px;background:var(--gold);border-radius:50%}
         .pa-badge{position:absolute;top:10px;right:10px;width:5px;height:5px;background:var(--gold);border-radius:50%}
 
         /* Expand / details */
@@ -1013,6 +1022,7 @@ export default function Dashboard() {
           .pa-link:nth-child(1),.pa-link:nth-child(2){border-bottom:1px solid var(--rule)}
           .pa-link:nth-child(2){border-right:none}
           .pa-link:nth-child(4){border-right:none}
+          .secondary-row{grid-template-columns:repeat(3,1fr)}
         }
       `}</style>
 
@@ -1254,33 +1264,38 @@ export default function Dashboard() {
 
                       {/* Primary actions */}
                       <div className="primary-actions">
-                        <Link
-                          href={`/eventos/${evento.id}/invitados`}
-                          className="pa-link"
-                        >
+                        <Link href={`/eventos/${evento.id}/invitados`} className="pa-link">
                           <Icon.users />
                           {t.guestList}
                         </Link>
-                        <Link
-                          href={`/muro/${evento.id}`}
-                          className="pa-link"
-                        >
+                        <Link href={`/muro/${evento.id}`} className="pa-link">
                           <Icon.wall />
                           {t.wall}
                         </Link>
-                        <Link
-                          href={`/eventos/${evento.id}/mesas`}
-                          className="pa-link"
-                        >
+                        <Link href={`/eventos/${evento.id}/mesas`} className="pa-link">
                           <Icon.table />
                           {t.tables}
                         </Link>
-                        <Link
-                          href={`/eventos/${evento.id}/configurar`}
-                          className="pa-link"
-                        >
+                        <Link href={`/eventos/${evento.id}/configurar`} className="pa-link">
                           <Icon.gear />
                           {t.settings}
+                        </Link>
+                      </div>
+
+                      {/* Secondary actions — siempre visibles */}
+                      <div className="secondary-row">
+                        <Link href={`/libro/${evento.id}`} className="sr-link">
+                          <Icon.book />
+                          {t.book}
+                        </Link>
+                        <Link href={`/eventos/${evento.id}/agradecimientos`} className="sr-link">
+                          <Icon.mail />
+                          {t.thanks}
+                          {evento.agradecimiento_enviado && <span className="sr-dot" />}
+                        </Link>
+                        <Link href={`/eventos/${evento.id}/scanner`} className="sr-link">
+                          <Icon.scanner />
+                          {t.scanner}
                         </Link>
                       </div>
 
@@ -1361,49 +1376,12 @@ export default function Dashboard() {
                           <div className="details-section">
                             <MiniInvitados
                               eventoId={evento.id}
+                              eventoNombre={evento.nombre}
                               lang={lang}
                               t={t}
                             />
                           </div>
 
-                          <div className="details-section">
-                            <div className="details-head">{t.moreActions}</div>
-                            <div className="secondary-actions">
-                              <Link
-                                href={`/libro/${evento.id}`}
-                                className="sa-link"
-                              >
-                                <Icon.book />
-                                {t.book}
-                              </Link>
-                              <Link
-                                href={`/eventos/${evento.id}/agradecimientos`}
-                                className="sa-link"
-                              >
-                                <Icon.mail />
-                                {t.thanks}
-                                {evento.agradecimiento_enviado && (
-                                  <span
-                                    style={{
-                                      width: 5,
-                                      height: 5,
-                                      background: "var(--gold)",
-                                      borderRadius: "50%",
-                                      marginLeft: 3,
-                                      marginBottom: 2,
-                                    }}
-                                  />
-                                )}
-                              </Link>
-                              <Link
-                                href={`/eventos/${evento.id}/scanner`}
-                                className="sa-link"
-                              >
-                                <Icon.scanner />
-                                {t.scanner}
-                              </Link>
-                            </div>
-                          </div>
                         </div>
                       )}
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { BottomNav } from "@/app/components/BottomNav";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type Invitado = {
@@ -711,7 +712,7 @@ export default function AgradecimientosPage() {
         }
       `}</style>
 
-      <div className={`page-wrap${mounted ? " mounted" : ""}`}>
+      <div className={`page-wrap ev-page-with-nav${mounted ? " mounted" : ""}`}>
         <div className="glow glow-1" />
         <div className="glow glow-2" />
 
@@ -1112,28 +1113,9 @@ export default function AgradecimientosPage() {
             )}
         </div>
 
-        {/* ── Bottom bar: volver al dashboard ── */}
-        <div className="bottom-bar">
-          <div className="bottom-inner">
-            <Link
-              href="/dashboard"
-              className="btn-secondary"
-              style={{ flex: 1 }}
-            >
-              <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M8 2L4 6l4 4"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Volver al Dashboard
-            </Link>
-          </div>
-        </div>
       </div>
+
+      <BottomNav eventoId={eventoId} />
     </>
   );
 }

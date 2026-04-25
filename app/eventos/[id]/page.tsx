@@ -563,67 +563,135 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
   );
 }
 
-// ─── MusicPlayer ──────────────────────────────────────────────────────────────
+// ─── MusicPlayer — iOS/Android safe ──────────────────────────────────────────
+// Regla de oro: audio.play() SOLO puede llamarse desde un event handler de toque.
+// Cualquier intento desde useEffect/setTimeout es bloqueado por iOS y Chrome 66+.
+// El prompt garantiza que el play() ocurra dentro del onClick del botón.
 function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [playing, setPlaying] = useState(false);
+  // "prompt"  → mostrando el sheet de invitación
+  // "playing" → audio activo
+  // "muted"   → usuario eligió continuar sin música
+  // "active"  → usuario activó pero aún no está reproduciendo (pre-gesture)
+  type MusicState = "prompt" | "playing" | "muted" | "active";
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [state, setState] = useState<MusicState>("prompt");
+  const [leaving, setLeaving] = useState(false);
 
-  useEffect(() => {
+  function dismiss(withMusic: boolean) {
+    setLeaving(true);
+    setTimeout(() => {
+      if (withMusic) {
+        // Este código corre DENTRO del event handler → iOS lo permite
+        if (!audioRef.current) {
+          audioRef.current = new Audio(url);
+          audioRef.current.loop = true;
+          audioRef.current.volume = 0.35;
+        }
+        audioRef.current
+          .play()
+          .then(() => setState("playing"))
+          .catch(() => setState("muted")); // Si falla igual (edge case), sin romper
+      } else {
+        setState("muted");
+      }
+    }, 280); // Espera a que termine la animación de salida
+  }
+
+  function togglePlay() {
     const a = audioRef.current;
     if (!a) return;
-    const tryPlay = () => {
-      a.play()
-        .then(() => setPlaying(true))
-        .catch(() => {});
-    };
-    tryPlay();
-    document.addEventListener("click", tryPlay, { once: true });
-    return () => {
+    if (state === "playing") {
       a.pause();
-      document.removeEventListener("click", tryPlay);
-    };
-  }, [url]);
-
-  function toggle() {
-    const a = audioRef.current;
-    if (!a) return;
-    if (playing) {
-      a.pause();
-      setPlaying(false);
+      setState("active");
     } else {
       a.play()
-        .then(() => setPlaying(true))
+        .then(() => setState("playing"))
         .catch(() => {});
     }
   }
 
+  // Limpia audio al desmontar
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+    };
+  }, []);
+
   return (
-    <div className="music-player" onClick={toggle}>
-      <audio ref={audioRef} src={url} loop />
-      <div className="music-icon-wrap">
-        {playing ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#4F46E5">
-            <rect x="6" y="4" width="4" height="16" rx="1" />
-            <rect x="14" y="4" width="4" height="16" rx="1" />
-          </svg>
-        ) : (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#4F46E5">
-            <path d="M5 3l14 9-14 9V3z" />
-          </svg>
-        )}
-      </div>
-      <div className="music-info">
-        <span className="music-label">Canción del evento</span>
-        <span className="music-name">{nombre || "Música especial"}</span>
-      </div>
-      {playing && (
-        <div className="music-waves">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className={`mw mw-${i + 1}`} />
-          ))}
+    <>
+      {/* ── Prompt overlay (aparece sobre la invitación) ── */}
+      {state === "prompt" && (
+        <div
+          className={`music-prompt-overlay${leaving ? " leaving" : ""}`}
+          aria-modal="true"
+          role="dialog"
+          aria-label="Música del evento"
+        >
+          <div className={`music-prompt-sheet${leaving ? " leaving" : ""}`}>
+            <div className="music-prompt-note">♪</div>
+            <div className="music-prompt-title">
+              {nombre || "Música especial"}
+            </div>
+            <div className="music-prompt-sub">
+              Hay una canción especial para esta invitación
+            </div>
+            <button
+              className="music-prompt-btn-play"
+              onClick={() => dismiss(true)}
+              type="button"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M5 3l14 9-14 9V3z" />
+              </svg>
+              Escuchar mientras leés
+            </button>
+            <button
+              className="music-prompt-btn-skip"
+              onClick={() => dismiss(false)}
+              type="button"
+            >
+              Continuar sin música
+            </button>
+          </div>
         </div>
       )}
-    </div>
+
+      {/* ── Mini player flotante (cuando está activo) ── */}
+      {(state === "playing" || state === "active") && (
+        <div
+          className={`music-player music-player-floating${state === "playing" ? " is-playing" : ""}`}
+          onClick={togglePlay}
+          role="button"
+          aria-label={state === "playing" ? "Pausar música" : "Reproducir música"}
+          tabIndex={0}
+        >
+          <audio ref={audioRef} src={url} loop style={{ display: "none" }} />
+          <div className="music-icon-wrap">
+            {state === "playing" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#4F46E5" aria-hidden="true">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#4F46E5" aria-hidden="true">
+                <path d="M5 3l14 9-14 9V3z" />
+              </svg>
+            )}
+          </div>
+          <div className="music-info">
+            <span className="music-label">Canción del evento</span>
+            <span className="music-name">{nombre || "Música especial"}</span>
+          </div>
+          {state === "playing" && (
+            <div className="music-waves" aria-hidden="true">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className={`mw mw-${i + 1}`} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1031,6 +1099,9 @@ export default function ConfirmarPage() {
   const [invitado, setInvitado] = useState<Invitado | null>(null);
   const [evento, setEvento] = useState<Evento | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDetalles, setShowDetalles] = useState(true);
+  const detallesRef = useRef<HTMLDivElement>(null);
+  const [detallesHeight, setDetallesHeight] = useState<number | "auto">("auto");
   const [step, setStep] = useState<
     "vista" | "form" | "confirmado" | "rechazado" | "muro"
   >("vista");
@@ -1048,6 +1119,20 @@ export default function ConfirmarPage() {
     setTimeout(() => setMounted(true), 80);
     cargarDatos();
   }, []);
+
+  // Mide la altura del accordion una vez que el evento carga y el DOM está listo
+  useEffect(() => {
+    if (!evento) return;
+    const measure = () => {
+      if (detallesRef.current) {
+        setDetallesHeight(detallesRef.current.scrollHeight);
+      }
+    };
+    // Primer intento inmediato; segundo con delay para garantizar que el DOM renderizó
+    measure();
+    const t = setTimeout(measure, 150);
+    return () => clearTimeout(t);
+  }, [evento]);
 
   async function cargarDatos() {
     const { data: inv } = await supabase
@@ -1285,8 +1370,53 @@ export default function ConfirmarPage() {
     .detalle-ico-wrap{width:36px;height:36px;border-radius:10px;background:var(--cream2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .detalle-label{font-size:9px;color:var(--ink3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
     .detalle-texto{font-size:14px;color:var(--ink);font-weight:400;line-height:1.4;text-transform:capitalize}
-    .maps-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;letter-spacing:.3px;text-decoration:none;margin-top:7px;transition:opacity .15s;font-family:'Jost',sans-serif;}
-    .maps-btn:hover{opacity:.85}
+    /* Maps button — full width, prominent CTA */
+    .maps-btn{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      width:100%;background:linear-gradient(135deg,var(--gold),var(--gold-dark));
+      color:#fff;border-radius:14px;padding:13px 16px;
+      font-size:14px;font-weight:700;letter-spacing:.2px;
+      text-decoration:none;margin-top:14px;
+      transition:transform .18s,box-shadow .18s;
+      font-family:'Jost',sans-serif;
+      box-shadow:0 4px 18px rgba(79,70,229,0.35);
+      -webkit-tap-highlight-color:transparent;
+    }
+    .maps-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(79,70,229,0.45)}
+    .maps-btn:active{transform:scale(0.97)}
+    .maps-btn-icon{flex-shrink:0;display:flex;align-items:center}
+
+    /* Accordion toggle */
+    .detalles-header{
+      display:flex;align-items:center;justify-content:space-between;
+      cursor:pointer;padding:14px 18px;
+      background:var(--cream);border:1px solid var(--border);
+      border-radius:var(--r-sm);
+      -webkit-tap-highlight-color:transparent;
+      user-select:none;
+    }
+    .detalles-header-label{
+      font-size:10px;font-weight:700;color:var(--ink3);
+      text-transform:uppercase;letter-spacing:1.2px;
+      display:flex;align-items:center;gap:7px;
+    }
+    .detalles-header.open{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:transparent}
+    .detalles-chevron{
+      transition:transform 300ms cubic-bezier(.22,1,.36,1);
+      color:var(--ink3);flex-shrink:0;
+    }
+    .detalles-chevron.open{transform:rotate(180deg)}
+    .detalles-body{
+      overflow:hidden;
+      transition:height 350ms cubic-bezier(.22,1,.36,1);
+    }
+    .detalles-inner{
+      background:var(--cream);
+      border:1px solid var(--border);border-top:none;
+      border-radius:0 0 var(--r-sm) var(--r-sm);
+      padding:14px 18px;
+      display:flex;flex-direction:column;gap:14px;
+    }
 
     /* Galería fotos lugar */
     .foto-lugar-label{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px}
@@ -1314,9 +1444,81 @@ export default function ConfirmarPage() {
     .lightbox-caption{font-size:12px;color:rgba(99,102,241,0.7);font-style:italic;text-align:center}
 
     /* Música */
-    .music-player{display:flex;align-items:center;gap:13px;background:var(--dark);border-radius:var(--r-sm);padding:14px 16px;cursor:pointer;transition:opacity .15s}
+    /* ── Music Prompt ── */
+    .music-prompt-overlay{
+      position:fixed;inset:0;z-index:9998;
+      background:rgba(10,8,4,0.60);
+      backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+      display:flex;align-items:flex-end;justify-content:center;
+      animation:promptIn .3s cubic-bezier(.22,1,.36,1) both;
+    }
+    .music-prompt-overlay.leaving{animation:promptOut .28s cubic-bezier(.22,1,.36,1) both}
+    @keyframes promptIn{from{opacity:0}to{opacity:1}}
+    @keyframes promptOut{from{opacity:1}to{opacity:0}}
+
+    .music-prompt-sheet{
+      background:var(--dark);
+      border:1px solid rgba(79,70,229,0.3);
+      border-radius:28px 28px 0 0;
+      padding:32px 24px calc(32px + env(safe-area-inset-bottom, 0px));
+      width:100%;max-width:480px;
+      text-align:center;
+      animation:sheetUp .35s cubic-bezier(.22,1,.36,1) both;
+    }
+    .music-prompt-sheet.leaving{animation:sheetDown .28s cubic-bezier(.4,0,1,1) both}
+    @keyframes sheetUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes sheetDown{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
+
+    .music-prompt-note{
+      font-size:42px;margin-bottom:12px;
+      animation:noteFloat 2.5s ease-in-out infinite;
+      display:inline-block;
+    }
+    @keyframes noteFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}
+    .music-prompt-title{
+      font-family:'Cormorant Garamond',serif;font-size:22px;font-style:italic;
+      color:var(--gold-light);font-weight:600;margin-bottom:6px;
+    }
+    .music-prompt-sub{font-size:13px;color:rgba(224,231,255,0.65);margin-bottom:28px;line-height:1.5}
+
+    .music-prompt-btn-play{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      width:100%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));
+      color:#fff;border:none;border-radius:16px;padding:16px;
+      font-family:'Jost',sans-serif;font-size:15px;font-weight:700;
+      cursor:pointer;margin-bottom:12px;
+      box-shadow:0 6px 24px rgba(79,70,229,0.45);
+      transition:transform .18s,box-shadow .18s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .music-prompt-btn-play:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(79,70,229,0.55)}
+    .music-prompt-btn-play:active{transform:scale(0.97)}
+
+    .music-prompt-btn-skip{
+      display:block;width:100%;background:transparent;border:none;
+      color:rgba(224,231,255,0.45);font-family:'Jost',sans-serif;
+      font-size:13px;cursor:pointer;padding:8px;
+      -webkit-tap-highlight-color:transparent;
+      transition:color .15s;
+    }
+    .music-prompt-btn-skip:hover{color:rgba(224,231,255,0.75)}
+
+    /* ── Mini player (floating, después de activar) ── */
+    .music-player{
+      display:flex;align-items:center;gap:13px;
+      background:var(--dark);border-radius:var(--r-sm);
+      padding:14px 16px;cursor:pointer;transition:opacity .15s;
+    }
     .music-player:hover{opacity:.92}
-    .music-icon-wrap{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 14px rgba(79,70,229,0.4)}
+    .music-player-floating{
+      /* Sin cambio visual extra — ya está dentro del inv-body */
+    }
+    .music-icon-wrap{
+      width:40px;height:40px;border-radius:50%;
+      background:linear-gradient(135deg,var(--gold-dark),var(--gold));
+      display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;box-shadow:0 3px 14px rgba(79,70,229,0.4);
+    }
     .music-info{flex:1;min-width:0}
     .music-label{display:block;font-size:9px;font-weight:700;color:rgba(79,70,229,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
     .music-name{display:block;font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--gold-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1621,66 +1823,101 @@ export default function ConfirmarPage() {
                 )}
 
                 {(fechaFmt || evento.hora || evento.lugar) && (
-                  <div className="detalles">
-                    {fechaFmt && (
-                      <div className="detalle-fila">
-                        <div className="detalle-ico-wrap">
-                          <IcoFecha />
-                        </div>
-                        <div>
-                          <div className="detalle-label">Fecha</div>
-                          <div className="detalle-texto">{fechaFmt}</div>
-                        </div>
-                      </div>
-                    )}
-                    {horaFmt && (
-                      <div className="detalle-fila">
-                        <div className="detalle-ico-wrap">
-                          <IcoHora />
-                        </div>
-                        <div>
-                          <div className="detalle-label">Hora</div>
-                          <div className="detalle-texto">{horaFmt}</div>
-                        </div>
-                      </div>
-                    )}
-                    {evento.lugar && (
-                      <div className="detalle-fila">
-                        <div className="detalle-ico-wrap">
-                          <IcoLugar />
-                        </div>
-                        <div>
-                          <div className="detalle-label">Lugar</div>
-                          <div className="detalle-texto">{evento.lugar}</div>
-                          {evento.maps_url && (
-                            <a
-                              href={evento.maps_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="maps-btn"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 2a6 6 0 016 6c0 5-6 10-6 10S4 13 4 8a6 6 0 016-6z"/><circle cx="10" cy="8" r="2"/></svg>Ver en el mapa
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {evento.musica_nombre && (
-                      <div className="detalle-fila">
-                        <div className="detalle-ico-wrap">
-                          <IcoMusica />
-                        </div>
-                        <div>
-                          <div className="detalle-label">
-                            Canción del evento
+                  <>
+                    {/* ── Accordion header ── */}
+                    <div
+                      className={`detalles-header${showDetalles ? " open" : ""}`}
+                      onClick={() => setShowDetalles(v => !v)}
+                      role="button"
+                      aria-expanded={showDetalles}
+                      aria-label="Ver detalles del evento"
+                    >
+                      <span className="detalles-header-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                        Detalles del evento
+                      </span>
+                      <svg
+                        className={`detalles-chevron${showDetalles ? " open" : ""}`}
+                        width="16" height="16" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" strokeWidth="2.2"
+                        strokeLinecap="round" aria-hidden="true"
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </div>
+
+                    {/* ── Accordion body (animado) ── */}
+                    <div
+                      className="detalles-body"
+                      style={{
+                        height: showDetalles
+                          ? (typeof detallesHeight === "number" ? detallesHeight : "auto")
+                          : 0,
+                      }}
+                    >
+                      <div ref={detallesRef} className="detalles-inner">
+                        {fechaFmt && (
+                          <div className="detalle-fila">
+                            <div className="detalle-ico-wrap"><IcoFecha /></div>
+                            <div>
+                              <div className="detalle-label">Fecha</div>
+                              <div className="detalle-texto">{fechaFmt}</div>
+                            </div>
                           </div>
-                          <div className="detalle-texto">
-                            {evento.musica_nombre}
+                        )}
+                        {horaFmt && (
+                          <div className="detalle-fila">
+                            <div className="detalle-ico-wrap"><IcoHora /></div>
+                            <div>
+                              <div className="detalle-label">Hora</div>
+                              <div className="detalle-texto">{horaFmt}</div>
+                            </div>
                           </div>
-                        </div>
+                        )}
+                        {evento.lugar && (
+                          <div className="detalle-fila">
+                            <div className="detalle-ico-wrap"><IcoLugar /></div>
+                            <div>
+                              <div className="detalle-label">Lugar</div>
+                              <div className="detalle-texto">{evento.lugar}</div>
+                            </div>
+                          </div>
+                        )}
+                        {evento.musica_nombre && (
+                          <div className="detalle-fila">
+                            <div className="detalle-ico-wrap"><IcoMusica /></div>
+                            <div>
+                              <div className="detalle-label">Canción del evento</div>
+                              <div className="detalle-texto">{evento.musica_nombre}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Maps button — full width, destacado ── */}
+                        {evento.maps_url && (
+                          <a
+                            href={evento.maps_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="maps-btn"
+                            aria-label={`Ver ${evento.lugar ?? "el lugar"} en Google Maps`}
+                          >
+                            <span className="maps-btn-icon">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="rgba(255,255,255,0.25)"/>
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="white" strokeWidth="1.6" fill="none"/>
+                                <circle cx="12" cy="9" r="2.5" fill="white"/>
+                              </svg>
+                            </span>
+                            Ver en Google Maps
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                              <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                          </a>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  </>
                 )}
 
                 {evento.como_llegar && (

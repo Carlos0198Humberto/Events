@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { BottomNav } from "@/app/components/BottomNav";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Evento = {
@@ -482,7 +483,7 @@ export default function LibroRecuerdosPage() {
   ];
 
   return (
-    <>
+    <div className={!tokenParam ? "ev-page-with-nav" : undefined}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1269,35 +1270,30 @@ export default function LibroRecuerdosPage() {
         </div>
       </div>
 
-      {/* ── Bottom bar: volver al muro / dashboard ── */}
-      <div className="bottom-bar no-print">
-        <div className="bottom-inner">
-          <Link
-            href={`/muro/${eventoId}${tokenParam ? `?token=${tokenParam}` : ""}`}
-            className="btn-back-bottom"
-          >
-            <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-              <path
-                d="M8 2L4 6l4 4"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Volver al Muro
-          </Link>
-          {!tokenParam && (
+      {/* ── Bottom bar (solo invitados con token) / BottomNav (organizadores) ── */}
+      {tokenParam ? (
+        <div className="bottom-bar no-print">
+          <div className="bottom-inner">
             <Link
-              href="/dashboard"
+              href={`/muro/${eventoId}?token=${tokenParam}`}
               className="btn-back-bottom"
-              style={{ flex: "0 0 auto", padding: "13px 18px" }}
             >
-              Dashboard
+              <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+                <path
+                  d="M8 2L4 6l4 4"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Volver al Muro
             </Link>
-          )}
+          </div>
         </div>
-      </div>
-    </>
+      ) : (
+        <BottomNav eventoId={eventoId} />
+      )}
+    </div>
   );
 }
