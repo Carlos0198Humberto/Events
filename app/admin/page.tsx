@@ -451,6 +451,25 @@ export default function AdminPanel() {
         .stats-row{animation:fadeUp .3s .05s ease both}
         .toolbar{animation:fadeUp .3s .1s ease both}
         .table-wrap{animation:fadeUp .3s .15s ease both}
+
+        /* Desktop improvements */
+        @media (min-width: 900px){
+          .container{padding:32px 32px 80px}
+          .stats-row{grid-template-columns:repeat(4,1fr);gap:14px}
+          .user-row{gap:0}
+          .user-row-top{padding:16px 20px 12px}
+          .user-row-bottom{padding:0 20px 16px;gap:12px}
+          /* Inline controls row on desktop */
+          .user-row-bottom{flex-wrap:nowrap;align-items:center}
+          .eventos-badge{flex-shrink:0}
+          .badge-fecha{white-space:nowrap;flex-shrink:0;margin-left:auto}
+        }
+        @media (min-width: 1100px){
+          .container{max-width:1000px}
+        }
+        @media (min-width: 1300px){
+          .container{max-width:1160px}
+        }
       `}</style>
 
       <div className="page">

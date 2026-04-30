@@ -1006,6 +1006,27 @@ export default function Dashboard() {
           .sr-link:nth-child(1),.sr-link:nth-child(2){border-bottom:1px solid var(--rule)}
           .sr-link:nth-child(2),.sr-link:nth-child(4){border-right:none}
         }
+
+        /* ── Desktop ── */
+        @media (min-width: 768px){
+          .stats-line{grid-template-columns:repeat(4,1fr);gap:20px}
+          .stat-row{grid-template-columns:repeat(3,1fr)}
+        }
+        @media (min-width: 900px){
+          .content{max-width:980px;padding-left:32px;padding-right:32px}
+          .nav{padding-left:32px;padding-right:32px}
+          .event-list{display:grid;grid-template-columns:repeat(2,1fr);gap:28px 24px;align-items:start}
+          .greeting-hello,.greeting-name{font-size:clamp(26px,3.2vw,34px)}
+        }
+        @media (min-width: 1200px){
+          .content{max-width:1140px;padding-left:48px;padding-right:48px}
+          .nav{padding-left:48px;padding-right:48px}
+          .event-list{grid-template-columns:repeat(2,1fr);gap:32px 28px}
+        }
+        @media (min-width: 1440px){
+          .content{max-width:1260px}
+          .event-list{grid-template-columns:repeat(3,1fr)}
+        }
       `}</style>
 
       <div className={`page${mounted ? " mounted" : ""}`}>

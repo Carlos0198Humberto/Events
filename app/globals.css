@@ -453,6 +453,9 @@ img, video, svg {
 
   /* Total de espacio reservado cuando ambas barras están presentes */
   --nav-total-height: calc(var(--bottom-nav-height) + var(--secondary-strip-height));
+
+  /* Desktop sidebar */
+  --sidebar-width: 220px;
 }
 
 /*
@@ -518,6 +521,13 @@ img, video, svg {
   border-top: 1px solid var(--border-soft);
   box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.06);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Inner nav tabs container — default (mobile) */
+.ev-nav-tabs-container {
+  display: flex;
+  align-items: stretch;
+  height: var(--bottom-nav-height);
 }
 
 /* Strip secundario (Libro / Gracias / Escáner) — encima del bottom nav */
@@ -627,4 +637,136 @@ img, video, svg {
   background: var(--border);
   flex-shrink: 0;
   margin-inline: 2px;
+}
+
+/* =========================================================================
+   DESKTOP — responsive improvements
+   @breakpoint 1024px: nav bottom → sidebar left
+   @breakpoint 1280px: wider content areas
+   ========================================================================= */
+
+/* ev-content wider on large screens */
+@media (min-width: 1024px) {
+  .ev-content { max-width: 720px; }
+  .ev-container { padding-inline: clamp(24px, 4vw, 48px); }
+}
+@media (min-width: 1280px) {
+  .ev-content { max-width: 800px; }
+}
+
+/* ── Bottom Nav → Left Sidebar (≥1024px) ── */
+@media (min-width: 1024px) {
+
+  /* Sidebar shell */
+  .ev-bottom-nav {
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: auto;
+    width: var(--sidebar-width);
+    border-top: none;
+    border-right: 1px solid var(--border-soft);
+    box-shadow: 1px 0 8px rgba(15, 23, 42, 0.04);
+    padding-bottom: 160px; /* space for secondary strip at bottom */
+    overflow: hidden;
+  }
+
+  /* Inner tabs container — column layout */
+  .ev-nav-tabs-container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    height: 100% !important;
+    padding: 20px 0 0;
+  }
+
+  /* Each primary tab — horizontal row in sidebar */
+  .ev-nav-tab {
+    flex-direction: row;
+    justify-content: flex-start;
+    height: auto;
+    min-height: 44px;
+    padding: 10px 16px 10px 20px;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0;
+    flex: 0 0 auto;
+    width: 100%;
+    border-right: none;
+    text-align: left;
+    border-radius: 0;
+  }
+
+  .ev-nav-tab svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+
+  .ev-nav-tab span {
+    font-size: 13px;
+  }
+
+  /* Active indicator — left vertical bar */
+  .ev-nav-tab[data-active="true"]::before {
+    top: 50%;
+    bottom: auto;
+    left: 0;
+    right: auto;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 24px;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .ev-nav-tab[data-active="true"] svg {
+    transform: none;
+  }
+
+  /* Secondary strip → bottom of sidebar */
+  .ev-secondary-strip {
+    bottom: 0;
+    left: 0;
+    right: auto;
+    top: auto;
+    width: var(--sidebar-width);
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 10px 16px;
+    border-top: 1px solid var(--border-soft);
+    border-right: 1px solid var(--border-soft);
+    gap: 2px;
+    overflow: visible;
+    background: rgba(248, 250, 255, 0.97);
+  }
+
+  .ev-secondary-chip {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 7px 16px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    min-height: 36px;
+  }
+
+  .ev-secondary-chip:hover,
+  .ev-secondary-chip[data-active="true"] {
+    border: none;
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  .ev-strip-separator {
+    display: none;
+  }
+
+  /* Page offset — left padding for sidebar */
+  .ev-page-with-nav,
+  .ev-page-with-nav-simple {
+    padding-bottom: 40px;
+    padding-left: var(--sidebar-width);
+  }
 }

@@ -4,7 +4,7 @@
 //  Pega este componente completo en lugar del SubirFoto existente
 // ══════════════════════════════════════════════════════════════
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 
@@ -47,12 +47,13 @@ function CamaraViva({
   }
 
   // Iniciar al montar
-  useState(() => {
+  useEffect(() => {
     iniciarStream(false);
     return () => {
       stream?.getTracks().forEach((t) => t.stop());
     };
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function detenerStream() {
     stream?.getTracks().forEach((t) => t.stop());

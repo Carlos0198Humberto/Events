@@ -183,13 +183,7 @@ export function BottomNav({ eventoId, active: activeProp }: BottomNavProps) {
 
       {/* ── Primary bottom tab bar ── */}
       <nav className="ev-bottom-nav" aria-label="Navegación principal">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "stretch",
-            height: "var(--bottom-nav-height)",
-          }}
-        >
+        <div className="ev-nav-tabs-container">
           {primaryTabs.map((tab) => (
             <Link
               key={tab.key}
