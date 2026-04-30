@@ -23,6 +23,7 @@ type Stats = {
   total_personas: number;
   total_fotos: number;
   total_deseos: number;
+  total_mesas: number;
 };
 
 type InvitadoResumen = {
@@ -535,32 +536,36 @@ function MiniInvitados({
           <ul className="guest-list">
             {visibles.map((inv) => (
               <li key={inv.id} className="guest-row">
-                <NumBadge n={inv.orden} />
                 <div className="guest-avatar">
                   {inv.nombre.charAt(0).toUpperCase()}
                 </div>
                 <div className="guest-info">
-                  <span className="guest-name">{inv.nombre}</span>
+                  <div className="guest-name-row">
+                    <NumBadge n={inv.orden} />
+                    <span className="guest-name">{inv.nombre}</span>
+                  </div>
                   {inv.telefono && (
                     <span className="guest-tel">{inv.telefono}</span>
                   )}
                 </div>
-                <EstadoBadge estado={inv.estado} t={t} />
-                <div className="guest-actions">
-                  <button
-                    className="guest-btn guest-btn-wa"
-                    title="WhatsApp"
-                    onClick={() => abrirWhatsApp(inv)}
-                  >
-                    <Icon.whatsapp />
-                  </button>
-                  <button
-                    className={`guest-btn ${copiado === inv.token ? "guest-btn-ok" : ""}`}
-                    title="Copiar link"
-                    onClick={() => copiarLink(inv.token)}
-                  >
-                    {copiado === inv.token ? "✓" : <Icon.copy />}
-                  </button>
+                <div className="guest-right">
+                  <EstadoBadge estado={inv.estado} t={t} />
+                  <div className="guest-actions">
+                    <button
+                      className="guest-btn guest-btn-wa"
+                      title="WhatsApp"
+                      onClick={() => abrirWhatsApp(inv)}
+                    >
+                      <Icon.whatsapp />
+                    </button>
+                    <button
+                      className={`guest-btn ${copiado === inv.token ? "guest-btn-ok" : ""}`}
+                      title="Copiar link"
+                      onClick={() => copiarLink(inv.token)}
+                    >
+                      {copiado === inv.token ? "✓" : <Icon.copy />}
+                    </button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -630,7 +635,7 @@ export default function Dashboard() {
   }
 
   async function cargarStats(eventoId: string) {
-    const [invData, fotosData, deseosData] = await Promise.all([
+    const [invData, fotosData, deseosData, mesasData] = await Promise.all([
       supabase
         .from("invitados")
         .select("estado,num_personas")
@@ -645,6 +650,10 @@ export default function Dashboard() {
         .select("id", { count: "exact", head: true })
         .eq("evento_id", eventoId)
         .eq("aprobado", true),
+      supabase
+        .from("mesas")
+        .select("id", { count: "exact", head: true })
+        .eq("evento_id", eventoId),
     ]);
     if (invData.data) {
       const confirmados = invData.data.filter(
@@ -668,6 +677,7 @@ export default function Dashboard() {
           total_personas,
           total_fotos: fotosData.count ?? 0,
           total_deseos: deseosData.count ?? 0,
+          total_mesas: mesasData.count ?? 0,
         },
       }));
     }
@@ -860,21 +870,22 @@ export default function Dashboard() {
         .progress-track{height:2px;background:var(--rule);overflow:hidden;border-radius:99px}
         .progress-fill{height:100%;background:linear-gradient(90deg,var(--gold) 0%,#D4B082 100%);transition:width .9s var(--ease);border-radius:99px}
 
-        /* Primary quick links — 4 */
+        /* Quick links — unified 4-column rows */
         .primary-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--rule);background:var(--paper)}
         .pa-link{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 4px;text-decoration:none;color:var(--ink-soft);font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;border-right:1px solid var(--rule);transition:all .2s var(--ease);background:transparent;position:relative;-webkit-tap-highlight-color:transparent;min-height:64px}
         .pa-link:last-child{border-right:none}
         .pa-link:hover{background:var(--paper-soft);color:var(--ink)}
         .pa-link svg{color:var(--gold);transition:transform .2s var(--ease)}
         .pa-link:hover svg{transform:scale(1.08)}
-        .secondary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--paper-soft)}
-        .sr-link{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 4px;text-decoration:none;color:var(--ink-mute);font-family:var(--sans);font-size:9.5px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;border-right:1px solid var(--rule);transition:all .2s var(--ease);background:transparent;-webkit-tap-highlight-color:transparent;min-height:50px;position:relative}
+        .secondary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--rule);background:var(--paper)}
+        .sr-link{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 4px;text-decoration:none;color:var(--ink-soft);font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;border-right:1px solid var(--rule);transition:all .2s var(--ease);background:transparent;-webkit-tap-highlight-color:transparent;min-height:64px;position:relative}
         .sr-link:last-child{border-right:none}
-        .sr-link:hover{background:var(--paper);color:var(--ink)}
+        .sr-link:hover{background:var(--paper-soft);color:var(--ink)}
         .sr-link svg{color:var(--gold);transition:transform .2s var(--ease)}
         .sr-link:hover svg{color:var(--gold);transform:scale(1.08)}
-        .sr-dot{position:absolute;top:8px;right:calc(50% - 10px);width:5px;height:5px;background:var(--gold);border-radius:50%}
+        .sr-dot{position:absolute;top:10px;right:calc(50% - 10px);width:5px;height:5px;background:var(--gold);border-radius:50%}
         .pa-badge{position:absolute;top:10px;right:10px;width:5px;height:5px;background:var(--gold);border-radius:50%}
+        .pa-check{position:absolute;top:7px;right:7px;width:16px;height:16px;background:var(--ok);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;line-height:1;border:1.5px solid var(--paper)}
 
         /* Expand / details */
         .expand-wrap{padding:0}
@@ -930,13 +941,15 @@ export default function Dashboard() {
         @keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
         .guest-empty{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--ink-mute);text-align:center;padding:18px 0}
         .guest-list{list-style:none;display:flex;flex-direction:column}
-        .guest-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--rule)}
+        .guest-row{display:flex;align-items:flex-start;gap:10px;padding:14px 0;border-bottom:1px solid var(--rule)}
         .guest-row:last-child{border-bottom:none}
-        .num-badge{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums;min-width:36px;font-weight:500;letter-spacing:.3px}
-        .guest-avatar{width:32px;height:32px;border-radius:50%;background:var(--paper-soft);border:1px solid var(--gold-mid);color:var(--ink);font-family:var(--serif);font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .guest-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-        .guest-name{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .num-badge{font-family:var(--serif);font-style:italic;font-size:11px;color:var(--gold);font-variant-numeric:tabular-nums;font-weight:500;letter-spacing:.3px;flex-shrink:0;line-height:1.6}
+        .guest-avatar{width:34px;height:34px;border-radius:50%;background:var(--paper-soft);border:1px solid var(--gold-mid);color:var(--ink);font-family:var(--serif);font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+        .guest-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+        .guest-name-row{display:flex;align-items:baseline;gap:6px;flex-wrap:nowrap;min-width:0}
+        .guest-name{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
         .guest-tel{font-family:var(--sans);font-size:10.5px;color:var(--ink-mute)}
+        .guest-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
         .state-badge{font-family:var(--sans);font-size:8.5px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;padding:3px 8px;border-radius:100px;border:1px solid transparent;flex-shrink:0}
         .state-conf{background:transparent;color:var(--ok);border-color:rgba(63,122,78,.28)}
         .state-pend{background:transparent;color:var(--warn);border-color:rgba(160,115,43,.28)}
@@ -982,11 +995,11 @@ export default function Dashboard() {
           .stat-row{grid-template-columns:repeat(2,1fr);gap:14px 12px}
         }
         @media (max-width: 340px){
-          .primary-actions{grid-template-columns:repeat(2,1fr)}
+          .primary-actions,.secondary-row{grid-template-columns:repeat(2,1fr)}
           .pa-link:nth-child(1),.pa-link:nth-child(2){border-bottom:1px solid var(--rule)}
-          .pa-link:nth-child(2){border-right:none}
-          .pa-link:nth-child(4){border-right:none}
-          .secondary-row{grid-template-columns:repeat(3,1fr)}
+          .pa-link:nth-child(2),.pa-link:nth-child(4){border-right:none}
+          .sr-link:nth-child(1),.sr-link:nth-child(2){border-bottom:1px solid var(--rule)}
+          .sr-link:nth-child(2),.sr-link:nth-child(4){border-right:none}
         }
       `}</style>
 
@@ -1231,6 +1244,7 @@ export default function Dashboard() {
                         <Link href={`/eventos/${evento.id}/invitados`} className="pa-link">
                           <Icon.users />
                           {t.guestList}
+                          {total > 0 && <span className="pa-check">✓</span>}
                         </Link>
                         <Link href={`/muro/${evento.id}`} className="pa-link">
                           <Icon.wall />
@@ -1239,6 +1253,7 @@ export default function Dashboard() {
                         <Link href={`/eventos/${evento.id}/mesas`} className="pa-link">
                           <Icon.table />
                           {t.tables}
+                          {s && s.total_mesas > 0 && <span className="pa-check">✓</span>}
                         </Link>
                         <Link href={`/eventos/${evento.id}/configurar`} className="pa-link">
                           <Icon.gear />

@@ -1,10 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useParams } from "next/navigation";
-import Link from "next/link";
-import { BottomNav } from "@/app/components/BottomNav";
-import { AppLogo } from "@/app/components/AppLogo";
+import { useParams, useRouter } from "next/navigation";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type Invitado = {
@@ -287,6 +284,7 @@ function TarjetaAgradecimiento({
 // ─── Componente principal ─────────────────────────────────────
 export default function AgradecimientosPage() {
   const params = useParams();
+  const router = useRouter();
   const eventoId = params.id as string;
 
   const [evento, setEvento] = useState<Evento | null>(null);
@@ -432,20 +430,18 @@ export default function AgradecimientosPage() {
         }}
       >
         <div style={{ textAlign: "center" }}>
-          <AppLogo size={72} />
-          <div style={{marginTop: 14, fontFamily: "Cormorant Garamond, Georgia, serif", fontSize: 26, color: "#0F172A", letterSpacing: 3}}>Eventix</div>
           <div
             style={{
-              width: 28,
-              height: 28,
-              border: "2.5px solid transparent",
+              width: 36,
+              height: 36,
+              border: "3px solid transparent",
               borderTopColor: "#4F46E5",
               borderRadius: "50%",
-              margin: "24px auto 0",
+              margin: "0 auto",
               animation: "spin .8s linear infinite",
             }}
           />
-          <p style={{ color: "rgba(79, 70, 229,0.7)", fontWeight: 400, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", marginTop: 12 }}>
+          <p style={{ color: "rgba(79, 70, 229,0.7)", fontWeight: 400, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", marginTop: 16 }}>
             Cargando...
           </p>
         </div>
@@ -534,22 +530,24 @@ export default function AgradecimientosPage() {
           background: rgba(255,255,255,0.92);
           backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
           border-bottom: 1px solid var(--border);
-          padding: 13px 18px;
-          display: flex; align-items: center; gap: 11px;
+          height: 54px; padding: 0 16px;
+          display: flex; align-items: center; justify-content: center;
           position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
           box-shadow: var(--shadow-sm);
         }
-        .top-bar > div:last-child { min-width: 0; flex: 1; }
-        .top-bar-name { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; line-height: 1; }
-        .top-bar-name span { color: var(--accent); }
-        .top-bar-sub { font-size: 10.5px; font-weight: 500; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text3); margin-top: 2px; }
-        .top-bar-evento { font-size: 11px; color: var(--accent); font-weight: 600; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .top-bar-event {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 20px; font-weight: 600;
+          color: var(--text); letter-spacing: -0.3px;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          max-width: 100%;
+        }
 
         /* ── Scroll ── */
         .scroll-area {
           flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
           padding: 20px 16px;
-          padding-bottom: calc(96px + env(safe-area-inset-bottom, 16px));
+          padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
           display: flex; flex-direction: column; gap: 16px;
           max-width: 700px; width: 100%; margin: 0 auto;
           position: relative; z-index: 1;
@@ -652,17 +650,25 @@ export default function AgradecimientosPage() {
         }
         .btn-no-phone { background: #e2e8f0; color: #94a3b8; border: none; border-radius: 11px; padding: 8px 13px; font-size: 12px; font-weight: 700; cursor: not-allowed; flex-shrink: 0; }
 
-        /* ── Bottom bar ── */
+        /* ── Bottom bar (nav) ── */
         .bottom-bar {
-          position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
-          padding: 12px 16px;
-          padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-          background: rgba(240,250,249,0.94);
+          position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+          height: calc(56px + env(safe-area-inset-bottom, 0px));
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+          background: rgba(255,255,255,0.94);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
           border-top: 1px solid var(--border);
-          box-shadow: 0 -4px 24px rgba(79, 70, 229,0.09);
+          box-shadow: 0 -4px 20px rgba(79,70,229,0.07);
+          display: flex; align-items: center; padding-left: 16px;
         }
-        .bottom-inner { display: flex; gap: 10px; max-width: 700px; margin: 0 auto; }
+        .btn-back {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: transparent; border: none;
+          color: var(--accent); font-size: 14px; font-weight: 600;
+          font-family: 'DM Sans', sans-serif;
+          cursor: pointer; padding: 0;
+          -webkit-tap-highlight-color: transparent;
+        }
 
         /* ── Empty state ── */
         .empty-state { text-align: center; padding: 52px 20px; background: var(--surface); border-radius: 20px; border: 1px solid var(--border); }
@@ -684,11 +690,8 @@ export default function AgradecimientosPage() {
 
         /* ── Responsive: teléfonos pequeños ── */
         @media (max-width: 420px){
-          .top-bar { padding: 11px 14px; gap: 9px; }
-          .top-bar-name { font-size: 20px; }
-          .top-bar-sub { font-size: 10px; letter-spacing: 1.4px; }
-          .top-bar-evento { font-size: 10.5px; }
-          .scroll-area { padding: 16px 12px; padding-bottom: calc(88px + env(safe-area-inset-bottom, 16px)); gap: 14px; }
+          .top-bar-event { font-size: 18px; }
+          .scroll-area { padding: 16px 12px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); gap: 14px; }
           .card { padding: 16px 14px; border-radius: 18px; }
           .card-title { font-size: 17.5px; }
           .stats-grid { gap: 7px; }
@@ -698,28 +701,20 @@ export default function AgradecimientosPage() {
           .chip { padding: 6px 13px; font-size: 11.5px; }
           .msg-textarea { padding: 11px 12px; font-size: 13px; }
           .btn-primary { padding: 13.5px; font-size: 14px; }
-          .bottom-inner { gap: 8px; }
         }
         @media (max-width: 340px){
           .stats-grid { grid-template-columns: 1fr 1fr; }
-          .top-bar-name { font-size: 18px; }
+          .top-bar-event { font-size: 16px; }
         }
       `}</style>
 
-      <div className={`page-wrap ev-page-with-nav${mounted ? " mounted" : ""}`}>
+      <div className={`page-wrap${mounted ? " mounted" : ""}`}>
         <div className="glow glow-1" />
         <div className="glow glow-2" />
 
         {/* ── Header ── */}
         <div className="top-bar">
-          <AppLogo size={34} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="top-bar-name">
-              Event<span>ix</span>
-            </div>
-            <div className="top-bar-sub">Agradecimientos</div>
-            <div className="top-bar-evento">{evento.nombre}</div>
-          </div>
+          <div className="top-bar-event">{evento.nombre}</div>
         </div>
 
         {/* ── Content ── */}
@@ -1109,7 +1104,12 @@ export default function AgradecimientosPage() {
 
       </div>
 
-      <BottomNav eventoId={eventoId} />
+      {/* ── Bottom nav ── */}
+      <div className="bottom-bar">
+        <button className="btn-back" onClick={() => router.push("/dashboard")}>
+          ← Regresar al dashboard
+        </button>
+      </div>
     </>
   );
 }

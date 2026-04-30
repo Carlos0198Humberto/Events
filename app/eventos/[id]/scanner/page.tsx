@@ -2,8 +2,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
-import { BottomNav } from "@/app/components/BottomNav";
-import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -241,7 +239,9 @@ export default function ScannerPage() {
     @keyframes scanLine{0%{top:0}100%{top:100%}}
     @keyframes popIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 
-    .page{min-height:100dvh;background:#FFFFFF;padding-bottom:env(safe-area-inset-bottom,20px)}
+    .page{min-height:100dvh;background:#FFFFFF;padding-bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+    .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(255,255,255,0.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid rgba(79,70,229,0.16);box-shadow:0 -4px 20px rgba(79,70,229,0.07);display:flex;align-items:center;padding-left:16px}
+    .btn-back{display:inline-flex;align-items:center;gap:8px;background:transparent;border:none;color:#4F46E5;font-size:14px;font-weight:600;font-family:'Jost',sans-serif;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent}
     .topbar{display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:20;box-sizing:border-box;width:100%;}
     .topbar-back{width:36px;height:36px;border-radius:10px;background:var(--cream);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
     .topbar-info{flex:1;min-width:0}
@@ -332,21 +332,15 @@ export default function ScannerPage() {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
-    <div className="page ev-page-with-nav">
+    <div className="page">
       <style>{styles}</style>
 
       {/* Header */}
       <div className="topbar">
-        <button className="topbar-back" onClick={() => router.push(`/dashboard`)}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M15 18l-6-6 6-6" stroke="#3730A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
         <div className="topbar-info">
           <div className="topbar-title">Scanner de entrada</div>
           {eventoNombre && <div className="topbar-sub">{eventoNombre}</div>}
         </div>
-        <AppLogo size={34} />
       </div>
 
       <div className="wrap">
@@ -573,7 +567,12 @@ export default function ScannerPage() {
         </div>
       )}
 
-      <BottomNav eventoId={eventoId} />
+      {/* Bottom bar */}
+      <div className="bottom-bar">
+        <button className="btn-back" onClick={() => router.push("/dashboard")}>
+          ← Regresar al dashboard
+        </button>
+      </div>
     </div>
   );
 }

@@ -4,8 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-import { BottomNav } from "@/app/components/BottomNav";
-import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Evento = {
@@ -417,9 +415,6 @@ export default function LibroRecuerdosPage() {
         }}
       >
         <div style={{ textAlign: "center" }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 0 }}>
-            <AppLogo size={52} />
-          </div>
           <div
             style={{
               width: 36,
@@ -427,7 +422,7 @@ export default function LibroRecuerdosPage() {
               border: "3px solid #E0E7FF",
               borderTopColor: "#4F46E5",
               borderRadius: "50%",
-              margin: "16px auto 12px",
+              margin: "0 auto 12px",
               animation: "spin .8s linear infinite",
             }}
           />
@@ -533,14 +528,14 @@ export default function LibroRecuerdosPage() {
           box-shadow: var(--shadow-sm);
         }
         .header-top {
-          display: flex; align-items: center; gap: 8px;
-          padding: 11px 14px 10px;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          padding: 0 14px; height: 54px;
         }
-        .brand-block { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
-        .brand-name { font-family: 'Cormorant Garamond', serif; font-size: 19px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; line-height: 1; }
-        .brand-name span { color: var(--accent); }
-        .brand-sub { font-size: 9.5px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3); margin-top: 2px; display: block; }
-        .brand-event { font-size: 10.5px; color: var(--accent); font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+        .header-event-name {
+          font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 600;
+          color: var(--text); letter-spacing: -0.3px;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+        }
 
         /* ── Botones header ── */
         .hbtn {
@@ -610,7 +605,7 @@ export default function LibroRecuerdosPage() {
         .libro-body {
           background: #dde1e7; min-height: 100vh;
           padding: 16px 12px;
-          padding-bottom: calc(80px + env(safe-area-inset-bottom, 16px));
+          padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
         }
         .libro-inner {
           max-width: 640px; margin: 0 auto;
@@ -641,87 +636,28 @@ export default function LibroRecuerdosPage() {
 
         /* ── Bottom bar ── */
         .bottom-bar {
-          position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
-          padding: 11px 14px;
-          padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px));
-          background: rgba(255,255,255,0.92);
+          position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+          height: calc(56px + env(safe-area-inset-bottom, 0px));
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+          background: rgba(255,255,255,0.94);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
           border-top: 1px solid var(--border);
-          box-shadow: 0 -4px 20px rgba(79, 70, 229,0.09);
+          box-shadow: 0 -4px 20px rgba(79, 70, 229,0.07);
+          display: flex; align-items: center; padding-left: 16px; gap: 12px;
         }
-        .bottom-inner { display: flex; gap: 10px; max-width: 640px; margin: 0 auto; }
-        .btn-back-bottom {
-          flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-          background: var(--surface); color: var(--text2);
-          border: 1.5px solid var(--border); border-radius: 14px;
-          padding: 13px; font-size: 14px; font-weight: 600;
-          font-family: 'DM Sans', sans-serif; text-decoration: none;
-          transition: var(--transition); box-shadow: var(--shadow-sm);
-          -webkit-tap-highlight-color: transparent;
+        .btn-back {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: transparent; border: none;
+          color: var(--accent); font-size: 14px; font-weight: 600;
+          font-family: 'DM Sans', sans-serif; cursor: pointer; padding: 0;
+          -webkit-tap-highlight-color: transparent; text-decoration: none;
         }
-        .btn-back-bottom:hover { background: var(--accent-soft2); color: var(--accent); border-color: var(--border-hover); }
       `}</style>
 
       {/* ════ HEADER ════ */}
       <div className="libro-header no-print">
         <div className="header-top">
-          {/* Marca */}
-          <div className="brand-block">
-            <AppLogo size={30} />
-            <div style={{ minWidth: 0 }}>
-              <div className="brand-name">
-                Event<span>ix</span>
-              </div>
-              <span className="brand-sub">Libro de recuerdos</span>
-              <span className="brand-event">{evento.nombre}</span>
-            </div>
-          </div>
-
-          {/* PDF */}
-          <button
-            className="hbtn hbtn-primary"
-            onClick={generarPDF}
-            disabled={generando}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            {generando ? "..." : "PDF"}
-          </button>
-
-          {/* Salir */}
-          <button
-            className="hbtn hbtn-danger"
-            onClick={cerrarSesion}
-            disabled={saliendo}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            {saliendo ? "..." : "Salir"}
-          </button>
+          <div className="header-event-name">{evento.nombre}</div>
         </div>
 
         {/* Tabs */}
@@ -1264,30 +1200,21 @@ export default function LibroRecuerdosPage() {
         </div>
       </div>
 
-      {/* ── Bottom bar (solo invitados con token) / BottomNav (organizadores) ── */}
-      {tokenParam ? (
-        <div className="bottom-bar no-print">
-          <div className="bottom-inner">
-            <Link
-              href={`/muro/${eventoId}?token=${tokenParam}`}
-              className="btn-back-bottom"
-            >
-              <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M8 2L4 6l4 4"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Volver al Muro
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <BottomNav eventoId={eventoId} />
-      )}
+      {/* ── Bottom bar ── */}
+      <div className="bottom-bar no-print">
+        {tokenParam ? (
+          <Link
+            href={`/muro/${eventoId}?token=${tokenParam}`}
+            className="btn-back"
+          >
+            ← Volver al Muro
+          </Link>
+        ) : (
+          <button className="btn-back" onClick={() => router.push("/dashboard")}>
+            ← Regresar al dashboard
+          </button>
+        )}
+      </div>
     </div>
   );
 }

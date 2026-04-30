@@ -4,7 +4,6 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import Link from "next/link";
-import { BottomNav } from "@/app/components/BottomNav";
 import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
@@ -2011,11 +2010,10 @@ export default function MuroPublico() {
 
   return (
     <main
-      className={esOrg ? "ev-page-with-nav" : undefined}
       style={{
         minHeight: "100vh",
         background: "#FAFBFF",
-        paddingBottom: esOrg ? undefined : 100,
+        paddingBottom: esOrg ? "calc(72px + env(safe-area-inset-bottom, 0px))" : 100,
         fontFamily: "'DM Sans',sans-serif",
         opacity: mounted ? 1 : 0,
         transition: "opacity 0.3s ease",
@@ -2097,6 +2095,25 @@ export default function MuroPublico() {
           font-size: 8px; font-weight: 800; border-radius: 99px;
           padding: 1px 4px; min-width: 14px; text-align: center;
           border: 1.5px solid white;
+        }
+
+        /* ── Barra fija organizador ── */
+        .org-bottom-bar {
+          position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+          height: calc(56px + env(safe-area-inset-bottom, 0px));
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+          background: rgba(255,255,255,0.94);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+          border-top: 1px solid rgba(79,70,229,0.16);
+          box-shadow: 0 -4px 20px rgba(79,70,229,0.07);
+          display: flex; align-items: center; padding-left: 16px;
+        }
+        .org-btn-back {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: transparent; border: none;
+          color: #4F46E5; font-size: 14px; font-weight: 600;
+          font-family: 'DM Sans',sans-serif; cursor: pointer; padding: 0;
+          -webkit-tap-highlight-color: transparent;
         }
 
         /* ── Compact sticky header ── */
@@ -2756,7 +2773,11 @@ export default function MuroPublico() {
 
       {/* ══ BOTTOM NAV ══ */}
       {esOrg ? (
-        <BottomNav eventoId={eventoId} active="muro" />
+        <div className="org-bottom-bar">
+          <button className="org-btn-back" onClick={() => router.push("/dashboard")}>
+            ← Regresar al dashboard
+          </button>
+        </div>
       ) : (
         <nav className="bottom-nav">
           {/* Acciones del invitado */}

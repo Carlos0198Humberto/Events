@@ -1,14 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { useParams } from "next/navigation";
-import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
-import { BottomNav } from "@/app/components/BottomNav";
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { toast } from "@/app/components/Toast";
 
-import { AppLogo } from "@/app/components/AppLogo";
 
 type Invitado = {
   id?: string;
@@ -37,6 +34,7 @@ const TIPO_LABEL: Record<string, string> = {
 
 export default function AgregarInvitados() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
 
   const [nombre, setNombre] = useState("");
@@ -345,23 +343,53 @@ ${deadlineLinea}
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
           border-bottom: 1px solid var(--border);
-          padding: 13px 18px;
+          padding: 0 16px;
+          height: 54px;
           display: flex;
           align-items: center;
-          gap: 11px;
+          justify-content: center;
           position: sticky;
           top: env(safe-area-inset-top, 0px);
           z-index: 20;
           box-shadow: var(--shadow-sm);
         }
-        .top-bar-name { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; line-height: 1; }
-        .top-bar-name span { color: var(--accent); }
-        .top-bar-sub { font-size: 10.5px; font-weight: 500; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text3); margin-top: 2px; }
+        .top-bar-event {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 17px; font-weight: 600; color: var(--text);
+          letter-spacing: -0.2px; line-height: 1.2;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          text-align: center;
+        }
+        /* ── Barra inferior de regreso ── */
+        .bottom-bar {
+          position: fixed;
+          bottom: 0; left: 0; right: 0;
+          z-index: 40;
+          height: calc(56px + env(safe-area-inset-bottom, 0px));
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+          background: rgba(255,255,255,0.94);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+          border-top: 1px solid var(--border);
+          display: flex; align-items: center;
+          padding-left: 16px; padding-right: 16px;
+          box-shadow: 0 -4px 20px rgba(79,70,229,0.07);
+        }
+        .btn-back {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: transparent; border: none;
+          font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+          color: var(--accent); cursor: pointer;
+          padding: 10px 4px; border-radius: 10px;
+          -webkit-tap-highlight-color: transparent;
+          transition: opacity .15s;
+          letter-spacing: .1px;
+        }
+        .btn-back:active { opacity: 0.6; }
 
         /* ── Scroll area ── */
         .scroll-area {
           padding: 20px 16px;
-          padding-bottom: calc(32px + env(safe-area-inset-bottom, 16px));
+          padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
           display: flex;
           flex-direction: column;
           gap: 16px;
@@ -624,19 +652,25 @@ ${deadlineLinea}
         </div>
       )}
 
-      <div className={`page-wrap ev-page-with-nav${mounted ? " mounted" : ""}`}>
+      <div className={`page-wrap${mounted ? " mounted" : ""}`}>
         <div className="glow glow-1" />
         <div className="glow glow-2" />
 
         {/* ── Top bar ── */}
         <div className="top-bar anim-header">
-          <AppLogo size={34} />
-          <div>
-            <div className="top-bar-name">Event<span>ix</span></div>
-            <div className="top-bar-sub">
-              {evento?.nombre ? evento.nombre : "Gestionar invitados"}
-            </div>
+          <div className="top-bar-event">
+            {evento?.nombre ?? "Invitados"}
           </div>
+        </div>
+
+        {/* ── Barra inferior ── */}
+        <div className="bottom-bar">
+          <button className="btn-back" onClick={() => router.push("/dashboard")} type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+            Regresar al dashboard
+          </button>
         </div>
 
         {/* ── Content ── */}
@@ -701,7 +735,7 @@ ${deadlineLinea}
                 <PhoneInput
                   value={telefono}
                   onChange={setTelefono}
-                  defaultCountry="AR"
+                  defaultCountry="SV"
                 />
               </div>
 
@@ -987,7 +1021,6 @@ ${deadlineLinea}
         </div>
       </div>
 
-      <BottomNav eventoId={id} active="invitados" />
     </>
   );
 }

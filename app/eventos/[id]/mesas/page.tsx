@@ -1,12 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { useParams } from "next/navigation";
-import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "@/app/components/Toast";
-import { BottomNav } from "@/app/components/BottomNav";
-
-import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Mesa = {
@@ -26,6 +22,7 @@ type Invitado = {
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function GestionarMesas() {
   const params = useParams();
+  const router = useRouter();
   const eventoId = params.id as string;
 
   const [mesas, setMesas] = useState<Mesa[]>([]);
@@ -51,10 +48,6 @@ export default function GestionarMesas() {
   const [confirmEliminar, setConfirmEliminar] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState<string | null>(null);
 
-  // Plano de mesas
-  const [planoUrl, setPlanoUrl] = useState<string | null>(null);
-  const [subiendoPlano, setSubiendoPlano] = useState(false);
-  const planoInputRef = { current: null as HTMLInputElement | null };
 
   useEffect(() => {
     document.title = "Eventix — Mesas";
@@ -65,7 +58,7 @@ export default function GestionarMesas() {
   async function cargarDatos() {
     setLoading(true);
     const [{ data: ev }, { data: ms }, { data: inv }] = await Promise.all([
-      supabase.from("eventos").select("nombre, plano_mesas_url").eq("id", eventoId).single(),
+      supabase.from("eventos").select("nombre").eq("id", eventoId).single(),
       supabase.from("mesas").select("*").eq("evento_id", eventoId).order("created_at"),
       supabase
         .from("invitados")
@@ -73,32 +66,10 @@ export default function GestionarMesas() {
         .eq("evento_id", eventoId)
         .order("nombre"),
     ]);
-    if (ev) { setEventoNombre(ev.nombre); setPlanoUrl(ev.plano_mesas_url ?? null); }
+    if (ev) { setEventoNombre(ev.nombre); }
     if (ms) setMesas(ms);
     if (inv) setInvitados(inv);
     setLoading(false);
-  }
-
-  // ── Plano de mesas ──────────────────────────────────────────────────────────
-  async function subirPlano(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSubiendoPlano(true);
-    try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `planos/${eventoId}_plano_${Date.now()}.${ext}`;
-      const { data: up, error } = await supabase.storage.from("fotos-eventos").upload(path, file, { upsert: true });
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from("fotos-eventos").getPublicUrl(up.path);
-      const url = urlData?.publicUrl;
-      await supabase.from("eventos").update({ plano_mesas_url: url }).eq("id", eventoId);
-      setPlanoUrl(url);
-      toast.success("Plano de mesas guardado");
-    } catch {
-      toast.error("Error al subir el plano");
-    }
-    setSubiendoPlano(false);
-    if (e.target) e.target.value = "";
   }
 
   // ── CRUD Mesas ─────────────────────────────────────────────────────────────
@@ -212,43 +183,24 @@ export default function GestionarMesas() {
   const sinMesa = invitadosSinMesa();
 
   return (
-    <div className={`page-wrap ev-page-with-nav${mounted ? " vis" : ""}`}>
+    <div className={`page-wrap${mounted ? " vis" : ""}`}>
       <style>{styles}</style>
 
       {/* Top bar */}
       <div className="top-bar">
-        <Link href={`/eventos/${eventoId}/invitados`} className="back-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
+        <div className="top-bar-event">
+          {eventoNombre || "Mesas"}
+        </div>
+      </div>
+
+      {/* Barra inferior */}
+      <div className="bottom-bar">
+        <button className="btn-back" onClick={() => router.push("/dashboard")} type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6"/>
           </svg>
-        </Link>
-        <div className="top-bar-logo">
-          <AppLogo size={30} />
-          <div>
-            <div className="top-bar-title">Mesas</div>
-            <div className="top-bar-sub" title={eventoNombre}>{eventoNombre || "Cargando…"}</div>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          {invitados.filter(i => i.estado === "confirmado" && !i.mesa_id).length > 0 && mesas.length > 0 && (
-            <button
-              className="btn-nueva-mesa"
-              style={{ background: "rgba(79, 70, 229,0.12)", color: "var(--gold)", border: "1.5px solid rgba(79, 70, 229,0.3)" }}
-              onClick={() => setShowAutoPanel(true)}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-              </svg>
-              Auto
-            </button>
-          )}
-          <button className="btn-nueva-mesa" onClick={abrirNuevaMesa}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Nueva
-          </button>
-        </div>
+          Regresar al dashboard
+        </button>
       </div>
 
       <div className="content">
@@ -278,33 +230,22 @@ export default function GestionarMesas() {
               </div>
             </div>
 
-            {/* ─ Plano de distribución de mesas ─ */}
-            <div style={{ background: "#F8FAFF", border: "1px dashed rgba(79,70,229,0.3)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 3 }}>
-                  📐 Plano de distribución
-                </div>
-                <div style={{ fontSize: 12, color: "#6B7280" }}>
-                  {planoUrl ? "Plano guardado — los invitados pueden verlo" : "Subí una imagen del plano de mesas para tus invitados"}
-                </div>
-              </div>
-              <input
-                ref={(el) => { planoInputRef.current = el; }}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={subirPlano}
-              />
-              {planoUrl && (
-                <img src={planoUrl} alt="Plano" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", border: "1.5px solid rgba(79,70,229,0.25)", cursor: "pointer" }} onClick={() => window.open(planoUrl!, "_blank")} />
-              )}
-              <button
-                onClick={() => planoInputRef.current?.click()}
-                disabled={subiendoPlano}
-                style={{ background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "white", border: "none", borderRadius: 10, padding: "9px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}
-              >
-                {subiendoPlano ? "Subiendo..." : planoUrl ? "Cambiar" : "Subir plano"}
+            {/* ─ Acciones ─ */}
+            <div className="actions-row">
+              <button className="btn-add-mesa" onClick={abrirNuevaMesa}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Nueva mesa
               </button>
+              {invitados.filter(i => i.estado === "confirmado" && !i.mesa_id).length > 0 && mesas.length > 0 && (
+                <button className="btn-auto-mesa" onClick={() => setShowAutoPanel(true)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </svg>
+                  Auto-asignar
+                </button>
+              )}
             </div>
 
             {/* ─ Invitados sin mesa — SIEMPRE visible al tope ─ */}
@@ -666,7 +607,6 @@ export default function GestionarMesas() {
         </div>
       )}
 
-      <BottomNav eventoId={eventoId} active="mesas" />
     </div>
   );
 }
@@ -693,39 +633,70 @@ const styles = `
 
   /* Top bar */
   .top-bar{
-    display:flex;align-items:center;gap:8px;
-    padding:10px 14px;
+    display:flex;align-items:center;justify-content:center;
+    height:54px;padding:0 16px;
     background:rgba(255,255,255,0.92);
     backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
     border-bottom:1px solid var(--border);
     position:sticky;top:env(safe-area-inset-top,0px);z-index:30;
     box-sizing:border-box;width:100%;
   }
-  .back-btn{
-    display:flex;align-items:center;justify-content:center;
-    width:36px;height:36px;border-radius:10px;
-    background:var(--surface-2);border:1px solid var(--border);
-    color:var(--ink2);text-decoration:none;flex-shrink:0;
-    transition:background .15s;
+  .top-bar-event{
+    font-family:'Cormorant Garamond',serif;
+    font-size:17px;font-weight:600;color:var(--ink);
+    letter-spacing:-0.2px;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    text-align:center;
   }
-  .back-btn:hover{background:var(--gold-pale);color:var(--gold)}
-  .top-bar-logo{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-  .top-bar-logo > div{min-width:0;flex:1}
-  .top-bar-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);line-height:1.1;white-space:nowrap}
-  .top-bar-sub{font-size:11px;color:var(--ink3);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
-  .btn-nueva-mesa{
-    display:inline-flex;align-items:center;gap:5px;
+  /* Barra inferior de regreso */
+  .bottom-bar{
+    position:fixed;
+    bottom:0;left:0;right:0;
+    z-index:40;
+    height:calc(56px + env(safe-area-inset-bottom,0px));
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    background:rgba(255,255,255,0.94);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border-top:1px solid var(--border);
+    display:flex;align-items:center;
+    padding-left:16px;padding-right:16px;
+    box-shadow:0 -4px 20px rgba(79,70,229,0.07);
+  }
+  .btn-back{
+    display:inline-flex;align-items:center;gap:8px;
+    background:transparent;border:none;
+    font-family:'Jost',sans-serif;font-size:14px;font-weight:600;
+    color:var(--gold);cursor:pointer;
+    padding:10px 4px;border-radius:10px;
+    -webkit-tap-highlight-color:transparent;
+    transition:opacity .15s;
+    letter-spacing:.1px;
+  }
+  .btn-back:active{opacity:0.6}
+  /* Acciones en contenido */
+  .actions-row{display:flex;gap:8px;margin-bottom:16px}
+  .btn-add-mesa{
+    flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;
     background:linear-gradient(135deg,#4F46E5,#6366F1);
-    color:#fff;border:none;border-radius:10px;
-    padding:8px 12px;font-size:12px;font-weight:700;
+    color:#fff;border:none;border-radius:12px;
+    padding:12px 16px;font-size:13px;font-weight:700;
     cursor:pointer;font-family:'Jost',sans-serif;
-    flex-shrink:0;letter-spacing:.2px;
-    box-shadow:0 4px 12px rgba(79,70,229,0.28);
+    box-shadow:0 4px 14px rgba(79,70,229,0.30);
+    transition:transform .15s,box-shadow .15s;
   }
-  .btn-nueva-mesa:active{transform:scale(.97)}
+  .btn-add-mesa:active{transform:scale(.97)}
+  .btn-auto-mesa{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    background:var(--gold-pale);color:var(--gold);
+    border:1.5px solid var(--gold-mid);border-radius:12px;
+    padding:12px 14px;font-size:13px;font-weight:700;
+    cursor:pointer;font-family:'Jost',sans-serif;
+    transition:all .15s;white-space:nowrap;
+  }
+  .btn-auto-mesa:hover{background:var(--gold-mid)}
 
   /* Content */
-  .content{max-width:520px;margin:0 auto;padding:16px 14px calc(32px + env(safe-area-inset-bottom,16px))}
+  .content{max-width:520px;margin:0 auto;padding:16px 14px calc(72px + env(safe-area-inset-bottom,0px))}
 
   /* Resumen */
   .resumen-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px}
@@ -919,12 +890,7 @@ const styles = `
 
   /* ─── Responsive: teléfonos pequeños ─── */
   @media (max-width: 420px){
-    .top-bar{padding:9px 12px;gap:6px}
-    .top-bar-title{font-size:16px}
-    .top-bar-sub{font-size:10px}
-    .btn-nueva-mesa{padding:7px 10px;font-size:11px}
-    .btn-nueva-mesa svg{width:13px;height:13px}
-    .content{padding:14px 12px calc(28px + env(safe-area-inset-bottom,16px))}
+    .content{padding:14px 12px calc(68px + env(safe-area-inset-bottom,0px))}
     .resumen-row{gap:5px}
     .resumen-chip{padding:9px 4px}
     .resumen-val{font-size:16px}
@@ -941,7 +907,5 @@ const styles = `
   }
   @media (max-width: 340px){
     .resumen-row{grid-template-columns:repeat(2,1fr)}
-    .top-bar-logo .top-bar-title{font-size:15px}
-    .btn-nueva-mesa span{display:none}
   }
 `;

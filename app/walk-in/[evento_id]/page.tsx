@@ -42,7 +42,7 @@ export default function WalkInPage() {
   useEffect(() => {
     if (typeof window !== "undefined" && eventoId) {
       const url = `${window.location.origin}/walk-in/${eventoId}`;
-      setQrUrl(`https://chart.googleapis.com/chart?chs=280x280&cht=qr&chl=${encodeURIComponent(url)}&choe=UTF-8&chld=M|1`);
+      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(url)}&format=png&margin=10`);
     }
   }, [eventoId]);
 

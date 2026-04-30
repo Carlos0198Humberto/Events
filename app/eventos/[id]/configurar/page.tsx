@@ -1,11 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { useParams } from "next/navigation";
-import Link from "next/link";
-import { BottomNav } from "@/app/components/BottomNav";
-
-import { AppLogo } from "@/app/components/AppLogo";
+import { useParams, useRouter } from "next/navigation";
 
 // ─── Opciones de vestimenta ────────────────────────────────────────────────────
 const TIPOS_VESTIMENTA = [
@@ -42,6 +38,7 @@ const COLORES_SUGERIDOS = [
 
 export default function ConfigurarEvento() {
   const params = useParams();
+  const router = useRouter();
   const eventoId = params.id as string;
 
   const [eventoNombre, setEventoNombre] = useState("");
@@ -176,23 +173,22 @@ export default function ConfigurarEvento() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className={`page-wrap ev-page-with-nav${mounted ? " vis" : ""}`}>
+    <div className={`page-wrap${mounted ? " vis" : ""}`}>
       <style>{styles}</style>
 
       {/* Top bar */}
       <div className="top-bar">
-        <Link href="/dashboard" className="back-btn" title="Volver al Dashboard">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
+        <div className="top-bar-event">{eventoNombre || "Configurar"}</div>
+      </div>
+
+      {/* Barra inferior */}
+      <div className="bottom-bar">
+        <button className="btn-back" onClick={() => router.push("/dashboard")} type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6"/>
           </svg>
-        </Link>
-        <div className="top-bar-logo">
-          <AppLogo size={30} />
-          <div>
-            <div className="top-bar-title">Configurar</div>
-            <div className="top-bar-sub">{eventoNombre || "Cargando…"}</div>
-          </div>
-        </div>
+          Regresar al dashboard
+        </button>
       </div>
 
       <div className="content">
@@ -390,12 +386,10 @@ export default function ConfigurarEvento() {
               }
             </button>
 
-            <div style={{height:"calc(40px + env(safe-area-inset-bottom, 16px))"}} />
           </>
         )}
       </div>
 
-      <BottomNav eventoId={eventoId} active="configurar" />
     </div>
   );
 }
@@ -428,15 +422,13 @@ const styles = `
   .page-wrap{min-height:100dvh;background:var(--bg);opacity:0;transition:opacity .35s}
   .page-wrap.vis{opacity:1}
 
-  .top-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:30;box-sizing:border-box;width:100%;}
-  .back-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink2);text-decoration:none;flex-shrink:0;transition:background .15s}
-  .back-btn:hover{background:var(--gold-pale);color:var(--gold)}
-  .top-bar-logo{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-  .top-bar-logo > div{min-width:0;flex:1}
-  .top-bar-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);line-height:1.1;white-space:nowrap}
-  .top-bar-sub{font-size:11px;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top-bar{display:flex;align-items:center;justify-content:center;height:54px;padding:0 16px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:30;box-sizing:border-box;width:100%;}
+  .top-bar-event{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--ink);letter-spacing:-0.2px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
+  .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(255,255,255,0.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;align-items:center;padding-left:16px;padding-right:16px;box-shadow:0 -4px 20px rgba(79,70,229,0.07);}
+  .btn-back{display:inline-flex;align-items:center;gap:8px;background:transparent;border:none;font-family:'Jost',sans-serif;font-size:14px;font-weight:600;color:var(--gold);cursor:pointer;padding:10px 4px;border-radius:10px;-webkit-tap-highlight-color:transparent;transition:opacity .15s;letter-spacing:.1px;}
+  .btn-back:active{opacity:0.6}
 
-  .content{max-width:520px;margin:0 auto;padding:18px 14px calc(20px + env(safe-area-inset-bottom,16px))}
+  .content{max-width:520px;margin:0 auto;padding:18px 14px calc(72px + env(safe-area-inset-bottom,0px))}
 
   .section-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow);padding:18px;margin-bottom:14px;animation:fadeIn .4s ease both}
   .section-header{display:flex;align-items:flex-start;gap:13px;margin-bottom:16px}
@@ -545,9 +537,7 @@ const styles = `
 
   /* ─── Responsive: teléfonos pequeños ─── */
   @media (max-width: 420px){
-    .top-bar{padding:9px 12px;gap:7px}
-    .top-bar-title{font-size:16px}
-    .content{padding:14px 12px calc(18px + env(safe-area-inset-bottom,16px))}
+    .content{padding:14px 12px calc(68px + env(safe-area-inset-bottom,0px))}
     .section-card{padding:15px;border-radius:16px}
     .section-title{font-size:14.5px}
     .section-sub{font-size:11.5px}
@@ -567,6 +557,5 @@ const styles = `
   }
   @media (max-width: 340px){
     .tipos-grid{grid-template-columns:1fr}
-    .top-bar-title{font-size:15px}
   }
 `;

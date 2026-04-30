@@ -11,6 +11,8 @@ export type CountryCode = {
 };
 
 const COUNTRIES: CountryCode[] = [
+  // ── El Salvador primero ──
+  { code: "+503", iso: "SV", flag: "🇸🇻", name: "El Salvador" },
   // ── LATAM ──
   { code: "+54",  iso: "AR", flag: "🇦🇷", name: "Argentina" },
   { code: "+591", iso: "BO", flag: "🇧🇴", name: "Bolivia" },
@@ -20,7 +22,6 @@ const COUNTRIES: CountryCode[] = [
   { code: "+506", iso: "CR", flag: "🇨🇷", name: "Costa Rica" },
   { code: "+53",  iso: "CU", flag: "🇨🇺", name: "Cuba" },
   { code: "+593", iso: "EC", flag: "🇪🇨", name: "Ecuador" },
-  { code: "+503", iso: "SV", flag: "🇸🇻", name: "El Salvador" },
   { code: "+502", iso: "GT", flag: "🇬🇹", name: "Guatemala" },
   { code: "+504", iso: "HN", flag: "🇭🇳", name: "Honduras" },
   { code: "+52",  iso: "MX", flag: "🇲🇽", name: "México" },
