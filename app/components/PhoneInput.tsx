@@ -54,7 +54,7 @@ interface PhoneInputProps {
 
 /** Separa un número E.164 en {country, local}. */
 function parseE164(value: string): { country: CountryCode; local: string } {
-  const defaultCountry = COUNTRIES[0]; // Argentina
+  const defaultCountry = COUNTRIES.find((c) => c.iso === "SV") ?? COUNTRIES[0];
   if (!value.startsWith("+")) return { country: defaultCountry, local: value };
 
   // Intenta matches desde el más largo al más corto (evita ambigüedades con +1)
@@ -72,7 +72,7 @@ function parseE164(value: string): { country: CountryCode; local: string } {
 export function PhoneInput({
   value,
   onChange,
-  defaultCountry = "AR",
+  defaultCountry = "SV",
   placeholder,
   className,
   disabled,

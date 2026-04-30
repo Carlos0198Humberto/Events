@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/app/components/BottomNav";
+import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type Invitado = {
@@ -66,13 +67,6 @@ const PLANTILLAS: Record<string, string[]> = {
     "Tu presencia, {nombre}, fue el detalle más bonito de toda la celebración. Gracias. — {anfitriones} 💐",
   ],
 };
-
-// ─── Logo ─────────────────────────────────────────────────────
-function AppLogo({ size = 34 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#4F46E5" /><stop offset="100%" stopColor="#6366F1" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E0E7FF" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
-  );
-}
 
 // ─── Íconos ───────────────────────────────────────────────────
 function IconWhatsApp({

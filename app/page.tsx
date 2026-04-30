@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 const translations = {
@@ -62,44 +63,6 @@ function FaviconInjector() {
     document.head.appendChild(link);
   }, []);
   return null;
-}
-
-// ─── Logo (matches login) ─────────────────────────────────────────────────────
-function AppLogo({ size = 58 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#312E81" />
-          <stop offset="100%" stopColor="#4F46E5" />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} />
-      <rect
-        x="2"
-        y="2"
-        width="60"
-        height="60"
-        rx="16"
-        fill="none"
-        stroke="rgba(255,255,255,0.28)"
-        strokeWidth="1.2"
-      />
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" />
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" />
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" />
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" />
-      <circle cx="48" cy="19" r="3" fill="#E0E7FF" />
-      <circle cx="48" cy="19" r="1.4" fill="#FFFFFF" />
-      <circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" />
-    </svg>
-  );
 }
 
 // ─── Particles ────────────────────────────────────────────────────────────────

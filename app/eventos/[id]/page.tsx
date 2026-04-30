@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
+import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -130,72 +131,6 @@ function crearParticulas() {
     size: Math.random() * 12 + 4,
     rotation: Math.random() * 360,
   }));
-}
-
-// ─── AppLogo ──────────────────────────────────────────────────────────────────
-function AppLogo({ size = 32 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient
-          id="logo-bg"
-          x1="0"
-          y1="0"
-          x2="64"
-          y2="64"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#1a1209" />
-          <stop offset="100%" stopColor="#2d1f0a" />
-        </linearGradient>
-        <linearGradient
-          id="logo-glow"
-          x1="12"
-          y1="20"
-          x2="52"
-          y2="44"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#312E81" />
-          <stop offset="100%" stopColor="#4F46E5" />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="18" fill="url(#logo-bg)" />
-      <rect
-        x="2.5"
-        y="2.5"
-        width="59"
-        height="59"
-        rx="16"
-        fill="none"
-        stroke="rgba(79,70,229,0.3)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M18 17 L30 32 L18 47"
-        stroke="url(#logo-glow)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M46 17 L34 32 L46 47"
-        stroke="rgba(79,70,229,0.45)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="32" cy="32" r="4" fill="#4F46E5" opacity="0.95" />
-    </svg>
-  );
 }
 
 // ─── Iconos SVG ───────────────────────────────────────────────────────────────

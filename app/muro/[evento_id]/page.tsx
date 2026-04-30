@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import Link from "next/link";
 import { BottomNav } from "@/app/components/BottomNav";
+import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 type Foto = {
@@ -204,12 +205,7 @@ const TIPO_EMOJI: Record<string, string> = {
   otro: "✨",
 };
 
-// ─── Logo Eventix ──────────────────────────────────────────────────────────────
-function AppLogo({ size = 28 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#4F46E5" /><stop offset="100%" stopColor="#6366F1" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><path d="M48 11 L49.8 17.2 L56 19 L49.8 20.8 L48 27 L46.2 20.8 L40 19 L46.2 17.2 Z" fill="#E0E7FF" /><circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" /></svg>
-  );
-}
+// AppLogo viene del componente compartido — importado arriba
 
 // ─── Íconos ────────────────────────────────────────────────────────────────────
 const Ico = {
@@ -490,6 +486,17 @@ function descargarDeseosTxt(deseos: Deseo[], nombreEvento: string) {
   a.click();
 }
 
+// Adornos decorativos que varían por foto
+const FOTO_ADORNOS = ["✨", "💫", "🌟", "🎊", "💖", "🌸", "🎉", "🌈"];
+const FOTO_TAPE_COLORS = [
+  "rgba(79,70,229,0.18)",
+  "rgba(99,102,241,0.16)",
+  "rgba(139,92,246,0.15)",
+  "rgba(16,185,129,0.14)",
+  "rgba(245,158,11,0.14)",
+  "rgba(236,72,153,0.14)",
+];
+
 // ─── FotoCard ──────────────────────────────────────────────────────────────────
 function FotoCard({
   foto,
@@ -498,6 +505,7 @@ function FotoCard({
   onDelete,
   onClick,
   t,
+  idx = 0,
 }: {
   foto: Foto;
   acento: string;
@@ -505,11 +513,16 @@ function FotoCard({
   onDelete: (id: string) => void;
   onClick: () => void;
   t: (typeof T)["es"];
+  idx?: number;
 }) {
   const nombre = foto.invitados?.nombre ?? "Invitado";
   const fechaStr = foto.created_at
     ? new Date(foto.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
     : "";
+  const adorno = FOTO_ADORNOS[idx % FOTO_ADORNOS.length];
+  const tapeColor = FOTO_TAPE_COLORS[idx % FOTO_TAPE_COLORS.length];
+  const tapeRot = (idx % 2 === 0 ? -1 : 1) * (8 + (idx % 3) * 4);
+
   return (
     <div
       className="foto-card"
@@ -517,53 +530,87 @@ function FotoCard({
         background: "white",
         borderRadius: 18,
         overflow: "hidden",
-        boxShadow: "0 2px 16px rgba(0,0,0,0.09)",
+        boxShadow: "0 3px 20px rgba(0,0,0,0.10)",
         border: "1px solid rgba(79,70,229,0.09)",
+        borderTop: `3px solid ${acento}`,
       }}
     >
-      {/* Header estilo FB */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px 10px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Avatar nombre={nombre} size={36} bg={acento} />
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px 9px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <Avatar nombre={nombre} size={34} bg={acento} />
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "#111827" }}>{nombre}</div>
-            {fechaStr && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1 }}>{fechaStr}</div>}
+            <div style={{ fontWeight: 700, fontSize: 13, color: "#111827" }}>{nombre}</div>
+            {fechaStr && <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 1 }}>{fechaStr}</div>}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 5 }}>
           <button
             onClick={(e) => { e.stopPropagation(); descargarImagen(foto.url, `foto_${foto.id}.jpg`); }}
             title={t.descargar}
-            style={{ background: "#F3F4F6", color: acento, border: "none", borderRadius: 99, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ background: "#F3F4F6", color: acento, border: "none", borderRadius: 99, width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            {Ico.download(14, acento)}
+            {Ico.download(13, acento)}
           </button>
           {esOrg && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(foto.id); }}
-              style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "none", borderRadius: 99, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              style={{ background: "rgba(220,38,38,0.10)", color: "#DC2626", border: "none", borderRadius: 99, width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
             >
-              {Ico.trash(14, "#DC2626")}
+              {Ico.trash(13, "#DC2626")}
             </button>
           )}
         </div>
       </div>
 
-      {/* Foto full-width */}
-      <div onClick={onClick} style={{ cursor: "pointer", width: "100%" }}>
+      {/* Foto con adorno tipo washi tape */}
+      <div onClick={onClick} style={{ cursor: "pointer", width: "100%", position: "relative" }}>
+        {/* Washi tape decorativo */}
+        <div style={{
+          position: "absolute",
+          top: 8,
+          left: "50%",
+          transform: `translateX(-50%) rotate(${tapeRot}deg)`,
+          width: 52,
+          height: 18,
+          background: tapeColor,
+          borderRadius: 3,
+          zIndex: 2,
+          backdropFilter: "blur(4px)",
+          border: `1px solid ${acento}22`,
+        }} />
         <Image
           src={foto.url}
           alt=""
           width={600}
           height={600}
-          style={{ width: "100%", height: "auto", maxHeight: "75vw", objectFit: "cover", display: "block" }}
+          style={{ width: "100%", height: "auto", display: "block" }}
           unoptimized
         />
+        {/* Adorno flotante en esquina */}
+        <div style={{
+          position: "absolute",
+          bottom: 8,
+          right: 10,
+          background: "rgba(255,255,255,0.88)",
+          backdropFilter: "blur(4px)",
+          borderRadius: "50%",
+          width: 28,
+          height: 28,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 14,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.14)",
+          zIndex: 2,
+        }}>
+          {adorno}
+        </div>
       </div>
 
       {/* Caption */}
       {foto.caption && (
-        <div style={{ padding: "10px 14px 12px", fontSize: 13, color: "#374151", lineHeight: 1.5 }}>
+        <div style={{ padding: "10px 14px 12px", fontSize: 13, color: "#374151", lineHeight: 1.5, borderTop: "1px solid rgba(79,70,229,0.06)", background: "linear-gradient(135deg,#FAFBFF,white)" }}>
           {foto.caption}
         </div>
       )}
@@ -1849,7 +1896,7 @@ export default function MuroPublico() {
       id,
       label: fs[0].invitados?.nombre ?? "Invitado",
       fotos: fs,
-    }));
+    })).sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
   })();
 
   const tokenParam =
@@ -2304,19 +2351,40 @@ export default function MuroPublico() {
               </p>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {fotos.map((foto, idx) => (
-                <FotoCard
-                  key={foto.id}
-                  foto={foto}
-                  acento={acento}
-                  esOrg={esOrg}
-                  onDelete={eliminarFoto}
-                  onClick={() => setFotoActiva(idx)}
-                  t={t}
-                />
-              ))}
-            </div>
+            <>
+              <style>{`
+                @keyframes fotoEntrada {
+                  0%   { opacity:0; transform:translateY(22px) scale(0.96) rotate(var(--rot,0deg)); }
+                  60%  { transform:translateY(-4px) scale(1.01) rotate(0deg); }
+                  100% { opacity:1; transform:translateY(0) scale(1) rotate(0deg); }
+                }
+                .foto-fan { animation: fotoEntrada 0.48s cubic-bezier(0.22,1,0.36,1) both; }
+              `}</style>
+              <div style={{ columns: "2 180px", gap: 12 }}>
+                {fotos.map((foto, idx) => (
+                  <div
+                    key={foto.id}
+                    className="foto-fan"
+                    style={{
+                      "--rot": `${(idx % 2 === 0 ? -1 : 1) * (0.5 + (idx % 3) * 0.3)}deg`,
+                      animationDelay: `${Math.min(idx * 0.06, 0.6)}s`,
+                      breakInside: "avoid",
+                      marginBottom: 12,
+                    } as React.CSSProperties}
+                  >
+                    <FotoCard
+                      foto={foto}
+                      acento={acento}
+                      esOrg={esOrg}
+                      onDelete={eliminarFoto}
+                      onClick={() => setFotoActiva(idx)}
+                      t={t}
+                      idx={idx}
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
           ))}
 
         {/* ── ÁLBUMES ── */}

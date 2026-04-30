@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type Evento = {
@@ -135,44 +136,7 @@ const translations = {
   },
 };
 
-// ─── Logo ──────────────────────────────────────────────────────────────────────
-function AppLogo({ size = 32 }: { size?: number }) {
-  const uid = `dlg-${size}`;
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient id={`${uid}-bg`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#312E81" />
-          <stop offset="100%" stopColor="#4F46E5" />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="18" fill={`url(#${uid}-bg)`} />
-      <rect
-        x="2"
-        y="2"
-        width="60"
-        height="60"
-        rx="16"
-        fill="none"
-        stroke="rgba(255,255,255,0.28)"
-        strokeWidth="1.2"
-      />
-      <rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" />
-      <rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" />
-      <rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" />
-      <rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" />
-      <circle cx="48" cy="19" r="3" fill="#E0E7FF" />
-      <circle cx="48" cy="19" r="1.4" fill="#FFFFFF" />
-      <circle cx="47" cy="46" r="2.5" fill="#FFFFFF" opacity="0.7" />
-    </svg>
-  );
-}
+// AppLogo viene del componente compartido — importado arriba
 
 // ─── Ornament divider ──────────────────────────────────────────────────────────
 function Ornament({ width = 120 }: { width?: number }) {
@@ -1296,6 +1260,14 @@ export default function Dashboard() {
                         <Link href={`/eventos/${evento.id}/scanner`} className="sr-link">
                           <Icon.scanner />
                           {t.scanner}
+                        </Link>
+                        <Link href={`/walk-in/${evento.id}`} className="sr-link" target="_blank">
+                          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                            <rect x="2" y="2" width="6" height="6" rx="1"/><rect x="12" y="2" width="6" height="6" rx="1"/>
+                            <rect x="2" y="12" width="6" height="6" rx="1"/><circle cx="15" cy="15" r="2.5"/>
+                            <path d="M12 12h2M15 12v1"/>
+                          </svg>
+                          QR Walk-in
                         </Link>
                       </div>
 

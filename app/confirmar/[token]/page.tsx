@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import { toast } from "@/app/components/Toast";
+import { AppLogo } from "@/app/components/AppLogo";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -81,6 +82,12 @@ const TIPO_ORNAMENTO: Record<string, string> = {
   cumpleaños: "",
   otro: "",
 };
+
+const STICKERS_DESEO = ["🌸", "💖", "✨", "🌟", "🎊", "🦋", "🌹", "💫", "🎀", "🍀", "🥂", "🎶"];
+const COLORES_DESEO_FORM = [
+  "#EEF2FF", "#E0E7FF", "#DBEAFE", "#D1FAE5",
+  "#FEF9C3", "#FEE2E2", "#F3E8FF", "#FDF4FF",
+];
 
 function formatFecha(fecha: string) {
   return new Date(fecha).toLocaleDateString("es-ES", {
@@ -165,69 +172,30 @@ function crearParticulas() {
   }));
 }
 
-// ─── AppLogo ──────────────────────────────────────────────────────────────────
-function AppLogo({ size = 32 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id={`ev-logo-${size}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#312E81" /><stop offset="100%" stopColor="#4F46E5" /></linearGradient></defs><rect width="64" height="64" rx="18" fill={`url(#ev-logo-${size})`} /><rect x="2" y="2" width="60" height="60" rx="16" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.2" /><rect x="13" y="14" width="6" height="36" rx="3" fill="#FFFFFF" /><rect x="13" y="14" width="24" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="29" width="18" height="6" rx="3" fill="#FFFFFF" /><rect x="13" y="44" width="24" height="6" rx="3" fill="#FFFFFF" /><circle cx="48" cy="19" r="3" fill="#E0E7FF" /><circle cx="48" cy="19" r="1.4" fill="#FFFFFF" /><circle cx="47" cy="46" r="2" fill="#FFFFFF" opacity="0.55" /></svg>
-  );
-}
+// AppLogo viene del componente compartido — importado arriba
 
 // ─── Iconos SVG ───────────────────────────────────────────────────────────────
 const IcoFecha = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5Z"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M11.995 13.7h.01M8.294 13.7h.01M8.294 16.7h.01"
-      stroke="#4F46E5"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M15.695 13.7h.01M15.695 16.7h.01M11.995 16.7h.01"
-      stroke="#4F46E5"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    {/* Calendario moderno — sin "puntos", más limpio */}
+    <rect x="3" y="5" width="18" height="16" rx="3" stroke="#4F46E5" strokeWidth="1.6" strokeLinejoin="round"/>
+    <path d="M3 10h18" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round"/>
+    <path d="M8 3v4M16 3v4" stroke="#4F46E5" strokeWidth="1.8" strokeLinecap="round"/>
+    <circle cx="8" cy="15" r="1" fill="#4F46E5"/>
+    <circle cx="12" cy="15" r="1" fill="#4F46E5"/>
+    <circle cx="16" cy="15" r="1" fill="#4F46E5"/>
   </svg>
 );
 const IcoHora = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M22 12c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2s10 4.48 10 10Z"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M15.71 15.18 12.61 13.3c-.54-.32-.98-1.09-.98-1.72V7.51"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    <circle cx="12" cy="12" r="9" stroke="#4F46E5" strokeWidth="1.6"/>
+    <path d="M12 7v5.25l3.5 2" stroke="#4F46E5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 const IcoLugar = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M12 13.43a3.12 3.12 0 1 0 0-6.24 3.12 3.12 0 0 0 0 6.24Z"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-    />
-    <path
-      d="M3.62 8.49c1.97-8.66 14.8-8.65 16.76.01 1.15 5.08-2.01 9.38-4.78 12.04a5.193 5.193 0 0 1-7.21 0c-2.76-2.66-5.92-6.97-4.77-12.05Z"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-    />
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#4F46E5" strokeWidth="1.6" strokeLinejoin="round"/>
+    <circle cx="12" cy="9" r="2.5" stroke="#4F46E5" strokeWidth="1.6"/>
   </svg>
 );
 const IcoMusica = () => (
@@ -268,70 +236,25 @@ const IcoDeadline = () => (
 );
 const IcoPersonas = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M9 2C6.38 2 4.25 4.13 4.25 6.75c0 2.57 2.01 4.65 4.63 4.74.08-.01.16-.01.22 0h.07A4.738 4.738 0 0 0 13.75 6.75C13.75 4.13 11.62 2 9 2Z"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M16.41 4c2.07 0 3.74 1.68 3.74 3.75 0 2.02-1.6 3.66-3.6 3.74-.07-.01-.14-.01-.21 0"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M4.16 14.56c-2.58 1.72-2.58 4.52 0 6.23 2.93 1.95 7.73 1.95 10.66 0 2.58-1.72 2.58-4.52 0-6.23-2.92-1.94-7.72-1.94-10.66 0Z"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M18.34 14c.77.16 1.49.48 2.07.96 1.63 1.3 1.63 3.43 0 4.73-.57.46-1.27.78-2.02.95"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    <circle cx="9" cy="7" r="3.5" stroke="#4F46E5" strokeWidth="1.6"/>
+    <path d="M2 20c0-3.31 3.13-6 7-6s7 2.69 7 6" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round"/>
+    <circle cx="17" cy="8" r="2.5" stroke="#4F46E5" strokeWidth="1.4" opacity="0.7"/>
+    <path d="M20 20c0-2.5-1.8-4.6-4.3-5.4" stroke="#4F46E5" strokeWidth="1.4" strokeLinecap="round" opacity="0.7"/>
   </svg>
 );
 const IcoCalendario = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M8 2v3M16 2v3M3.5 9.09h17M21 8.5V17c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V8.5c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5Z"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M15.695 13.7h.01M15.695 16.7h.01M11.995 13.7h.01M11.995 16.7h.01M8.294 13.7h.01M8.294 16.7h.01"
-      stroke="#4F46E5"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    <rect x="3" y="5" width="18" height="16" rx="3" stroke="#4F46E5" strokeWidth="1.6" strokeLinejoin="round"/>
+    <path d="M3 10h18" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round"/>
+    <path d="M8 3v4M16 3v4" stroke="#4F46E5" strokeWidth="1.8" strokeLinecap="round"/>
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round"/>
   </svg>
 );
 const IcoCamera = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M6.76 22h10.48c3 0 4.21-1.74 4.36-3.86l.65-10.14C22.4 5.7 20.54 4 18.25 4c-.61 0-1.17-.35-1.45-.89l-.72-1.45C15.63.96 14.52.5 13.45.5h-2.89C9.48.5 8.38.96 7.92 1.66L7.2 3.11C6.92 3.65 6.36 4 5.75 4 3.46 4 1.6 5.7 1.75 8L2.4 18.14C2.54 20.26 3.76 22 6.76 22Z"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M10.5 8h3M12 18c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"
-      stroke="#4F46E5"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    {/* Cámara minimalista y limpia */}
+    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="12" cy="13" r="4" stroke="#4F46E5" strokeWidth="1.6"/>
   </svg>
 );
 const IcoCorazon = () => (
@@ -436,6 +359,68 @@ const IcoChevronRight = () => (
     <polyline points="9 18 15 12 9 6" />
   </svg>
 );
+
+// ─── Elementos flotantes animados (atrás del contenido, no tapan nada) ────────
+function FloatingDecor({ tipo }: { tipo: string }) {
+  if (tipo === "cumpleaños") {
+    const piezas = [
+      { left: "5%",  color: "#4F46E5", shape: "rect",   sz: 8,  delay: "0s",    dur: "3.2s" },
+      { left: "14%", color: "#818CF8", shape: "circle", sz: 6,  delay: "0.4s",  dur: "2.8s" },
+      { left: "22%", color: "#F59E0B", shape: "rect",   sz: 9,  delay: "0.1s",  dur: "3.6s" },
+      { left: "31%", color: "#10B981", shape: "circle", sz: 7,  delay: "0.7s",  dur: "2.6s" },
+      { left: "39%", color: "#EC4899", shape: "rect",   sz: 6,  delay: "0.3s",  dur: "3.0s" },
+      { left: "48%", color: "#3B82F6", shape: "circle", sz: 10, delay: "0.9s",  dur: "3.4s" },
+      { left: "57%", color: "#A5B4FC", shape: "rect",   sz: 7,  delay: "0.2s",  dur: "2.9s" },
+      { left: "65%", color: "#34D399", shape: "circle", sz: 6,  delay: "0.6s",  dur: "3.1s" },
+      { left: "73%", color: "#4F46E5", shape: "rect",   sz: 8,  delay: "0.5s",  dur: "2.7s" },
+      { left: "81%", color: "#F59E0B", shape: "circle", sz: 9,  delay: "0.8s",  dur: "3.5s" },
+      { left: "89%", color: "#EC4899", shape: "rect",   sz: 6,  delay: "0.15s", dur: "3.0s" },
+      { left: "95%", color: "#818CF8", shape: "circle", sz: 7,  delay: "0.55s", dur: "2.8s" },
+    ];
+    return (
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: -1 }}>
+        <style>{`@keyframes confFall{0%{transform:translateY(-12px) rotate(0deg);opacity:0}15%{opacity:0.48}85%{opacity:0.38}100%{transform:translateY(420px) rotate(600deg);opacity:0}}`}</style>
+        {piezas.map((p, i) => (
+          <div key={i} style={{
+            position: "absolute", top: -14, left: p.left,
+            width: p.sz, height: p.sz,
+            background: p.color,
+            borderRadius: p.shape === "circle" ? "50%" : "2px",
+            animation: `confFall ${p.dur} ${p.delay} linear infinite`,
+          }} />
+        ))}
+      </div>
+    );
+  }
+
+  if (tipo === "graduacion") {
+    const caps = [
+      { left: "4%",  delay: "0s",   dur: "4.0s", sz: 18 },
+      { left: "16%", delay: "0.5s", dur: "3.4s", sz: 14 },
+      { left: "28%", delay: "1.0s", dur: "3.8s", sz: 20 },
+      { left: "42%", delay: "0.3s", dur: "4.2s", sz: 16 },
+      { left: "55%", delay: "0.8s", dur: "3.6s", sz: 22 },
+      { left: "68%", delay: "0.2s", dur: "3.9s", sz: 14 },
+      { left: "80%", delay: "0.6s", dur: "4.1s", sz: 18 },
+      { left: "92%", delay: "1.2s", dur: "3.5s", sz: 16 },
+    ];
+    return (
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: -1 }}>
+        <style>{`@keyframes capFloat{0%{transform:translateY(420px) rotate(-8deg);opacity:0}15%{opacity:0.3}85%{opacity:0.25}100%{transform:translateY(-12px) rotate(8deg);opacity:0}}`}</style>
+        {caps.map((c, i) => (
+          <div key={i} style={{
+            position: "absolute", bottom: -24, left: c.left,
+            fontSize: c.sz, lineHeight: 1,
+            animation: `capFloat ${c.dur} ${c.delay} linear infinite`,
+            userSelect: "none",
+          }}>🎓</div>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+}
 
 // ─── Decoración por tipo de evento ────────────────────────────────────────────
 function DecoracionEvento({ tipo }: { tipo: string }) {
@@ -790,7 +775,7 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
           }}
         >
           <IcoImages />
-          {lugar ? `📍 Ver fotos de ${lugar}` : `📸 Ver fotos del lugar`}
+          {lugar ? `Ver fotos de ${lugar}` : `Ver fotos del lugar`}
           {validas.length > 1 && ` (${validas.length})`}
         </button>
       </div>
@@ -846,17 +831,18 @@ function GaleriaLugar({ fotos, lugar }: { fotos: string[]; lugar?: string }) {
 function SubirFotosInvitado({
   invitadoId,
   eventoId,
-  onFotoSubida,
+  onMostrarDeseo,
 }: {
   invitadoId: string;
   eventoId: string;
   token?: string;
-  onFotoSubida?: () => void;
+  onMostrarDeseo?: () => void;
 }) {
   const [fotos, setFotos] = useState<string[]>([]);
   const [subiendo, setSubiendo] = useState(false);
   const [cargado, setCargado] = useState(false);
   const [verFotos, setVerFotos] = useState(false);
+  const [promptDeseo, setPromptDeseo] = useState<"primera" | "maxima" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const MAX = 5;
 
@@ -880,6 +866,7 @@ function SubirFotosInvitado({
     const disponibles = MAX - fotos.length;
     const seleccionadas = files.slice(0, disponibles);
     setSubiendo(true);
+    const nuevas: string[] = [];
     for (const file of seleccionadas) {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `${eventoId}/${invitadoId}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
@@ -899,13 +886,20 @@ function SubirFotosInvitado({
             path: up.path,
             estado: "aprobada",
           });
-          setFotos((prev) => [...prev, url]);
+          nuevas.push(url);
         }
       }
     }
     setSubiendo(false);
     if (fileRef.current) fileRef.current.value = "";
-    if (onFotoSubida) onFotoSubida();
+    if (nuevas.length > 0) {
+      const prevCount = fotos.length;
+      const newCount = prevCount + nuevas.length;
+      setFotos(prev => [...prev, ...nuevas]);
+      // Mostrar prompt solo después de la 1ª foto o al alcanzar el máximo
+      if (newCount >= MAX) setPromptDeseo("maxima");
+      else if (prevCount === 0 && newCount >= 1) setPromptDeseo("primera");
+    }
   }
 
   if (!cargado) return null;
@@ -963,7 +957,7 @@ function SubirFotosInvitado({
         )}
       </button>
 
-      {/* Grid de miniaturas — se muestra al tocar "Ver" */}
+      {/* Grid de miniaturas */}
       {verFotos && fotos.length > 0 && (
         <div className="fotos-inv-grid" style={{ marginTop: 10 }}>
           {fotos.map((src, i) => (
@@ -971,6 +965,39 @@ function SubirFotosInvitado({
               <img src={src} alt={`Foto ${i + 1}`} />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Prompt contextual: publicar deseo después de foto 1 o foto 5 */}
+      {promptDeseo && (
+        <div style={{ marginTop: 12, background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", border: "1.5px solid rgba(79,70,229,0.20)", borderRadius: 16, padding: "18px 16px", animation: "fadeUp 0.3s ease" }}>
+          <div style={{ fontSize: 22, textAlign: "center", marginBottom: 8 }}>
+            {promptDeseo === "maxima" ? "🎉" : "📸"}
+          </div>
+          <p style={{ fontSize: 13, color: "#3730A3", fontWeight: 600, textAlign: "center", marginBottom: 4 }}>
+            {promptDeseo === "maxima"
+              ? "¡Llegaste al máximo de fotos!"
+              : "¡Primera foto subida!"}
+          </p>
+          <p style={{ fontSize: 12, color: "#6366F1", textAlign: "center", marginBottom: 14, lineHeight: 1.5 }}>
+            {promptDeseo === "maxima"
+              ? "¿Querés dejar tu deseo para los anfitriones antes de ir al muro?"
+              : "¿Es tu única foto? Podés publicar tu deseo ahora o subir más fotos primero."}
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { setPromptDeseo(null); if (onMostrarDeseo) onMostrarDeseo(); }}
+              style={{ flex: 1, background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "#fff", border: "none", borderRadius: 12, padding: "12px 8px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 14px rgba(79,70,229,0.28)" }}
+            >
+              💌 Publicar deseo
+            </button>
+            <button
+              onClick={() => setPromptDeseo(null)}
+              style={{ flex: 1, background: "white", color: "#6366F1", border: "1.5px solid rgba(99,102,241,0.30)", borderRadius: 12, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              {promptDeseo === "maxima" ? "Ir al muro" : "Subir más fotos"}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -1584,6 +1611,108 @@ function DeseoModal({ eventoId, token, onClose }: { eventoId: string; token: str
   );
 }
 
+// ─── Formulario deseo inline ──────────────────────────────────────────────────
+function DeseoFormInline({
+  invitadoId,
+  eventoId,
+  invitadoNombre,
+  onPublicado,
+}: {
+  invitadoId: string;
+  eventoId: string;
+  invitadoNombre: string;
+  onPublicado: () => void;
+}) {
+  const [mensaje, setMensaje] = useState("");
+  const [sticker, setSticker] = useState(STICKERS_DESEO[0]);
+  const [color, setColor] = useState(COLORES_DESEO_FORM[0]);
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+
+  async function publicar() {
+    if (!mensaje.trim()) return;
+    setEnviando(true);
+    await supabase.from("deseos").insert({
+      evento_id: eventoId,
+      invitado_id: invitadoId,
+      nombre_autor: invitadoNombre || "Invitado",
+      mensaje: mensaje.trim(),
+      emoji_sticker: sticker,
+      color_fondo: color,
+      aprobado: true,
+    });
+    setEnviando(false);
+    setEnviado(true);
+    onPublicado();
+  }
+
+  if (enviado) {
+    return (
+      <div style={{ background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", border: "1.5px solid rgba(79,70,229,0.22)", borderRadius: 18, padding: "24px 20px", textAlign: "center" }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>💌</div>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontStyle: "italic", color: "#3730A3", marginBottom: 8 }}>¡Tu deseo fue enviado!</div>
+        <p style={{ fontSize: 13, color: "#6366F1" }}>Tu mensaje aparecerá en el muro del evento.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: "white", border: "1.5px solid rgba(79,70,229,0.18)", borderRadius: 18, padding: "20px", display: "flex", flexDirection: "column", gap: 14, boxShadow: "0 4px 20px rgba(79,70,229,0.08)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ fontSize: 28 }}>💌</div>
+        <div>
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontStyle: "italic", color: "#1E1B4B", fontWeight: 600 }}>Dejá tu deseo</div>
+          <div style={{ fontSize: 11, color: "#6B7280", marginTop: 1 }}>Un mensaje especial para los anfitriones</div>
+        </div>
+      </div>
+
+      {/* Stickers */}
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.8px" }}>Elige un sticker</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {STICKERS_DESEO.map((s) => (
+            <button key={s} onClick={() => setSticker(s)}
+              style={{ width: 36, height: 36, borderRadius: 10, border: sticker === s ? "2.5px solid #4F46E5" : "1.5px solid #E5E7EB", background: sticker === s ? "#EEF2FF" : "white", fontSize: 18, cursor: "pointer", transition: "all .14s" }}>
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Color de tarjeta */}
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.8px" }}>Color de tarjeta</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {COLORES_DESEO_FORM.map((c) => (
+            <button key={c} onClick={() => setColor(c)}
+              style={{ width: 28, height: 28, borderRadius: 8, background: c, border: color === c ? "2.5px solid #4F46E5" : "1.5px solid #D1D5DB", cursor: "pointer", transition: "all .14s" }} />
+          ))}
+        </div>
+      </div>
+
+      {/* Mensaje */}
+      <textarea
+        value={mensaje}
+        onChange={(e) => setMensaje(e.target.value)}
+        placeholder="Escribe tu deseo, dedicatoria o mensaje especial..."
+        maxLength={300}
+        rows={4}
+        style={{ width: "100%", border: "1.5px solid #E0E7FF", borderRadius: 12, padding: "12px 14px", fontSize: 14, outline: "none", fontFamily: "inherit", resize: "none", background: color, color: "#1E1B4B", boxSizing: "border-box", lineHeight: 1.6 }}
+      />
+      <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: -10, textAlign: "right" }}>{mensaje.length}/300</div>
+
+      <button
+        onClick={publicar}
+        disabled={enviando || !mensaje.trim()}
+        style={{ width: "100%", background: mensaje.trim() ? "linear-gradient(135deg,#3730A3,#4F46E5)" : "#E5E7EB", color: mensaje.trim() ? "white" : "#9CA3AF", border: "none", borderRadius: 14, padding: "15px", fontFamily: "inherit", fontSize: 15, fontWeight: 700, cursor: mensaje.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all .2s", boxShadow: mensaje.trim() ? "0 6px 20px rgba(79,70,229,0.30)" : "none" }}
+      >
+        <span style={{ fontSize: 18 }}>{sticker}</span>
+        {enviando ? "Publicando..." : "Publicar mi deseo"}
+      </button>
+    </div>
+  );
+}
+
 // ─── Recordatorio final de deseo (antes del botón Listo) ─────────────────────
 function RecordatorioDeseoFinal({ eventoId, invitadoId, token }: { eventoId: string; invitadoId: string; token: string }) {
   const [tieneDeseo, setTieneDeseo] = useState<boolean | null>(null);
@@ -1605,17 +1734,25 @@ function RecordatorioDeseoFinal({ eventoId, invitadoId, token }: { eventoId: str
         Todavía podés escribir un deseo o dedicatoria especial para los anfitriones.
       </p>
       <button
-        style={{ width: "100%", background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", color: "#fff", border: "none", borderRadius: 13, padding: "15px", fontFamily: "'Jost',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 6px 20px -4px rgba(79,70,229,0.38)", letterSpacing: ".2px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        className="btn-accion-full"
+        style={{ borderRadius: 13 }}
         onClick={() => { window.location.href = `/muro/${eventoId}?token=${token}&tab=deseos`; }}
       >
-        💌 Sí, escribir mi deseo
+        <div className="btn-accion-ico">
+          <span style={{ fontSize: 18 }}>💌</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Sí, escribir mi deseo</span>
+          <span style={{ fontSize: 11, opacity: 0.65 }}>Te llevamos al libro de mensajes</span>
+        </div>
+        <svg style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
     </div>
   );
 }
 
 // ─── Recordatorio de foto y deseo ─────────────────────────────────────────────
-function RecordatorioAccion({ eventoId, invitadoId, token }: { eventoId: string; invitadoId: string; token: string }) {
+function RecordatorioAccion({ eventoId: _eventoId, invitadoId, token: _token, onEscribirDeseo }: { eventoId: string; invitadoId: string; token: string; onEscribirDeseo?: () => void }) {
   const [tieneFoto, setTieneFoto] = useState<boolean | null>(null);
   const [tieneDeseo, setTieneDeseo] = useState<boolean | null>(null);
 
@@ -1655,7 +1792,10 @@ function RecordatorioAccion({ eventoId, invitadoId, token }: { eventoId: string;
         </div>
         {!tieneFoto && (
           <button
-            style={{ flexShrink: 0, background: "rgba(79,70,229,0.10)", border: "1px solid rgba(79,70,229,0.22)", borderRadius: 10, padding: "7px 13px", fontSize: 12, fontWeight: 700, color: "var(--gold-dark)", cursor: "pointer", fontFamily: "'Jost',sans-serif", whiteSpace: "nowrap" }}
+            style={{ flexShrink: 0, background: "var(--cream)", border: "1px solid var(--border-mid)", borderRadius: 10, padding: "7px 13px", fontSize: 12, fontWeight: 700, color: "var(--ink2)", cursor: "pointer", fontFamily: "'Jost',sans-serif", whiteSpace: "nowrap", transition: "all .15s" }}
+            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.background = "#4F46E5"; (e.currentTarget as HTMLButtonElement).style.color = "#fff"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#4F46E5"; }}
+            onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--cream)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--ink2)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--cream)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--ink2)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)"; }}
             onClick={() => { document.getElementById("subir-fotos-inv")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
           >
             Subir foto
@@ -1676,10 +1816,13 @@ function RecordatorioAccion({ eventoId, invitadoId, token }: { eventoId: string;
             {tieneDeseo ? "Ya enviaste tu mensaje" : "Un mensaje especial para los anfitriones"}
           </div>
         </div>
-        {!tieneDeseo && (
+        {!tieneDeseo && onEscribirDeseo && (
           <button
-            style={{ flexShrink: 0, background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", border: "none", borderRadius: 10, padding: "7px 13px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", fontFamily: "'Jost',sans-serif", whiteSpace: "nowrap", boxShadow: "0 3px 10px rgba(79,70,229,0.30)" }}
-            onClick={() => { window.location.href = `/muro/${eventoId}?token=${token}&tab=deseos`; }}
+            style={{ flexShrink: 0, background: "var(--cream)", border: "1px solid var(--border-mid)", borderRadius: 10, padding: "7px 13px", fontSize: 12, fontWeight: 700, color: "var(--ink2)", cursor: "pointer", fontFamily: "'Jost',sans-serif", whiteSpace: "nowrap", transition: "all .15s" }}
+            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.background = "#4F46E5"; (e.currentTarget as HTMLButtonElement).style.color = "#fff"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#4F46E5"; }}
+            onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--cream)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--ink2)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--cream)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--ink2)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)"; }}
+            onClick={onEscribirDeseo}
           >
             Escribir
           </button>
@@ -1715,8 +1858,9 @@ export default function ConfirmarPage() {
   const [mesasDisponibles, setMesasDisponibles] = useState<MesaConOcupacion[]>([]);
   const [asignandoMesa, setAsignandoMesa] = useState(false);
   const [mesaConfirmada, setMesaConfirmada] = useState<string | null>(null);
-  // Modal deseo post-foto
-  const [showDeseoModal, setShowDeseoModal] = useState(false);
+  // Formulario deseo inline
+  const [showDeseoForm, setShowDeseoForm] = useState(false);
+  const [deseoPublicado, setDeseoPublicado] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
@@ -1827,6 +1971,7 @@ export default function ConfirmarPage() {
   async function confirmarAsistencia() {
     if (!invitado) return;
     setConfirmando(true);
+
     const { data: lastConf } = await supabase
       .from("invitados")
       .select("numero_confirmacion")
@@ -1834,32 +1979,66 @@ export default function ConfirmarPage() {
       .eq("estado", "confirmado")
       .order("numero_confirmacion", { ascending: false })
       .limit(1);
-    const siguiente = lastConf?.[0]?.numero_confirmacion
-      ? lastConf[0].numero_confirmacion + 1
-      : 1;
-    const { data: updated } = await supabase
-      .from("invitados")
-      .update({
-        estado: "confirmado",
-        num_personas: numPersonas,
-        numero_confirmacion: siguiente,
-      })
-      .eq("id", invitado.id)
-      .select()
-      .single();
-    if (updated) setInvitado(updated);
+
+    let siguiente = (lastConf?.[0]?.numero_confirmacion ?? 0) + 1;
+
+    // Reintentos para manejar race condition en numero_confirmacion (unique constraint)
+    let updated = null;
+    for (let intento = 0; intento < 5; intento++) {
+      const { data, error } = await supabase
+        .from("invitados")
+        .update({
+          estado: "confirmado",
+          num_personas: numPersonas,
+          numero_confirmacion: siguiente,
+        })
+        .eq("id", invitado.id)
+        .select()
+        .single();
+
+      if (data && !error) {
+        updated = data;
+        break;
+      }
+
+      // Si el error es unique constraint en numero_confirmacion, reintentamos con el siguiente
+      const esConflicto = error?.code === "23505" ||
+        error?.message?.includes("numero_confirmacion") ||
+        error?.message?.includes("unique");
+
+      if (esConflicto) {
+        siguiente++;
+        continue;
+      }
+
+      // Otro error — salimos del loop
+      console.error("Error al confirmar:", error);
+      break;
+    }
+
     setConfirmando(false);
-    setStep("confirmado");
-    if (updated?.evento_id) cargarMesasDisponibles(updated.evento_id);
+
+    if (updated) {
+      setInvitado(updated);
+      setStep("confirmado");
+      cargarMesasDisponibles(updated.evento_id);
+    } else {
+      // El UPDATE falló en la DB — no avanzamos al paso confirmado
+      alert("Hubo un error al confirmar tu asistencia. Por favor intentá de nuevo.");
+    }
   }
 
   async function rechazarAsistencia() {
     if (!invitado) return;
-    await supabase
+    const { error } = await supabase
       .from("invitados")
       .update({ estado: "rechazado" })
       .eq("id", invitado.id);
-    setStep("rechazado");
+    if (!error) {
+      setStep("rechazado");
+    } else {
+      alert("Hubo un error. Por favor intentá de nuevo.");
+    }
   }
 
   async function handleConfirmarClick() {
@@ -2048,7 +2227,7 @@ export default function ConfirmarPage() {
     }
     .page{min-height:100dvh;background:var(--cream);
       background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(79,70,229,0.08) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 100%,rgba(79,70,229,0.05) 0%,transparent 60%);
-      padding-bottom:80px;opacity:0;transition:opacity .5s ease;}
+      padding-bottom:4px;opacity:0;transition:opacity .5s ease;}
     .page.vis{opacity:1}
     .page.destroying{animation:shatter .6s ease forwards}
     @keyframes shatter{0%{opacity:1;transform:scale(1)}30%{opacity:1;transform:scale(1.03)}60%{opacity:.5;transform:scale(.95)}100%{opacity:0;transform:scale(.8)}}
@@ -2061,7 +2240,7 @@ export default function ConfirmarPage() {
     .topbar-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;line-height:1}
     .topbar-sub{font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-top:1px}
 
-    .wrap{max-width:430px;margin:0 auto;padding:22px 16px;display:flex;flex-direction:column;gap:20px}
+    .wrap{max-width:430px;margin:0 auto;padding:22px 16px 8px;display:flex;flex-direction:column;gap:20px}
 
     .inv-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:0 8px 48px rgba(15,23,42,.13),0 2px 8px rgba(15,23,42,.06);overflow:hidden;animation:riseUp .6s cubic-bezier(.22,1,.36,1) both;}
     /* Hero foto — limpia, sin overlays ni texto encima */
@@ -2136,15 +2315,26 @@ export default function ConfirmarPage() {
     .como-llegar-label{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
     .como-llegar-text{font-size:14px;color:var(--ink2);line-height:1.7}
 
-    /* Decisión */
-    .pregunta-wrap{text-align:center;padding:4px 0 2px}
-    .pregunta{font-family:'Cormorant Garamond',serif;font-size:26px;font-style:italic;color:var(--ink);font-weight:400;margin-bottom:4px}
-    .pregunta-sub{font-size:13px;color:var(--ink3);font-weight:500;letter-spacing:.5px}
-    .grid-decision{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .btn-si{background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:var(--r-sm);padding:18px 12px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;box-shadow:0 8px 22px -6px rgba(79,70,229,0.40), 0 2px 6px rgba(79,70,229,0.14);transition:transform .18s,box-shadow .18s,opacity .15s;letter-spacing:.3px}
-    .btn-si:hover{transform:translateY(-2px);box-shadow:0 12px 30px -6px rgba(79,70,229,0.48), 0 4px 10px rgba(79,70,229,0.18)}
+    /* ── Barra de decisión — FIXED bottom, siempre visible sin importar el scroll ── */
+    .decision-bar{
+      position:fixed;bottom:0;left:0;right:0;
+      background:rgba(255,255,255,0.97);
+      backdrop-filter:blur(20px);
+      -webkit-backdrop-filter:blur(20px);
+      border-top:1px solid rgba(79,70,229,0.14);
+      padding:12px 16px max(16px,env(safe-area-inset-bottom,16px));
+      z-index:50;
+      box-shadow:0 -8px 32px rgba(79,70,229,0.12);
+    }
+    .decision-bar-inner{max-width:430px;margin:0 auto}
+    .decision-bar-label{font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:var(--ink3);text-align:center;margin-bottom:10px;font-weight:400}
+    .decision-bar-btns{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+    /* Espacio extra en el .wrap para que el contenido no quede tapado por la barra fija */
+    .wrap-has-bar{padding-bottom:110px!important}
+    .btn-si{background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:var(--r-sm);padding:16px 12px;font-family:'Jost',sans-serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px -4px rgba(79,70,229,0.40);transition:transform .18s,box-shadow .18s,opacity .15s;letter-spacing:.3px}
+    .btn-si:hover{transform:translateY(-1px);box-shadow:0 10px 28px -4px rgba(79,70,229,0.48)}
     .btn-si:disabled{opacity:.65;cursor:wait}
-    .btn-no{background:var(--cream);color:var(--ink2);border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:18px 12px;font-family:'Jost',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s;letter-spacing:.2px}
+    .btn-no{background:var(--cream);color:var(--ink2);border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:16px 12px;font-family:'Jost',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s;letter-spacing:.2px}
     .btn-no:hover{background:#fef2f2;color:#b45309;border-color:rgba(180,83,9,0.25)}
 
     /* Form */
@@ -2193,13 +2383,17 @@ export default function ConfirmarPage() {
     .btn-subir-foto:disabled{opacity:.65;cursor:wait}
 
     .btn-accion-ico{width:44px;height:44px;border-radius:12px;background:var(--cream2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .btn-accion-full{width:100%;background:var(--cream);border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:15px 18px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:all .18s;font-family:'Jost',sans-serif}
-    .btn-accion-full:hover{background:var(--gold-pale);border-color:var(--gold)}
-    .btn-wa{width:100%;background:linear-gradient(135deg,#1a5c36,#128C7E);color:#fff;border:none;border-radius:var(--r-sm);padding:16px;font-family:'Jost',sans-serif;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.3px;box-shadow:0 5px 20px rgba(18,140,126,0.32);transition:transform .18s;display:flex;align-items:center;justify-content:center;gap:9px}
-    .btn-wa:hover{transform:translateY(-1px)}
+    .btn-accion-full{width:100%;background:var(--cream);border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:15px 18px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:all .18s;font-family:'Jost',sans-serif;color:var(--ink2)}
+    .btn-accion-full:hover{background:var(--gold-pale);border-color:rgba(79,70,229,0.3)}
+    .btn-accion-full:active{background:#4F46E5;border-color:#4F46E5;color:#fff;transform:scale(0.98)}
+    .btn-accion-full:active .btn-accion-ico{background:rgba(255,255,255,0.15);border-color:transparent}
+    .btn-wa{width:100%;background:var(--cream);border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:15px 18px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:all .18s;font-family:'Jost',sans-serif;color:var(--ink2)}
+    .btn-wa:hover{background:var(--gold-pale);border-color:rgba(79,70,229,0.3)}
+    .btn-wa:active{background:#4F46E5;border-color:#4F46E5;color:#fff;transform:scale(0.98)}
     .btn-wa:disabled{opacity:.7;cursor:wait}
-    .btn-cerrar{width:100%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.3px;box-shadow:0 8px 22px -6px rgba(79,70,229,0.40);transition:transform .18s;display:flex;align-items:center;justify-content:center;gap:9px}
-    .btn-cerrar:hover{transform:translateY(-1px)}
+    .btn-cerrar{width:100%;background:var(--cream);border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:15px 18px;display:flex;align-items:center;gap:13px;cursor:pointer;transition:all .18s;font-family:'Jost',sans-serif;font-size:14px;font-weight:600;color:var(--ink2)}
+    .btn-cerrar:hover{background:var(--gold-pale);border-color:rgba(79,70,229,0.3)}
+    .btn-cerrar:active{background:#4F46E5;border-color:#4F46E5;color:#fff;transform:scale(0.98)}
 
     /* Mesa row mejorado */
     .mesa-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;gap:12px}
@@ -2547,15 +2741,6 @@ export default function ConfirmarPage() {
         </div>
       )}
 
-      {/* Modal deseo post-foto */}
-      {showDeseoModal && invitado && (
-        <DeseoModal
-          eventoId={invitado.evento_id}
-          token={invitado.token}
-          onClose={() => setShowDeseoModal(false)}
-        />
-      )}
-
       {/* Modal tarjeta */}
       {mostrarModalTarjeta && (
         <div
@@ -2619,8 +2804,11 @@ export default function ConfirmarPage() {
 
         {/* ─── VISTA ─── */}
         {step === "vista" && (
-          <div className="wrap">
-            <div className="inv-card">
+          <div className="wrap wrap-has-bar">
+            <div className="inv-card" style={{ position: "relative" }}>
+
+              {/* Elementos flotantes animados — detrás de todo (z-index 0) */}
+              <FloatingDecor tipo={evento.tipo} />
 
               {/* ── HERO: foto limpia sin texto encima ── */}
               {evento.imagen_url ? (
@@ -2637,7 +2825,7 @@ export default function ConfirmarPage() {
               )}
 
               {/* ── Tipo, decoración, nombre invitado, anfitriones — TODO DEBAJO de la foto ── */}
-              <div style={{ textAlign: "center", padding: "24px 22px 10px", background: "var(--cream)", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ textAlign: "center", padding: "24px 22px 10px", background: "var(--cream)", borderBottom: "1px solid var(--border)", position: "relative" }}>
                 {/* Badge de tipo */}
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
                   <span className="inv-tipo-badge">
@@ -2799,23 +2987,23 @@ export default function ConfirmarPage() {
               </div>
             </div>
 
-            <div className="pregunta-wrap">
-              <p className="pregunta">¿Podrás asistir?</p>
-              <p className="pregunta-sub">
-                Tu respuesta es importante para los anfitriones
-              </p>
-            </div>
-            <div className="grid-decision">
-              <button className="btn-no" onClick={rechazarAsistencia}>
-                No podré asistir
-              </button>
-              <button
-                className="btn-si"
-                onClick={handleConfirmarClick}
-                disabled={confirmando}
-              >
-                {confirmando ? "Confirmando..." : "Confirmar asistencia"}
-              </button>
+            {/* ── Barra de decisión sticky en mobile — siempre visible ── */}
+            <div className="decision-bar">
+              <div className="decision-bar-inner">
+                <p className="decision-bar-label">¿Podrás asistir?</p>
+                <div className="decision-bar-btns">
+                  <button className="btn-no" onClick={rechazarAsistencia}>
+                    No podré
+                  </button>
+                  <button
+                    className="btn-si"
+                    onClick={handleConfirmarClick}
+                    disabled={confirmando}
+                  >
+                    {confirmando ? "Confirmando..." : "✓ Confirmar asistencia"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -3075,39 +3263,61 @@ export default function ConfirmarPage() {
                   );
                 })()}
 
-                {/* Recordatorio: si no subió foto aún */}
+                {/* Recordatorio de experiencia */}
                 <RecordatorioAccion
                   eventoId={invitado.evento_id}
                   invitadoId={invitado.id}
                   token={invitado.token}
+                  onEscribirDeseo={() => setShowDeseoForm(true)}
                 />
 
-                {/* Subir fotos — máx 5, opcional */}
+                {/* Subir fotos — máx 5 */}
                 <div id="subir-fotos-inv">
                   <SubirFotosInvitado
                     invitadoId={invitado.id}
                     eventoId={invitado.evento_id}
                     token={token}
-                    onFotoSubida={() => setShowDeseoModal(true)}
+                    onMostrarDeseo={() => setShowDeseoForm(true)}
                   />
                 </div>
 
-                {/* Dejar deseo en el muro — botón prominente */}
-                <button
-                  style={{ width: "100%", background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", color: "#fff", border: "none", borderRadius: "var(--r-sm)", padding: "17px 20px", fontFamily: "'Jost',sans-serif", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 6px 22px -4px rgba(79,70,229,0.40)", letterSpacing: ".2px", transition: "transform .18s, box-shadow .18s" }}
-                  onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 9px 28px -4px rgba(79,70,229,0.48)"; }}
-                  onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.transform = ""; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 22px -4px rgba(79,70,229,0.40)"; }}
-                  onClick={() => { window.location.href = `/muro/${invitado.evento_id}?token=${invitado.token}&tab=deseos`; }}
-                >
-                  <span style={{ fontSize: 18, lineHeight: 1 }}>💌</span>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }}>
-                    <span>Escribir mi deseo</span>
-                    <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.82 }}>Un mensaje especial para los anfitriones</span>
+                {/* Formulario de deseo inline — UN SOLO PUNTO DE ENTRADA */}
+                {showDeseoForm && !deseoPublicado && (
+                  <DeseoFormInline
+                    invitadoId={invitado.id}
+                    eventoId={invitado.evento_id}
+                    invitadoNombre={invitado.nombre}
+                    onPublicado={() => {
+                      setDeseoPublicado(true);
+                      // Redirigir al muro luego de un breve instante para mostrar feedback
+                      setTimeout(() => {
+                        window.location.href = `/muro/${invitado.evento_id}?token=${token}`;
+                      }, 1800);
+                    }}
+                  />
+                )}
+                {deseoPublicado && (
+                  <div style={{ background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", border: "1.5px solid rgba(79,70,229,0.22)", borderRadius: 18, padding: "20px", textAlign: "center" }}>
+                    <div style={{ fontSize: 36, marginBottom: 8 }}>💌</div>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontStyle: "italic", color: "#3730A3", marginBottom: 8 }}>¡Tu deseo fue publicado!</div>
+                    <div style={{ fontSize: 12, color: "#6366F1" }}>Llevándote al muro del evento...</div>
                   </div>
-                  <svg style={{ marginLeft: "auto", flexShrink: 0 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
+                )}
+                {!showDeseoForm && !deseoPublicado && (
+                  <button
+                    className="btn-accion-full"
+                    onClick={() => setShowDeseoForm(true)}
+                  >
+                    <div className="btn-accion-ico">
+                      <span style={{ fontSize: 18, lineHeight: 1 }}>💌</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>Escribir mi deseo</span>
+                      <span style={{ fontSize: 11, opacity: 0.65 }}>Un mensaje especial para los anfitriones</span>
+                    </div>
+                    <svg style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                )}
 
                 {evento.fecha && (
                   <button
@@ -3158,24 +3368,28 @@ export default function ConfirmarPage() {
                 {/* Botón ver muro de fotos (modo lectura) */}
                 <button
                   className="btn-wa"
-                  style={{ background: "linear-gradient(135deg,var(--gold-dark),var(--gold))" }}
                   onClick={() => window.open(`/muro/${invitado.evento_id}?token=${invitado.token}`, "_blank")}
                 >
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-                  </svg>
-                  Ver muro de fotos del evento
+                  <div className="btn-accion-ico">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>Ver muro de fotos del evento</span>
+                    <span style={{ fontSize: 11, opacity: 0.65 }}>Mirá las fotos que subieron los demás</span>
+                  </div>
+                  <svg style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
 
-                {/* Recordatorio final — solo si no dejó deseo */}
-                <RecordatorioDeseoFinal
-                  eventoId={invitado.evento_id}
-                  invitadoId={invitado.id}
-                  token={invitado.token}
-                />
-
                 <button className="btn-cerrar" onClick={confirmarYCerrar}>
-                  Listo, cerrar esta ventana
+                  <div className="btn-accion-ico">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>Listo, cerrar esta ventana</span>
+                    <span style={{ fontSize: 11, opacity: 0.65 }}>Todo quedó guardado</span>
+                  </div>
                 </button>
               </div>
             </div>
@@ -3225,50 +3439,116 @@ export default function ConfirmarPage() {
       {showEventixPromo && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 9999,
-          background: "#3730A3",
+          background: "#FFFFFF",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          padding: "32px 24px",
-          animation: "fadeInPromo .5s ease both",
+          padding: "48px 16px 32px",
+          overflow: "hidden",
         }}>
           <style>{`
-            @keyframes fadeInPromo { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
-            @keyframes shimmerP { 0%,100%{opacity:.6} 50%{opacity:1} }
-            .promo-card{width:100%;max-width:360px;background:linear-gradient(160deg,#1e1308 0%,#3730A3 100%);border:1.5px solid rgba(79,70,229,0.25);border-radius:24px;padding:36px 28px 32px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.5),0 0 0 1px rgba(79,70,229,0.08);}
-            .promo-logo-ring{width:72px;height:72px;border-radius:22px;background:rgba(79,70,229,0.08);border:1.5px solid rgba(79,70,229,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
-            .promo-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#E0E7FF;letter-spacing:.3px;line-height:1.15;margin-bottom:8px;}
-            .promo-sub{font-size:13px;color:rgba(79,70,229,0.55);line-height:1.6;margin-bottom:28px;font-family:'Jost',sans-serif;}
-            .promo-tags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:24px;}
-            .promo-tag{background:rgba(79,70,229,0.1);border:1px solid rgba(79,70,229,0.22);border-radius:20px;padding:5px 13px;font-size:11px;font-weight:600;color:#4F46E5;letter-spacing:.3px;font-family:'Jost',sans-serif;}
-            .promo-divider{width:40px;height:1px;background:rgba(79,70,229,0.25);margin:0 auto 20px;}
-            .promo-features{display:flex;flex-direction:column;gap:10px;margin-bottom:28px;text-align:left;}
-            .promo-feature{display:flex;align-items:center;gap:12px;font-size:12.5px;color:rgba(79,70,229,0.7);font-family:'Jost',sans-serif;}
-            .promo-dot{width:6px;height:6px;border-radius:50%;background:#4F46E5;flex-shrink:0;}
-            .promo-btn{width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,#4F46E5,#E0E7FF);color:#3730A3;font-size:14px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;letter-spacing:.4px;box-shadow:0 6px 20px rgba(79,70,229,0.3);margin-bottom:10px;}
-            .promo-btn-sec{width:100%;padding:12px;border:1.5px solid rgba(79,70,229,0.2);border-radius:14px;background:transparent;color:rgba(79,70,229,0.45);font-size:12px;font-weight:500;cursor:pointer;font-family:'Jost',sans-serif;}
+            @keyframes fadeInPromo { from{opacity:0;transform:translateY(20px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+            @keyframes promoGlow1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-18px,28px) scale(1.07)} 66%{transform:translate(14px,-18px) scale(0.95)} }
+            @keyframes promoGlow2 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(22px,-30px) scale(1.09)} 70%{transform:translate(-8px,18px) scale(0.93)} }
+            @keyframes promoRingExp { 0%{transform:scale(0.82);opacity:.7} 100%{transform:scale(2.0);opacity:0} }
+            @keyframes promoLogoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+            @keyframes promoMountLogo { from{opacity:0;transform:translateY(28px) scale(0.92)} to{opacity:1;transform:translateY(0) scale(1)} }
+            @keyframes promoMountCard { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+            @keyframes promoMountFoot { from{opacity:0} to{opacity:1} }
+            @keyframes promoShimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+            .promo-glow { position:absolute;pointer-events:none;border-radius:50%;filter:blur(90px) }
+            .promo-glow-1 { width:280px;height:280px;top:-60px;right:-40px;background:radial-gradient(circle,rgba(79,70,229,0.13) 0%,transparent 70%);animation:promoGlow1 9s ease-in-out infinite }
+            .promo-glow-2 { width:220px;height:220px;bottom:60px;left:-60px;background:radial-gradient(circle,rgba(129,140,248,0.10) 0%,transparent 70%);animation:promoGlow2 11s ease-in-out infinite }
+            .promo-glow-3 { width:180px;height:180px;bottom:-30px;right:10px;background:radial-gradient(circle,rgba(99,102,241,0.08) 0%,transparent 70%);animation:promoGlow1 13s ease-in-out infinite reverse }
+            .promo-logo-ring { position:absolute;border-radius:50%;border:1.5px solid rgba(79,70,229,0.18);animation:promoRingExp 3s ease-out infinite;width:68px;height:68px }
+            .promo-logo-ring-2 { animation-delay:1s }
+            .promo-logo-ring-3 { animation-delay:2s }
+            .promo-logo-pulse { position:relative;z-index:2;animation:promoLogoPulse 3.5s ease-in-out infinite;filter:drop-shadow(0 4px 20px rgba(79,70,229,0.20)) }
+            .promo-logo-name { font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;letter-spacing:-1.2px;color:#0F172A;line-height:1;text-align:center }
+            .promo-logo-name span { color:#4F46E5 }
+            .promo-logo-tag { font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:#64748B;margin-top:3px;text-align:center }
+            .promo-card-box { background:#FFFFFF;border:1.5px solid #E5E7F0;border-radius:24px;padding:28px 24px;box-shadow:0 14px 40px -10px rgba(15,23,42,0.10);width:100%;max-width:380px }
+            .promo-feat-row { display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:rgba(79,70,229,0.06);border:1px solid #E5E7F0;margin-bottom:8px }
+            .promo-feat-ic { width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;color:#4F46E5;flex-shrink:0;font-size:15px }
+            .promo-feat-lbl { font-size:13px;font-weight:600;color:#0F172A;line-height:1.25 }
+            .promo-feat-desc { font-size:11.5px;color:#64748B;line-height:1.35 }
+            .promo-btn-main { width:100%;padding:15px;border-radius:14px;border:none;background:linear-gradient(135deg,#4F46E5,#3730A3);color:#fff;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;letter-spacing:.3px;cursor:pointer;margin-top:4px;box-shadow:0 10px 30px -6px rgba(79,70,229,0.38),0 4px 12px rgba(79,70,229,0.18);transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden;min-height:50px;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px }
+            .promo-btn-main:hover { transform:translateY(-2px);box-shadow:0 10px 34px rgba(79,70,229,0.28) }
+            .promo-btn-main:active { transform:scale(0.97) }
+            .promo-btn-shimmer { position:absolute;inset:0;border-radius:inherit;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.22) 50%,transparent 62%);background-size:200% 100%;animation:promoShimmer 3.5s ease-in-out infinite }
+            .promo-btn-sec { width:100%;padding:12px;border:1.5px solid #E5E7F0;border-radius:14px;background:transparent;color:#64748B;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .2s,border-color .2s }
+            .promo-btn-sec:hover { color:#4F46E5;border-color:rgba(79,70,229,0.3) }
+            .promo-wrap-logo { animation:promoMountLogo .7s cubic-bezier(.22,1,.36,1) .1s both }
+            .promo-wrap-card { animation:promoMountCard .6s cubic-bezier(.22,1,.36,1) .26s both }
+            .promo-wrap-foot { animation:promoMountFoot .5s cubic-bezier(.22,1,.36,1) .42s both }
           `}</style>
-          <div className="promo-card">
-            <div className="promo-logo-ring"><AppLogo size={48} /></div>
-            <div className="promo-title">Eventix</div>
-            <p className="promo-sub">Gestiona tus invitaciones digitales de forma elegante y sencilla</p>
-            <div className="promo-tags">
-              <span className="promo-tag">Invitaciones</span>
-              <span className="promo-tag">Fotos</span>
-              <span className="promo-tag">Mesas</span>
-              <span className="promo-tag">Recuerdos</span>
+
+          {/* Glows animados */}
+          <div className="promo-glow promo-glow-1" />
+          <div className="promo-glow promo-glow-2" />
+          <div className="promo-glow promo-glow-3" />
+
+          <div style={{ width: "100%", maxWidth: 380, position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+
+            {/* Logo área */}
+            <div className="promo-wrap-logo" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginBottom: 24 }}>
+              <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 80, height: 80 }}>
+                <div className="promo-logo-ring" />
+                <div className="promo-logo-ring promo-logo-ring-2" />
+                <div className="promo-logo-ring promo-logo-ring-3" />
+                <div className="promo-logo-pulse"><AppLogo size={58} /></div>
+              </div>
+              <div>
+                <div className="promo-logo-name">Event<span>ix</span></div>
+                <div className="promo-logo-tag">Invitaciones · Fotos · Recuerdos</div>
+              </div>
             </div>
-            <div className="promo-divider" />
-            <div className="promo-features">
-              <div className="promo-feature"><div className="promo-dot"/><span>Invitaciones personalizadas por WhatsApp</span></div>
-              <div className="promo-feature"><div className="promo-dot"/><span>Confirmación de asistencia en un toque</span></div>
-              <div className="promo-feature"><div className="promo-dot"/><span>Muro de fotos y deseos del evento</span></div>
-              <div className="promo-feature"><div className="promo-dot"/><span>Asignación de mesas y código QR de entrada</span></div>
+
+            {/* Card */}
+            <div className="promo-card-box promo-wrap-card">
+              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "#0F172A", marginBottom: 4, letterSpacing: "-0.3px" }}>
+                ¡Creá tu propio evento!
+              </div>
+              <p style={{ fontSize: 13, color: "#64748B", marginBottom: 20, lineHeight: 1.55 }}>
+                Gestiona invitaciones digitales elegantes, recibí confirmaciones y conservá cada recuerdo.
+              </p>
+
+              <div className="promo-feat-row">
+                <div className="promo-feat-ic">✉️</div>
+                <div>
+                  <div className="promo-feat-lbl">Invitaciones por WhatsApp</div>
+                  <div className="promo-feat-desc">Personalizadas y con confirmación en un toque</div>
+                </div>
+              </div>
+              <div className="promo-feat-row">
+                <div className="promo-feat-ic">📸</div>
+                <div>
+                  <div className="promo-feat-lbl">Muro de fotos en vivo</div>
+                  <div className="promo-feat-desc">Todas las fotos del evento, en tiempo real</div>
+                </div>
+              </div>
+              <div className="promo-feat-row" style={{ marginBottom: 20 }}>
+                <div className="promo-feat-ic">🎟️</div>
+                <div>
+                  <div className="promo-feat-lbl">Mesas y QR de entrada</div>
+                  <div className="promo-feat-desc">Asignación y registro de asistentes</div>
+                </div>
+              </div>
+
+              <button className="promo-btn-main" onClick={() => window.location.href = "/"}>
+                <span className="promo-btn-shimmer" />
+                Crear mi evento gratis
+              </button>
+              <button className="promo-btn-sec" onClick={() => { window.close(); setTimeout(() => { window.location.href = "whatsapp://"; }, 200); }}>
+                Cerrar
+              </button>
             </div>
-            <button className="promo-btn" onClick={() => window.location.href = "/"}>
-              Crear mi evento en Eventix
-            </button>
-            <button className="promo-btn-sec" onClick={() => { window.close(); setTimeout(() => { window.location.href = "whatsapp://"; }, 200); }}>
-              Cerrar
-            </button>
+
+            {/* Footer */}
+            <div className="promo-wrap-foot" style={{ textAlign: "center", marginTop: 16, opacity: 0.55 }}>
+              <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "1.8px", textTransform: "uppercase", color: "#64748B", fontFamily: "'DM Sans',sans-serif" }}>
+                Humb3rsec 2026
+              </p>
+            </div>
+
           </div>
         </div>
       )}
