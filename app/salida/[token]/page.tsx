@@ -246,7 +246,7 @@ export default function SalidaInvitado() {
         <div style={{
           position: "relative", zIndex: 60,
           display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: "center", minHeight: "100vh", minHeight: "100dvh",
+          justifyContent: "center", minHeight: "100dvh",
           padding: "48px 16px 32px",
           paddingBottom: "max(32px, env(safe-area-inset-bottom))",
           opacity: fase === "mensaje" ? 1 : 0,
