@@ -201,7 +201,7 @@ export default function SalidaInvitado() {
         @media(max-height:620px){.sl-logo-area{margin-bottom:14px;gap:8px} .sl-logo-container{width:60px;height:60px} .sl-logo-ring{width:56px;height:56px}}
       `}</style>
 
-      <div className={`sl-app${mounted ? " sl-mounted" : ""}`} style={{ position: "relative", minHeight: "100vh", minHeight: "100dvh", background: "var(--bg)", overflow: "hidden" }}>
+      <div className={`sl-app${mounted ? " sl-mounted" : ""}`} style={{ position: "relative", minHeight: "100dvh", background: "var(--bg)", overflow: "hidden" }}>
 
         {/* Glows */}
         <div className="sl-glow sl-glow-1" />
