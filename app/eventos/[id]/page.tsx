@@ -1051,7 +1051,7 @@ export default function ConfirmarPage() {
 
   useEffect(() => {
     document.title = "Eventix — Tu invitación";
-    setTimeout(() => setMounted(true), 80);
+    setMounted(true);
     cargarDatos();
   }, []);
 

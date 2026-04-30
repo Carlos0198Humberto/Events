@@ -148,7 +148,7 @@ export default function Registro() {
 
   useEffect(() => {
     document.title = "Eventix — Crear cuenta";
-    setTimeout(() => setMounted(true), 50);
+    setMounted(true);
   }, []);
 
   async function handleRegistro() {
@@ -276,7 +276,7 @@ export default function Registro() {
         @keyframes particleFloat { 0%{transform:translateY(105vh);opacity:0} 5%{opacity:.15} 90%{opacity:.15} 100%{transform:translateY(-8vh) translateX(25px);opacity:0} }
 
         /* ── Lang button ── */
-        .controls { position: fixed; top: 12px; right: 12px; z-index: 20; }
+        .controls { position: fixed; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right, 12px)); z-index: 20; }
         .ctrl-btn {
           height: 34px; border-radius: 100px;
           background: var(--surface); border: 1px solid var(--border);

@@ -295,7 +295,7 @@ export default function LibroRecuerdosPage() {
 
   useEffect(() => {
     document.title = "Eventix — Libro de recuerdos";
-    setTimeout(() => setMounted(true), 50);
+    setMounted(true);
   }, []);
 
   useEffect(() => {

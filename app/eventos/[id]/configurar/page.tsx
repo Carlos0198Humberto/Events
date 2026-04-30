@@ -73,7 +73,7 @@ export default function ConfigurarEvento() {
 
   useEffect(() => {
     document.title = "Eventix — Configurar evento";
-    setTimeout(() => setMounted(true), 60);
+    setMounted(true);
     cargarConfig();
   }, [eventoId]);
 

@@ -1678,7 +1678,7 @@ export default function MuroPublico() {
   const t = T[lang];
 
   useEffect(() => {
-    setTimeout(() => setMounted(true), 60);
+    setMounted(true);
     const token = new URLSearchParams(window.location.search).get("token");
 
     // ── Leer tab inicial desde URL ──────────────────────────────────────────

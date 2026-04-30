@@ -369,7 +369,7 @@ const Icon = {
 };
 
 // ─── Loading screen — editorial ─────────────────────────────────────────────────
-function LoadingScreen() {
+function LoadingScreen({ fadeOut }: { fadeOut?: boolean }) {
   return (
     <>
       <style>{`
@@ -377,8 +377,11 @@ function LoadingScreen() {
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         body{background:#FAFBFF;font-family:'DM Sans',sans-serif}
         @keyframes dotPulse{0%,80%,100%{opacity:.18;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+        @keyframes lsFadeOut{to{opacity:0;transform:scale(1.02)}}
+        .ls-fading{animation:lsFadeOut .35s cubic-bezier(.4,0,.2,1) forwards}
       `}</style>
       <main
+        className={fadeOut ? "ls-fading" : undefined}
         style={{
           minHeight: "100dvh",
           display: "flex",
@@ -591,6 +594,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Record<string, Stats>>({});
   const [nombre, setNombre] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingOut, setLoadingOut] = useState(false);
   const [eliminando, setElim] = useState<string | null>(null);
   const [lang, setLang] = useState<"es" | "en">("es");
   const [mounted, setMounted] = useState(false);
@@ -631,7 +635,8 @@ export default function Dashboard() {
       setEventos(data);
       await Promise.all(data.map((e: Evento) => cargarStats(e.id)));
     }
-    setLoading(false);
+    setLoadingOut(true);
+    setTimeout(() => setLoading(false), 350);
   }
 
   async function cargarStats(eventoId: string) {
@@ -704,13 +709,13 @@ export default function Dashboard() {
     link.href = `data:image/svg+xml,${encodeURIComponent(svgFav.trim())}`;
     document.head.appendChild(link);
     document.title = "Eventix — Dashboard";
-    setTimeout(() => setMounted(true), 50);
+    setMounted(true);
     checkUser();
     cargarEventos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return <LoadingScreen fadeOut={loadingOut} />;
 
   const hoy = new Date();
   const totConf = Object.values(stats).reduce((s, v) => s + v.confirmados, 0);

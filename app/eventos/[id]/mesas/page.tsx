@@ -51,7 +51,7 @@ export default function GestionarMesas() {
 
   useEffect(() => {
     document.title = "Eventix — Mesas";
-    setTimeout(() => setMounted(true), 60);
+    setMounted(true);
     cargarDatos();
   }, [eventoId]);
 

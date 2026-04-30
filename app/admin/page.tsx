@@ -14,9 +14,12 @@ type UsuarioAdmin = {
   es_admin: boolean;
   bloqueado: boolean;
   evento_limit: number | null;
+  plan: "free" | "pro";
   created_at: string;
   total_eventos: number;
 };
+
+const PLAN_LIMIT_FREE = 10; // invitados máx por evento en plan free
 
 // ─── Icons ─────────────────────────────────────────────────────────────────────
 const Icon = {
@@ -89,6 +92,7 @@ export default function AdminPanel() {
   const [guardando, setGuardando] = useState<Record<string, boolean>>({});
   const [bloqueando, setBloqueando] = useState<Record<string, boolean>>({});
   const [eliminando, setEliminando] = useState<Record<string, boolean>>({});
+  const [cambiandoPlan, setCambiandoPlan] = useState<Record<string, boolean>>({});
   const [confirmDelete, setConfirmDelete] = useState<UsuarioAdmin | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<"todos" | "activos" | "bloqueados">("todos");
@@ -223,6 +227,29 @@ export default function AdminPanel() {
     setGuardando((prev) => ({ ...prev, [usuario.id]: false }));
   }
 
+  async function cambiarPlan(usuario: UsuarioAdmin) {
+    if (usuario.es_admin) return;
+    setCambiandoPlan((prev) => ({ ...prev, [usuario.id]: true }));
+    const nuevoPlan: "free" | "pro" = usuario.plan === "pro" ? "free" : "pro";
+    const { error } = await supabase
+      .from("profiles")
+      .update({ plan: nuevoPlan })
+      .eq("id", usuario.id);
+    if (error) {
+      toast.error("Error al cambiar el plan");
+    } else {
+      toast.success(
+        nuevoPlan === "pro"
+          ? `✦ ${usuario.nombre ?? "Usuario"} actualizado a Pro`
+          : `${usuario.nombre ?? "Usuario"} movido a Free`
+      );
+      setUsuarios((prev) =>
+        prev.map((u) => u.id === usuario.id ? { ...u, plan: nuevoPlan } : u)
+      );
+    }
+    setCambiandoPlan((prev) => ({ ...prev, [usuario.id]: false }));
+  }
+
   // ── Filtros ─────────────────────────────────────────────────────────────────
   const usuariosFiltrados = usuarios.filter((u) => {
     const q = busqueda.toLowerCase();
@@ -240,6 +267,7 @@ export default function AdminPanel() {
   const totalUsuarios = usuarios.length;
   const totalBloqueados = usuarios.filter((u) => u.bloqueado).length;
   const totalEventos = usuarios.reduce((s, u) => s + (u.total_eventos ?? 0), 0);
+  const totalPro = usuarios.filter((u) => u.plan === "pro").length;
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (cargando) {
@@ -385,6 +413,19 @@ export default function AdminPanel() {
         .btn-delete:hover:not(:disabled){background:#fee2e2;border-color:var(--danger)}
         .btn-delete:disabled{opacity:0.5;cursor:not-allowed}
 
+        /* Plan badge */
+        .badge-plan{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0}
+        .badge-plan-free{background:rgba(100,116,139,0.10);color:#475569;border:1px solid rgba(100,116,139,0.25)}
+        .badge-plan-pro{background:rgba(79,70,229,0.12);color:var(--accent2);border:1px solid rgba(79,70,229,0.30)}
+
+        /* Plan toggle button */
+        .btn-plan{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+        .btn-plan-upgrade{background:rgba(79,70,229,0.08);color:var(--accent2);border:1px solid rgba(79,70,229,0.28)}
+        .btn-plan-upgrade:hover:not(:disabled){background:rgba(79,70,229,0.16);border-color:var(--accent)}
+        .btn-plan-downgrade{background:rgba(100,116,139,0.08);color:#475569;border:1px solid rgba(100,116,139,0.22)}
+        .btn-plan-downgrade:hover:not(:disabled){background:rgba(100,116,139,0.15)}
+        .btn-plan:disabled{opacity:0.5;cursor:not-allowed}
+
         /* Confirm modal */
         .modal-backdrop{position:fixed;inset:0;background:rgba(20,13,4,0.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
         .modal{background:var(--surface);border-radius:20px;padding:28px 24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(20,13,4,0.25);animation:fadeUp .25s ease both}
@@ -435,7 +476,7 @@ export default function AdminPanel() {
           </div>
 
           {/* Stats */}
-          <div className="stats-row">
+          <div className="stats-row" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
             <div className="stat-card">
               <div className="stat-value">{totalUsuarios}</div>
               <div className="stat-label">Usuarios</div>
@@ -443,6 +484,12 @@ export default function AdminPanel() {
             <div className="stat-card">
               <div className="stat-value">{totalEventos}</div>
               <div className="stat-label">Eventos</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: "var(--accent2)" }}>
+                {totalPro}
+              </div>
+              <div className="stat-label">Plan Pro</div>
             </div>
             <div className="stat-card">
               <div className="stat-value" style={{ color: totalBloqueados > 0 ? "var(--danger)" : "inherit" }}>
@@ -504,6 +551,11 @@ export default function AdminPanel() {
                         {u.es_admin && (
                           <span className="badge-admin">
                             <Icon.shield /> Admin
+                          </span>
+                        )}
+                        {!u.es_admin && (
+                          <span className={`badge-plan badge-plan-${u.plan ?? "free"}`}>
+                            {u.plan === "pro" ? "✦ Pro" : "Free"}
                           </span>
                         )}
                       </div>
@@ -571,6 +623,18 @@ export default function AdminPanel() {
                           {guardando[u.id] ? "..." : "Guardar"}
                         </button>
                       </div>
+                    )}
+
+                    {/* Plan toggle — solo para no-admins */}
+                    {!u.es_admin && (
+                      <button
+                        className={`btn-plan ${u.plan === "pro" ? "btn-plan-downgrade" : "btn-plan-upgrade"}`}
+                        disabled={!!cambiandoPlan[u.id]}
+                        title={u.plan === "pro" ? "Mover a Free" : `Activar Pro ($12 — ${PLAN_LIMIT_FREE} inv. → ilimitado)`}
+                        onClick={() => cambiarPlan(u)}
+                      >
+                        {cambiandoPlan[u.id] ? "..." : u.plan === "pro" ? "↓ Mover a Free" : "✦ Activar Pro"}
+                      </button>
                     )}
 
                     {/* Block toggle — solo para no-admins */}

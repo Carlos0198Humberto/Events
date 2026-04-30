@@ -305,7 +305,7 @@ export default function AgradecimientosPage() {
 
   useEffect(() => {
     document.title = "Eventix — Agradecimientos";
-    setTimeout(() => setMounted(true), 50);
+    setMounted(true);
   }, []);
 
   useEffect(() => {

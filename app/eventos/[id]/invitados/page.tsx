@@ -59,6 +59,9 @@ export default function AgregarInvitados() {
   const bulkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lastAdded, setLastAdded] = useState<string | null>(null); // token del último agregado (para animaciones)
   const [btnSuccess, setBtnSuccess] = useState(false);
+  const [userPlan, setUserPlan] = useState<"free" | "pro">("free");
+
+  const PLAN_LIMIT_FREE = 10;
 
   // Genera los dots del confetti en el DOM (CSS puro, sin canvas)
   type ConfettiDot = {
@@ -93,7 +96,7 @@ export default function AgregarInvitados() {
 
   useEffect(() => {
     document.title = "Eventix — Gestionar invitados";
-    setTimeout(() => setMounted(true), 50);
+    setMounted(true);
     if (id) {
       supabase
         .from("eventos")
@@ -103,6 +106,18 @@ export default function AgregarInvitados() {
         .then(({ data }) => { if (data) setEvento(data); });
       cargarTodosInvitados();
     }
+    // Cargar plan del usuario
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.plan) setUserPlan(data.plan as "free" | "pro");
+        });
+    });
     return () => {
       if (bulkTimerRef.current) clearTimeout(bulkTimerRef.current);
     };
@@ -196,6 +211,12 @@ ${deadlineLinea}
     setError("");
     if (!nombre.trim()) {
       setError("El nombre es obligatorio");
+      setLoading(false);
+      return;
+    }
+    // ── Límite de plan ────────────────────────────────────────────────────────
+    if (userPlan === "free" && todosInvitados.length >= PLAN_LIMIT_FREE) {
+      setError(`Plan gratuito: máximo ${PLAN_LIMIT_FREE} invitados por evento. Contactá al administrador para activar el Plan Pro.`);
       setLoading(false);
       return;
     }
@@ -408,6 +429,11 @@ ${deadlineLinea}
 
         /* ── Error box ── */
         .error-box { background: #fff1f2; border: 1px solid #fecdd3; color: #e11d48; font-size: 13px; padding: 10px 14px; border-radius: 12px; margin-bottom: 16px; font-weight: 500; }
+        .plan-warn-banner { background: #fffbeb; border: 1.5px solid #fde68a; color: #92400e; font-size: 12.5px; font-weight: 600; padding: 10px 14px; border-radius: 12px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .plan-limit-banner { background: #eff6ff; border: 1.5px solid #bfdbfe; color: #1e40af; font-size: 13px; font-weight: 600; padding: 12px 16px; border-radius: 14px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; }
+        .plan-limit-banner-body { display: flex; flex-direction: column; gap: 2px; }
+        .plan-limit-banner-title { font-size: 13px; font-weight: 700; }
+        .plan-limit-banner-sub { font-size: 12px; font-weight: 400; opacity: .85; }
 
         /* ── Fields ── */
         .fields { display: flex; flex-direction: column; gap: 15px; }
@@ -706,6 +732,27 @@ ${deadlineLinea}
                   <div className="hero-pill-label">Rechazaron</div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── Banner de plan ── */}
+          {userPlan === "free" && todosInvitados.length >= PLAN_LIMIT_FREE && (
+            <div className="plan-limit-banner">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e40af" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+              </svg>
+              <div className="plan-limit-banner-body">
+                <div className="plan-limit-banner-title">Límite del Plan Gratuito alcanzado ({PLAN_LIMIT_FREE}/{PLAN_LIMIT_FREE} invitados)</div>
+                <div className="plan-limit-banner-sub">Para agregar más invitados, contactá al administrador para activar el Plan Pro ($12 por evento).</div>
+              </div>
+            </div>
+          )}
+          {userPlan === "free" && todosInvitados.length >= PLAN_LIMIT_FREE - 2 && todosInvitados.length < PLAN_LIMIT_FREE && (
+            <div className="plan-warn-banner">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/>
+              </svg>
+              Quedán {PLAN_LIMIT_FREE - todosInvitados.length} invitado{PLAN_LIMIT_FREE - todosInvitados.length !== 1 ? "s" : ""} disponible{PLAN_LIMIT_FREE - todosInvitados.length !== 1 ? "s" : ""} en el Plan Gratuito.
             </div>
           )}
 
