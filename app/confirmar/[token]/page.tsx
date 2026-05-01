@@ -2240,7 +2240,7 @@ export default function ConfirmarPage() {
     .topbar-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;line-height:1}
     .topbar-sub{font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-top:1px}
 
-    .wrap{max-width:430px;margin:0 auto;padding:22px 16px 8px;display:flex;flex-direction:column;gap:20px}
+    .wrap{max-width:430px;margin:0 auto;padding:22px 16px max(32px,env(safe-area-inset-bottom,32px));display:flex;flex-direction:column;gap:20px}
 
     .inv-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:0 8px 48px rgba(15,23,42,.13),0 2px 8px rgba(15,23,42,.06);overflow:hidden;animation:riseUp .6s cubic-bezier(.22,1,.36,1) both;}
     /* Hero foto — limpia, sin overlays ni texto encima */
