@@ -2399,8 +2399,8 @@ export default function ConfirmarPage() {
     .mesa-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;gap:12px}
 
     /* Mobile global */
-    html,body{overflow-x:hidden;-webkit-text-size-adjust:100%}
-    .page{min-height:100dvh;overflow-x:hidden}
+    html,body{overflow-x:clip;-webkit-text-size-adjust:100%}
+    .page{min-height:100dvh;overflow-x:clip}
     .wrap{width:100%;box-sizing:border-box}
     img,video{max-width:100%}
 
