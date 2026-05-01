@@ -177,26 +177,65 @@ export default function AgregarInvitados() {
 
   function buildWhatsAppUrl(inv: Invitado) {
     const link = buildLink(inv.token);
-    const tipoLabel = evento ? (TIPO_LABEL[evento.tipo] || "evento especial") : "evento especial";
+    const tipo = evento?.tipo ?? "otro";
+    const tipoLabel = TIPO_LABEL[tipo] || "evento especial";
     const anfitriones = evento?.anfitriones ?? "";
     const nombreEvento = evento?.nombre ?? tipoLabel;
 
+    // Saludo según tipo de evento
+    const saludoMap: Record<string, string> = {
+      boda:        "Tenemos el honor de hacerte llegar tu invitación personal para celebrar nuestra boda.",
+      quinceañera: "Con mucho cariño te hacemos llegar tu invitación personal para celebrar mis XV años.",
+      graduacion:  "Tenemos el agrado de hacerte llegar tu invitación personal para celebrar este logro.",
+      cumpleaños:  "Con mucha alegría te hacemos llegar tu invitación personal para celebrar juntos.",
+      otro:        "Tenemos el agrado de hacerte llegar tu invitación personal para este evento especial.",
+    };
+    const saludo = saludoMap[tipo] ?? saludoMap.otro;
+
+    // Fecha y hora del evento
+    let fechaLinea = "";
+    if (evento?.fecha) {
+      const d = new Date(evento.fecha);
+      const fechaStr = d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      const fechaCap = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1);
+      fechaLinea = `*Fecha:* ${fechaCap}`;
+      if (evento.hora) {
+        const [h, m] = evento.hora.split(":");
+        const hour = parseInt(h);
+        const ampm = hour >= 12 ? "PM" : "AM";
+        const h12 = hour % 12 || 12;
+        fechaLinea += `\n*Hora:* ${h12}:${m} ${ampm}`;
+      }
+    }
+
+    // Lugar
+    const lugarLinea = evento?.lugar ? `*Lugar:* ${evento.lugar}` : "";
+
+    // Bloque de detalles (solo si hay datos)
+    const detalles = [fechaLinea, lugarLinea].filter(Boolean).join("\n");
+    const detallesBloque = detalles ? `\n${detalles}\n` : "";
+
+    // Deadline
     let deadlineLinea = "";
     if (evento?.fecha_limite_confirmacion) {
       const d = new Date(evento.fecha_limite_confirmacion);
-      const fecha = d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
-      deadlineLinea = `\nConfirmá antes del ${fecha}.`;
+      const fechaD = d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+      deadlineLinea = `Confirmá tu asistencia antes del _${fechaD}_:\n`;
+    } else {
+      deadlineLinea = "Confirmá tu asistencia en el siguiente enlace:\n";
     }
 
     const mensajeBase =
-`${nombreEvento}
+`*${nombreEvento}*
 
-Hola ${inv.nombre}, te enviamos tu invitación personal para ${tipoLabel}.
+Estimada/o ${inv.nombre},
 
-Confirmá tu asistencia aquí:
-${link}
-${deadlineLinea}
-— ${anfitriones}`;
+${saludo}
+${detallesBloque}
+${deadlineLinea}${link}
+
+Con cariño,
+*${anfitriones}*`;
 
     const msg = encodeURIComponent(mensajeBase);
     const rawPhone = inv.telefono ?? "";

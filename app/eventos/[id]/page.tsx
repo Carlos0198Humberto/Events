@@ -600,7 +600,6 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
           aria-label={state === "playing" ? "Pausar música" : "Reproducir música"}
           tabIndex={0}
         >
-          <audio ref={audioRef} src={url} loop style={{ display: "none" }} />
           <div className="music-icon-wrap">
             {state === "playing" ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="#4F46E5" aria-hidden="true">
