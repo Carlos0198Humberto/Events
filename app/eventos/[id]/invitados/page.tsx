@@ -189,7 +189,7 @@ export default function AgregarInvitados() {
     }
 
     const mensajeBase =
-`*${nombreEvento}*
+`${nombreEvento}
 
 Hola ${inv.nombre}, te enviamos tu invitación personal para ${tipoLabel}.
 
