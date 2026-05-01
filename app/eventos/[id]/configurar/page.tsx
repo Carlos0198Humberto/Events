@@ -428,7 +428,7 @@ const styles = `
   .btn-back{display:inline-flex;align-items:center;gap:8px;background:transparent;border:none;font-family:'Jost',sans-serif;font-size:14px;font-weight:600;color:var(--gold);cursor:pointer;padding:10px 4px;border-radius:10px;-webkit-tap-highlight-color:transparent;transition:opacity .15s;letter-spacing:.1px;}
   .btn-back:active{opacity:0.6}
 
-  .content{max-width:520px;margin:0 auto;padding:18px 14px calc(72px + env(safe-area-inset-bottom,0px))}
+  .content{max-width:520px;margin:0 auto;padding:18px 14px calc(100px + env(safe-area-inset-bottom,0px))}
 
   .section-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow);padding:18px;margin-bottom:14px;animation:fadeIn .4s ease both}
   .section-header{display:flex;align-items:flex-start;gap:13px;margin-bottom:16px}
@@ -537,7 +537,7 @@ const styles = `
 
   /* ─── Responsive: teléfonos pequeños ─── */
   @media (max-width: 420px){
-    .content{padding:14px 12px calc(68px + env(safe-area-inset-bottom,0px))}
+    .content{padding:14px 12px calc(100px + env(safe-area-inset-bottom,0px))}
     .section-card{padding:15px;border-radius:16px}
     .section-title{font-size:14.5px}
     .section-sub{font-size:11.5px}

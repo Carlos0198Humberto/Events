@@ -547,7 +547,7 @@ export default function AgradecimientosPage() {
         .scroll-area {
           flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
           padding: 20px 16px;
-          padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+          padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
           display: flex; flex-direction: column; gap: 16px;
           max-width: 700px; width: 100%; margin: 0 auto;
           position: relative; z-index: 1;
@@ -691,7 +691,7 @@ export default function AgradecimientosPage() {
         /* ── Responsive: teléfonos pequeños ── */
         @media (max-width: 420px){
           .top-bar-event { font-size: 18px; }
-          .scroll-area { padding: 16px 12px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); gap: 14px; }
+          .scroll-area { padding: 16px 12px; padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); gap: 14px; }
           .card { padding: 16px 14px; border-radius: 18px; }
           .card-title { font-size: 17.5px; }
           .stats-grid { gap: 7px; }

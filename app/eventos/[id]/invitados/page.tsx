@@ -408,7 +408,7 @@ ${deadlineLinea}
         /* ── Scroll area ── */
         .scroll-area {
           padding: 20px 16px;
-          padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+          padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
           display: flex;
           flex-direction: column;
           gap: 16px;
@@ -637,7 +637,7 @@ ${deadlineLinea}
         @media (max-width: 420px) {
           .top-bar { padding: 11px 14px; gap: 9px; }
           .top-bar-name { font-size: 20px; }
-          .scroll-area { padding: 16px 12px; }
+          .scroll-area { padding: 16px 12px; padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
           .card, .section-card { padding: 18px 15px; border-radius: 18px; }
           .card-title { font-size: 19px; }
           .field-input { padding: 12px 13px; font-size: 14.5px; }

@@ -696,7 +696,7 @@ const styles = `
   .btn-auto-mesa:hover{background:var(--gold-mid)}
 
   /* Content */
-  .content{max-width:520px;margin:0 auto;padding:16px 14px calc(72px + env(safe-area-inset-bottom,0px))}
+  .content{max-width:520px;margin:0 auto;padding:16px 14px calc(100px + env(safe-area-inset-bottom,0px))}
 
   /* Resumen */
   .resumen-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px}
@@ -890,7 +890,7 @@ const styles = `
 
   /* ─── Responsive: teléfonos pequeños ─── */
   @media (max-width: 420px){
-    .content{padding:14px 12px calc(68px + env(safe-area-inset-bottom,0px))}
+    .content{padding:14px 12px calc(100px + env(safe-area-inset-bottom,0px))}
     .resumen-row{gap:5px}
     .resumen-chip{padding:9px 4px}
     .resumen-val{font-size:16px}
