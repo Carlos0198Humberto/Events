@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { AppLogo } from "@/app/components/AppLogo";
 
@@ -23,6 +23,7 @@ const TIPO_EMOJI: Record<string, string> = {
 
 export default function WalkInPage() {
   const params = useParams();
+  const router = useRouter();
   const eventoId = params.evento_id as string;
   const qrRef = useRef<HTMLImageElement>(null);
 
@@ -115,6 +116,13 @@ export default function WalkInPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "linear-gradient(160deg,#EEF2FF 0%,#E0E7FF 50%,#C7D2FE 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontFamily: "'DM Sans',sans-serif" }}>
+      {/* Botón de regreso */}
+      <button className="wl-btn-regreso" onClick={() => router.back()}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
+        Regresar
+      </button>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Jost:wght@400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -126,6 +134,8 @@ export default function WalkInPage() {
         .wl-btn-primary{transition:opacity .15s,transform .12s;} .wl-btn-primary:active{transform:scale(0.97)}
         .wl-btn-back{background:none;border:none;color:#94A3B8;font-size:13px;cursor:pointer;padding:6px;display:flex;align-items:center;gap:4px;font-family:inherit;}
         .wl-btn-back:hover{color:#6366F1}
+        .wl-btn-regreso{position:fixed;top:max(16px,env(safe-area-inset-top,16px));left:16px;z-index:50;background:rgba(255,255,255,0.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(79,70,229,0.18);border-radius:12px;padding:8px 14px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#4F46E5;cursor:pointer;font-family:inherit;box-shadow:0 2px 12px rgba(79,70,229,0.12);-webkit-tap-highlight-color:transparent;transition:opacity .15s;}
+        .wl-btn-regreso:active{opacity:0.7}
       `}</style>
 
       <div style={{ width: "100%", maxWidth: 420, animation: "wlFadeUp 0.4s ease" }}>

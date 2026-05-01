@@ -628,7 +628,7 @@ const styles = `
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
 
-  .page-wrap{min-height:100dvh;background:var(--bg);opacity:0;transition:opacity .35s ease}
+  .page-wrap{min-height:calc(100dvh - env(safe-area-inset-top,0px));background:var(--bg);opacity:0;transition:opacity .35s ease}
   .page-wrap.vis{opacity:1}
 
   /* Top bar */

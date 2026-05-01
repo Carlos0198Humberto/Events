@@ -520,7 +520,7 @@ export default function AgradecimientosPage() {
         @keyframes glowDrift2 { 0%,100%{transform:translate(0,0)} 40%{transform:translate(22px,-30px)} 70%{transform:translate(-8px,18px)} }
 
         .page-wrap {
-          min-height: 100vh; min-height: 100dvh;
+          height: calc(100dvh - env(safe-area-inset-top, 0px));
           display: flex; flex-direction: column;
           position: relative; overflow-x: hidden;
         }

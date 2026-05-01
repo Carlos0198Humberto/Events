@@ -3,7 +3,7 @@
   "short_name": "Eventix",
   "description": "Invitaciones digitales elegantes para tus eventos especiales",
   "start_url": "/",
-  "display": "fullscreen",
+  "display": "standalone",
   "orientation": "portrait",
   "background_color": "#FAFBFF",
   "theme_color": "#7C3AED",

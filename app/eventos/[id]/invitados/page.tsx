@@ -352,8 +352,7 @@ ${deadlineLinea}
 
         /* ── Page ── */
         .page-wrap {
-          min-height: 100vh;
-          min-height: 100dvh;
+          min-height: calc(100dvh - env(safe-area-inset-top, 0px));
           background: var(--bg);
           position: relative;
         }

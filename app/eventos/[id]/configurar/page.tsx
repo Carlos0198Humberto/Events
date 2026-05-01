@@ -419,7 +419,7 @@ const styles = `
   @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   @keyframes spin{to{transform:rotate(360deg)}}
 
-  .page-wrap{min-height:100dvh;background:var(--bg);opacity:0;transition:opacity .35s}
+  .page-wrap{min-height:calc(100dvh - env(safe-area-inset-top,0px));background:var(--bg);opacity:0;transition:opacity .35s}
   .page-wrap.vis{opacity:1}
 
   .top-bar{display:flex;align-items:center;justify-content:center;height:54px;padding:0 16px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:30;box-sizing:border-box;width:100%;}

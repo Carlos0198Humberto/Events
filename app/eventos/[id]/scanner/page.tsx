@@ -239,7 +239,7 @@ export default function ScannerPage() {
     @keyframes scanLine{0%{top:0}100%{top:100%}}
     @keyframes popIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 
-    .page{min-height:100dvh;background:#FFFFFF;padding-bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+    .page{min-height:calc(100dvh - env(safe-area-inset-top,0px));background:#FFFFFF;padding-bottom:calc(56px + env(safe-area-inset-bottom,0px))}
     .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(255,255,255,0.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid rgba(79,70,229,0.16);box-shadow:0 -4px 20px rgba(79,70,229,0.07);display:flex;align-items:center;padding-left:16px}
     .btn-back{display:inline-flex;align-items:center;gap:8px;background:transparent;border:none;color:#4F46E5;font-size:14px;font-weight:600;font-family:'Jost',sans-serif;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent}
     .topbar{display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:20;box-sizing:border-box;width:100%;}
