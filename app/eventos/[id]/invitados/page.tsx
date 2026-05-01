@@ -21,6 +21,9 @@ type Evento = {
   nombre: string;
   tipo: string;
   anfitriones: string;
+  fecha?: string | null;
+  hora?: string | null;
+  lugar?: string | null;
   fecha_limite_confirmacion?: string | null;
 };
 
@@ -100,7 +103,7 @@ export default function AgregarInvitados() {
     if (id) {
       supabase
         .from("eventos")
-        .select("nombre, tipo, anfitriones, fecha_limite_confirmacion")
+        .select("nombre, tipo, anfitriones, fecha, hora, lugar, fecha_limite_confirmacion")
         .eq("id", id)
         .single()
         .then(({ data }) => { if (data) setEvento(data); });
