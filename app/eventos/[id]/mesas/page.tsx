@@ -615,7 +615,7 @@ export default function GestionarMesas() {
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500;600;700&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A;overflow-x:hidden;max-width:100vw;-webkit-text-size-adjust:100%}
+  html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A;max-width:100vw;-webkit-text-size-adjust:100%}
   :root{
     --bg:#FFFFFF;--surface:#fff;--surface-2:#F8FAFF;--surface-3:#EEF2FF;
     --ink:#0F172A;--ink2:#475569;--ink3:#64748B;

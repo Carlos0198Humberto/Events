@@ -333,7 +333,6 @@ ${deadlineLinea}
           background: var(--bg);
           color: var(--text);
           -webkit-font-smoothing: antialiased;
-          overflow-x: hidden;
           width: 100%;
         }
 

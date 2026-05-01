@@ -224,7 +224,7 @@ export default function ScannerPage() {
   const styles = `
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Jost:wght@300;400;500;600;700&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A;overflow-x:hidden;max-width:100vw;-webkit-text-size-adjust:100%}
+    html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A;max-width:100vw;-webkit-text-size-adjust:100%}
     :root{
       --gold:#4F46E5;--gold-dark:#3730A3;--gold-light:#E0E7FF;--gold-pale:#EEF2FF;
       --dark:#312E81;--dark2:#3730A3;--ink:#0F172A;--ink2:#475569;--ink3:#64748B;
