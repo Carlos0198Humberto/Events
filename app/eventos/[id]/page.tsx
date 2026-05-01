@@ -503,27 +503,20 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
 // Cualquier intento desde useEffect/setTimeout es bloqueado por iOS y Chrome 66+.
 // El prompt garantiza que el play() ocurra dentro del onClick del botón.
 function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
-  // "prompt"  → mostrando el sheet de invitación
-  // "playing" → audio activo
-  // "muted"   → usuario eligió continuar sin música
-  // "active"  → usuario activó pero aún no está reproduciendo (pre-gesture)
   type MusicState = "prompt" | "playing" | "muted" | "active";
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // El ref apunta al <audio> que siempre está en el DOM — iOS no lo puede GC
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [state, setState] = useState<MusicState>("prompt");
   const [leaving, setLeaving] = useState(false);
 
   function dismiss(withMusic: boolean) {
     if (withMusic) {
-      // CRÍTICO iOS: audio.play() DEBE llamarse sincrónicamente dentro del onClick.
-      // Mover esto a setTimeout rompe la cadena de gesto → iOS bloquea el audio.
-      if (!audioRef.current) {
-        audioRef.current = new Audio(url);
-        audioRef.current.loop = true;
-        audioRef.current.volume = 0.35;
+      // iOS: play() DEBE llamarse sincrónicamente dentro del onClick (gesto de usuario)
+      const a = audioRef.current;
+      if (a) {
+        a.volume = 0.35;
+        a.play().catch(() => {});
       }
-      // Iniciamos el audio AHORA (dentro del gesto) → iOS lo permite
-      audioRef.current.play().catch(() => {/* silencioso — estado actualiza abajo */});
-      // El estado "playing"/"muted" se actualiza después de la animación
       setLeaving(true);
       setTimeout(() => setState("playing"), 280);
     } else {
@@ -545,15 +538,15 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
     }
   }
 
-  // Limpia audio al desmontar
   useEffect(() => {
-    return () => {
-      audioRef.current?.pause();
-    };
+    return () => { audioRef.current?.pause(); };
   }, []);
 
   return (
     <>
+      {/* Siempre en el DOM — iOS necesita el elemento adjunto para no GC-arlo */}
+      <audio ref={audioRef} src={url} loop preload="none" style={{ display: "none" }} />
+
       {/* ── Prompt overlay (aparece sobre la invitación) ── */}
       {state === "prompt" && (
         <div

@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppLogo } from "@/app/components/AppLogo";
+import { openWhatsApp } from "@/app/utils/openWhatsApp";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type Evento = {
@@ -507,10 +508,7 @@ function MiniInvitados({
         ? `*${eventoNombre}*\n\nHola ${inv.nombre}, te enviamos tu invitación personal.\n\nConfirmá tu asistencia aquí:\n${link}\n\n— Eventix`
         : `*${eventoNombre}*\n\nHi ${inv.nombre}, here is your personal invitation.\n\nConfirm your attendance here:\n${link}\n\n— Eventix`;
     const tel = inv.telefono?.replace(/\D/g, "") ?? "";
-    window.open(
-      `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,
-      "_blank",
-    );
+    openWhatsApp(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`);
   }
 
   if (loading) return <div className="guest-skeleton" aria-hidden="true" />;

@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { AppLogo } from "@/app/components/AppLogo";
+import { openWhatsApp } from "@/app/utils/openWhatsApp";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -2153,10 +2154,7 @@ export default function ConfirmarPage() {
         const texto = encodeURIComponent(
           `🎉 *${evento.nombre}*\n\nHola *${invitado.nombre}*, aquí están tus accesos:\n\n✅ Confirmar:\n${link1}\n\n📸 Foto:\n${link2}\n\n💌 Deseo:\n${link2}`,
         );
-        setTimeout(
-          () => window.open(`https://wa.me/?text=${texto}`, "_blank"),
-          800,
-        );
+        setTimeout(() => openWhatsApp(`https://wa.me/?text=${texto}`), 800);
       }
     } catch (err) {
       console.error("Error al compartir:", err);

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
+import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { toast } from "@/app/components/Toast";
 
@@ -312,7 +313,7 @@ Con cariño,
   }
 
   function enviarWhatsApp(inv: Invitado) {
-    window.open(buildWhatsAppUrl(inv), "_blank");
+    openWhatsApp(buildWhatsAppUrl(inv));
     setEnviados((prev) => new Set(prev).add(inv.token));
   }
 
@@ -325,7 +326,7 @@ Con cariño,
     const abrir = () => {
       if (i >= conTelefono.length) { setEnviandoTodos(false); return; }
       const inv = conTelefono[i];
-      window.open(buildWhatsAppUrl(inv), "_blank");
+      openWhatsApp(buildWhatsAppUrl(inv));
       setEnviados((prev) => new Set(prev).add(inv.token));
       i++;
       bulkTimerRef.current = setTimeout(abrir, 1400);

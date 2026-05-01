@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
+import { openWhatsApp } from "@/app/utils/openWhatsApp";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type Invitado = {
@@ -345,10 +346,7 @@ export default function AgradecimientosPage() {
     }
     const msg = generarMensaje(inv);
     const tel = inv.telefono.replace(/\D/g, "");
-    window.open(
-      `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,
-      "_blank",
-    );
+    openWhatsApp(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`);
     setEnviando(inv.id);
     await supabase
       .from("agradecimientos")
@@ -388,10 +386,7 @@ export default function AgradecimientosPage() {
     const inv = lista[idx];
     const msg = generarMensaje(inv);
     const tel = inv.telefono!.replace(/\D/g, "");
-    window.open(
-      `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`,
-      "_blank",
-    );
+    openWhatsApp(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`);
     await supabase
       .from("agradecimientos")
       .insert({
