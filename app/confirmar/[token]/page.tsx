@@ -2021,6 +2021,7 @@ export default function ConfirmarPage() {
     if (updated) {
       setInvitado(updated);
       setStep("confirmado");
+      window.scrollTo({ top: 0, behavior: "instant" });
       cargarMesasDisponibles(updated.evento_id);
     } else {
       // El UPDATE falló en la DB — no avanzamos al paso confirmado
@@ -2036,6 +2037,7 @@ export default function ConfirmarPage() {
       .eq("id", invitado.id);
     if (!error) {
       setStep("rechazado");
+      window.scrollTo({ top: 0, behavior: "instant" });
     } else {
       alert("Hubo un error. Por favor intentá de nuevo.");
     }
@@ -2046,6 +2048,7 @@ export default function ConfirmarPage() {
     // Si el organizador configuró que el invitado elija, o si el cupo es > 1, mostrar form
     if (invitado.cupo_elije_invitado || (invitado.num_personas || 1) > 1) {
       setStep("form");
+      window.scrollTo({ top: 0, behavior: "instant" });
     } else {
       await confirmarAsistencia();
     }
