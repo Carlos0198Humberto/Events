@@ -562,7 +562,7 @@ export default function AgradecimientosPage() {
         .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
         .stat-box { background: var(--surface); border-radius: 18px; padding: 14px 8px; text-align: center; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
         .stat-num { font-size: 24px; font-weight: 800; }
-        .stat-label { font-size: 10.5px; font-weight: 600; margin-top: 2px; opacity: 0.8; }
+        .stat-label { font-size: 10.5px; font-weight: 600; margin-top: 2px; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; display: block; }
 
         /* ── Plantilla selector ── */
         .chip-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -636,8 +636,8 @@ export default function AgradecimientosPage() {
           display: flex; align-items: center; justify-content: center;
           color: white; font-weight: 800; font-size: 15px; flex-shrink: 0;
         }
-        .inv-name { font-weight: 700; color: var(--text); font-size: 14px; }
-        .inv-phone { font-size: 12px; color: var(--text3); margin-top: 1px; }
+        .inv-name { font-weight: 700; color: var(--text); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .inv-phone { font-size: 12px; color: var(--text3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .badge-sent { display: flex; align-items: center; gap: 5px; color: #16a34a; font-weight: 700; font-size: 12px; background: #dcfce7; border-radius: 10px; padding: 6px 11px; flex-shrink: 0; }
         .btn-send-single {
           background: linear-gradient(135deg, #16a34a, #15803d);
@@ -697,7 +697,7 @@ export default function AgradecimientosPage() {
           .stats-grid { gap: 7px; }
           .stat-box { padding: 12px 6px; border-radius: 15px; }
           .stat-num { font-size: 21px; }
-          .stat-label { font-size: 10px; }
+          .stat-label { font-size: 9.5px; letter-spacing: -0.2px; }
           .chip { padding: 6px 13px; font-size: 11.5px; }
           .msg-textarea { padding: 11px 12px; font-size: 13px; }
           .btn-primary { padding: 13.5px; font-size: 14px; }
