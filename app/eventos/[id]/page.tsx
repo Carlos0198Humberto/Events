@@ -60,8 +60,15 @@ const TIPO_ORNAMENTO: Record<string, string> = {
   otro: "",
 };
 
+// Parsea una fecha "YYYY-MM-DD" como fecha LOCAL (no UTC),
+// para evitar el desfase de un día en zonas horarias al oeste de UTC.
+function parseFechaLocal(fecha: string): Date {
+  const soloFecha = fecha.split("T")[0];
+  const [y, m, d] = soloFecha.split("-").map((n) => parseInt(n, 10));
+  return new Date(y, (m || 1) - 1, d || 1);
+}
 function formatFecha(fecha: string) {
-  return new Date(fecha).toLocaleDateString("es-ES", {
+  return parseFechaLocal(fecha).toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -69,7 +76,7 @@ function formatFecha(fecha: string) {
   });
 }
 function formatFechaCorta(fecha: string) {
-  return new Date(fecha).toLocaleDateString("es-ES", {
+  return parseFechaLocal(fecha).toLocaleDateString("es-ES", {
     day: "numeric",
     month: "long",
     year: "numeric",

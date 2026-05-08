@@ -2002,7 +2002,9 @@ export default function MuroPublico() {
       </main>
     );
 
-  const fechaFmt = new Date(evento.fecha).toLocaleDateString("es-ES", {
+  const _soloFechaMuro = (evento.fecha || "").split("T")[0];
+  const [_yMuro, _mMuro, _dMuro] = _soloFechaMuro.split("-").map((n) => parseInt(n, 10));
+  const fechaFmt = new Date(_yMuro, (_mMuro || 1) - 1, _dMuro || 1).toLocaleDateString("es-ES", {
     day: "numeric",
     month: "long",
     year: "numeric",

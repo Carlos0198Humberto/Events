@@ -116,7 +116,9 @@ function TarjetaAgradecimiento({
   const msg = mensaje
     .replace(/{nombre}/g, invitado.nombre)
     .replace(/{anfitriones}/g, evento.anfitriones || "Nosotros");
-  const fecha = new Date(evento.fecha).toLocaleDateString("es-ES", {
+  const _soloFecha = (evento.fecha || "").split("T")[0];
+  const [_y, _m, _d] = _soloFecha.split("-").map((n) => parseInt(n, 10));
+  const fecha = new Date(_y, (_m || 1) - 1, _d || 1).toLocaleDateString("es-ES", {
     day: "numeric",
     month: "long",
     year: "numeric",

@@ -90,8 +90,14 @@ const COLORES_DESEO_FORM = [
   "#FEF9C3", "#FEE2E2", "#F3E8FF", "#FDF4FF",
 ];
 
+// Parsea "YYYY-MM-DD" como fecha LOCAL (no UTC) para evitar el desfase de un día.
+function parseFechaLocal(fecha: string): Date {
+  const soloFecha = fecha.split("T")[0];
+  const [y, m, d] = soloFecha.split("-").map((n) => parseInt(n, 10));
+  return new Date(y, (m || 1) - 1, d || 1);
+}
 function formatFecha(fecha: string) {
-  return new Date(fecha).toLocaleDateString("es-ES", {
+  return parseFechaLocal(fecha).toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -99,7 +105,7 @@ function formatFecha(fecha: string) {
   });
 }
 function formatFechaCorta(fecha: string) {
-  return new Date(fecha).toLocaleDateString("es-ES", {
+  return parseFechaLocal(fecha).toLocaleDateString("es-ES", {
     day: "numeric",
     month: "long",
     year: "numeric",

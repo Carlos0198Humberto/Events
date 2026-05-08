@@ -79,6 +79,7 @@ const translations = {
     book: "Libro",
     tables: "Mesas",
     settings: "Configurar",
+    edit: "Editar",
     thanks: "Gracias",
     scanner: "Escáner",
     manage: "Gestionar",
@@ -123,6 +124,7 @@ const translations = {
     book: "Book",
     tables: "Tables",
     settings: "Settings",
+    edit: "Edit",
     thanks: "Thanks",
     scanner: "Scanner",
     manage: "Manage",
@@ -139,6 +141,14 @@ const translations = {
 };
 
 // AppLogo viene del componente compartido — importado arriba
+
+// Parsea una fecha "YYYY-MM-DD" como fecha LOCAL (no UTC) para evitar
+// el desfase de un día en zonas horarias al oeste de UTC.
+function parseFechaLocal(fecha: string): Date {
+  const soloFecha = fecha.split("T")[0];
+  const [y, m, d] = soloFecha.split("-").map((n) => parseInt(n, 10));
+  return new Date(y, (m || 1) - 1, d || 1);
+}
 
 // ─── Ornament divider ──────────────────────────────────────────────────────────
 function Ornament({ width = 120 }: { width?: number }) {
@@ -365,6 +375,21 @@ const Icon = {
       strokeLinecap="round"
     >
       <path d="M5 8l5 5 5-5" />
+    </svg>
+  ),
+  pencil: ({ size = 14 }: IconProps = {}) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 17h7" />
+      <path d="M13.5 3.5a1.85 1.85 0 012.6 2.6L6 16.2 2.5 17l.8-3.5L13.5 3.5z" />
     </svg>
   ),
 };
@@ -873,13 +898,16 @@ export default function Dashboard() {
         .progress-track{height:2px;background:var(--rule);overflow:hidden;border-radius:99px}
         .progress-fill{height:100%;background:linear-gradient(90deg,var(--gold) 0%,#D4B082 100%);transition:width .9s var(--ease);border-radius:99px}
 
-        /* Quick links — unified 4-column rows */
-        .primary-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--rule);background:var(--paper)}
+        /* Quick links — unified 5-column rows */
+        .primary-actions{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-top:1px solid var(--rule);background:var(--paper)}
         .pa-link{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 4px;text-decoration:none;color:var(--ink-soft);font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;border-right:1px solid var(--rule);transition:all .2s var(--ease);background:transparent;position:relative;-webkit-tap-highlight-color:transparent;min-height:64px}
         .pa-link:last-child{border-right:none}
         .pa-link:hover{background:var(--paper-soft);color:var(--ink)}
         .pa-link svg{color:var(--gold);transition:transform .2s var(--ease)}
         .pa-link:hover svg{transform:scale(1.08)}
+        .pa-link-edit{background:linear-gradient(180deg,rgba(212,176,130,0.10),rgba(212,176,130,0.04));color:var(--ink)}
+        .pa-link-edit svg{color:var(--gold)}
+        .pa-link-edit:hover{background:linear-gradient(180deg,rgba(212,176,130,0.18),rgba(212,176,130,0.08))}
         .secondary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--rule);background:var(--paper)}
         .sr-link{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 4px;text-decoration:none;color:var(--ink-soft);font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;border-right:1px solid var(--rule);transition:all .2s var(--ease);background:transparent;-webkit-tap-highlight-color:transparent;min-height:64px;position:relative}
         .sr-link:last-child{border-right:none}
@@ -932,6 +960,9 @@ export default function Dashboard() {
         .btn-del{background:none;border:none;padding:8px 4px;cursor:pointer;color:var(--ink-mute);transition:color .2s var(--ease);display:flex;align-items:center;gap:5px;font-family:var(--sans);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;-webkit-tap-highlight-color:transparent;min-height:34px}
         .btn-del:hover:not(:disabled){color:var(--danger)}
         .btn-del:disabled{opacity:.35;cursor:not-allowed}
+        .btn-edit{display:inline-flex;align-items:center;gap:5px;color:var(--ink-mute);text-decoration:none;font-family:var(--sans);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;padding:8px 4px;transition:color .2s var(--ease);-webkit-tap-highlight-color:transparent;min-height:34px}
+        .btn-edit:hover{color:var(--gold)}
+        .card-actions-right{display:flex;align-items:center;gap:14px}
 
         /* Guest list inside details */
         .guest-section{margin:0}
@@ -997,10 +1028,19 @@ export default function Dashboard() {
           .stats-line{grid-template-columns:repeat(2,1fr);gap:14px 16px}
           .stat-row{grid-template-columns:repeat(2,1fr);gap:14px 12px}
         }
+        @media (max-width: 540px){
+          .primary-actions{grid-template-columns:repeat(3,1fr)}
+          .pa-link{border-bottom:1px solid var(--rule)}
+          .pa-link:nth-child(3n){border-right:none}
+          .pa-link:nth-last-child(-n+2):nth-child(3n+1),
+          .pa-link:nth-last-child(-n+2):nth-child(3n+2),
+          .pa-link:last-child{border-bottom:none}
+        }
         @media (max-width: 340px){
           .primary-actions,.secondary-row{grid-template-columns:repeat(2,1fr)}
-          .pa-link:nth-child(1),.pa-link:nth-child(2){border-bottom:1px solid var(--rule)}
-          .pa-link:nth-child(2),.pa-link:nth-child(4){border-right:none}
+          .pa-link{border-bottom:1px solid var(--rule)}
+          .pa-link:nth-child(2n){border-right:none}
+          .pa-link:nth-last-child(-n+1){border-bottom:none}
           .sr-link:nth-child(1),.sr-link:nth-child(2){border-bottom:1px solid var(--rule)}
           .sr-link:nth-child(2),.sr-link:nth-child(4){border-right:none}
         }
@@ -1177,9 +1217,9 @@ export default function Dashboard() {
                     s && total > 0
                       ? Math.round((s.confirmados / total) * 100)
                       : 0;
-                  const esPasado = new Date(evento.fecha) < hoy;
+                  const esPasado = parseFechaLocal(evento.fecha) < hoy;
                   const dias = Math.ceil(
-                    (new Date(evento.fecha).getTime() - hoy.getTime()) /
+                    (parseFechaLocal(evento.fecha).getTime() - hoy.getTime()) /
                       86400000,
                   );
                   const tipoLabel = lang === "es" ? tipo.label : tipo.labelEn;
@@ -1225,7 +1265,7 @@ export default function Dashboard() {
                         <div className="event-meta">
                           <span className="event-meta-item">
                             <Icon.calendar size={12} />
-                            {new Date(evento.fecha).toLocaleDateString(
+                            {parseFechaLocal(evento.fecha).toLocaleDateString(
                               lang === "es" ? "es-ES" : "en-US",
                               {
                                 day: "numeric",
@@ -1265,6 +1305,10 @@ export default function Dashboard() {
 
                       {/* Primary actions */}
                       <div className="primary-actions">
+                        <Link href={`/eventos/${evento.id}/editar`} className="pa-link pa-link-edit">
+                          <Icon.pencil />
+                          {t.edit}
+                        </Link>
                         <Link href={`/eventos/${evento.id}/invitados`} className="pa-link">
                           <Icon.users />
                           {t.guestList}

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import { PhoneInput } from "@/app/components/PhoneInput";
@@ -199,7 +200,9 @@ export default function AgregarInvitados() {
     // Fecha y hora del evento
     let fechaLinea = "";
     if (evento?.fecha) {
-      const d = new Date(evento.fecha);
+      const soloFecha = evento.fecha.split("T")[0];
+      const [yy, mm, dd] = soloFecha.split("-").map((n) => parseInt(n, 10));
+      const d = new Date(yy, (mm || 1) - 1, dd || 1);
       const fechaStr = d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
       const fechaCap = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1);
       fechaLinea = `*Fecha:* ${fechaCap}`;
@@ -222,7 +225,9 @@ export default function AgregarInvitados() {
     // Deadline
     let deadlineLinea = "";
     if (evento?.fecha_limite_confirmacion) {
-      const d = new Date(evento.fecha_limite_confirmacion);
+      const soloFecha = evento.fecha_limite_confirmacion.split("T")[0];
+      const [yy, mm, dd] = soloFecha.split("-").map((n) => parseInt(n, 10));
+      const d = new Date(yy, (mm || 1) - 1, dd || 1);
       const fechaD = d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
       deadlineLinea = `Confirmá tu asistencia antes del _${fechaD}_:\n`;
     } else {
@@ -654,6 +659,34 @@ Con cariño,
         .hero-pill.pill-ok   .hero-pill-num { color: #86efac; }
         .hero-pill.pill-pend .hero-pill-num { color: #fde68a; }
         .hero-pill.pill-no   .hero-pill-num { color: #fca5a5; }
+
+        /* ── Hero edit button ── */
+        .hero-edit-btn {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          z-index: 2;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.18);
+          border: 1px solid rgba(255,255,255,0.35);
+          color: #fff;
+          font-size: 11.5px;
+          font-weight: 700;
+          letter-spacing: 0.3px;
+          text-decoration: none;
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          transition: background .2s, transform .2s;
+          cursor: pointer;
+          font-family: 'DM Sans', sans-serif;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .hero-edit-btn:hover { background: rgba(255,255,255,0.28); transform: translateY(-1px); }
+        .hero-edit-btn:active { transform: scale(0.97); }
 
         /* ── Overlay confirm ── */
         .overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; }

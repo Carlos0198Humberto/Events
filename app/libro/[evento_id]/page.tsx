@@ -456,7 +456,9 @@ export default function LibroRecuerdosPage() {
     );
 
   const tema = TEMAS[evento.tipo] ?? TEMAS.otro;
-  const fechaFormateada = new Date(evento.fecha).toLocaleDateString("es-ES", {
+  const _soloFechaLib = (evento.fecha || "").split("T")[0];
+  const [_yLib, _mLib, _dLib] = _soloFechaLib.split("-").map((n) => parseInt(n, 10));
+  const fechaFormateada = new Date(_yLib, (_mLib || 1) - 1, _dLib || 1).toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
     month: "long",
