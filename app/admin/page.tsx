@@ -231,12 +231,38 @@ export default function AdminPanel() {
     if (usuario.es_admin) return;
     setCambiandoPlan((prev) => ({ ...prev, [usuario.id]: true }));
     const nuevoPlan: "free" | "pro" = usuario.plan === "pro" ? "free" : "pro";
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .update({ plan: nuevoPlan })
-      .eq("id", usuario.id);
+      .eq("id", usuario.id)
+      .select("id, plan");
+
     if (error) {
-      toast.error("Error al cambiar el plan");
+      // Mostrar el error real para diagnóstico (columna faltante, RLS, etc.)
+      const msg = (error as any).message ?? "";
+      const hint = (error as any).hint ?? "";
+      const code = (error as any).code ?? "";
+      console.error("[cambiarPlan] error completo:", error);
+      if (msg.toLowerCase().includes("column") && msg.toLowerCase().includes("plan")) {
+        toast.error(
+          "Falta la columna 'plan' en profiles. En Supabase ejecutá: ALTER TABLE profiles ADD COLUMN plan text DEFAULT 'free';",
+        );
+      } else if (
+        msg.toLowerCase().includes("row-level security") ||
+        msg.toLowerCase().includes("policy") ||
+        code === "42501"
+      ) {
+        toast.error(
+          "RLS bloqueó el cambio. Falta policy de UPDATE en profiles para admins.",
+        );
+      } else {
+        toast.error(`Error al cambiar plan: ${msg || hint || "desconocido"}`);
+      }
+    } else if (!data || data.length === 0) {
+      // El UPDATE no falló pero tampoco devolvió filas → casi siempre RLS silencioso.
+      toast.error(
+        "El plan no se guardó (RLS lo bloqueó silenciosamente en profiles).",
+      );
     } else {
       toast.success(
         nuevoPlan === "pro"
