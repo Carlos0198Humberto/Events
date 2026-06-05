@@ -1,16 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-// Cliente con service_role — bypasea RLS, solo existe en el servidor
-function getAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  if (!serviceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY no configurada");
-  return createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
-
 export async function POST(req: NextRequest) {
   try {
     const { evento_id, nombre } = await req.json();
@@ -22,21 +12,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const admin = getAdminClient();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    // Verificar que el evento existe
-    const { data: evento } = await admin
-      .from("eventos")
-      .select("id")
-      .eq("id", evento_id)
-      .single();
-
-    if (!evento) {
+    // Debug: verificar variables (solo en logs del servidor, no se expone al cliente)
+    if (!url || !serviceKey) {
+      console.error("ENV FALTANTES — URL:", !!url, "SERVICE_KEY:", !!serviceKey);
       return NextResponse.json(
-        { error: "Evento no encontrado" },
-        { status: 404 }
+        { error: `Variables de entorno faltantes: URL=${!!url} KEY=${!!serviceKey}` },
+        { status: 500 }
       );
     }
+
+    const admin = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // Generar token único
     const token = crypto.randomUUID();
@@ -52,14 +42,17 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      console.error("walk-in insert error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("walk-in insert error:", JSON.stringify(error));
+      return NextResponse.json(
+        { error: error.message, code: error.code, details: error.details },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ token });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    console.error("walk-in route error:", err);
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    console.error("walk-in route exception:", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
