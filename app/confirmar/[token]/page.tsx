@@ -677,8 +677,8 @@ function FloatingMascot({
 }: {
   invitado: { nombre: string };
   evento: { nombre: string; tipo: string; anfitriones?: string; frase_evento?: string | null;
-             mensaje_invitacion?: string | null; fecha: string; hora?: string | null;
-             lugar: string; como_llegar?: string | null; };
+             mensaje_invitacion?: string | null; fecha?: string | null; hora?: string | null;
+             lugar?: string | null; como_llegar?: string | null; };
   token: string; fase: string;
   setFase: (f: string) => void;
   hablando: boolean;
