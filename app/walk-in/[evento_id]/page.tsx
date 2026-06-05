@@ -81,9 +81,8 @@ export default function WalkInPage() {
       return;
     }
 
-    setToken(json.token as string);
-    setStep("done");
-    setRegistrando(false);
+    // Redirigir a la invitación completa — misma experiencia que un invitado normal
+    router.replace(`/confirmar/${json.token}`);
   }
 
   if (loading) {
