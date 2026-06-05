@@ -1891,19 +1891,51 @@ export default function MuroPublico() {
   }
 
   async function descargarAlbumPersona(album: { label: string; fotos: Foto[] }) {
-    // Descarga las fotos una por una con nombre de la persona
+    // Genera un ZIP con carpeta nombrada por la persona
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    const nombreCarpeta = album.label.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s_-]/g, "").trim() || "Invitado";
+    const carpeta = zip.folder(nombreCarpeta)!;
+
     for (let i = 0; i < album.fotos.length; i++) {
-      const foto = album.fotos[i];
       try {
-        const resp = await fetch(foto.url);
+        const resp = await fetch(album.fotos[i].url);
         const blob = await resp.blob();
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `${album.label.replace(/\s/g, "_")}_foto${i + 1}.jpg`;
-        a.click();
-        await new Promise((r) => setTimeout(r, 400));
+        const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+        carpeta.file(`foto_${String(i + 1).padStart(2, "0")}.${ext}`, blob);
       } catch {}
     }
+
+    const content = await zip.generateAsync({ type: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(content);
+    a.download = `${nombreCarpeta}_fotos.zip`;
+    a.click();
+  }
+
+  async function descargarTodasFotosZip() {
+    if (albumes.length === 0) return;
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+
+    for (const album of albumes) {
+      const nombreCarpeta = album.label.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s_-]/g, "").trim() || "Invitado";
+      const carpeta = zip.folder(nombreCarpeta)!;
+      for (let i = 0; i < album.fotos.length; i++) {
+        try {
+          const resp = await fetch(album.fotos[i].url);
+          const blob = await resp.blob();
+          const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+          carpeta.file(`foto_${String(i + 1).padStart(2, "0")}.${ext}`, blob);
+        } catch {}
+      }
+    }
+
+    const content = await zip.generateAsync({ type: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(content);
+    a.download = `${evento?.nombre ?? "evento"}_todas_las_fotos.zip`;
+    a.click();
   }
 
   async function eliminarFoto(id: string) {
@@ -2544,6 +2576,21 @@ export default function MuroPublico() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Botón descargar TODAS las fotos como ZIP */}
+              <button
+                onClick={descargarTodasFotosZip}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  background: "linear-gradient(135deg,#3730A3,#4F46E5)",
+                  color: "white", border: "none", borderRadius: 14,
+                  padding: "13px 20px", fontSize: 14, fontWeight: 700,
+                  cursor: "pointer", boxShadow: "0 6px 20px rgba(79,70,229,0.28)",
+                  width: "100%",
+                }}
+              >
+                {Ico.download(16, "white")}
+                {t.descargarTodo} (ZIP con carpetas por persona)
+              </button>
               {albumes.map((album) => (
                 <div
                   key={album.id}
@@ -2584,15 +2631,7 @@ export default function MuroPublico() {
                       </div>
                     </div>
                     <button
-                      onClick={async () => {
-                        for (let i = 0; i < album.fotos.length; i++) {
-                          await descargarImagen(
-                            album.fotos[i].url,
-                            `${album.label}_foto${i + 1}.jpg`,
-                          );
-                          await new Promise((r) => setTimeout(r, 400));
-                        }
-                      }}
+                      onClick={() => descargarAlbumPersona(album)}
                       title={t.descargarFotos}
                       style={{
                         display: "flex",

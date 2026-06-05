@@ -857,64 +857,55 @@ function useTTS() {
 
 // ─── MusicPlayer con autoplay ─────────────────────────────────────────────────
 function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
-    const a = audioRef.current;
+    // Usar el audio oculto que ya fue desbloqueado en el gesto del welcome
+    const a = globalAudioRef.current ??
+      (document.getElementById("inv-audio-hidden") as HTMLAudioElement | null);
     if (!a) return;
-    globalAudioRef.current = a; // exponer ref globalmente para TTS
+    globalAudioRef.current = a;
 
-    // Strategy: muted autoplay (always allowed) → unmute after 300ms
-    // Fallback: wait for first user gesture
-    const startMuted = () => {
-      a.muted = true;
-      a.play()
-        .then(() => {
-          setTimeout(() => {
-            a.muted = false;
-            setPlaying(true);
-          }, 300);
-        })
-        .catch(() => {
-          // Muted play also blocked → wait for interaction
-          const onInteract = () => {
-            a.muted = false;
-            a.play().then(() => setPlaying(true)).catch(() => {});
-            cleanup();
-          };
-          const cleanup = () => {
-            document.removeEventListener("click", onInteract);
-            document.removeEventListener("touchstart", onInteract);
-          };
-          document.addEventListener("click", onInteract, { once: true });
-          document.addEventListener("touchstart", onInteract, { once: true });
-        });
-    };
+    // Sincronizar estado visual con el estado real del audio
+    const syncState = () => setPlaying(!a.paused);
+    a.addEventListener("play", syncState);
+    a.addEventListener("pause", syncState);
+    syncState();
 
-    startMuted();
+    // Si el audio no está reproduciendo todavía, intentar arrancar
+    if (a.paused) {
+      a.muted = false;
+      a.play().then(() => setPlaying(true)).catch(() => {
+        // Fallback: esperar próximo gesto
+        const onInteract = () => {
+          a.muted = false;
+          a.play().then(() => setPlaying(true)).catch(() => {});
+        };
+        document.addEventListener("click", onInteract, { once: true });
+        document.addEventListener("touchstart", onInteract, { once: true });
+      });
+    }
 
     return () => {
-      a.pause();
+      a.removeEventListener("play", syncState);
+      a.removeEventListener("pause", syncState);
     };
   }, [url]);
 
   function toggle() {
-    const a = audioRef.current;
+    const a = globalAudioRef.current;
     if (!a) return;
     if (playing) {
       a.pause();
       setPlaying(false);
     } else {
-      a.play()
-        .then(() => setPlaying(true))
-        .catch(() => {});
+      a.play().then(() => setPlaying(true)).catch(() => {});
     }
   }
 
   return (
     <div className="music-player" onClick={toggle}>
-      <audio ref={audioRef} src={url} loop playsInline />
+      {/* El <audio> real está renderizado como elemento oculto en el root */}
       <div className="music-icon-wrap">
         {playing ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#4F46E5">
@@ -2095,6 +2086,52 @@ export default function ConfirmarPage() {
     cargarDatos();
   }, []);
 
+  // ── Desbloqueo de audio en el primer gesto del usuario ──────────────────────
+  // iOS y Android bloquean autoplay — la única forma es llamar .play()
+  // dentro de un event handler. Usamos capture:true para interceptar
+  // el primer toque/click en cualquier parte de la pantalla.
+  useEffect(() => {
+    let desbloqueado = false;
+
+    const unlock = () => {
+      if (desbloqueado) return;
+      desbloqueado = true;
+
+      const audio = globalAudioRef.current ??
+        (document.getElementById("inv-audio-hidden") as HTMLAudioElement | null);
+      if (!audio) return;
+
+      audio.muted = false;
+      audio.play().catch(() => {});
+
+      document.removeEventListener("touchstart", unlock, true);
+      document.removeEventListener("mousedown", unlock, true);
+    };
+
+    // Intentar autoplay inmediato (funciona en desktop / algunos Android)
+    const tryImmediate = () => {
+      const audio = globalAudioRef.current ??
+        (document.getElementById("inv-audio-hidden") as HTMLAudioElement | null);
+      if (!audio) return;
+      audio.muted = false;
+      audio.play().then(() => { desbloqueado = true; }).catch(() => {
+        // Bloqueado (iOS/Android) → esperar primer toque
+        document.addEventListener("touchstart", unlock, { capture: true, once: true });
+        document.addEventListener("mousedown", unlock, { capture: true, once: true });
+      });
+    };
+
+    // Esperar a que el elemento audio esté listo
+    const timer = setTimeout(tryImmediate, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("touchstart", unlock, true);
+      document.removeEventListener("mousedown", unlock, true);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function cargarDatos() {
     // Primero cargamos el invitado sin join (siempre funciona)
     const { data: inv } = await supabase
@@ -2887,6 +2924,20 @@ export default function ConfirmarPage() {
     <>
       <style>{styles}</style>
       <canvas id="confetti-canvas" ref={canvasRef} />
+
+      {/* Audio oculto — montado desde el inicio para que iOS lo desbloquee
+          en el primer gesto del usuario (botón "Ver mi invitación") */}
+      {evento.musica_url && (
+        <audio
+          id="inv-audio-hidden"
+          src={evento.musica_url}
+          loop
+          playsInline
+          muted
+          style={{ display: "none" }}
+          ref={(el) => { if (el) globalAudioRef.current = el; }}
+        />
+      )}
 
       {/* ─── Pantalla de bienvenida con confeti ─── */}
       {showWelcome && (

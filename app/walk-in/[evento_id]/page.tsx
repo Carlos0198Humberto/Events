@@ -65,26 +65,20 @@ export default function WalkInPage() {
     setRegistrando(true);
     setError("");
 
-    // Generar token único
-    const nuevoToken = crypto.randomUUID();
+    // Usar RPC con SECURITY DEFINER para que el INSERT funcione sin sesión de auth
+    const { data: nuevoToken, error: err } = await supabase.rpc(
+      "walk_in_registrar",
+      { p_evento_id: eventoId, p_nombre: nombre.trim() }
+    );
 
-    const { error: err } = await supabase.from("invitados").insert({
-      evento_id: eventoId,
-      nombre: nombre.trim(),
-      token: nuevoToken,
-      estado: "confirmado",
-      num_personas: 1,
-      telefono: null,
-      email: null,
-    });
-
-    if (err) {
+    if (err || !nuevoToken) {
+      console.error("walk_in_registrar error:", err);
       setError("Error al registrarse. Intentalo de nuevo.");
       setRegistrando(false);
       return;
     }
 
-    setToken(nuevoToken);
+    setToken(nuevoToken as string);
     setStep("done");
     setRegistrando(false);
   }
