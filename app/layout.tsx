@@ -1,0 +1,66 @@
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import FullscreenManager from "./components/FullscreenManager";
+import { ToastProvider } from "./components/Toast";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#312E81",
+};
+
+export const metadata: Metadata = {
+  title: "Evorix",
+  description: "Invitaciones digitales elegantes para tus eventos especiales",
+  applicationName: "Evorix",
+  appleWebApp: {
+    capable: true,
+    title: "Evorix",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="es"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
+      <body
+        className="min-h-full flex flex-col"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        {children}
+        <ToastProvider />
+        <FullscreenManager />
+      </body>
+    </html>
+  );
+}

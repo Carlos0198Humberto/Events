@@ -1,0 +1,1157 @@
+"use client";
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/lib/supabase";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
+import { openWhatsApp } from "@/app/utils/openWhatsApp";
+import { PhoneInput } from "@/app/components/PhoneInput";
+import { toast } from "@/app/components/Toast";
+
+
+type Invitado = {
+  id?: string;
+  nombre: string;
+  token: string;
+  telefono?: string;
+  num_personas?: number;
+  cupo_elije_invitado?: boolean;
+  estado?: string;
+};
+
+type Evento = {
+  nombre: string;
+  tipo: string;
+  anfitriones: string;
+  fecha?: string | null;
+  hora?: string | null;
+  lugar?: string | null;
+  fecha_limite_confirmacion?: string | null;
+};
+
+const TIPO_LABEL: Record<string, string> = {
+  quinceañera: "Quinceañera",
+  boda: "Boda",
+  graduacion: "Graduación",
+  cumpleaños: "Cumpleaños",
+  otro: "Evento especial",
+};
+
+export default function AgregarInvitados() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params.id as string;
+
+  const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState(""); // E.164, ej: "+5491112345678"
+  const [numPersonas, setNumPersonas] = useState("1");
+  const storageKey = 'evorix_cupo_elije_' + (typeof window !== 'undefined' ? window.location.pathname : 'default');
+  const [cupoElijeInvitado, setCupoElijeInvitado] = useState(false);
+  // Leer localStorage solo en el cliente (evita hydration mismatch)
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved === 'true') setCupoElijeInvitado(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [agregados, setAgregados] = useState<Invitado[]>([]);
+  const [todosInvitados, setTodosInvitados] = useState<Invitado[]>([]);
+  const [loadingInvitados, setLoadingInvitados] = useState(true);
+  const [eliminando, setEliminando] = useState<string | null>(null);
+  const [confirmEliminar, setConfirmEliminar] = useState<string | null>(null);
+  const [evento, setEvento] = useState<Evento | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [copiado, setCopiado] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [enviandoTodos, setEnviandoTodos] = useState(false);
+  const [enviados, setEnviados] = useState<Set<string>>(new Set());
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [exportando, setExportando] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const bulkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [lastAdded, setLastAdded] = useState<string | null>(null); // token del último agregado (para animaciones)
+  const [btnSuccess, setBtnSuccess] = useState(false);
+  const [userPlan, setUserPlan] = useState<"free" | "pro">("free");
+
+  const PLAN_LIMIT_FREE = 10;
+
+  // Genera los dots del confetti en el DOM (CSS puro, sin canvas)
+  type ConfettiDot = {
+    id: number; color: string; size: string; borderRadius: string;
+    cx: string; cy: string; cr: string; delay: string; duration: string;
+  };
+  const [confettiDots, setConfettiDots] = useState<ConfettiDot[]>([]);
+  const confettiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function spawnConfetti() {
+    const colors = ["#4F46E5","#818CF8","#F472B6","#34D399","#FBBF24","#60A5FA","#F87171"];
+    const dots: ConfettiDot[] = Array.from({ length: 18 }, (_, i) => {
+      const angle = (i / 18) * 360 + Math.random() * 20;
+      const dist  = 60 + Math.random() * 80;
+      const rad   = (angle * Math.PI) / 180;
+      return {
+        id:           i,
+        color:        colors[Math.floor(Math.random() * colors.length)],
+        size:         `${4 + Math.random() * 5}px`,
+        borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+        cx:           `${Math.cos(rad) * dist}px`,
+        cy:           `${Math.sin(rad) * dist}px`,
+        cr:           `${Math.random() * 540 - 270}deg`,
+        delay:        `${Math.random() * 80}ms`,
+        duration:     `${500 + Math.random() * 200}ms`,
+      };
+    });
+    setConfettiDots(dots);
+    if (confettiTimer.current) clearTimeout(confettiTimer.current);
+    confettiTimer.current = setTimeout(() => setConfettiDots([]), 900);
+  }
+
+  useEffect(() => {
+    document.title = "Evorix — Gestionar invitados";
+    setMounted(true);
+    if (id) {
+      supabase
+        .from("eventos")
+        .select("nombre, tipo, anfitriones, fecha, hora, lugar, fecha_limite_confirmacion")
+        .eq("id", id)
+        .single()
+        .then(({ data }) => { if (data) setEvento(data); });
+      cargarTodosInvitados();
+    }
+    // Cargar plan del usuario
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.plan) setUserPlan(data.plan as "free" | "pro");
+        });
+    });
+    return () => {
+      if (bulkTimerRef.current) clearTimeout(bulkTimerRef.current);
+    };
+  }, [id]);
+
+  async function cargarTodosInvitados() {
+    setLoadingInvitados(true);
+    const { data } = await supabase
+      .from("invitados")
+      .select("id, nombre, token, telefono, num_personas, cupo_elije_invitado, estado")
+      .eq("evento_id", id)
+      .order("created_at", { ascending: true });
+    if (data) setTodosInvitados(data);
+    setLoadingInvitados(false);
+  }
+
+  async function handleExportarExcel() {
+    if (exportando || todosInvitados.length === 0) return;
+    setExportando(true);
+    try {
+      const { data } = await supabase
+        .from("invitados")
+        .select("nombre, telefono, num_personas, estado, numero_confirmacion, mesa_id")
+        .eq("evento_id", id)
+        .order("estado", { ascending: true });
+      const { data: mesas } = await supabase
+        .from("mesas")
+        .select("id, nombre")
+        .eq("evento_id", id);
+      const mesaMap: Record<string, string> = {};
+      (mesas || []).forEach((m) => { mesaMap[m.id] = m.nombre; });
+      const invData = (data || []).map((inv) => ({
+        ...inv,
+        mesa_nombre: inv.mesa_id ? (mesaMap[inv.mesa_id] ?? null) : null,
+      }));
+      await exportarInvitadosExcel(invData, evento?.nombre ?? "Evento");
+    } finally {
+      setExportando(false);
+    }
+  }
+
+  async function handleEliminar(inv: Invitado) {
+    if (!inv.id) return;
+    setEliminando(inv.id);
+    const { error } = await supabase.from("invitados").delete().eq("id", inv.id);
+    if (!error) {
+      setTodosInvitados((prev) => prev.filter((i) => i.id !== inv.id));
+      setAgregados((prev) => prev.filter((i) => i.token !== inv.token));
+    }
+    setEliminando(null);
+    setConfirmEliminar(null);
+  }
+
+  function buildLink(token: string) {
+    return `${window.location.origin}/confirmar/${token}`;
+  }
+
+  function buildWhatsAppUrl(inv: Invitado) {
+    const link = buildLink(inv.token);
+    const tipo = evento?.tipo ?? "otro";
+    const tipoLabel = TIPO_LABEL[tipo] || "evento especial";
+    const anfitriones = evento?.anfitriones ?? "";
+    const nombreEvento = evento?.nombre ?? tipoLabel;
+
+    // Saludo según tipo de evento
+    const saludoMap: Record<string, string> = {
+      boda:        "Tenemos el honor de hacerte llegar tu invitación personal para celebrar nuestra boda.",
+      quinceañera: "Con mucho cariño te hacemos llegar tu invitación personal para celebrar mis XV años.",
+      graduacion:  "Tenemos el agrado de hacerte llegar tu invitación personal para celebrar este logro.",
+      cumpleaños:  "Con mucha alegría te hacemos llegar tu invitación personal para celebrar juntos.",
+      otro:        "Tenemos el agrado de hacerte llegar tu invitación personal para este evento especial.",
+    };
+    const saludo = saludoMap[tipo] ?? saludoMap.otro;
+
+    // Fecha y hora del evento
+    let fechaLinea = "";
+    if (evento?.fecha) {
+      const soloFecha = evento.fecha.split("T")[0];
+      const [yy, mm, dd] = soloFecha.split("-").map((n) => parseInt(n, 10));
+      const d = new Date(yy, (mm || 1) - 1, dd || 1);
+      const fechaStr = d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      const fechaCap = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1);
+      fechaLinea = `*Fecha:* ${fechaCap}`;
+      if (evento.hora) {
+        const [h, m] = evento.hora.split(":");
+        const hour = parseInt(h);
+        const ampm = hour >= 12 ? "PM" : "AM";
+        const h12 = hour % 12 || 12;
+        fechaLinea += `\n*Hora:* ${h12}:${m} ${ampm}`;
+      }
+    }
+
+    // Lugar
+    const lugarLinea = evento?.lugar ? `*Lugar:* ${evento.lugar}` : "";
+
+    // Bloque de detalles (solo si hay datos)
+    const detalles = [fechaLinea, lugarLinea].filter(Boolean).join("\n");
+    const detallesBloque = detalles ? `\n${detalles}\n` : "";
+
+    // Deadline
+    let deadlineLinea = "";
+    if (evento?.fecha_limite_confirmacion) {
+      const soloFecha = evento.fecha_limite_confirmacion.split("T")[0];
+      const [yy, mm, dd] = soloFecha.split("-").map((n) => parseInt(n, 10));
+      const d = new Date(yy, (mm || 1) - 1, dd || 1);
+      const fechaD = d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+      deadlineLinea = `Confirmá tu asistencia antes del _${fechaD}_:\n`;
+    } else {
+      deadlineLinea = "Confirmá tu asistencia en el siguiente enlace:\n";
+    }
+
+    const mensajeBase =
+`*${nombreEvento}*
+
+Estimada/o ${inv.nombre},
+
+${saludo}
+${detallesBloque}
+${deadlineLinea}${link}
+
+Con cariño,
+*${anfitriones}*`;
+
+    const msg = encodeURIComponent(mensajeBase);
+    const rawPhone = inv.telefono ?? "";
+    const phone = rawPhone.replace(/[^\d+]/g, "").replace(/(?!^\+)\+/g, "");
+    return phone
+      ? `https://wa.me/${phone.replace("+", "")}?text=${msg}`
+      : `https://wa.me/?text=${msg}`;
+  }
+
+  async function handleAgregar() {
+    setLoading(true);
+    setError("");
+    if (!nombre.trim()) {
+      setError("El nombre es obligatorio");
+      setLoading(false);
+      return;
+    }
+    // ── Límite de plan ────────────────────────────────────────────────────────
+    if (userPlan === "free" && todosInvitados.length >= PLAN_LIMIT_FREE) {
+      setError(`Plan gratuito: máximo ${PLAN_LIMIT_FREE} invitados por evento. Contactá al administrador para activar el Plan Pro.`);
+      setLoading(false);
+      return;
+    }
+    const personas = cupoElijeInvitado ? null : Math.max(1, parseInt(numPersonas) || 1);
+    const { data, error } = await supabase
+      .from("invitados")
+      .insert({
+        evento_id: id,
+        nombre: nombre.trim(),
+        telefono: telefono.trim() || null,
+        num_personas: personas ?? 1,
+        cupo_elije_invitado: cupoElijeInvitado,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      setError("Error al agregar invitado. Intenta de nuevo.");
+      toast.error("No se pudo agregar. Intentá de nuevo.");
+    } else {
+      const nuevo: Invitado = {
+        id: data.id,
+        nombre: nombre.trim(),
+        token: data.token,
+        telefono: telefono || undefined,
+        num_personas: personas ?? 1,
+        cupo_elije_invitado: cupoElijeInvitado,
+        estado: "pendiente",
+      };
+      setAgregados((prev) => [...prev, nuevo]);
+      setTodosInvitados((prev) => [...prev, nuevo]);
+      setNombre("");
+      setTelefono("");
+      setNumPersonas("1");
+      // cupoElijeInvitado se mantiene (persiste en localStorage hasta que el usuario lo cambie)
+      // Feedback visual + háptico
+      toast.success(`¡${nombre.trim()} agregado a la lista! 🎉`);
+      if ("vibrate" in navigator) navigator.vibrate(80);
+      setLastAdded(data.token);
+      spawnConfetti();
+      setBtnSuccess(true);
+      setTimeout(() => setBtnSuccess(false), 600);
+    }
+    setLoading(false);
+  }
+
+  function copiarLink(token: string) {
+    navigator.clipboard.writeText(buildLink(token));
+    setCopiado(token);
+    setTimeout(() => setCopiado(null), 2200);
+  }
+
+  function enviarWhatsApp(inv: Invitado) {
+    openWhatsApp(buildWhatsAppUrl(inv));
+    setEnviados((prev) => new Set(prev).add(inv.token));
+  }
+
+  function enviarATodos() {
+    setShowBulkConfirm(false);
+    const conTelefono = agregados.filter((inv) => inv.telefono);
+    if (conTelefono.length === 0) return;
+    setEnviandoTodos(true);
+    let i = 0;
+    const abrir = () => {
+      if (i >= conTelefono.length) { setEnviandoTodos(false); return; }
+      const inv = conTelefono[i];
+      openWhatsApp(buildWhatsAppUrl(inv));
+      setEnviados((prev) => new Set(prev).add(inv.token));
+      i++;
+      bulkTimerRef.current = setTimeout(abrir, 1400);
+    };
+    abrir();
+  }
+
+  const conTelefono = agregados.filter((inv) => inv.telefono);
+  const sinTelefono = agregados.filter((inv) => !inv.telefono);
+
+  const invitadosFiltrados = busqueda.trim()
+    ? todosInvitados.filter((inv) =>
+        inv.nombre.toLowerCase().includes(busqueda.toLowerCase())
+      )
+    : todosInvitados;
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+          --bg:           #FAFBFF;
+          --surface:      #FFFFFF;
+          --surface2:     #F4F5FB;
+          --border:       rgba(79,70,229,0.16);
+          --border-hover: rgba(79,70,229,0.50);
+          --border-input: rgba(79,70,229,0.28);
+          --accent:       #4F46E5;
+          --accent2:      #3730A3;
+          --accent-soft:  rgba(79,70,229,0.08);
+          --accent-soft2: rgba(79,70,229,0.16);
+          --text:         #0F172A;
+          --text2:        #475569;
+          --text3:        #3730A3;
+          --shadow:       0 4px 28px rgba(15,23,42,0.10);
+          --shadow-sm:    0 2px 10px rgba(15,23,42,0.07);
+          --shadow-btn:   0 6px 28px rgba(79,70,229,0.38);
+          --wa-green:     #25D366;
+          --wa-dark:      #128C7E;
+          --transition:   all 0.36s cubic-bezier(.4,0,.2,1);
+        }
+
+        html, body {
+          font-family: 'DM Sans', sans-serif;
+          background: var(--bg);
+          color: var(--text);
+          -webkit-font-smoothing: antialiased;
+          width: 100%;
+        }
+
+        body::before {
+          content: '';
+          position: fixed; inset: 0; pointer-events: none; z-index: 0;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+          opacity: 0.5;
+        }
+
+        .glow { position: fixed; pointer-events: none; z-index: 0; border-radius: 50%; filter: blur(90px); }
+        .glow-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: radial-gradient(circle, rgba(79,70,229,0.12) 0%, transparent 70%); animation: glowDrift1 9s ease-in-out infinite; }
+        .glow-2 { width: 260px; height: 260px; bottom: 80px; left: -80px; background: radial-gradient(circle, rgba(79,70,229,0.08) 0%, transparent 70%); animation: glowDrift2 11s ease-in-out infinite; }
+        @keyframes glowDrift1 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-18px,28px)} 66%{transform:translate(14px,-18px)} }
+        @keyframes glowDrift2 { 0%,100%{transform:translate(0,0)} 40%{transform:translate(22px,-30px)} 70%{transform:translate(-8px,18px)} }
+
+        /* ── Page ── */
+        .page-wrap {
+          min-height: calc(100dvh - env(safe-area-inset-top, 0px));
+          background: var(--bg);
+          position: relative;
+        }
+
+        /* ── Top bar ── */
+        .top-bar {
+          background: rgba(255,255,255,0.92);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border-bottom: 1px solid var(--border);
+          padding: 0 16px;
+          height: 54px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: sticky;
+          top: env(safe-area-inset-top, 0px);
+          z-index: 20;
+          box-shadow: var(--shadow-sm);
+        }
+        .top-bar-event {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 17px; font-weight: 600; color: var(--text);
+          letter-spacing: -0.2px; line-height: 1.2;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          text-align: center;
+        }
+        /* ── Barra inferior de regreso ── */
+        .bottom-bar {
+          position: fixed;
+          bottom: 0; left: 0; right: 0;
+          z-index: 40;
+          height: calc(56px + env(safe-area-inset-bottom, 0px));
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+          background: rgba(255,255,255,0.94);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+          border-top: 1px solid var(--border);
+          display: flex; align-items: center;
+          padding-left: 16px; padding-right: 16px;
+          box-shadow: 0 -4px 20px rgba(79,70,229,0.07);
+        }
+        .btn-back {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: transparent; border: none;
+          font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+          color: var(--accent); cursor: pointer;
+          padding: 10px 4px; border-radius: 10px;
+          -webkit-tap-highlight-color: transparent;
+          transition: opacity .15s;
+          letter-spacing: .1px;
+        }
+        .btn-back:active { opacity: 0.6; }
+
+        /* ── Scroll area ── */
+        .scroll-area {
+          padding: 20px 16px;
+          padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          max-width: 480px;
+          width: 100%;
+          margin: 0 auto;
+          position: relative;
+          z-index: 1;
+        }
+
+        /* ── Cards ── */
+        .card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 22px; padding: 22px 20px; box-shadow: var(--shadow); }
+        .card-title { font-family: 'Cormorant Garamond', serif; font-size: 21px; font-weight: 600; color: var(--text); margin-bottom: 3px; letter-spacing: -0.3px; }
+        .card-sub { font-size: 12.5px; color: var(--text3); margin-bottom: 20px; font-weight: 500; }
+        .section-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 22px; padding: 20px 18px; box-shadow: var(--shadow); }
+
+        /* ── Error box ── */
+        .error-box { background: #fff1f2; border: 1px solid #fecdd3; color: #e11d48; font-size: 13px; padding: 10px 14px; border-radius: 12px; margin-bottom: 16px; font-weight: 500; }
+        .plan-warn-banner { background: #fffbeb; border: 1.5px solid #fde68a; color: #92400e; font-size: 12.5px; font-weight: 600; padding: 10px 14px; border-radius: 12px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .plan-limit-banner { background: #eff6ff; border: 1.5px solid #bfdbfe; color: #1e40af; font-size: 13px; font-weight: 600; padding: 12px 16px; border-radius: 14px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; }
+        .plan-limit-banner-body { display: flex; flex-direction: column; gap: 2px; }
+        .plan-limit-banner-title { font-size: 13px; font-weight: 700; }
+        .plan-limit-banner-sub { font-size: 12px; font-weight: 400; opacity: .85; }
+
+        /* ── Fields ── */
+        .fields { display: flex; flex-direction: column; gap: 15px; }
+        .field-label { font-size: 11px; font-weight: 600; color: var(--accent); display: block; margin-bottom: 7px; letter-spacing: 0.6px; text-transform: uppercase; }
+        .field-input {
+          width: 100%; border: 2px solid var(--border-input); border-radius: 14px;
+          padding: 13px 15px; font-size: 15px;
+          background: var(--accent-soft); color: var(--text);
+          outline: none; transition: border-color .22s, box-shadow .22s, background .22s;
+          font-family: 'DM Sans', sans-serif; -webkit-appearance: none;
+          touch-action: manipulation;
+        }
+        .field-input::placeholder { color: var(--text3); }
+        .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.11); background: var(--surface); }
+
+        /* ── Toggle switch ── */
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--accent-soft); border-radius: 14px; border: 1px solid var(--border-input); }
+        .toggle-label { font-size: 13px; font-weight: 500; color: var(--text); }
+        .toggle-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+        .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-thumb { position: absolute; inset: 0; background: #CBD5E1; border-radius: 999px; cursor: pointer; transition: background .2s; }
+        .toggle-thumb::after { content: ''; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+        input:checked + .toggle-thumb { background: var(--accent); }
+        input:checked + .toggle-thumb::after { transform: translateX(20px); }
+
+        /* ── Submit button ── */
+        .btn-submit { width: 100%; padding: 15px; border-radius: 14px; border: none; background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); color: #fff; font-size: 15px; font-weight: 600; font-family: 'DM Sans', sans-serif; letter-spacing: 0.3px; cursor: pointer; margin-top: 4px; box-shadow: var(--shadow-btn); transition: transform .2s ease, box-shadow .2s ease, opacity .2s; position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; touch-action: manipulation; min-height: 50px; }
+        .btn-submit::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%); pointer-events: none; border-radius: inherit; }
+        .btn-shimmer { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.22) 50%, transparent 62%); background-size: 200% 100%; animation: shimmer 3.5s ease-in-out infinite; }
+        @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+        .btn-submit:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 34px rgba(79,70,229,0.50); }
+        .btn-submit:not(:disabled):active { transform: scale(0.97); }
+        .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        /* ── Search box ── */
+        .search-wrap { position: relative; margin-bottom: 14px; }
+        .search-input {
+          width: 100%; border: 1.5px solid var(--border-input); border-radius: 14px;
+          padding: 11px 14px 11px 38px; font-size: 14px;
+          background: var(--surface2); color: var(--text);
+          outline: none; transition: border-color .22s, box-shadow .22s;
+          font-family: 'DM Sans', sans-serif; -webkit-appearance: none;
+          touch-action: manipulation;
+        }
+        .search-input::placeholder { color: var(--text3); }
+        .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.11); background: var(--surface); }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; }
+
+        /* ── Section header ── */
+        .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+        .section-head-title { font-size: 13px; font-weight: 700; color: var(--accent2); text-transform: uppercase; letter-spacing: .6px; display: flex; align-items: center; gap: 6px; }
+        .list-badge { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; border-radius: 99px; font-size: 11px; font-weight: 700; padding: 2px 9px; }
+
+        /* ── Bulk button ── */
+        .btn-bulk { width: 100%; padding: 13px 16px; border-radius: 14px; border: none; background: linear-gradient(135deg, var(--wa-green) 0%, var(--wa-dark) 100%); color: #fff; font-size: 14px; font-weight: 700; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-bottom: 14px; box-shadow: 0 6px 24px rgba(37,211,102,0.38); transition: transform .2s, box-shadow .2s, opacity .2s; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 8px; -webkit-tap-highlight-color: transparent; }
+        .btn-bulk:not(:disabled):hover { transform: translateY(-2px); }
+        .btn-bulk:disabled { opacity: 0.55; cursor: not-allowed; }
+        .btn-bulk-shimmer { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.18) 50%,transparent 62%); background-size: 200% 100%; animation: shimmer 3s ease-in-out infinite; }
+
+        /* ── Inv row ── */
+        .inv-row { display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: var(--surface2); border-radius: 14px; border: 1px solid var(--border); margin-bottom: 8px; }
+        .inv-row:last-child { margin-bottom: 0; }
+        .inv-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+        .inv-info { flex: 1; min-width: 0; }
+        .inv-name { font-size: 14px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .inv-phone { font-size: 11px; color: var(--text3); margin-top: 1px; font-weight: 500; }
+        .inv-no-phone { font-size: 11px; color: #fbbf24; margin-top: 1px; font-weight: 500; }
+        .inv-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+        .btn-action { font-size: 11.5px; font-weight: 700; border-radius: 10px; padding: 6px 10px; cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent; white-space: nowrap; border: 1.5px solid; }
+        .btn-copy-default { color: var(--accent); background: var(--surface); border-color: var(--border-input); }
+        .btn-copy-done    { color: #16a34a; background: #f0fdf4; border-color: #86efac; }
+        .btn-wa           { color: white; background: var(--wa-green); border-color: var(--wa-dark); }
+        .btn-wa-done      { color: white; background: #16a34a; border-color: #15803d; }
+        .btn-eliminar     { color: #dc2626; background: #fef2f2; border-color: #fecaca; }
+        .btn-eliminar:hover { background: #fee2e2; }
+        .btn-eliminar:disabled { opacity: .5; cursor: wait; }
+
+        .estado-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+        .estado-confirmado { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
+        .estado-pendiente  { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+        .estado-rechazado  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+        .confirm-eliminar { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+
+        /* ── Empty state ── */
+        .empty-state { text-align: center; padding: 24px 0; color: var(--text3); font-size: 13px; }
+
+        /* ── Confetti burst ── */
+        @keyframes confetti-fly {
+          0%   { transform: translate(0, 0) rotate(0deg) scale(1);   opacity: 1; }
+          80%  { opacity: 1; }
+          100% { transform: translate(var(--cx), var(--cy)) rotate(var(--cr)) scale(0.4); opacity: 0; }
+        }
+        .confetti-wrap {
+          position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+          z-index: 10; border-radius: inherit;
+        }
+        .confetti-dot {
+          position: absolute; top: 50%; left: 50%;
+          width: var(--cs, 6px); height: var(--cs, 6px);
+          border-radius: var(--cbr, 50%);
+          background: var(--cc, #4F46E5);
+          animation: confetti-fly var(--cd, 600ms) cubic-bezier(.22,1,.36,1) both;
+        }
+
+        /* ── WA button wiggle (aparece nuevo) ── */
+        @keyframes wa-pop {
+          0%   { transform: scale(0.7); opacity: 0; }
+          55%  { transform: scale(1.12); }
+          75%  { transform: scale(0.95); }
+          100% { transform: scale(1);   opacity: 1; }
+        }
+        .btn-wa-new { animation: wa-pop 400ms cubic-bezier(.22,1,.36,1) both; }
+
+        /* ── Submit button success pulse ── */
+        @keyframes submit-success {
+          0%   { transform: scale(1); }
+          30%  { transform: scale(1.04); box-shadow: 0 0 0 6px rgba(79,70,229,0.18); }
+          100% { transform: scale(1); }
+        }
+        .btn-success-pulse { animation: submit-success 500ms cubic-bezier(.22,1,.36,1) both; }
+
+        /* ── Hero metrics card ── */
+        .hero-card {
+          background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+          border-radius: 22px;
+          padding: 20px 20px 18px;
+          color: #fff;
+          box-shadow: 0 8px 32px rgba(79,70,229,0.38);
+          position: relative;
+          overflow: hidden;
+        }
+        .hero-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+          pointer-events: none;
+          z-index: 0;
+        }
+        .hero-card > * { position: relative; z-index: 1; }
+        .hero-tipo {
+          font-size: 10px; font-weight: 700; letter-spacing: 1.8px;
+          text-transform: uppercase; color: rgba(255,255,255,0.70);
+          margin-bottom: 6px;
+        }
+        .hero-nombre {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 26px; font-weight: 600; line-height: 1.15;
+          letter-spacing: -0.4px; color: #fff;
+          margin-bottom: 4px;
+        }
+        .hero-anfitriones {
+          font-size: 12px; color: rgba(255,255,255,0.70); margin-bottom: 18px;
+        }
+        .hero-pills {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        }
+        .hero-pill {
+          background: rgba(255,255,255,0.14);
+          border: 1px solid rgba(255,255,255,0.20);
+          border-radius: 14px;
+          padding: 10px 8px;
+          text-align: center;
+          backdrop-filter: blur(4px);
+        }
+        .hero-pill-num {
+          font-size: 22px; font-weight: 700; line-height: 1;
+          color: #fff; margin-bottom: 3px;
+        }
+        .hero-pill-label {
+          font-size: 9.5px; font-weight: 600; letter-spacing: 0.5px;
+          color: rgba(255,255,255,0.72); text-transform: uppercase;
+        }
+        .hero-pill.pill-ok   .hero-pill-num { color: #86efac; }
+        .hero-pill.pill-pend .hero-pill-num { color: #fde68a; }
+        .hero-pill.pill-no   .hero-pill-num { color: #fca5a5; }
+
+        /* ── Hero edit button ── */
+        .hero-edit-btn {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          z-index: 2;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.18);
+          border: 1px solid rgba(255,255,255,0.35);
+          color: #fff;
+          font-size: 11.5px;
+          font-weight: 700;
+          letter-spacing: 0.3px;
+          text-decoration: none;
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          transition: background .2s, transform .2s;
+          cursor: pointer;
+          font-family: 'DM Sans', sans-serif;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .hero-edit-btn:hover { background: rgba(255,255,255,0.28); transform: translateY(-1px); }
+        .hero-edit-btn:active { transform: scale(0.97); }
+
+        /* ── Overlay confirm ── */
+        .overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .confirm-card { background: var(--surface); border-radius: 24px; padding: 28px 24px; max-width: 340px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,0.22); border: 1.5px solid var(--border); text-align: center; }
+        .confirm-icon { font-size: 36px; margin-bottom: 14px; }
+        .confirm-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+        .confirm-body { font-size: 13.5px; color: var(--text2); line-height: 1.55; margin-bottom: 22px; }
+        .confirm-actions { display: flex; gap: 10px; }
+        .btn-cancel { flex: 1; padding: 13px; border-radius: 12px; border: 1.5px solid var(--border-input); background: var(--surface); color: var(--text2); font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        .btn-confirm { flex: 1; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--wa-green), var(--wa-dark)); color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 16px rgba(37,211,102,0.35); }
+
+        /* ── Animations ── */
+        .anim-header { opacity: 0; transform: translateY(-10px); }
+        .anim-card   { opacity: 0; transform: translateY(20px); }
+        .anim-list   { opacity: 0; transform: translateY(14px); }
+        .mounted .anim-header { animation: mountUp .5s cubic-bezier(.22,1,.36,1) .05s both; }
+        .mounted .anim-card   { animation: mountUp .6s cubic-bezier(.22,1,.36,1) .15s both; }
+        .mounted .anim-list   { animation: mountUp .5s cubic-bezier(.22,1,.36,1) .28s both; }
+        @keyframes mountUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.65} }
+        .pulsing { animation: pulse 1.2s ease-in-out infinite; }
+
+        /* ── Responsive ── */
+        @media (max-width: 420px) {
+          .top-bar { padding: 11px 14px; gap: 9px; }
+          .top-bar-name { font-size: 20px; }
+          .scroll-area { padding: 16px 12px; padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+          .card, .section-card { padding: 18px 15px; border-radius: 18px; }
+          .card-title { font-size: 19px; }
+          .field-input { padding: 12px 13px; font-size: 14.5px; }
+          .btn-submit { padding: 14px; font-size: 14.5px; }
+          .inv-row { padding: 10px; gap: 8px; }
+          .inv-avatar { width: 32px; height: 32px; font-size: 13px; }
+          .inv-actions { flex-wrap: wrap; gap: 5px; justify-content: flex-end; }
+          .btn-action { font-size: 11px; padding: 5px 8px; }
+          .qn-link { padding: 8px 11px; font-size: 10px; }
+        }
+        @media (max-width: 340px) {
+          .inv-actions { flex-direction: column; align-items: stretch; }
+          .btn-action { width: 100%; text-align: center; }
+        }
+      `}</style>
+
+      {/* Confirm bulk overlay */}
+      {showBulkConfirm && (
+        <div className="overlay">
+          <div className="confirm-card">
+            <div className="confirm-icon">📲</div>
+            <div className="confirm-title">Enviar a todos</div>
+            <div className="confirm-body">
+              Se abrirá WhatsApp para{" "}
+              <strong>{conTelefono.length} invitado{conTelefono.length !== 1 ? "s" : ""}</strong>{" "}
+              con número registrado.
+              {sinTelefono.length > 0 && (
+                <> Los otros <strong>{sinTelefono.length}</strong> sin número serán omitidos.</>
+              )}
+            </div>
+            <div className="confirm-actions">
+              <button className="btn-cancel" onClick={() => setShowBulkConfirm(false)}>Cancelar</button>
+              <button className="btn-confirm" onClick={enviarATodos}>Enviar ahora</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`page-wrap${mounted ? " mounted" : ""}`}>
+        <div className="glow glow-1" />
+        <div className="glow glow-2" />
+
+        {/* ── Top bar ── */}
+        <div className="top-bar anim-header">
+          <div className="top-bar-event">
+            {evento?.nombre ?? "Invitados"}
+          </div>
+        </div>
+
+        {/* ── Barra inferior ── */}
+        <div className="bottom-bar">
+          <button className="btn-back" onClick={() => router.push("/dashboard")} type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+            Regresar al dashboard
+          </button>
+        </div>
+
+        {/* ── Content ── */}
+        <div className="scroll-area">
+
+          {/* ── Hero metrics card ── */}
+          {evento && (
+            <div className="hero-card anim-card">
+              <div className="hero-tipo">
+                {TIPO_LABEL[evento.tipo] ?? "Evento especial"}
+              </div>
+              <div className="hero-nombre">{evento.nombre}</div>
+              <div className="hero-anfitriones">
+                {evento.anfitriones}
+              </div>
+              <div className="hero-pills">
+                <div className="hero-pill pill-ok">
+                  <div className="hero-pill-num">
+                    {todosInvitados.filter(i => i.estado === "confirmado").length}
+                  </div>
+                  <div className="hero-pill-label">Confirm.</div>
+                </div>
+                <div className="hero-pill pill-pend">
+                  <div className="hero-pill-num">
+                    {todosInvitados.filter(i => i.estado === "pendiente" || !i.estado).length}
+                  </div>
+                  <div className="hero-pill-label">Pendientes</div>
+                </div>
+                <div className="hero-pill pill-no">
+                  <div className="hero-pill-num">
+                    {todosInvitados.filter(i => i.estado === "rechazado").length}
+                  </div>
+                  <div className="hero-pill-label">Rechazaron</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Banner de plan ── */}
+          {userPlan === "free" && todosInvitados.length >= PLAN_LIMIT_FREE && (
+            <div className="plan-limit-banner">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e40af" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+              </svg>
+              <div className="plan-limit-banner-body">
+                <div className="plan-limit-banner-title">Límite del Plan Gratuito alcanzado ({PLAN_LIMIT_FREE}/{PLAN_LIMIT_FREE} invitados)</div>
+                <div className="plan-limit-banner-sub">Para agregar más invitados, contactá al administrador para activar el Plan Pro ($12 por evento).</div>
+              </div>
+            </div>
+          )}
+          {userPlan === "free" && todosInvitados.length >= PLAN_LIMIT_FREE - 2 && todosInvitados.length < PLAN_LIMIT_FREE && (
+            <div className="plan-warn-banner">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/>
+              </svg>
+              Quedán {PLAN_LIMIT_FREE - todosInvitados.length} invitado{PLAN_LIMIT_FREE - todosInvitados.length !== 1 ? "s" : ""} disponible{PLAN_LIMIT_FREE - todosInvitados.length !== 1 ? "s" : ""} en el Plan Gratuito.
+            </div>
+          )}
+
+          {/* ── Agregar invitado ── */}
+          <div className="card anim-card">
+            <div className="card-title">Agregar invitado</div>
+            <div className="card-sub">Completá los datos y compartí el link de confirmación</div>
+
+            {error && <div className="error-box">{error}</div>}
+
+            <div className="fields">
+              <div>
+                <label className="field-label">Nombre *</label>
+                <input
+                  className="field-input"
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Ej: María García"
+                  autoComplete="off"
+                  onKeyDown={(e) => e.key === "Enter" && handleAgregar()}
+                />
+              </div>
+
+              <div>
+                <label className="field-label">Teléfono (WhatsApp)</label>
+                <PhoneInput
+                  value={telefono}
+                  onChange={setTelefono}
+                  defaultCountry="SV"
+                />
+              </div>
+
+              {!cupoElijeInvitado && (
+                <div>
+                  <label className="field-label">Cantidad de lugares</label>
+                  <input
+                    className="field-input"
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={numPersonas}
+                    onChange={(e) => setNumPersonas(e.target.value)}
+                    inputMode="numeric"
+                  />
+                </div>
+              )}
+
+              <div className="toggle-row">
+                <div>
+                  <div className="toggle-label">El invitado elige cuántos van</div>
+                  <div className="toggle-sub">No se asigna un cupo fijo</div>
+                </div>
+                <label className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={cupoElijeInvitado}
+                    onChange={(e) => {
+                      setCupoElijeInvitado(e.target.checked);
+                      localStorage.setItem(storageKey, String(e.target.checked));
+                    }}
+                  />
+                  <span className="toggle-thumb" />
+                </label>
+              </div>
+
+              <button
+                className={`btn-submit${btnSuccess ? " btn-success-pulse" : ""}`}
+                onClick={handleAgregar}
+                disabled={loading || !nombre.trim()}
+                type="button"
+                style={{ position: "relative" }}
+              >
+                <span className="btn-shimmer" />
+                {loading ? "Agregando..." : "Agregar invitado"}
+                {/* Confetti burst */}
+                {confettiDots.length > 0 && (
+                  <div className="confetti-wrap" aria-hidden="true">
+                    {confettiDots.map((d) => (
+                      <div
+                        key={d.id}
+                        className="confetti-dot"
+                        style={{
+                          "--cc": d.color,
+                          "--cs": d.size,
+                          "--cbr": d.borderRadius,
+                          "--cx": d.cx,
+                          "--cy": d.cy,
+                          "--cr": d.cr,
+                          "--cd": d.duration,
+                          animationDelay: d.delay,
+                        } as React.CSSProperties}
+                      />
+                    ))}
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* ── Recién agregados (esta sesión) ── */}
+          {agregados.length > 0 && (
+            <div className="section-card anim-list">
+              <div className="section-head">
+                <div className="section-head-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                  Recién agregados
+                  <span className="list-badge">{agregados.length}</span>
+                </div>
+              </div>
+
+              {conTelefono.length > 0 && (
+                <button
+                  className={`btn-bulk${enviandoTodos ? " pulsing" : ""}`}
+                  onClick={() => setShowBulkConfirm(true)}
+                  disabled={enviandoTodos}
+                  type="button"
+                >
+                  <span className="btn-bulk-shimmer" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.946 0C5.344 0 0 5.268 0 11.772c0 2.077.556 4.027 1.526 5.716L.057 24l6.727-1.712a11.98 11.98 0 005.162 1.168h.005C18.549 23.456 24 18.188 24 11.684 24 5.268 18.549 0 11.946 0z"/></svg>
+                  {enviandoTodos ? "Enviando..." : `Enviar WhatsApp a todos (${conTelefono.length})`}
+                </button>
+              )}
+
+              {agregados.map((inv) => (
+                <div key={inv.id ?? inv.token} style={{ marginBottom: 8 }}>
+                  <div className="inv-row" style={{ marginBottom: 0 }}>
+                    <div className="inv-avatar">
+                      {inv.nombre.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="inv-info">
+                      <div className="inv-name">{inv.nombre}</div>
+                      {inv.telefono
+                        ? <div className="inv-phone">📱 {inv.telefono}</div>
+                        : <div className="inv-no-phone">Sin número</div>
+                      }
+                    </div>
+                    <div className="inv-actions">
+                      <button
+                        className={`btn-action ${copiado === inv.token ? "btn-copy-done" : "btn-copy-default"}`}
+                        onClick={() => copiarLink(inv.token)}
+                        type="button"
+                        title="Copiar link"
+                      >
+                        {copiado === inv.token ? "✓" : "🔗"}
+                      </button>
+                      {inv.telefono && (
+                        <button
+                          className={`btn-action ${enviados.has(inv.token) ? "btn-wa-done" : "btn-wa"}${lastAdded === inv.token && !enviados.has(inv.token) ? " btn-wa-new" : ""}`}
+                          onClick={() => enviarWhatsApp(inv)}
+                          type="button"
+                          aria-label={`Enviar WhatsApp a ${inv.nombre}`}
+                        >
+                          {enviados.has(inv.token) ? "✓" : "WA"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Gestionar todos ── */}
+          <div className="section-card anim-list">
+            <div className="section-head">
+              <div className="section-head-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                Todos los invitados
+                <span className="list-badge">{todosInvitados.length}</span>
+              </div>
+              {todosInvitados.length > 0 && (
+                <button
+                  onClick={handleExportarExcel}
+                  disabled={exportando}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: "rgba(79,70,229,0.10)",
+                    border: "1px solid rgba(79,70,229,0.30)", borderRadius: 10,
+                    padding: "6px 12px", fontSize: 11, fontWeight: 700,
+                    color: "var(--accent2)", cursor: exportando ? "wait" : "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  {exportando ? "..." : "Excel"}
+                </button>
+              )}
+            </div>
+
+            {/* Search */}
+            {todosInvitados.length > 0 && (
+              <div className="search-wrap">
+                <span className="search-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                  </svg>
+                </span>
+                <input
+                  className="search-input"
+                  type="text"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder="Buscar por nombre..."
+                  autoComplete="off"
+                />
+              </div>
+            )}
+
+            {loadingInvitados ? (
+              <div className="empty-state">Cargando invitados...</div>
+            ) : todosInvitados.length === 0 ? (
+              <div className="empty-state">Aún no hay invitados. Agrégalos arriba.</div>
+            ) : invitadosFiltrados.length === 0 ? (
+              <div className="empty-state">Sin resultados para "{busqueda}"</div>
+            ) : (
+              invitadosFiltrados.map((inv) => (
+                <div key={inv.id ?? inv.token} style={{ marginBottom: 8 }}>
+                  <div className="inv-row" style={{ marginBottom: 0 }}>
+                    <div className="inv-avatar" style={{
+                      background: inv.estado === "confirmado"
+                        ? "linear-gradient(135deg,#16a34a,#15803d)"
+                        : inv.estado === "rechazado"
+                        ? "linear-gradient(135deg,#dc2626,#b91c1c)"
+                        : "linear-gradient(135deg,var(--accent),var(--accent2))",
+                    }}>
+                      {inv.nombre.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="inv-info">
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <div className="inv-name">{inv.nombre}</div>
+                        {inv.estado && (
+                          <span className={`estado-badge ${
+                            inv.estado === "confirmado" ? "estado-confirmado"
+                            : inv.estado === "rechazado" ? "estado-rechazado"
+                            : "estado-pendiente"
+                          }`}>
+                            {inv.estado === "confirmado" ? "✓ Conf."
+                              : inv.estado === "rechazado" ? "✗ Rechazó"
+                              : "Pendiente"}
+                          </span>
+                        )}
+                      </div>
+                      {inv.telefono
+                        ? <div className="inv-phone">📱 {inv.telefono}</div>
+                        : <div className="inv-no-phone">Sin número</div>
+                      }
+                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>
+                        {inv.cupo_elije_invitado
+                          ? "👥 Elige cuántos van"
+                          : `👥 ${inv.num_personas ?? 1} lugar${(inv.num_personas ?? 1) !== 1 ? "es" : ""}`}
+                      </div>
+                    </div>
+                    <div className="inv-actions">
+                      <button
+                        className={`btn-action ${copiado === inv.token ? "btn-copy-done" : "btn-copy-default"}`}
+                        onClick={() => copiarLink(inv.token)}
+                        type="button"
+                        title="Copiar link"
+                      >
+                        {copiado === inv.token ? "✓" : "🔗"}
+                      </button>
+                      {inv.telefono && (
+                        <button
+                          className={`btn-action ${enviados.has(inv.token) ? "btn-wa-done" : "btn-wa"}`}
+                          onClick={() => enviarWhatsApp(inv)}
+                          type="button"
+                        >
+                          {enviados.has(inv.token) ? "✓" : "WA"}
+                        </button>
+                      )}
+                      <button
+                        className="btn-action btn-eliminar"
+                        onClick={() => setConfirmEliminar(confirmEliminar === inv.id ? null : (inv.id ?? null))}
+                        type="button"
+                        disabled={eliminando === inv.id}
+                      >
+                        {eliminando === inv.id ? "..." : "🗑"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {confirmEliminar === inv.id && (
+                    <div className="confirm-eliminar">
+                      <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 600, flex: 1 }}>
+                        ¿Eliminar a {inv.nombre}?
+                      </span>
+                      <button
+                        className="btn-action btn-eliminar"
+                        onClick={() => handleEliminar(inv)}
+                        disabled={eliminando === inv.id}
+                        type="button"
+                        style={{ padding: "5px 12px" }}
+                      >
+                        Eliminar
+                      </button>
+                      <button
+                        className="btn-action btn-copy-default"
+                        onClick={() => setConfirmEliminar(null)}
+                        type="button"
+                        style={{ padding: "5px 12px" }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+        </div>
+      </div>
+
+    </>
+  );
+}
