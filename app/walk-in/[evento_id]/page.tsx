@@ -65,20 +65,23 @@ export default function WalkInPage() {
     setRegistrando(true);
     setError("");
 
-    // Usar RPC con SECURITY DEFINER para que el INSERT funcione sin sesión de auth
-    const { data: nuevoToken, error: err } = await supabase.rpc(
-      "walk_in_registrar",
-      { p_evento_id: eventoId, p_nombre: nombre.trim() }
-    );
+    // Llamar a la API route server-side (usa service_role, bypasea RLS)
+    const res = await fetch("/api/walk-in/registrar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ evento_id: eventoId, nombre: nombre.trim() }),
+    });
 
-    if (err || !nuevoToken) {
-      console.error("walk_in_registrar error:", err);
+    const json = await res.json();
+
+    if (!res.ok || !json.token) {
+      console.error("walk-in error:", json);
       setError("Error al registrarse. Intentalo de nuevo.");
       setRegistrando(false);
       return;
     }
 
-    setToken(nuevoToken as string);
+    setToken(json.token as string);
     setStep("done");
     setRegistrando(false);
   }
