@@ -33,8 +33,9 @@ export default function WalkInPage() {
   const [registrando, setRegistrando] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const searchParams = useSearchParams();
+  const esInvitado = searchParams.get("registrar") === "1";
   const [step, setStep] = useState<"qr" | "form" | "done">(
-    searchParams.get("registrar") === "1" ? "form" : "qr"
+    esInvitado ? "form" : "qr"
   );
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
@@ -140,12 +141,14 @@ export default function WalkInPage() {
   return (
     <main style={{ minHeight: "100vh", background: "linear-gradient(160deg,#EEF2FF 0%,#E0E7FF 50%,#C7D2FE 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontFamily: "'DM Sans',sans-serif" }}>
       {/* Botón de regreso */}
-      <button className="wl-btn-regreso" onClick={() => router.push("/dashboard")}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5M12 5l-7 7 7 7"/>
-        </svg>
-        Regresar
-      </button>
+      {!esInvitado && (
+        <button className="wl-btn-regreso" onClick={() => step === "form" ? setStep("qr") : router.push("/dashboard")}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          Regresar
+        </button>
+      )}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Jost:wght@400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -304,6 +307,17 @@ export default function WalkInPage() {
                 Ya sos parte del evento. Podés ver el muro de fotos y dejar tu deseo para los anfitriones.
               </p>
               <a
+                href={`/muro/${eventoId}?token=${token}`}
+                style={{ width: "100%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "white", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 8px 24px rgba(79,70,229,0.32)", fontFamily: "inherit" }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                Ver muro del evento
+              </a>
+            </div>
+          )}
+        </div>
+
+          <a
                 href={`/muro/${eventoId}?token=${token}`}
                 style={{ width: "100%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "white", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 8px 24px rgba(79,70,229,0.32)", fontFamily: "inherit" }}
               >
