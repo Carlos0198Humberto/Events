@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { AppLogo } from "@/app/components/AppLogo";
 
@@ -32,9 +32,14 @@ export default function WalkInPage() {
   const [nombre, setNombre] = useState("");
   const [registrando, setRegistrando] = useState(false);
   const [token, setToken] = useState<string | null>(null);
-  const [step, setStep] = useState<"qr" | "form" | "done">("qr");
+  const searchParams = useSearchParams();
+  const [step, setStep] = useState<"qr" | "form" | "done">(
+    searchParams.get("registrar") === "1" ? "form" : "qr"
+  );
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [qrUrl, setQrUrl] = useState("");
+  const [registerUrl, setRegisterUrl] = useState("");
 
   useEffect(() => {
     cargar();
@@ -43,7 +48,9 @@ export default function WalkInPage() {
   useEffect(() => {
     if (typeof window !== "undefined" && eventoId) {
       const url = `${window.location.origin}/walk-in/${eventoId}`;
-      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(url)}&format=png&margin=10`);
+      setRegisterUrl(`${window.location.origin}/walk-in/${eventoId}?registrar=1`);
+      const qrData = `${window.location.origin}/walk-in/${eventoId}?registrar=1`;
+      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(qrData)}&format=png&margin=10`);
     }
   }, [eventoId]);
 
@@ -83,6 +90,24 @@ export default function WalkInPage() {
 
     // Redirigir a la invitación completa — misma experiencia que un invitado normal
     router.replace(`/confirmar/${json.token}`);
+  }
+
+
+  async function compartir() {
+    if (!registerUrl) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: evento?.nombre ?? "Evento",
+          text: "Regístrate como invitado en el evento",
+          url: registerUrl,
+        });
+        return;
+      } catch { /* cancelado */ }
+    }
+    await navigator.clipboard.writeText(registerUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   }
 
   if (loading) {
@@ -195,8 +220,26 @@ export default function WalkInPage() {
               >
                 Registrarme como invitado
               </button>
-              <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 10 }}>
-                ¿Sos invitado? Tocá el botón de arriba
+
+              {/* Compartir link */}
+              <button
+                onClick={compartir}
+                style={{ width: "100%", marginTop: 10, background: "transparent", border: "1.5px solid rgba(79,70,229,0.28)", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "#4F46E5", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit", transition: "all .15s" }}
+              >
+                {copied ? (
+                  <>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    ¡Link copiado!
+                  </>
+                ) : (
+                  <>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    Compartir link de registro
+                  </>
+                )}
+              </button>
+              <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 8, textAlign: "center" }}>
+                Comparte el QR o el link — van directo al formulario
               </p>
             </div>
           )}

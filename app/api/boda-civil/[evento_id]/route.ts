@@ -32,7 +32,7 @@ async function getMeta(admin: ReturnType<typeof adminClient>, evento_id: string)
 async function saveMeta(
   admin: ReturnType<typeof adminClient>,
   evento_id: string,
-  meta: { video_url: string | null; fotos: string[]; nombres: string }
+  meta: { video_url: string | null; fotos: string[]; nombres: string; reactions?: { nombre: string; ts: number }[] }
 ) {
   const blob = new Blob([JSON.stringify(meta)], { type: "application/json" });
   await admin.storage
@@ -100,6 +100,14 @@ export async function POST(
     if (!meta.fotos.includes(url)) meta.fotos.push(url);
     await saveMeta(admin, evento_id, meta);
     return NextResponse.json({ ok: true, meta });
+  }
+
+  if (type === "add_reaction") {
+    const nombre = (form.get("nombre") as string) || "Un invitado";
+    if (!meta.reactions) meta.reactions = [];
+    meta.reactions.push({ nombre, ts: Date.now() });
+    await saveMeta(admin, evento_id, meta);
+    return NextResponse.json({ ok: true, reactions: meta.reactions });
   }
 
   if (type === "delete_video") {

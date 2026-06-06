@@ -38,4 +38,7 @@ CREATE POLICY "auth_delete_boda_civil"
   USING (bucket_id = 'boda-civil');
 
 -- ══════════════════════════════════════════════════════════════════════════════
--- NOTA: La API route /api/boda-civil/[evento_id] usa SUPABASE_
+-- NOTA: La API route /api/boda-civil/[evento_id] usa SUPABASE_SERVICE_ROLE_KEY
+-- y crea el bucket automáticamente en el primer uso.
+-- Este SQL solo es necesario si recibes error de bucket o permisos.
+-- ══════════════════════════════════════════════════════════════════════════════

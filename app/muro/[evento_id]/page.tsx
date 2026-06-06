@@ -1718,7 +1718,7 @@ function DeseoCard({
 }
 
 // ─── Tipos Boda Civil ──────────────────────────────────────────────────────────
-type BodaCivilMeta = { video_url: string | null; fotos: string[]; nombres: string };
+type BodaCivilMeta = { video_url: string | null; fotos: string[]; nombres: string; reactions?: { nombre: string; ts: number }[] };
 
 // ─── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
 type Vista = "fotos" | "albumes" | "deseos" | "boda";
@@ -1745,6 +1745,9 @@ export default function MuroPublico() {
   const [mounted, setMounted] = useState(false);
   const [bodaCivil, setBodaCivil] = useState<BodaCivilMeta | null>(null);
   const [bodaCarruselIdx, setBodaCarruselIdx] = useState(0);
+  const [bodaReactions, setBodaReactions] = useState<{ nombre: string; ts: number }[]>([]);
+  const [bodaYaReaccione, setBodaYaReaccione] = useState(false);
+  const [bodaEnviandoReaccion, setBodaEnviandoReaccion] = useState(false);
 
   const t = T[lang];
 
@@ -1856,6 +1859,17 @@ export default function MuroPublico() {
     await Promise.all([cargarFotos(), cargarDeseos()]);
     // Cargar boda civil si aplica
     if (ev?.tipo === "boda") {
+      try {
+        const res = await fetch(`/api/boda-civil/${eventoId}`);
+        if (res.ok) {
+          const data: BodaCivilMeta = await res.json();
+          if (data.video_url || data.fotos.length >= 3) {
+            setBodaCivil(data);
+            setBodaReactions(data.reactions ?? []);
+          }
+        }
+      } catch { /* boda civil no disponible */ }
+    }
       try {
         const res = await fetch(`/api/boda-civil/${eventoId}`);
         if (res.ok) {
@@ -2279,50 +2293,32 @@ export default function MuroPublico() {
           border: 1.5px solid white;
         }
         /* ── Boda Civil ── */
-        .boda-wrap { padding: 0 4px 32px; }
-        .boda-frame-outer {
-          position: relative; border-radius: 18px; overflow: hidden;
-          border: 2px solid rgba(212,175,55,0.6);
-          box-shadow: 0 0 0 6px rgba(212,175,55,0.12), 0 8px 32px rgba(0,0,0,0.35);
-          background: #0f0e17; margin-bottom: 18px;
-        }
-        .boda-frame-deco {
-          position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-          pointer-events: none; z-index: 2;
-        }
-        .boda-video { width: 100%; display: block; max-height: 360px; background: #000; }
-        .boda-nombres-bar {
-          position: absolute; bottom: 0; left: 0; right: 0;
-          background: linear-gradient(to top, rgba(15,14,23,0.95) 0%, rgba(15,14,23,0.6) 70%, transparent 100%);
-          padding: 28px 16px 14px; z-index: 3; text-align: center;
-        }
-        .boda-nombres-text {
-          font-family: 'Cormorant Garamond', serif; font-size: 22px;
-          font-style: italic; color: #d4af37;
-          text-shadow: 0 2px 12px rgba(0,0,0,0.9); letter-spacing: 0.5px;
-        }
-        .boda-carousel { position: relative; overflow: hidden; border-radius: 14px; margin-bottom: 8px; background: #0f0e17; }
+        .boda-wrap { padding: 0 0 32px; }
+        .boda-header { text-align: center; padding: 20px 16px 16px; }
+        .boda-deco-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
+        .boda-nombres { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 600; color: #1E1B4B; letter-spacing: -0.3px; margin-bottom: 2px; }
+        .boda-frame-outer { position: relative; border-radius: 16px; overflow: hidden; background: #000; margin: 0 0 4px; box-shadow: 0 4px 24px rgba(79,70,229,0.12); }
+        .boda-nombres-bar { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(15,14,23,0.88) 0%, transparent 100%); padding: 32px 16px 14px; z-index: 3; text-align: center; pointer-events: none; }
+        .boda-nombres-text { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-style: italic; color: #fff; letter-spacing: 0.3px; }
+        .boda-video { width: 100%; display: block; max-height: 380px; background: #000; border-radius: 16px; }
+        .boda-sec-label { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 600; color: #1E1B4B; display: flex; align-items: center; gap: 8px; padding: 18px 16px 10px; }
+        .boda-carousel { position: relative; overflow: hidden; background: #F8FAFF; }
         .boda-carousel-track { display: flex; transition: transform .4s cubic-bezier(.22,1,.36,1); }
         .boda-carousel-slide { flex-shrink: 0; width: 100%; }
-        .boda-carousel-slide img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; border-radius: 14px; }
-        .boda-carousel-btn {
-          position: absolute; top: 50%; transform: translateY(-50%);
-          background: rgba(0,0,0,0.55); border: 1px solid rgba(212,175,55,0.4);
-          color: #d4af37; border-radius: 50%; width: 36px; height: 36px;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer; z-index: 4; font-size: 16px; transition: background .18s;
-        }
-        .boda-carousel-btn:hover { background: rgba(212,175,55,0.25); }
-        .boda-carousel-prev { left: 8px; }
-        .boda-carousel-next { right: 8px; }
-        .boda-carousel-dots { display: flex; justify-content: center; gap: 6px; padding: 8px 0; flex-wrap: wrap; }
-        .boda-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(212,175,55,0.3); cursor: pointer; transition: all .2s; border: none; padding: 0; }
-        .boda-dot.active { background: #d4af37; transform: scale(1.3); }
-        .boda-section-title {
-          font-family: 'Cormorant Garamond', serif; font-size: 18px;
-          font-style: italic; color: #d4af37; text-align: center;
-          margin: 22px 0 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
+        .boda-carousel-slide img { width: 100%; display: block; max-height: 420px; object-fit: contain; background: #F1F5FF; }
+        .boda-carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.92); border: 1.5px solid rgba(79,70,229,0.18); color: #4F46E5; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 4; box-shadow: 0 2px 10px rgba(79,70,229,0.14); transition: background .15s; }
+        .boda-carousel-btn:active { background: rgba(79,70,229,0.08); }
+        .boda-carousel-prev { left: 10px; }
+        .boda-carousel-next { right: 10px; }
+        .boda-carousel-dots { display: flex; justify-content: center; gap: 5px; padding: 10px 0 4px; }
+        .boda-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(79,70,229,0.2); cursor: pointer; transition: all .2s; border: none; padding: 0; }
+        .boda-dot.active { background: #4F46E5; transform: scale(1.35); }
+        .boda-reaction-area { margin: 16px 14px 0; background: #fff; border: 1.5px solid rgba(79,70,229,0.14); border-radius: 18px; padding: 16px; box-shadow: 0 2px 12px rgba(79,70,229,0.06); }
+        .boda-reaction-btn { width: 100%; border: 1.5px solid rgba(236,72,153,0.35); background: rgba(236,72,153,0.06); border-radius: 14px; padding: 13px; font-size: 14px; font-weight: 700; color: #be185d; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'DM Sans', sans-serif; transition: all .15s; }
+        .boda-reaction-btn:active { transform: scale(0.97); }
+        .boda-reaction-btn.done { background: rgba(236,72,153,0.14); border-color: rgba(236,72,153,0.5); }
+        .boda-reaction-list { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+        .boda-reaction-chip { background: #F8FAFF; border: 1px solid rgba(79,70,229,0.14); border-radius: 99px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: #3730A3; display: flex; align-items: center; gap: 4px; }
       `}</style>
 
       {/* ── Bordes festivos ── */}
@@ -2927,42 +2923,47 @@ export default function MuroPublico() {
         {/* ── BODA CIVIL ── */}
         {vista === "boda" && bodaCivil && (
           <div className="boda-wrap">
-            <div style={{ textAlign: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 26, letterSpacing: 8 }}>{"💒 ❤️ 💍"}</div>
-              {bodaCivil.nombres && (
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontStyle: "italic", color: "#d4af37", marginTop: 6 }}>
-                  {bodaCivil.nombres}
-                </div>
-              )}
+
+            {/* Cabecera con decoración SVG */}
+            <div className="boda-header">
+              <div className="boda-deco-row">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#EC4899" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="1.8" strokeLinecap="round"><path d="M12 22C12 22 3 16 3 9a9 9 0 0 1 18 0c0 7-9 13-9 13z"/><circle cx="12" cy="9" r="2.5" fill="#4F46E5" stroke="none"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#EC4899" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              {bodaCivil.nombres && <div className="boda-nombres">{bodaCivil.nombres}</div>}
+              <p style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>Boda Civil</p>
             </div>
 
+            {/* Video */}
             {bodaCivil.video_url && (
               <>
-                <h2 className="boda-section-title">
-                  <span>{"🎬"}</span> Video de la Boda Civil
-                </h2>
+                <div className="boda-sec-label">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  Video de la boda civil
+                </div>
                 <div className="boda-frame-outer">
-                  <svg style={{ position:"absolute",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:2 }} viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-                    <text x="2" y="9" fontSize="7" fill="#d4af37" opacity="0.85">{"♥"}</text>
-                    <text x="89" y="9" fontSize="7" fill="#d4af37" opacity="0.85">{"♥"}</text>
-                    <text x="2" y="99" fontSize="7" fill="#d4af37" opacity="0.85">{"♥"}</text>
-                    <text x="89" y="99" fontSize="7" fill="#d4af37" opacity="0.85">{"♥"}</text>
-                    <text x="41" y="7" fontSize="5" fill="#d4af37" opacity="0.55">{"✦ ✦ ✦"}</text>
-                    <text x="41" y="98" fontSize="5" fill="#d4af37" opacity="0.55">{"✦ ✦ ✦"}</text>
-                  </svg>
                   <video src={bodaCivil.video_url} controls className="boda-video" playsInline preload="metadata" />
                   {bodaCivil.nombres && (
                     <div className="boda-nombres-bar">
-                      <div className="boda-nombres-text">{"♥"}&nbsp;&nbsp;{bodaCivil.nombres}&nbsp;&nbsp;{"♥"}</div>
+                      <div className="boda-nombres-text">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginRight:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        {bodaCivil.nombres}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginLeft:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      </div>
                     </div>
                   )}
                 </div>
               </>
             )}
 
+            {/* Carrusel de fotos */}
             {bodaCivil.fotos.length >= 3 && (
               <>
-                <h2 className="boda-section-title"><span>{"📸"}</span> Momentos de nuestra boda</h2>
+                <div className="boda-sec-label">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  Momentos de nuestra boda
+                </div>
                 <div className="boda-carousel">
                   <div className="boda-carousel-track" style={{ transform: `translateX(-${bodaCarruselIdx * 100}%)` }}>
                     {bodaCivil.fotos.map((url, i) => (
@@ -2974,8 +2975,12 @@ export default function MuroPublico() {
                   </div>
                   {bodaCivil.fotos.length > 1 && (
                     <>
-                      <button className="boda-carousel-btn boda-carousel-prev" onClick={() => setBodaCarruselIdx(i => (i - 1 + bodaCivil.fotos.length) % bodaCivil.fotos.length)}>{"‹"}</button>
-                      <button className="boda-carousel-btn boda-carousel-next" onClick={() => setBodaCarruselIdx(i => (i + 1) % bodaCivil.fotos.length)}>{"›"}</button>
+                      <button className="boda-carousel-btn boda-carousel-prev" onClick={() => setBodaCarruselIdx(i => (i - 1 + bodaCivil!.fotos.length) % bodaCivil!.fotos.length)}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+                      </button>
+                      <button className="boda-carousel-btn boda-carousel-next" onClick={() => setBodaCarruselIdx(i => (i + 1) % bodaCivil!.fotos.length)}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                      </button>
                     </>
                   )}
                 </div>
@@ -2984,16 +2989,42 @@ export default function MuroPublico() {
                     <button key={i} className={`boda-dot${bodaCarruselIdx === i ? " active" : ""}`} onClick={() => setBodaCarruselIdx(i)} />
                   ))}
                 </div>
-                <p style={{ textAlign:"center", fontSize:11, color:"#94a3b8", marginTop:4 }}>{bodaCarruselIdx + 1} / {bodaCivil.fotos.length}</p>
+                <p style={{ textAlign:"center", fontSize:11, color:"#94A3B8", marginTop:2, paddingBottom:4 }}>{bodaCarruselIdx + 1} / {bodaCivil.fotos.length}</p>
               </>
             )}
 
-            <div style={{ textAlign:"center", marginTop:28, padding:"20px 0", borderTop:"1px solid rgba(212,175,55,0.2)" }}>
-              <div style={{ fontSize:22, letterSpacing:6 }}>{"🌹 💍 🌹"}</div>
-              <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:14, fontStyle:"italic", color:"rgba(212,175,55,0.7)", marginTop:8 }}>
-                Un momento eterno lleno de amor
-              </p>
+            {/* Me comparto tu felicidad */}
+            <div className="boda-reaction-area">
+              <button
+                className={`boda-reaction-btn${bodaYaReaccione ? " done" : ""}`}
+                disabled={bodaYaReaccione || bodaEnviandoReaccion}
+                onClick={async () => {
+                  setBodaEnviandoReaccion(true);
+                  const nombreReact = (invNombre || "Un invitado").trim();
+                  const fd = new FormData();
+                  fd.append("type", "add_reaction");
+                  fd.append("nombre", nombreReact);
+                  const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
+                  const json = await res.json();
+                  if (json.ok) { setBodaReactions(json.reactions ?? []); setBodaYaReaccione(true); }
+                  setBodaEnviandoReaccion(false);
+                }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill={bodaYaReaccione ? "#EC4899" : "none"} stroke="#EC4899" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                {bodaYaReaccione ? "¡Compartiste tu felicidad!" : bodaEnviandoReaccion ? "Enviando…" : "Me comparto tu felicidad"}
+              </button>
+              {bodaReactions.length > 0 && (
+                <div className="boda-reaction-list">
+                  {bodaReactions.slice(-20).map((r, i) => (
+                    <span key={i} className="boda-reaction-chip">
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="#EC4899" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      {r.nombre}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
+
           </div>
         )}
 
