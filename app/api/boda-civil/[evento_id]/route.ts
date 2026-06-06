@@ -11,7 +11,6 @@ function adminClient() {
 
 async function ensureBucket(admin: ReturnType<typeof adminClient>) {
   const { error } = await admin.storage.createBucket(BUCKET, { public: true });
-  // Ignorar error si ya existe
   if (error && !error.message.includes("already exists")) {
     console.warn("createBucket warn:", error.message);
   }
@@ -41,7 +40,6 @@ async function saveMeta(
     .upload(`${evento_id}/meta.json`, blob, { upsert: true, contentType: "application/json" });
 }
 
-// ─── GET ───────────────────────────────────────────────────────────────────────
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ evento_id: string }> }
@@ -53,12 +51,6 @@ export async function GET(
   return NextResponse.json(meta);
 }
 
-// ─── POST ──────────────────────────────────────────────────────────────────────
-// FormData fields:
-//   type: "video" | "foto" | "delete_foto" | "delete_video" | "set_nombres"
-//   file: File  (para video/foto)
-//   url: string (para delete_foto)
-//   nombres: string (para set_nombres)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ evento_id: string }> }
@@ -77,9 +69,32 @@ export async function POST(
     return NextResponse.json({ ok: true, meta });
   }
 
+  // El cliente subio el video directo a Storage, solo actualiza meta.json
+  if (type === "set_video_url") {
+    const newUrl = form.get("url") as string;
+    // Eliminar video anterior si era diferente
+    if (meta.video_url && meta.video_url !== newUrl) {
+      const oldPath = extractPath(meta.video_url);
+      if (oldPath) await admin.storage.from(BUCKET).remove([oldPath]);
+    }
+    meta.video_url = newUrl;
+    await saveMeta(admin, evento_id, meta);
+    return NextResponse.json({ ok: true, meta });
+  }
+
+  // El cliente subio la foto directo a Storage, solo actualiza meta.json
+  if (type === "add_foto_url") {
+    const url = form.get("url") as string;
+    if (meta.fotos.length >= 20) {
+      return NextResponse.json({ error: "Máximo 20 fotos" }, { status: 400 });
+    }
+    if (!meta.fotos.includes(url)) meta.fotos.push(url);
+    await saveMeta(admin, evento_id, meta);
+    return NextResponse.json({ ok: true, meta });
+  }
+
   if (type === "delete_video") {
     if (meta.video_url) {
-      // Extraer path desde la URL pública
       const path = extractPath(meta.video_url);
       if (path) await admin.storage.from(BUCKET).remove([path]);
     }
@@ -97,55 +112,12 @@ export async function POST(
     return NextResponse.json({ ok: true, meta });
   }
 
-  const file = form.get("file") as File | null;
-  if (!file) return NextResponse.json({ error: "file requerido" }, { status: 400 });
-
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = new Uint8Array(arrayBuffer);
-
-  if (type === "video") {
-    // Eliminar video anterior si existe
-    if (meta.video_url) {
-      const old = extractPath(meta.video_url);
-      if (old) await admin.storage.from(BUCKET).remove([old]);
-    }
-    const path = `${evento_id}/video.${ext}`;
-    const { error } = await admin.storage.from(BUCKET).upload(path, buffer, {
-      upsert: true,
-      contentType: file.type || "video/mp4",
-    });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(path);
-    meta.video_url = urlData.publicUrl;
-    await saveMeta(admin, evento_id, meta);
-    return NextResponse.json({ ok: true, meta });
-  }
-
-  if (type === "foto") {
-    if (meta.fotos.length >= 20) {
-      return NextResponse.json({ error: "Máximo 20 fotos" }, { status: 400 });
-    }
-    const ts = Date.now();
-    const path = `${evento_id}/fotos/${ts}.${ext}`;
-    const { error } = await admin.storage.from(BUCKET).upload(path, buffer, {
-      upsert: false,
-      contentType: file.type || "image/jpeg",
-    });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(path);
-    meta.fotos.push(urlData.publicUrl);
-    await saveMeta(admin, evento_id, meta);
-    return NextResponse.json({ ok: true, meta });
-  }
-
   return NextResponse.json({ error: "type inválido" }, { status: 400 });
 }
 
 function extractPath(publicUrl: string): string | null {
   try {
     const url = new URL(publicUrl);
-    // /storage/v1/object/public/boda-civil/EVENTO_ID/...
     const match = url.pathname.match(/\/storage\/v1\/object\/public\/boda-civil\/(.+)/);
     return match ? match[1] : null;
   } catch {

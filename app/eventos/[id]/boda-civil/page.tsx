@@ -8,6 +8,7 @@ type Meta = { video_url: string | null; fotos: string[]; nombres: string };
 const MAX_FOTOS = 20;
 const MIN_FOTOS = 3;
 const MAX_VIDEO_MB = 500;
+const BUCKET = "boda-civil";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -25,9 +26,9 @@ const styles = `
   @keyframes spin{to{transform:rotate(360deg)}}
   .page-wrap{min-height:calc(100dvh - env(safe-area-inset-top,0px));background:var(--bg);opacity:0;transition:opacity .35s}
   .page-wrap.vis{opacity:1}
-  .top-bar{display:flex;align-items:center;justify-content:center;height:54px;padding:0 16px;background:rgba(500,251,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:30;width:100%}
+  .top-bar{display:flex;align-items:center;justify-content:center;height:54px;padding:0 16px;background:rgba(250,251,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:30;width:100%}
   .top-bar-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--text);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(500,251,255,0.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;align-items:center;padding-left:16px;padding-right:16px;box-shadow:0 -4px 20px rgba(79,70,229,0.07)}
+  .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(250,251,255,0.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;align-items:center;padding-left:16px;padding-right:16px;box-shadow:0 -4px 20px rgba(79,70,229,0.07)}
   .btn-back{display:inline-flex;align-items:center;gap:8px;background:transparent;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;padding:10px 4px;border-radius:10px;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
   .btn-back:active{opacity:.6}
   .content{max-width:520px;margin:0 auto;padding:18px 14px calc(100px + env(safe-area-inset-bottom,0px))}
@@ -54,9 +55,11 @@ const styles = `
   .foto-item{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;border:1.5px solid var(--border)}
   .foto-item img{width:100%;height:100%;object-fit:cover;display:block}
   .foto-del{position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.65);border:none;border-radius:50%;width:24px;height:24px;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
-  .progress-wrap{height:5px;background:var(--accent-soft2);border-radius:3px;margin-top:12px;overflow:hidden}
-  .progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s}
+  .progress-wrap{height:6px;background:var(--accent-soft2);border-radius:3px;margin-top:12px;overflow:hidden}
+  .progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .2s}
+  .progress-label{font-size:12px;font-weight:600;color:var(--accent);margin-top:6px;text-align:center}
   .counter{display:inline-flex;align-items:center;background:var(--accent-soft2);border:1.5px solid var(--border-input);border-radius:20px;padding:3px 11px;font-size:11px;font-weight:700;color:var(--accent-dark);margin-left:8px}
+  .badge-ok{margin-left:6px;font-size:11px;background:rgba(34,197,94,0.12);color:#166534;border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:2px 9px;font-weight:700}
   .btn-guardar{width:100%;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 24px -6px rgba(79,70,229,0.38);transition:opacity .15s,transform .15s;margin-top:8px}
   .btn-guardar:disabled{opacity:.55;cursor:not-allowed}
   .btn-guardar:active:not(:disabled){transform:scale(.98)}
@@ -91,6 +94,7 @@ export default function BodaCivilAdminPage() {
   const [uploadingFotos, setUploadingFotos] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
   const [fotosProgress, setFotosProgress] = useState(0);
+  const [fotosLabel, setFotosLabel] = useState("");
   const videoRef = useRef<HTMLInputElement>(null);
   const fotosRef = useRef<HTMLInputElement>(null);
 
@@ -124,7 +128,7 @@ export default function BodaCivilAdminPage() {
 
   function showToast(msg: string) {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), 3500);
   }
 
   async function guardarNombres() {
@@ -146,15 +150,43 @@ export default function BodaCivilAdminPage() {
     if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
       showToast(`El video no puede superar ${MAX_VIDEO_MB} MB`); return;
     }
-    setUploadingVideo(true); setVideoProgress(20);
+    setUploadingVideo(true);
+    setVideoProgress(0);
+
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "mp4";
+    const path = `${eventoId}/video.${ext}`;
+
+    // Subida directa a Supabase Storage con progreso real
+    const { data, error } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, file, {
+        upsert: true,
+        contentType: file.type || "video/mp4",
+        // @ts-ignore - onUploadProgress es soportado pero no está en todos los tipos
+        onUploadProgress: (p: { loaded: number; total: number }) => {
+          setVideoProgress(Math.round((p.loaded / p.total) * 100));
+        },
+      });
+
+    if (error) {
+      showToast("Error al subir: " + error.message);
+      setUploadingVideo(false); setVideoProgress(0);
+      return;
+    }
+
+    // Obtener URL pública
+    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    const publicUrl = urlData.publicUrl;
+
+    // Actualizar meta.json via API (request pequeño)
     const fd = new FormData();
-    fd.append("type", "video"); fd.append("file", file);
-    setVideoProgress(50);
+    fd.append("type", "set_video_url");
+    fd.append("url", publicUrl);
     const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
-    setVideoProgress(90);
     const json = await res.json();
     if (json.ok) { setMeta(json.meta); showToast("Video subido ✓"); }
-    else showToast("Error: " + (json.error ?? ""));
+    else showToast("Video subido pero error al guardar");
+
     setUploadingVideo(false); setVideoProgress(0);
     if (videoRef.current) videoRef.current.value = "";
   }
@@ -175,20 +207,33 @@ export default function BodaCivilAdminPage() {
     if (disponibles <= 0) { showToast("Ya tienes 20 fotos"); return; }
     const toUpload = files.slice(0, disponibles);
     setUploadingFotos(true);
-    let done = 0;
     let latestMeta = { ...meta };
-    for (const file of toUpload) {
-      const fd = new FormData();
-      fd.append("type", "foto"); fd.append("file", file);
-      const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
-      const json = await res.json();
-      if (json.ok) latestMeta = json.meta;
-      done++;
-      setFotosProgress(Math.round((done / toUpload.length) * 100));
+
+    for (let i = 0; i < toUpload.length; i++) {
+      const file = toUpload[i];
+      setFotosLabel(`Foto ${i + 1} de ${toUpload.length}`);
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      const path = `${eventoId}/fotos/${Date.now()}_${i}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, file, { upsert: false, contentType: file.type || "image/jpeg" });
+
+      if (!error) {
+        const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+        const fd = new FormData();
+        fd.append("type", "add_foto_url");
+        fd.append("url", urlData.publicUrl);
+        const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
+        const json = await res.json();
+        if (json.ok) latestMeta = json.meta;
+      }
+      setFotosProgress(Math.round(((i + 1) / toUpload.length) * 100));
     }
+
     setMeta(latestMeta);
-    showToast(`${done} foto${done > 1 ? "s" : ""} subida${done > 1 ? "s" : ""} ✓`);
-    setUploadingFotos(false); setFotosProgress(0);
+    showToast(`${toUpload.length} foto${toUpload.length > 1 ? "s" : ""} subida${toUpload.length > 1 ? "s" : ""} ✓`);
+    setUploadingFotos(false); setFotosProgress(0); setFotosLabel("");
     if (fotosRef.current) fotosRef.current.value = "";
   }
 
@@ -230,7 +275,7 @@ export default function BodaCivilAdminPage() {
         ) : (
           <div className="alert-warn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Necesitas nombres, video y al menos {MIN_FOTOS} fotos para activar este módulo en el muro.
+            Necesitas nombres, video y al menos {MIN_FOTOS} fotos para activar este módulo.
           </div>
         )}
 
@@ -242,7 +287,7 @@ export default function BodaCivilAdminPage() {
             </div>
             <div>
               <div className="sec-title">Nombres de los casantes</div>
-              <div className="sec-sub">Aparecen en el marco decorativo del video · Ej: Carlos &amp; María</div>
+              <div className="sec-sub">Aparecen en el marco del video · Ej: Carlos &amp; María</div>
             </div>
           </div>
           <div className="campo">
@@ -267,14 +312,28 @@ export default function BodaCivilAdminPage() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
             </div>
             <div>
-              <div className="sec-title">
+              <div className="sec-title" style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 Video de la boda civil
-                {meta.video_url && <span style={{marginLeft:8,fontSize:11,background:"rgba(34,197,94,0.12)",color:"#166534",border:"1px solid rgba(34,197,94,0.3)",borderRadius:20,padding:"2px 9px",fontWeight:700}}>Subido ✓</span>}
+                {meta.video_url && <span className="badge-ok">Subido ✓</span>}
               </div>
-              <div className="sec-sub">Máx. {MAX_VIDEO_MB} MB · MP4 / MOV / WebM · 3–4 min recomendado</div>
+              <div className="sec-sub">Máx. {MAX_VIDEO_MB} MB · MP4 / MOV / WebM</div>
             </div>
           </div>
-          {meta.video_url ? (
+
+          {uploadingVideo && (
+            <div style={{marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <span style={{fontSize:13,color:"var(--accent)",fontWeight:600}}>Subiendo video…</span>
+                <span style={{fontSize:13,fontWeight:700,color:"var(--accent)"}}>{videoProgress}%</span>
+              </div>
+              <div className="progress-wrap">
+                <div className="progress-fill" style={{width:`${videoProgress}%`}} />
+              </div>
+              <p style={{fontSize:11,color:"var(--text2)",marginTop:6,textAlign:"center"}}>No cierres esta pantalla</p>
+            </div>
+          )}
+
+          {!uploadingVideo && meta.video_url ? (
             <>
               <video src={meta.video_url} controls className="video-preview" />
               <div className="btn-row">
@@ -283,29 +342,24 @@ export default function BodaCivilAdminPage() {
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     Cambiar video
                   </span>
-                  <input ref={videoRef} type="file" accept="video/*" style={{display:"none"}} onChange={subirVideo} disabled={uploadingVideo} />
+                  <input ref={videoRef} type="file" accept="video/*" style={{display:"none"}} onChange={subirVideo} />
                 </label>
                 <button className="btn-sec btn-danger" onClick={eliminarVideo}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                   Eliminar
                 </button>
               </div>
             </>
-          ) : (
+          ) : !uploadingVideo ? (
             <label className="upload-area">
               <div className="upload-icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{color:"var(--accent)"}}><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
               </div>
-              <div className="upload-label">{uploadingVideo ? "Subiendo video…" : "Toca para seleccionar video"}</div>
+              <div className="upload-label">Toca para seleccionar video</div>
               <div className="upload-hint">MP4 · MOV · WebM · máx {MAX_VIDEO_MB} MB</div>
-              <input ref={videoRef} type="file" accept="video/*" style={{display:"none"}} onChange={subirVideo} disabled={uploadingVideo} />
+              <input ref={videoRef} type="file" accept="video/*" style={{display:"none"}} onChange={subirVideo} />
             </label>
-          )}
-          {uploadingVideo && (
-            <div className="progress-wrap">
-              <div className="progress-fill" style={{width:`${videoProgress}%`}} />
-            </div>
-          )}
+          ) : null}
         </div>
 
         {/* 3. Fotos */}
@@ -318,28 +372,35 @@ export default function BodaCivilAdminPage() {
               <div className="sec-title" style={{display:"flex",alignItems:"center",flexWrap:"wrap"}}>
                 Carrusel de fotos
                 <span className="counter">{meta.fotos.length} / {MAX_FOTOS}</span>
-                {meta.fotos.length >= MIN_FOTOS && (
-                  <span style={{marginLeft:6,fontSize:11,background:"rgba(34,197,94,0.12)",color:"#166534",border:"1px solid rgba(34,197,94,0.3)",borderRadius:20,padding:"2px 9px",fontWeight:700}}>✓</span>
-                )}
+                {meta.fotos.length >= MIN_FOTOS && <span className="badge-ok">✓</span>}
               </div>
               <div className="sec-sub">Mín. {MIN_FOTOS} · Máx. {MAX_FOTOS} · aparecen debajo del video</div>
             </div>
           </div>
-          {meta.fotos.length < MAX_FOTOS && (
+
+          {uploadingFotos && (
+            <div style={{marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <span style={{fontSize:13,color:"var(--accent)",fontWeight:600}}>{fotosLabel || "Subiendo fotos…"}</span>
+                <span style={{fontSize:13,fontWeight:700,color:"var(--accent)"}}>{fotosProgress}%</span>
+              </div>
+              <div className="progress-wrap">
+                <div className="progress-fill" style={{width:`${fotosProgress}%`}} />
+              </div>
+            </div>
+          )}
+
+          {!uploadingFotos && meta.fotos.length < MAX_FOTOS && (
             <label className="upload-area" style={{marginBottom:14}}>
               <div className="upload-icon">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{color:"var(--accent)"}}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               </div>
-              <div className="upload-label">{uploadingFotos ? `Subiendo… ${fotosProgress}%` : "Agregar fotos"}</div>
+              <div className="upload-label">Agregar fotos</div>
               <div className="upload-hint">Puedes seleccionar varias a la vez</div>
-              <input ref={fotosRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={subirFotos} disabled={uploadingFotos} />
+              <input ref={fotosRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={subirFotos} />
             </label>
           )}
-          {uploadingFotos && (
-            <div className="progress-wrap" style={{marginBottom:14}}>
-              <div className="progress-fill" style={{width:`${fotosProgress}%`}} />
-            </div>
-          )}
+
           {meta.fotos.length > 0 ? (
             <div className="fotos-grid">
               {meta.fotos.map((url, i) => (
@@ -350,11 +411,11 @@ export default function BodaCivilAdminPage() {
                 </div>
               ))}
             </div>
-          ) : (
+          ) : !uploadingFotos ? (
             <p style={{textAlign:"center",color:"var(--text2)",fontSize:12,padding:"16px 0"}}>
               Aún no hay fotos. Sube al menos {MIN_FOTOS}.
             </p>
-          )}
+          ) : null}
         </div>
       </div>
 
