@@ -1751,7 +1751,8 @@ export default function MuroPublico() {
   const [bodaReactions, setBodaReactions] = useState<{ nombre: string; ts: number }[]>([]);
   const [bodaYaReaccione, setBodaYaReaccione] = useState(false);
   const [bodaEnviandoReaccion, setBodaEnviandoReaccion] = useState(false);
-  const [bodaRamoKey, setBodaRamoKey] = useState(0);
+  const [bodaRamoStep, setBodaRamoStep] = useState<"idle"|"nombre"|"mensaje">("idle");
+  const [bodaRamoNombre, setBodaRamoNombre] = useState("");
 
   const t = T[lang];
 
@@ -3202,105 +3203,93 @@ export default function MuroPublico() {
 
             {/* ── Botón ramo de novia ── */}
             <div className="boda-ramo-section">
-              <svg width="44" height="44" viewBox="0 0 44 44" fill="none" style={{ marginBottom: 8, animation: "bodaFloat 3s ease-in-out infinite", display: "block", margin: "0 auto 8px" }}>
-                <circle cx="22" cy="14" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                <circle cx="14" cy="20" r="5" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                <circle cx="30" cy="20" r="5" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                <circle cx="18" cy="28" r="5" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                <circle cx="26" cy="28" r="5" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                <rect x="20" y="30" width="4" height="10" rx="2" fill="#86efac"/>
-                <path d="M17 34 C15 31 17 29 19 30" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-                <path d="M27 34 C29 31 27 29 25 30" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-              </svg>
-              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, color: "#9d174d", marginBottom: 4, lineHeight: 1.4 }}>
-                Tradición del ramo de novia
-              </p>
-              <p style={{ fontSize: 12, color: "#be185d", opacity: 0.8, marginBottom: 14, lineHeight: 1.6 }}>
-                De parte de Alisson, con todo su amor 🤍
-              </p>
               <button
                 className="boda-ramo-btn"
-                onClick={() => setBodaRamoKey(k => k + 1)}
+                onClick={() => setBodaRamoStep("nombre")}
               >
-                <svg width="18" height="18" viewBox="0 0 44 44" fill="none">
-                  <circle cx="22" cy="14" r="6" fill="white"/>
-                  <circle cx="14" cy="20" r="5" fill="white"/>
-                  <circle cx="30" cy="20" r="5" fill="white"/>
-                  <circle cx="18" cy="28" r="5" fill="white"/>
-                  <circle cx="26" cy="28" r="5" fill="white"/>
-                  <rect x="20" y="30" width="4" height="10" rx="2" fill="#bbf7d0"/>
-                </svg>
-                La próxima en casarse, mi deseo es que seas tú
+                <span style={{ fontSize: 18 }}>🤍</span>
+                Si eres soltera, toca acá
               </button>
-              <p className="boda-ramo-sub">¡Toca si estás soltera y recibe el ramo!</p>
             </div>
 
           </div>
         )}
 
-        {/* ── Animación ramo: flores blancas + mensaje ── */}
-        {bodaRamoKey > 0 && (
-          <div key={bodaRamoKey} className="boda-ramo-layer" onClick={() => setBodaRamoKey(0)}>
+        {/* ── Ramo step: pedir nombre ── */}
+        {bodaRamoStep === "nombre" && (
+          <div className="boda-ramo-layer" onClick={e => e.target === e.currentTarget && setBodaRamoStep("idle")}>
+            <div style={{ background: "#fff", borderRadius: 24, padding: "32px 24px", textAlign: "center", maxWidth: 300, width: "88%", boxShadow: "0 16px 64px rgba(236,72,153,0.22)", border: "1.5px solid rgba(249,168,212,0.35)", animation: "wlPop 0.25s ease" }} onClick={e => e.stopPropagation()}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg,#fce7f3,#fdf2f8)", border: "1.5px solid rgba(249,168,212,0.5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                <span style={{ fontSize: 26 }}>🤍</span>
+              </div>
+              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, color: "#9d174d", marginBottom: 6 }}>¿Cuál es tu nombre?</p>
+              <p style={{ fontSize: 12, color: "#be185d", opacity: 0.75, marginBottom: 18, lineHeight: 1.6 }}>Algo especial te espera ✨</p>
+              <input
+                type="text"
+                value={bodaRamoNombre}
+                onChange={e => setBodaRamoNombre(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && bodaRamoNombre.trim() && setBodaRamoStep("mensaje")}
+                placeholder="Tu nombre"
+                autoFocus
+                style={{ width: "100%", border: "1.5px solid #fce7f3", borderRadius: 12, padding: "13px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff9fb", color: "#1E1B4B", outline: "none", marginBottom: 12, textAlign: "center" }}
+              />
+              <button
+                disabled={!bodaRamoNombre.trim()}
+                onClick={() => setBodaRamoStep("mensaje")}
+                style={{ width: "100%", background: bodaRamoNombre.trim() ? "linear-gradient(135deg,#ec4899,#be185d)" : "#E5E7EB", color: bodaRamoNombre.trim() ? "#fff" : "#9CA3AF", border: "none", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 700, cursor: bodaRamoNombre.trim() ? "pointer" : "default", fontFamily: "inherit", boxShadow: bodaRamoNombre.trim() ? "0 6px 20px rgba(236,72,153,0.3)" : "none", transition: "all .2s" }}
+              >
+                Continuar →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Ramo step: mensaje sorpresa + flores blancas ── */}
+        {bodaRamoStep === "mensaje" && (
+          <div className="boda-ramo-layer" onClick={() => { setBodaRamoStep("idle"); setBodaRamoNombre(""); }}>
             {/* Flores blancas cayendo */}
             {Array.from({ length: 32 }).map((_, i) => {
-              const sizes = [18, 22, 26, 30, 16, 24];
-              const sz = sizes[i % sizes.length];
-              const rotations = [0, 30, 60, 90, 120, 45];
-              const rot = rotations[i % rotations.length];
+              const szs = [16, 20, 24, 28, 18, 22];
+              const sz = szs[i % szs.length];
+              const rots = [0, 36, 72, 108, 144, 180];
+              const rot = rots[i % rots.length];
               return (
-                <div
-                  key={i}
-                  className="boda-ramo-piece"
-                  style={{
-                    left: `${(i * 3.1 + Math.sin(i) * 20 + 50) % 100}%`,
-                    animationDuration: `${2.4 + (i % 5) * 0.4}s`,
-                    animationDelay: `${(i % 8) * 0.18}s`,
-                  }}
-                >
+                <div key={i} className="boda-ramo-piece" style={{ left: `${(i * 3.2 + Math.sin(i * 0.9) * 18 + 50) % 100}%`, animationDuration: `${2.2 + (i % 6) * 0.35}s`, animationDelay: `${(i % 9) * 0.15}s`, pointerEvents: "none" }}>
                   <svg width={sz} height={sz} viewBox="0 0 30 30" fill="none" style={{ transform: `rotate(${rot}deg)` }}>
-                    <ellipse cx="15" cy="7" rx="5" ry="7" fill="white" opacity="0.95"/>
-                    <ellipse cx="23" cy="12" rx="5" ry="7" fill="white" opacity="0.9" transform="rotate(60 23 12)"/>
-                    <ellipse cx="21" cy="22" rx="5" ry="7" fill="white" opacity="0.9" transform="rotate(120 21 22)"/>
-                    <ellipse cx="9" cy="22" rx="5" ry="7" fill="white" opacity="0.9" transform="rotate(-120 9 22)"/>
-                    <ellipse cx="7" cy="12" rx="5" ry="7" fill="white" opacity="0.9" transform="rotate(-60 7 12)"/>
-                    <circle cx="15" cy="15" r="4" fill="#fce7f3"/>
+                    <ellipse cx="15" cy="7" rx="4.5" ry="7" fill="white" opacity="0.95"/>
+                    <ellipse cx="23" cy="12" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(60 23 12)"/>
+                    <ellipse cx="21" cy="22" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(120 21 22)"/>
+                    <ellipse cx="9" cy="22" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(-120 9 22)"/>
+                    <ellipse cx="7" cy="12" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(-60 7 12)"/>
+                    <circle cx="15" cy="15" r="3.5" fill="#fce7f3"/>
                   </svg>
                 </div>
               );
             })}
-            {/* Mensaje central */}
-            <div style={{
-              position: "absolute", top: "50%", left: "50%",
-              transform: "translate(-50%,-50%)",
-              background: "rgba(255,255,255,0.96)",
-              borderRadius: 24, padding: "28px 28px",
-              textAlign: "center", maxWidth: 300, width: "85%",
-              boxShadow: "0 16px 64px rgba(236,72,153,0.25)",
-              border: "1.5px solid rgba(249,168,212,0.4)",
-              animation: "wlPop 0.3s ease",
-              pointerEvents: "all",
-            }}>
-              <div style={{ fontSize: 40, marginBottom: 10 }}>
-                <svg width="50" height="50" viewBox="0 0 44 44" fill="none" style={{ display: "block", margin: "0 auto" }}>
-                  <circle cx="22" cy="12" r="7" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                  <circle cx="13" cy="19" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                  <circle cx="31" cy="19" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                  <circle cx="17" cy="29" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                  <circle cx="27" cy="29" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
-                  <rect x="20" y="32" width="4" height="10" rx="2" fill="#86efac"/>
-                  <path d="M16 36 C14 33 16 31 18 32" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-                  <path d="M28 36 C30 33 28 31 26 32" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "#9d174d", lineHeight: 1.3, marginBottom: 10 }}>
-                La próxima en casarse, mi deseo es que seas tú
+            {/* Tarjeta mensaje */}
+            <div style={{ position: "relative", background: "rgba(255,255,255,0.97)", borderRadius: 24, padding: "30px 24px", textAlign: "center", maxWidth: 300, width: "88%", boxShadow: "0 20px 70px rgba(236,72,153,0.28)", border: "1.5px solid rgba(249,168,212,0.45)", animation: "wlPop 0.3s ease", zIndex: 1 }} onClick={e => e.stopPropagation()}>
+              <svg width="54" height="54" viewBox="0 0 44 44" fill="none" style={{ display: "block", margin: "0 auto 12px" }}>
+                <circle cx="22" cy="12" r="7" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                <circle cx="13" cy="19" r="6" fill="white" stroke="#fce7f3" strokeWidth="1.5"/>
+                <circle cx="31" cy="19" r="6" fill="white" stroke="#fce7f3" strokeWidth="1.5"/>
+                <circle cx="17" cy="29" r="6" fill="white" stroke="#fce7f3" strokeWidth="1.5"/>
+                <circle cx="27" cy="29" r="6" fill="white" stroke="#fce7f3" strokeWidth="1.5"/>
+                <rect x="20" y="32" width="4" height="10" rx="2" fill="#86efac"/>
+                <path d="M16 37 C14 34 16 32 18 33" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                <path d="M28 37 C30 34 28 32 26 33" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+              </svg>
+              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 13, fontWeight: 600, color: "#be185d", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, opacity: 0.7 }}>Para {bodaRamoNombre} 🤍</p>
+              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "#9d174d", lineHeight: 1.35, marginBottom: 12 }}>
+                La próxima en casarse,<br/>mi deseo es que seas tú
               </p>
-              <p style={{ fontSize: 12, color: "#be185d", lineHeight: 1.7, marginBottom: 14, opacity: 0.85 }}>
-                Con todo mi amor, este ramo es para ti. Que el amor que hoy compartimos contigo llegue pronto a tu vida ✨
+              <div style={{ width: 40, height: 1, background: "linear-gradient(90deg,transparent,#f9a8d4,transparent)", margin: "0 auto 12px" }}/>
+              <p style={{ fontSize: 12, color: "#be185d", lineHeight: 1.75, marginBottom: 16, opacity: 0.85 }}>
+                Este ramo es para ti, {bodaRamoNombre}.<br/>Que el amor llegue pronto a tu vida y que cuando llegue ese día, sea tan especial como el nuestro. ✨
               </p>
-              <p style={{ fontSize: 11, color: "#9CA3AF", fontStyle: "italic" }}>— Alisson</p>
-              <div style={{ marginTop: 14, width: 40, height: 1, background: "linear-gradient(90deg,transparent,#f9a8d4,transparent)", margin: "14px auto 0" }}/>
-              <p style={{ fontSize: 10, color: "#D1D5DB", marginTop: 10 }}>Toca para cerrar</p>
+              <p style={{ fontSize: 12, color: "#9CA3AF", fontStyle: "italic", marginBottom: 18 }}>— Con amor, Alisson</p>
+              <button onClick={() => { setBodaRamoStep("idle"); setBodaRamoNombre(""); }} style={{ background: "linear-gradient(135deg,#fce7f3,#fdf2f8)", border: "1.5px solid rgba(249,168,212,0.5)", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 600, color: "#be185d", cursor: "pointer", fontFamily: "inherit" }}>
+                Cerrar 🌸
+              </button>
             </div>
           </div>
         )}
