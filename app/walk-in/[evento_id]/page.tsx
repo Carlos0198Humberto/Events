@@ -140,7 +140,7 @@ export default function WalkInPage() {
   return (
     <main style={{ minHeight: "100vh", background: "linear-gradient(160deg,#EEF2FF 0%,#E0E7FF 50%,#C7D2FE 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontFamily: "'DM Sans',sans-serif" }}>
       {/* Botón de regreso */}
-      <button className="wl-btn-regreso" onClick={() => router.back()}>
+      <button className="wl-btn-regreso" onClick={() => router.push("/dashboard")}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 12H5M12 5l-7 7 7 7"/>
         </svg>
