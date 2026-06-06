@@ -1751,8 +1751,14 @@ export default function MuroPublico() {
   const [bodaReactions, setBodaReactions] = useState<{ nombre: string; ts: number }[]>([]);
   const [bodaYaReaccione, setBodaYaReaccione] = useState(false);
   const [bodaEnviandoReaccion, setBodaEnviandoReaccion] = useState(false);
-  const [bodaRamoStep, setBodaRamoStep] = useState<"idle"|"nombre"|"mensaje">("idle");
+  const [bodaRamoStep, setBodaRamoStep] = useState<"idle"|"nombre"|"estado"|"uniendo"|"espera"|"mensaje"|"casada">("idle");
   const [bodaRamoNombre, setBodaRamoNombre] = useState("");
+  const [ramoData, setRamoData] = useState<{ activa: boolean; inicio: number; duracion: number; participantes: { nombre: string; ts: number }[]; ganadora: string | null } | null>(null);
+  const [ramoTiempo, setRamoTiempo] = useState(0);
+  const [ramoGiro, setRamoGiro] = useState<{ nombre: string; msg: string }>({ nombre: "", msg: "" });
+  const ramoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ramoTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ramoGiroRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const t = T[lang];
 
@@ -2041,6 +2047,81 @@ export default function MuroPublico() {
       setBodaVideoActivo(false);
     }
   }, [vista, bodaCivil]);
+
+  // ── Ramo: polling + giro + timer ──
+  const MSGS_GIRO = [
+    "Dios tiene algo hermoso preparado para ti, {n} 🙏",
+    "La persona que Dios eligió para ti vale la espera, {n} 💕",
+    "Tu tiempo llegará, {n}, Dios tiene planes perfectos ✨",
+    "Confía en Dios, {n}, Él nunca llega tarde 🌸",
+    "El amor de Dios te guía hacia algo especial, {n} 💫",
+    "Dios conoce tu corazón, {n}, y tiene algo bello para ti 🤍",
+    "Con fe y paciencia, {n}, lo mejor aún está por venir 🙌",
+    "Dios prepara cosas maravillosas para quienes esperan, {n} 🌹",
+    "No te preocupes, {n}, Dios ya escribió tu historia de amor 📖",
+    "¡Eres bendecida, {n}! El plan de Dios es perfecto para ti 💐",
+    "Dios te ama profundamente, {n}, y su timing es perfecto ⏳",
+    "Mantén tu fe, {n}, porque Dios está obrando en tu vida 🙏",
+  ];
+
+  function calcGanadoraMuro(participantes: string[], inicio: number): string {
+    if (!participantes.length) return "";
+    let h = inicio;
+    for (const p of participantes) {
+      for (let i = 0; i < p.length; i++) { h = (Math.imul(31, h) + p.charCodeAt(i)) | 0; }
+    }
+    return participantes[Math.abs(h) % participantes.length];
+  }
+
+  async function fetchRamo() {
+    try {
+      const res = await fetch(`/api/boda-civil/${eventoId}`);
+      const d = await res.json();
+      setRamoData(d.ramo ?? null);
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    if (vista !== "boda") return;
+    fetchRamo();
+  }, [vista]);
+
+  useEffect(() => {
+    if (!ramoData?.activa) {
+      if (ramoIntervalRef.current) { clearInterval(ramoIntervalRef.current); ramoIntervalRef.current = null; }
+      if (ramoTickRef.current) { clearInterval(ramoTickRef.current); ramoTickRef.current = null; }
+      if (ramoGiroRef.current) { clearInterval(ramoGiroRef.current); ramoGiroRef.current = null; }
+      return;
+    }
+    // Polling
+    ramoIntervalRef.current = setInterval(fetchRamo, 4000);
+    // Countdown
+    ramoTickRef.current = setInterval(() => {
+      setRamoData(r => {
+        if (!r) return r;
+        const t = Math.max(0, r.duracion - Math.floor((Date.now() - r.inicio) / 1000));
+        setRamoTiempo(t);
+        return r;
+      });
+    }, 1000);
+    // Giro animado
+    ramoGiroRef.current = setInterval(() => {
+      setRamoData(r => {
+        if (!r?.participantes.length) { setRamoGiro({ nombre: "...", msg: "Esperando solteras..." }); return r; }
+        const idx = Math.floor(Math.random() * r.participantes.length);
+        const n = r.participantes[idx].nombre;
+        const msgIdx = Math.floor(Math.random() * MSGS_GIRO.length);
+        setRamoGiro({ nombre: n, msg: MSGS_GIRO[msgIdx].replace("{n}", n) });
+        return r;
+      });
+    }, 750);
+    setRamoTiempo(Math.max(0, ramoData.duracion - Math.floor((Date.now() - ramoData.inicio) / 1000)));
+    return () => {
+      if (ramoIntervalRef.current) clearInterval(ramoIntervalRef.current);
+      if (ramoTickRef.current) clearInterval(ramoTickRef.current);
+      if (ramoGiroRef.current) clearInterval(ramoGiroRef.current);
+    };
+  }, [ramoData?.activa]);
 
   const acento = "#4F46E5";
 
@@ -2352,6 +2433,7 @@ export default function MuroPublico() {
         .boda-ramo-sub { font-size: 11px; color: #be185d; opacity: 0.8; margin-top: 8px; font-style: italic; }
         /* ── Animación ramo ── */
         @keyframes ramoFall { 0% { transform: translateY(-60px) rotate(0deg); opacity: 1; } 85% { opacity: 0.9; } 100% { transform: translateY(108vh) rotate(480deg); opacity: 0; } }
+        @keyframes giroRamo { 0%{opacity:0;transform:translateY(-10px) scale(0.92)}20%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(10px) scale(0.92)} }
         .boda-ramo-layer { position: fixed; inset: 0; pointer-events: all; z-index: 8889; overflow: hidden; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; animation: fadeIn .2s ease; }
         .boda-ramo-piece { position: absolute; top: -70px; animation: ramoFall linear forwards; pointer-events: none; }
       `}</style>
@@ -3201,21 +3283,107 @@ export default function MuroPublico() {
               )}
             </div>
 
-            {/* ── Botón ramo de novia ── */}
-            <div className="boda-ramo-section">
-              <button
-                className="boda-ramo-btn"
-                onClick={() => setBodaRamoStep("nombre")}
-              >
-                <span style={{ fontSize: 18 }}>🤍</span>
-                Si eres soltera, toca acá
-              </button>
-            </div>
+            {/* ── Ramo a las Solteras ── */}
+            {(() => {
+              const ramoFmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
+              const pct = ramoData ? Math.max(0, ramoTiempo / ramoData.duracion) : 0;
+
+              // Sin rifa activa y sin ganadora
+              if (!ramoData && bodaRamoStep === "idle") return (
+                <div className="boda-ramo-section">
+                  <p style={{ fontSize: 11, color: "#be185d", opacity: 0.6, marginBottom: 10, fontStyle: "italic" }}>Ramo a las solteras</p>
+                  <button className="boda-ramo-btn" onClick={() => setBodaRamoStep("nombre")}>
+                    <span style={{ fontSize: 18 }}>🤍</span>
+                    Si eres soltera, toca acá
+                  </button>
+                </div>
+              );
+
+              // Rifa activa — mostrar tambola en vivo
+              if (ramoData?.activa) return (
+                <div className="boda-ramo-section" style={{ padding: "0 0 4px" }}>
+                  {/* Header */}
+                  <div style={{ textAlign: "center", padding: "16px 16px 12px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#be185d", letterSpacing: "2px", textTransform: "uppercase", marginBottom: 6, opacity: 0.8 }}>🎰 Rifa del Ramo en Vivo</div>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 32, fontWeight: 600, color: ramoTiempo <= 10 ? "#ec4899" : "#9d174d", lineHeight: 1, marginBottom: 8, transition: "color .3s" }}>
+                      {ramoFmt(ramoTiempo)}
+                    </div>
+                    <div style={{ height: 5, background: "rgba(236,72,153,0.12)", borderRadius: 99, overflow: "hidden", marginBottom: 14 }}>
+                      <div style={{ height: "100%", width: `${pct * 100}%`, background: "linear-gradient(90deg,#ec4899,#be185d)", borderRadius: 99, transition: "width 1s linear" }} />
+                    </div>
+                  </div>
+                  {/* Tambola */}
+                  <div style={{ background: "linear-gradient(135deg,#9d174d,#be185d)", margin: "0 14px", borderRadius: 18, padding: "20px 16px", textAlign: "center", minHeight: 90, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    {ramoData.participantes.length === 0 ? (
+                      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, color: "rgba(255,255,255,0.6)", fontStyle: "italic" }}>Esperando solteras...</div>
+                    ) : (
+                      <>
+                        <div key={ramoGiro.nombre} style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, color: "#fff", animation: "giroRamo 0.75s ease" }}>
+                          {ramoGiro.nombre || ramoData.participantes[0].nombre}
+                        </div>
+                        <div key={ramoGiro.msg} style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontStyle: "italic", animation: "giroRamo 0.75s ease" }}>
+                          {ramoGiro.msg}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {/* Participantes */}
+                  <div style={{ padding: "12px 14px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#be185d", opacity: 0.7, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ background: "#be185d", color: "#fff", borderRadius: 99, padding: "1px 7px", fontSize: 10 }}>{ramoData.participantes.length}</span>
+                      participando
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {ramoData.participantes.map((p, i) => (
+                        <span key={i} style={{ background: "rgba(236,72,153,0.08)", border: "1px solid rgba(236,72,153,0.2)", borderRadius: 99, padding: "3px 10px", fontSize: 11, color: "#9d174d", fontWeight: 600 }}>
+                          {p.nombre}
+                        </span>
+                      ))}
+                    </div>
+                    {/* Botón para unirse si no está participando */}
+                    {bodaRamoStep === "idle" && (
+                      <button className="boda-ramo-btn" style={{ marginTop: 12 }} onClick={() => setBodaRamoStep("nombre")}>
+                        <span style={{ fontSize: 16 }}>🤍</span>
+                        ¡Quiero participar!
+                      </button>
+                    )}
+                    {bodaRamoStep === "espera" && (
+                      <div style={{ textAlign: "center", marginTop: 12, padding: "10px", background: "rgba(236,72,153,0.06)", borderRadius: 12, fontSize: 12, color: "#be185d", fontWeight: 600 }}>
+                        ✅ ¡Estás participando, {bodaRamoNombre}! Cruza los dedos 🤞
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+
+              // Ganadora revelada
+              if (ramoData && !ramoData.activa && ramoData.ganadora) return (
+                <div className="boda-ramo-section" style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 40, marginBottom: 8, animation: "bodaFloat 2s ease-in-out infinite" }}>💐</div>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 13, fontWeight: 600, color: "#be185d", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 6, opacity: 0.7 }}>¡Y el ramo es para...</div>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 28, fontWeight: 600, color: "#9d174d", marginBottom: 4 }}>
+                    {ramoData.ganadora} 💐
+                  </div>
+                  <p style={{ fontSize: 12, color: "#be185d", opacity: 0.75, lineHeight: 1.7, marginTop: 8, fontStyle: "italic" }}>
+                    La próxima en casarse, mi deseo es que seas tú ✨<br/>— Con amor, Alisson
+                  </p>
+                </div>
+              );
+
+              // Rifa terminada sin ganadora
+              if (ramoData && !ramoData.activa && !ramoData.ganadora) return (
+                <div className="boda-ramo-section" style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: 13, color: "#be185d", opacity: 0.7 }}>La rifa terminó. ¡Espera la próxima! 🌸</p>
+                </div>
+              );
+
+              return null;
+            })()}
 
           </div>
         )}
 
-        {/* ── Ramo step: pedir nombre ── */}
+        {/* ── Ramo: pedir nombre ── */}
         {bodaRamoStep === "nombre" && (
           <div className="boda-ramo-layer" onClick={e => e.target === e.currentTarget && setBodaRamoStep("idle")}>
             <div style={{ background: "#fff", borderRadius: 24, padding: "32px 24px", textAlign: "center", maxWidth: 300, width: "88%", boxShadow: "0 16px 64px rgba(236,72,153,0.22)", border: "1.5px solid rgba(249,168,212,0.35)", animation: "wlPop 0.25s ease" }} onClick={e => e.stopPropagation()}>
@@ -3223,22 +3391,135 @@ export default function MuroPublico() {
                 <span style={{ fontSize: 26 }}>🤍</span>
               </div>
               <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, color: "#9d174d", marginBottom: 6 }}>¿Cuál es tu nombre?</p>
-              <p style={{ fontSize: 12, color: "#be185d", opacity: 0.75, marginBottom: 18, lineHeight: 1.6 }}>Algo especial te espera ✨</p>
+              <p style={{ fontSize: 12, color: "#be185d", opacity: 0.75, marginBottom: 18, lineHeight: 1.6 }}>
+                {ramoData?.activa ? "¡La rifa está activa! Participa ahora 🎉" : "Dios tiene algo especial para ti ✨"}
+              </p>
               <input
                 type="text"
                 value={bodaRamoNombre}
                 onChange={e => setBodaRamoNombre(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && bodaRamoNombre.trim() && setBodaRamoStep("mensaje")}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && bodaRamoNombre.trim()) setBodaRamoStep("estado");
+                }}
                 placeholder="Tu nombre"
                 autoFocus
                 style={{ width: "100%", border: "1.5px solid #fce7f3", borderRadius: 12, padding: "13px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff9fb", color: "#1E1B4B", outline: "none", marginBottom: 12, textAlign: "center" }}
               />
               <button
                 disabled={!bodaRamoNombre.trim()}
-                onClick={() => setBodaRamoStep("mensaje")}
+                onClick={() => { if (bodaRamoNombre.trim()) setBodaRamoStep("estado"); }}
                 style={{ width: "100%", background: bodaRamoNombre.trim() ? "linear-gradient(135deg,#ec4899,#be185d)" : "#E5E7EB", color: bodaRamoNombre.trim() ? "#fff" : "#9CA3AF", border: "none", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 700, cursor: bodaRamoNombre.trim() ? "pointer" : "default", fontFamily: "inherit", boxShadow: bodaRamoNombre.trim() ? "0 6px 20px rgba(236,72,153,0.3)" : "none", transition: "all .2s" }}
               >
                 Continuar →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Ramo: estado civil ── */}
+        {bodaRamoStep === "estado" && (
+          <div className="boda-ramo-layer" onClick={e => e.target === e.currentTarget && setBodaRamoStep("nombre")}>
+            <div style={{ background: "#fff", borderRadius: 24, padding: "32px 24px", textAlign: "center", maxWidth: 300, width: "88%", boxShadow: "0 16px 64px rgba(236,72,153,0.22)", border: "1.5px solid rgba(249,168,212,0.35)", animation: "wlPop 0.25s ease" }} onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: 30, marginBottom: 10 }}>💍</div>
+              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, color: "#9d174d", marginBottom: 6 }}>Hola, {bodaRamoNombre} 🤍</p>
+              <p style={{ fontSize: 12, color: "#be185d", opacity: 0.75, marginBottom: 22, lineHeight: 1.6 }}>¿Cuál es tu estado civil?</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <button
+                  onClick={async () => {
+                    if (ramoData?.activa) {
+                      setBodaRamoStep("uniendo");
+                      const fd = new FormData(); fd.append("type","add_ramo_participante"); fd.append("nombre", bodaRamoNombre.trim());
+                      await fetch(`/api/boda-civil/${eventoId}`, { method:"POST", body:fd });
+                      await fetchRamo();
+                      setBodaRamoStep("espera");
+                    } else {
+                      setBodaRamoStep("mensaje");
+                    }
+                  }}
+                  style={{ background: "linear-gradient(135deg,#ec4899,#be185d)", color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 20px rgba(236,72,153,0.3)" }}
+                >
+                  💐 Soltera
+                </button>
+                <button
+                  onClick={() => setBodaRamoStep("casada")}
+                  style={{ background: "linear-gradient(135deg,#fce7f3,#fdf2f8)", color: "#be185d", border: "1.5px solid rgba(249,168,212,0.5)", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  💑 Casada
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Ramo: mensaje para casadas ── */}
+        {bodaRamoStep === "casada" && (
+          <div className="boda-ramo-layer" onClick={() => { setBodaRamoStep("idle"); setBodaRamoNombre(""); }}>
+            {Array.from({ length: 28 }).map((_, i) => {
+              const sz = [16,20,24,28,18,22][i%6];
+              return (
+                <div key={i} className="boda-ramo-piece" style={{ left:`${(i*3.5+Math.sin(i)*15+50)%100}%`, animationDuration:`${2.2+(i%5)*0.35}s`, animationDelay:`${(i%8)*0.15}s`, pointerEvents:"none" }}>
+                  <svg width={sz} height={sz} viewBox="0 0 30 30" fill="none">
+                    <ellipse cx="15" cy="7" rx="4.5" ry="7" fill="white" opacity="0.95"/>
+                    <ellipse cx="23" cy="12" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(60 23 12)"/>
+                    <ellipse cx="21" cy="22" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(120 21 22)"/>
+                    <ellipse cx="9" cy="22" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(-120 9 22)"/>
+                    <ellipse cx="7" cy="12" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(-60 7 12)"/>
+                    <circle cx="15" cy="15" r="3.5" fill="#fce7f3"/>
+                  </svg>
+                </div>
+              );
+            })}
+            <div style={{ position:"relative", background:"rgba(255,255,255,0.97)", borderRadius:24, padding:"30px 24px", textAlign:"center", maxWidth:300, width:"88%", boxShadow:"0 20px 70px rgba(236,72,153,0.28)", border:"1.5px solid rgba(249,168,212,0.45)", animation:"wlPop 0.3s ease", zIndex:1 }} onClick={e=>e.stopPropagation()}>
+              <div style={{ fontSize:36, marginBottom:10 }}>💑</div>
+              <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:13, fontWeight:600, color:"#be185d", letterSpacing:"1.5px", textTransform:"uppercase", marginBottom:8, opacity:0.7 }}>Para {bodaRamoNombre} 🤍</p>
+              <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:600, color:"#9d174d", lineHeight:1.35, marginBottom:12 }}>
+                Sigue amando<br/>a tu esposo 💍
+              </p>
+              <div style={{ width:40, height:1, background:"linear-gradient(90deg,transparent,#f9a8d4,transparent)", margin:"0 auto 12px" }}/>
+              <p style={{ fontSize:12, color:"#be185d", lineHeight:1.75, marginBottom:16, opacity:0.85 }}>
+                Que sigan construyendo ese matrimonio que honre a Dios cada día. Nosotros hoy iniciamos este camino, y su amor nos inspira. 🙏<br/><br/>
+                <em>"Lo que Dios unió, que el hombre no lo separe." — Mc 10:9</em>
+              </p>
+              <p style={{ fontSize:12, color:"#9CA3AF", fontStyle:"italic", marginBottom:18 }}>— Con amor, Alisson</p>
+              <button onClick={() => { setBodaRamoStep("idle"); setBodaRamoNombre(""); }} style={{ background:"linear-gradient(135deg,#fce7f3,#fdf2f8)", border:"1.5px solid rgba(249,168,212,0.5)", borderRadius:12, padding:"10px 22px", fontSize:13, fontWeight:600, color:"#be185d", cursor:"pointer", fontFamily:"inherit" }}>
+                Cerrar 🌸
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Ramo: ganadora revelada en vivo (todos ven) ── */}
+        {ramoData && !ramoData.activa && ramoData.ganadora && bodaRamoStep !== "mensaje" && (
+          <div className="boda-ramo-layer" onClick={() => setRamoData(null)}>
+            {Array.from({ length: 28 }).map((_, i) => {
+              const sz = [16,20,24,28,18,22][i%6];
+              return (
+                <div key={i} className="boda-ramo-piece" style={{ left:`${(i*3.5+Math.sin(i)*15+50)%100}%`, animationDuration:`${2.2+(i%5)*0.35}s`, animationDelay:`${(i%8)*0.15}s`, pointerEvents:"none" }}>
+                  <svg width={sz} height={sz} viewBox="0 0 30 30" fill="none">
+                    <ellipse cx="15" cy="7" rx="4.5" ry="7" fill="white" opacity="0.95"/>
+                    <ellipse cx="23" cy="12" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(60 23 12)"/>
+                    <ellipse cx="21" cy="22" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(120 21 22)"/>
+                    <ellipse cx="9" cy="22" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(-120 9 22)"/>
+                    <ellipse cx="7" cy="12" rx="4.5" ry="7" fill="white" opacity="0.9" transform="rotate(-60 7 12)"/>
+                    <circle cx="15" cy="15" r="3.5" fill="#fce7f3"/>
+                  </svg>
+                </div>
+              );
+            })}
+            <div style={{ position:"relative", background:"rgba(255,255,255,0.97)", borderRadius:24, padding:"30px 24px", textAlign:"center", maxWidth:300, width:"88%", boxShadow:"0 20px 70px rgba(236,72,153,0.28)", border:"1.5px solid rgba(249,168,212,0.45)", zIndex:1 }} onClick={e=>e.stopPropagation()}>
+              <div style={{ fontSize:40, marginBottom:8 }}>💐</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:13, fontWeight:600, color:"#be185d", letterSpacing:"1.5px", textTransform:"uppercase", marginBottom:8, opacity:0.7 }}>¡Y el ramo es para...</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:30, fontWeight:600, color:"#9d174d", marginBottom:10, animation:"winner .5s ease" }}>
+                {ramoData.ganadora}
+              </div>
+              <div style={{ width:40, height:1, background:"linear-gradient(90deg,transparent,#f9a8d4,transparent)", margin:"0 auto 12px" }}/>
+              <p style={{ fontSize:12, color:"#be185d", lineHeight:1.75, marginBottom:16, opacity:0.85 }}>
+                La próxima en casarse,<br/>mi deseo es que seas tú ✨<br/><br/>
+                <span style={{fontStyle:"normal"}}>Que Dios guíe tu historia de amor y que cuando llegue ese día bendecido, sea tan especial como el nuestro. ¡Él tiene algo hermoso preparado para ti! 🙏💐</span><br/><br/>
+                <span style={{fontStyle:"italic"}}>— Con amor y bendiciones, Alisson</span>
+              </p>
+              <button onClick={() => setRamoData(null)} style={{ background:"linear-gradient(135deg,#fce7f3,#fdf2f8)", border:"1.5px solid rgba(249,168,212,0.5)", borderRadius:12, padding:"10px 22px", fontSize:13, fontWeight:600, color:"#be185d", cursor:"pointer", fontFamily:"inherit" }}>
+                Cerrar 🌸
               </button>
             </div>
           </div>
@@ -3280,13 +3561,13 @@ export default function MuroPublico() {
               </svg>
               <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 13, fontWeight: 600, color: "#be185d", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, opacity: 0.7 }}>Para {bodaRamoNombre} 🤍</p>
               <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "#9d174d", lineHeight: 1.35, marginBottom: 12 }}>
-                La próxima en casarse,<br/>mi deseo es que seas tú
+                Dios tiene algo<br/>hermoso para ti 🙏
               </p>
               <div style={{ width: 40, height: 1, background: "linear-gradient(90deg,transparent,#f9a8d4,transparent)", margin: "0 auto 12px" }}/>
               <p style={{ fontSize: 12, color: "#be185d", lineHeight: 1.75, marginBottom: 16, opacity: 0.85 }}>
-                Este ramo es para ti, {bodaRamoNombre}.<br/>Que el amor llegue pronto a tu vida y que cuando llegue ese día, sea tan especial como el nuestro. ✨
+                {bodaRamoNombre}, eres especial y Dios te ama profundamente.<br/>La persona que Él tiene para ti vale la espera. Confía en Sus tiempos perfectos y sigue adelante con fe. ✨
               </p>
-              <p style={{ fontSize: 12, color: "#9CA3AF", fontStyle: "italic", marginBottom: 18 }}>— Con amor, Alisson</p>
+              <p style={{ fontSize: 12, color: "#9CA3AF", fontStyle: "italic", marginBottom: 18 }}>— Con amor y bendiciones, Alisson</p>
               <button onClick={() => { setBodaRamoStep("idle"); setBodaRamoNombre(""); }} style={{ background: "linear-gradient(135deg,#fce7f3,#fdf2f8)", border: "1.5px solid rgba(249,168,212,0.5)", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 600, color: "#be185d", cursor: "pointer", fontFamily: "inherit" }}>
                 Cerrar 🌸
               </button>
