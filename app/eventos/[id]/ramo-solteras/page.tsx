@@ -54,10 +54,6 @@ export default function RamoSolterasPage() {
     return () => { stopPolling(); stopGiro(); };
   }, [ramo?.activa]);
 
-  // Ref para siempre tener los últimos participantes (evita stale closure)
-  const ramoRef = useRef<RamoDato | null>(null);
-  useEffect(() => { ramoRef.current = ramo; }, [ramo]);
-
   useEffect(() => {
     if (!ramo?.activa) return;
     const inicio = ramo.inicio;
@@ -69,11 +65,8 @@ export default function RamoSolterasPage() {
       setTiempoRestante(r);
       if (r <= 0 && !finalizadoRef.current) {
         finalizadoRef.current = true;
-        // Usar ramoRef para obtener participantes actualizados
-        const latest = ramoRef.current;
-        const participantes = latest?.participantes.map(p => p.nombre) ?? [];
-        const ganadora = calcGanadora(participantes, inicio);
-        finalizarRamoConParticipantes(ganadora);
+        // Siempre fetch fresco del servidor al finalizar
+        finalizarRamoDesdeServidor();
       }
     }, 1000);
     return () => clearInterval(tick);
@@ -129,23 +122,23 @@ export default function RamoSolterasPage() {
     setAccion(false);
   }
 
-  async function finalizarRamoConParticipantes(ganadoraCalculada: string) {
-    // Fetch final para asegurar participantes más recientes del servidor
-    let ganadora = ganadoraCalculada;
+  async function finalizarRamoDesdeServidor() {
     try {
-      const res = await fetch(`/api/boda-civil/${id}`);
+      // Fetch con cache-busting para obtener participantes frescos
+      const res = await fetch(`/api/boda-civil/${id}?_t=${Date.now()}`);
       const data = await res.json();
       const latest = data.ramo as RamoDato | null;
-      if (latest?.participantes.length) {
-        ganadora = calcGanadora(latest.participantes.map(p => p.nombre), latest.inicio);
-      }
-    } catch { /* usar ganadora calculada */ }
-    const fd = new FormData();
-    fd.append("type", "finalizar_ramo");
-    fd.append("ganadora", ganadora);
-    const res2 = await fetch(`/api/boda-civil/${id}`, { method: "POST", body: fd });
-    const data2 = await res2.json();
-    if (data2.ok) setRamo(data2.ramo);
+      const participantes = latest?.participantes?.map((p: { nombre: string }) => p.nombre) ?? [];
+      const ganadora = participantes.length > 0
+        ? calcGanadora(participantes, latest!.inicio)
+        : "";
+      const fd = new FormData();
+      fd.append("type", "finalizar_ramo");
+      fd.append("ganadora", ganadora);
+      const res2 = await fetch(`/api/boda-civil/${id}`, { method: "POST", body: fd });
+      const data2 = await res2.json();
+      if (data2.ok) setRamo(data2.ramo);
+    } catch { /* ignore */ }
   }
 
   async function resetRifa() {
@@ -257,7 +250,17 @@ export default function RamoSolterasPage() {
                 </div>
               )}
             </div>
-          </div>
+          {/* Botón manual para revelar ganadora ahora */}
+          {ramo.participantes.length > 0 && (
+            <button
+              onClick={() => { finalizadoRef.current = true; finalizarRamoDesdeServidor(); }}
+              disabled={accion}
+              style={{ width: "100%", background: "linear-gradient(135deg,#9d174d,#7e1038)", color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 20px rgba(157,23,77,0.35)" }}
+            >
+              💐 Revelar ganadora ahora
+            </button>
+          )}
+        </div>
         )}
 
         {/* Estado: ganadora revelada */}
