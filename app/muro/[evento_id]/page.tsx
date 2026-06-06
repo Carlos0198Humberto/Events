@@ -1751,7 +1751,7 @@ export default function MuroPublico() {
   const [bodaReactions, setBodaReactions] = useState<{ nombre: string; ts: number }[]>([]);
   const [bodaYaReaccione, setBodaYaReaccione] = useState(false);
   const [bodaEnviandoReaccion, setBodaEnviandoReaccion] = useState(false);
-  const [bodaRamoStep, setBodaRamoStep] = useState<"idle"|"nombre"|"estado"|"uniendo"|"espera"|"mensaje"|"casada">("idle");
+  const [bodaRamoStep, setBodaRamoStep] = useState<"idle"|"nombre"|"estado"|"uniendo"|"espera"|"espera-rifa"|"mensaje"|"casada">("idle");
   const [bodaRamoNombre, setBodaRamoNombre] = useState("");
   const [ramoData, setRamoData] = useState<{ activa: boolean; inicio: number; duracion: number; participantes: { nombre: string; ts: number }[]; ganadora: string | null } | null>(null);
   const [ramoTiempo, setRamoTiempo] = useState(0);
@@ -3441,15 +3441,25 @@ export default function MuroPublico() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <button
                   onClick={async () => {
-                    if (ramoData?.activa) {
-                      setBodaRamoStep("uniendo");
-                      const fd = new FormData(); fd.append("type","add_ramo_participante"); fd.append("nombre", bodaRamoNombre.trim());
-                      await fetch(`/api/boda-civil/${eventoId}`, { method:"POST", body:fd });
-                      await fetchRamo();
-                      setBodaRamoStep("espera");
-                    } else {
-                      setBodaRamoStep("mensaje");
-                    }
+                    setBodaRamoStep("uniendo");
+                    // Refrescar datos antes de decidir
+                    await fetchRamo();
+                    setRamoData(current => {
+                      if (current?.activa) {
+                        // Hay rifa activa: unirse
+                        const fd = new FormData();
+                        fd.append("type", "add_ramo_participante");
+                        fd.append("nombre", bodaRamoNombre.trim());
+                        fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd }).then(() => {
+                          fetchRamo();
+                          setBodaRamoStep("espera");
+                        });
+                      } else {
+                        // No hay rifa activa: mostrar espera
+                        setBodaRamoStep("espera-rifa");
+                      }
+                      return current;
+                    });
                   }}
                   style={{ background: "linear-gradient(135deg,#ec4899,#be185d)", color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 20px rgba(236,72,153,0.3)" }}
                 >
@@ -3462,6 +3472,22 @@ export default function MuroPublico() {
                   💑 Casada
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Ramo: soltera registrada, esperando que inicie la rifa ── */}
+        {bodaRamoStep === "espera-rifa" && (
+          <div className="boda-ramo-layer" onClick={e => e.target === e.currentTarget && setBodaRamoStep("idle")}>
+            <div style={{ background: "#fff", borderRadius: 24, padding: "32px 24px", textAlign: "center", maxWidth: 300, width: "88%", boxShadow: "0 16px 64px rgba(236,72,153,0.22)", border: "1.5px solid rgba(249,168,212,0.35)", animation: "wlPop 0.25s ease" }} onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>💐</div>
+              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 600, color: "#9d174d", marginBottom: 8 }}>¡Listo, {bodaRamoNombre}!</p>
+              <p style={{ fontSize: 13, color: "#be185d", opacity: 0.8, lineHeight: 1.7, marginBottom: 20 }}>
+                La rifa aún no ha comenzado.<br/>Cuando inicie, toca el botón <strong>¡Quiero participar!</strong> que aparecerá en pantalla para unirte. 🙏
+              </p>
+              <button onClick={() => setBodaRamoStep("idle")} style={{ background: "linear-gradient(135deg,#ec4899,#be185d)", color: "#fff", border: "none", borderRadius: 14, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 20px rgba(236,72,153,0.3)" }}>
+                Entendido 🌸
+              </button>
             </div>
           </div>
         )}
