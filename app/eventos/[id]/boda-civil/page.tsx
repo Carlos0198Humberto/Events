@@ -156,13 +156,16 @@ export default function BodaCivilAdminPage() {
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "mp4";
       const path = `${eventoId}/video.${ext}`;
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
-      // Obtener token de sesión
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token ?? "";
+      // 1. Obtener signed upload URL desde la API (usa service_role, sin RLS)
+      const fdUrl = new FormData();
+      fdUrl.append("type", "get_upload_url");
+      fdUrl.append("path", path);
+      const urlRes = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fdUrl });
+      const urlJson = await urlRes.json();
+      if (!urlJson.ok) throw new Error(urlJson.error ?? "No se pudo obtener URL de subida");
 
-      // XHR con progreso real
+      // 2. Subir con XHR a la signed URL (progreso real)
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.upload.onprogress = (ev) => {
@@ -175,17 +178,13 @@ export default function BodaCivilAdminPage() {
           else reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
         };
         xhr.onerror = () => reject(new Error("Error de red"));
-        xhr.open("POST", `${supabaseUrl}/storage/v1/object/${BUCKET}/${path}`);
-        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-        xhr.setRequestHeader("x-upsert", "true");
+        xhr.open("PUT", urlJson.signedUrl);
         xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
         xhr.send(file);
       });
 
-      // URL pública
+      // 3. Obtener URL pública y guardar en meta.json
       const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
-
-      // Actualizar meta.json
       const fd = new FormData();
       fd.append("type", "set_video_url");
       fd.append("url", urlData.publicUrl);
@@ -219,9 +218,6 @@ export default function BodaCivilAdminPage() {
     const toUpload = files.slice(0, disponibles);
     setUploadingFotos(true);
     let latestMeta = { ...meta };
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token ?? "";
 
     for (let i = 0; i < toUpload.length; i++) {
       const file = toUpload[i];
@@ -230,15 +226,24 @@ export default function BodaCivilAdminPage() {
       const path = `${eventoId}/fotos/${Date.now()}_${i}.${ext}`;
 
       try {
+        // Obtener signed URL
+        const fdUrl = new FormData();
+        fdUrl.append("type", "get_upload_url");
+        fdUrl.append("path", path);
+        const urlRes = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fdUrl });
+        const urlJson = await urlRes.json();
+        if (!urlJson.ok) throw new Error("no url");
+
+        // Subir vía XHR
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.onload = () => xhr.status < 300 ? resolve() : reject(new Error(`${xhr.status}`));
           xhr.onerror = () => reject(new Error("red"));
-          xhr.open("POST", `${supabaseUrl}/storage/v1/object/${BUCKET}/${path}`);
-          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          xhr.open("PUT", urlJson.signedUrl);
           xhr.setRequestHeader("Content-Type", file.type || "image/jpeg");
           xhr.send(file);
         });
+
         const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
         const fd = new FormData();
         fd.append("type", "add_foto_url");

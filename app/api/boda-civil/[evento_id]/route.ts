@@ -63,6 +63,15 @@ export async function POST(
   const type = form.get("type") as string;
   const meta = await getMeta(admin, evento_id);
 
+  if (type === "get_upload_url") {
+    const path = form.get("path") as string;
+    const { data, error } = await admin.storage
+      .from(BUCKET)
+      .createSignedUploadUrl(path);
+    if (error || !data) return NextResponse.json({ error: error?.message ?? "no url" }, { status: 500 });
+    return NextResponse.json({ ok: true, signedUrl: data.signedUrl, token: data.token, path: data.path });
+  }
+
   if (type === "set_nombres") {
     meta.nombres = (form.get("nombres") as string) || "";
     await saveMeta(admin, evento_id, meta);
