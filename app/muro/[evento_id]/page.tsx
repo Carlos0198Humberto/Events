@@ -2301,8 +2301,8 @@ export default function MuroPublico() {
         .boda-deco-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
         .boda-nombres { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 600; color: #1E1B4B; letter-spacing: -0.3px; margin-bottom: 2px; }
         .boda-frame-outer { position: relative; border-radius: 16px; overflow: hidden; background: #000; margin: 0 0 4px; box-shadow: 0 4px 24px rgba(79,70,229,0.12); }
-        .boda-iframe-wrap { overflow: hidden; height: 280px; border-radius: 16px; background: #000; }
-        .boda-iframe-wrap iframe { display: block; width: 100%; height: 320px; border: none; margin-top: -40px; }
+        .boda-iframe-wrap { position: relative; width: 100%; padding-bottom: 56.25%; border-radius: 16px; overflow: hidden; background: #000; }
+        .boda-iframe-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .boda-nombres-bar { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(15,14,23,0.88) 0%, transparent 100%); padding: 32px 16px 14px; z-index: 3; text-align: center; pointer-events: none; }
         .boda-nombres-text { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-style: italic; color: #fff; letter-spacing: 0.3px; }
         .boda-video { width: 100%; display: block; max-height: 380px; background: #000; border-radius: 16px; }
@@ -2333,10 +2333,6 @@ export default function MuroPublico() {
         @keyframes bodaFloat { 0%,100% { transform: translateY(0) rotate(-8deg) scale(1); opacity:0.7; } 50% { transform: translateY(-18px) rotate(8deg) scale(1.08); opacity:1; } }
         .boda-confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 8888; overflow: hidden; }
         .boda-confetti-piece { position: absolute; top: -50px; animation: bodaFall linear forwards; }
-        .boda-video-overlay { position: relative; cursor: pointer; border-radius: 16px; overflow: hidden; background: #1a1033; display: flex; align-items: center; justify-content: center; height: 220px; }
-        .boda-video-overlay-btn { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .boda-video-play-circle { width: 64px; height: 64px; background: rgba(79,70,229,0.85); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(79,70,229,0.5); }
-        .boda-video-overlay-label { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); }
       `}</style>
 
       {/* ── Bordes festivos ── */}
@@ -2965,24 +2961,13 @@ export default function MuroPublico() {
                 </div>
                 <div className="boda-frame-outer">
                   {(bodaCivil.video_url.includes("drive.google.com") || bodaCivil.video_url.includes("youtube.com/embed") || bodaCivil.video_url.includes("player.vimeo.com")) ? (
-                    bodaVideoActivo ? (
-                      <div className="boda-iframe-wrap">
-                        <iframe
-                          src={bodaCivil.video_url + (bodaCivil.video_url.includes("?") ? "&" : "?") + "autoplay=1"}
-                          allow="autoplay; encrypted-media"
-                          allowFullScreen
-                        />
-                      </div>
-                    ) : (
-                      <div className="boda-video-overlay" onClick={() => setBodaVideoActivo(true)}>
-                        <div className="boda-video-overlay-btn">
-                          <div className="boda-video-play-circle">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                          </div>
-                          <span className="boda-video-overlay-label">Toca para reproducir</span>
-                        </div>
-                      </div>
-                    )
+                    <div className="boda-iframe-wrap">
+                      <iframe
+                        src={bodaCivil.video_url}
+                        allow="autoplay; encrypted-media; fullscreen"
+                        allowFullScreen
+                      />
+                    </div>
                   ) : (
                     <video src={bodaCivil.video_url} controls className="boda-video" playsInline preload="metadata" />
                   )}

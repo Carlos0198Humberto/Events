@@ -48,12 +48,10 @@ export default function WalkInPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && eventoId) {
-      // Usar dominio de producción si está configurado, si no el origen actual
-      // (evita que el QR apunte a un preview de Vercel con auth wall)
       const origin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || window.location.origin;
       setRegisterUrl(`${origin}/walk-in/${eventoId}?registrar=1`);
       const qrData = `${origin}/walk-in/${eventoId}?registrar=1`;
-      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(qrData)}&format=png&margin=10`);
+      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}&format=png&margin=12`);
     }
   }, [eventoId]);
 
@@ -75,7 +73,6 @@ export default function WalkInPage() {
     setRegistrando(true);
     setError("");
 
-    // Llamar a la API route server-side (usa service_role, bypasea RLS)
     const res = await fetch("/api/walk-in/registrar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -91,10 +88,8 @@ export default function WalkInPage() {
       return;
     }
 
-    // Redirigir a la invitación completa — misma experiencia que un invitado normal
     router.replace(`/confirmar/${json.token}`);
   }
-
 
   async function compartir() {
     if (!registerUrl) return;
@@ -138,19 +133,14 @@ export default function WalkInPage() {
 
   const emoji = TIPO_EMOJI[evento.tipo] ?? "✨";
 
+  const fechaFormateada = evento.fecha
+    ? new Date(evento.fecha + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+    : null;
+
   return (
-    <main style={{ minHeight: "100vh", background: "linear-gradient(160deg,#EEF2FF 0%,#E0E7FF 50%,#C7D2FE 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontFamily: "'DM Sans',sans-serif" }}>
-      {/* Botón de regreso */}
-      {!esInvitado && (
-        <button className="wl-btn-regreso" onClick={() => step === "form" ? setStep("qr") : router.push("/dashboard")}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 5l-7 7 7 7"/>
-          </svg>
-          Regresar
-        </button>
-      )}
+    <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Jost:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes wlFadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
@@ -162,167 +152,383 @@ export default function WalkInPage() {
         .wl-btn-back:hover{color:#6366F1}
         .wl-btn-regreso{position:fixed;top:max(16px,env(safe-area-inset-top,16px));left:16px;z-index:50;background:rgba(255,255,255,0.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(79,70,229,0.18);border-radius:12px;padding:8px 14px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#4F46E5;cursor:pointer;font-family:inherit;box-shadow:0 2px 12px rgba(79,70,229,0.12);-webkit-tap-highlight-color:transparent;transition:opacity .15s;}
         .wl-btn-regreso:active{opacity:0.7}
+        /* ── PRINT ── */
+        .wl-print-only { display: none; }
+        @media print {
+          @page { size: A4 portrait; margin: 10mm 12mm; }
+          .wl-no-print { display: none !important; }
+          .wl-print-only { display: block !important; }
+          body { background: #fff !important; }
+          .wl-print-page {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+          }
+          .wl-print-card {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 50vh;
+            min-height: 130mm;
+            padding: 8mm 10mm;
+            font-family: 'DM Sans', sans-serif;
+            position: relative;
+            page-break-inside: avoid;
+          }
+          .wl-print-card:first-child {
+            border-bottom: 2px dashed #C7D2FE;
+          }
+          .wl-print-inner {
+            display: flex;
+            width: 100%;
+            gap: 10mm;
+            align-items: center;
+            height: 100%;
+            border: 1.5px solid #C7D2FE;
+            border-radius: 6mm;
+            padding: 7mm 8mm;
+            background: #fff;
+            box-shadow: none;
+          }
+          .wl-print-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4mm;
+            flex-shrink: 0;
+          }
+          .wl-print-qr {
+            width: 42mm;
+            height: 42mm;
+            border: 1.5px solid #E0E7FF;
+            border-radius: 3mm;
+            padding: 2mm;
+          }
+          .wl-print-scan-label {
+            font-size: 7.5pt;
+            font-weight: 700;
+            color: #4F46E5;
+            text-align: center;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+          }
+          .wl-print-right {
+            display: flex;
+            flex-direction: column;
+            gap: 2.5mm;
+            flex: 1;
+          }
+          .wl-print-brand {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 8pt;
+            font-weight: 600;
+            color: #6366F1;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 1mm;
+          }
+          .wl-print-event-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 17pt;
+            font-weight: 600;
+            color: #1E1B4B;
+            line-height: 1.15;
+          }
+          .wl-print-hosts {
+            font-size: 8.5pt;
+            font-weight: 600;
+            color: #4F46E5;
+            margin-bottom: 1mm;
+          }
+          .wl-print-date {
+            font-size: 7.5pt;
+            color: #64748B;
+            margin-bottom: 2mm;
+          }
+          .wl-print-divider {
+            width: 20mm;
+            height: 1px;
+            background: linear-gradient(90deg, #C7D2FE, transparent);
+            margin: 1mm 0 2mm;
+          }
+          .wl-print-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5mm;
+          }
+          .wl-print-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 2mm;
+            font-size: 8pt;
+            color: #374151;
+            line-height: 1.4;
+          }
+          .wl-print-step-dot {
+            width: 3.5mm;
+            height: 3.5mm;
+            border-radius: 50%;
+            background: #4F46E5;
+            flex-shrink: 0;
+            margin-top: 0.7mm;
+          }
+          .wl-print-thanks {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 9pt;
+            font-style: italic;
+            color: #6366F1;
+            margin-top: 3mm;
+            line-height: 1.5;
+          }
+          .wl-print-scissors {
+            text-align: center;
+            color: #C7D2FE;
+            font-size: 11pt;
+            letter-spacing: 3px;
+            padding: 0;
+            line-height: 0;
+          }
+        }
       `}</style>
 
-      <div style={{ width: "100%", maxWidth: 420, animation: "wlFadeUp 0.4s ease" }}>
+      {/* ── Botón de regreso (solo organizador) ── */}
+      {!esInvitado && (
+        <button className="wl-btn-regreso wl-no-print" onClick={() => step === "form" ? setStep("qr") : router.push("/dashboard")}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          Regresar
+        </button>
+      )}
 
-        {/* ── Topbar ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, marginBottom: 24 }}>
-          <AppLogo size={30} />
-          <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 21, fontWeight: 600, color: "#1E1B4B", letterSpacing: "1.5px" }}>Evorix</span>
-        </div>
+      {/* ── Pantalla normal ── */}
+      <main className="wl-no-print" style={{ minHeight: "100vh", background: "linear-gradient(160deg,#EEF2FF 0%,#E0E7FF 50%,#C7D2FE 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ width: "100%", maxWidth: 420, animation: "wlFadeUp 0.4s ease" }}>
 
-        {/* ── Card de evento ── */}
-        <div style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(16px)", borderRadius: 22, padding: "20px 22px 16px", marginBottom: 16, border: "1px solid rgba(79,70,229,0.12)", boxShadow: "0 8px 32px rgba(79,70,229,0.10)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 16, background: "linear-gradient(135deg,#3730A3,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0, boxShadow: "0 4px 14px rgba(79,70,229,0.25)" }}>
-              {emoji}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 600, color: "#1E1B4B", lineHeight: 1.2, marginBottom: 3 }}>{evento.nombre}</div>
-              <div style={{ fontSize: 12, color: "#4F46E5", fontWeight: 600, opacity: 0.85 }}>{evento.anfitriones}</div>
-            </div>
+          {/* Topbar */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, marginBottom: 24 }}>
+            <AppLogo size={30} />
+            <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 21, fontWeight: 600, color: "#1E1B4B", letterSpacing: "1.5px" }}>Evorix</span>
           </div>
-          {evento.frase_evento && (
-            <p style={{ fontSize: 12, color: "#6366F1", fontStyle: "italic", marginTop: 12, lineHeight: 1.6, borderTop: "1px solid rgba(79,70,229,0.10)", paddingTop: 10 }}>
-              &ldquo;{evento.frase_evento}&rdquo;
-            </p>
-          )}
-        </div>
 
-        {/* ── Tarjeta principal ── */}
-        <div style={{ background: "white", borderRadius: 24, padding: "28px 24px", boxShadow: "0 16px 48px rgba(79,70,229,0.14)", border: "1.5px solid rgba(79,70,229,0.10)" }}>
-
-          {/* STEP: QR */}
-          {step === "qr" && (
-            <div style={{ textAlign: "center", animation: "wlPop 0.3s ease" }}>
-              {/* Badge */}
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", border: "1px solid rgba(79,70,229,0.20)", borderRadius: 99, padding: "5px 14px", marginBottom: 18 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="2" width="9" height="9" rx="2" stroke="#4F46E5" strokeWidth="2.5"/>
-                  <rect x="13" y="2" width="9" height="9" rx="2" stroke="#4F46E5" strokeWidth="2.5"/>
-                  <rect x="2" y="13" width="9" height="9" rx="2" stroke="#4F46E5" strokeWidth="2.5"/>
-                  <rect x="17" y="17" width="4" height="4" fill="#4F46E5"/>
-                </svg>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", textTransform: "uppercase", letterSpacing: "1.2px" }}>Código QR del evento</span>
+          {/* Card de evento */}
+          <div style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(16px)", borderRadius: 22, padding: "20px 22px 16px", marginBottom: 16, border: "1px solid rgba(79,70,229,0.12)", boxShadow: "0 8px 32px rgba(79,70,229,0.10)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 16, background: "linear-gradient(135deg,#3730A3,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0, boxShadow: "0 4px 14px rgba(79,70,229,0.25)" }}>
+                {emoji}
               </div>
-
-              {qrUrl && (
-                <div style={{ background: "linear-gradient(135deg,#F8FAFF,#EEF2FF)", borderRadius: 20, padding: 16, display: "inline-block", border: "2px solid rgba(79,70,229,0.15)", marginBottom: 20, boxShadow: "0 6px 24px rgba(79,70,229,0.12)" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img ref={qrRef} src={qrUrl} alt="QR Walk-in" width={220} height={220} style={{ display: "block", borderRadius: 12 }} />
-                </div>
-              )}
-
-              <p style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 22 }}>
-                Mostrá este código a los invitados que no recibieron invitación electrónica. Al escanearlo podrán registrarse.
-              </p>
-
-              <button
-                className="wl-btn-primary"
-                onClick={() => setStep("form")}
-                style={{ width: "100%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "white", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 24px rgba(79,70,229,0.32)", fontFamily: "inherit", letterSpacing: ".2px" }}
-              >
-                Registrarme como invitado
-              </button>
-
-              {/* Compartir link */}
-              <button
-                onClick={compartir}
-                style={{ width: "100%", marginTop: 10, background: "transparent", border: "1.5px solid rgba(79,70,229,0.28)", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "#4F46E5", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit", transition: "all .15s" }}
-              >
-                {copied ? (
-                  <>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    ¡Link copiado!
-                  </>
-                ) : (
-                  <>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                    Compartir link de registro
-                  </>
-                )}
-              </button>
-              <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 8, textAlign: "center" }}>
-                Comparte el QR o el link — van directo al formulario
-              </p>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 600, color: "#1E1B4B", lineHeight: 1.2, marginBottom: 3 }}>{evento.nombre}</div>
+                <div style={{ fontSize: 12, color: "#4F46E5", fontWeight: 600, opacity: 0.85 }}>{evento.anfitriones}</div>
+              </div>
             </div>
-          )}
+            {evento.frase_evento && (
+              <p style={{ fontSize: 12, color: "#6366F1", fontStyle: "italic", marginTop: 12, lineHeight: 1.6, borderTop: "1px solid rgba(79,70,229,0.10)", paddingTop: 10 }}>
+                &ldquo;{evento.frase_evento}&rdquo;
+              </p>
+            )}
+          </div>
 
-          {/* STEP: Form */}
-          {step === "form" && (
-            <div style={{ animation: "wlFadeUp 0.3s ease" }}>
-              <div style={{ textAlign: "center", marginBottom: 24 }}>
-                <div style={{ width: 56, height: 56, borderRadius: 18, background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", border: "1.5px solid rgba(79,70,229,0.15)" }}>
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="1.8" strokeLinecap="round">
-                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
+          {/* Tarjeta principal */}
+          <div style={{ background: "white", borderRadius: 24, padding: "28px 24px", boxShadow: "0 16px 48px rgba(79,70,229,0.14)", border: "1.5px solid rgba(79,70,229,0.10)" }}>
+
+            {/* STEP: QR */}
+            {step === "qr" && (
+              <div style={{ textAlign: "center", animation: "wlPop 0.3s ease" }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", border: "1px solid rgba(79,70,229,0.20)", borderRadius: 99, padding: "5px 14px", marginBottom: 18 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="2" width="9" height="9" rx="2" stroke="#4F46E5" strokeWidth="2.5"/>
+                    <rect x="13" y="2" width="9" height="9" rx="2" stroke="#4F46E5" strokeWidth="2.5"/>
+                    <rect x="2" y="13" width="9" height="9" rx="2" stroke="#4F46E5" strokeWidth="2.5"/>
+                    <rect x="17" y="17" width="4" height="4" fill="#4F46E5"/>
                   </svg>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", textTransform: "uppercase", letterSpacing: "1.2px" }}>Código QR del evento</span>
                 </div>
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "#1E1B4B", marginBottom: 4 }}>¿Cuál es tu nombre?</div>
-                <p style={{ fontSize: 13, color: "#6B7280" }}>Te registraremos como invitado del evento</p>
-              </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <input
-                  className="wl-input"
-                  type="text"
-                  value={nombre}
-                  onChange={(e) => { setNombre(e.target.value); setError(""); }}
-                  onKeyDown={(e) => e.key === "Enter" && registrar()}
-                  placeholder="Tu nombre completo"
-                  autoFocus
-                  style={{ width: "100%", border: "1.5px solid #E0E7FF", borderRadius: 14, padding: "15px 16px", fontSize: 16, fontFamily: "inherit", background: "#FAFBFF", color: "#1E1B4B", transition: "border-color .15s, box-shadow .15s" }}
-                />
-                {error && (
-                  <p style={{ fontSize: 12, color: "#EF4444", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span>⚠</span> {error}
-                  </p>
+                {qrUrl && (
+                  <div style={{ background: "linear-gradient(135deg,#F8FAFF,#EEF2FF)", borderRadius: 20, padding: 16, display: "inline-block", border: "2px solid rgba(79,70,229,0.15)", marginBottom: 20, boxShadow: "0 6px 24px rgba(79,70,229,0.12)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img ref={qrRef} src={qrUrl} alt="QR Walk-in" width={220} height={220} style={{ display: "block", borderRadius: 12 }} />
+                  </div>
                 )}
+
+                <p style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 22 }}>
+                  Mostrá este código a los invitados que no recibieron invitación electrónica. Al escanearlo podrán registrarse.
+                </p>
+
                 <button
                   className="wl-btn-primary"
-                  onClick={registrar}
-                  disabled={registrando || !nombre.trim()}
-                  style={{ width: "100%", background: nombre.trim() ? "linear-gradient(135deg,#3730A3,#4F46E5)" : "#E5E7EB", color: nombre.trim() ? "white" : "#9CA3AF", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, cursor: nombre.trim() ? "pointer" : "default", transition: "all .2s", boxShadow: nombre.trim() ? "0 8px 24px rgba(79,70,229,0.30)" : "none", fontFamily: "inherit" }}
+                  onClick={() => setStep("form")}
+                  style={{ width: "100%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "white", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 24px rgba(79,70,229,0.32)", fontFamily: "inherit", letterSpacing: ".2px" }}
                 >
-                  {registrando ? "Registrando..." : "Confirmar asistencia →"}
+                  Registrarme como invitado
                 </button>
-                <button className="wl-btn-back" onClick={() => setStep("qr")}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-                  Volver al QR
+
+                <button
+                  onClick={compartir}
+                  style={{ width: "100%", marginTop: 10, background: "transparent", border: "1.5px solid rgba(79,70,229,0.28)", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "#4F46E5", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit", transition: "all .15s" }}
+                >
+                  {copied ? (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      ¡Link copiado!
+                    </>
+                  ) : (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                      Compartir link de registro
+                    </>
+                  )}
                 </button>
+
+                {/* Botón imprimir — solo organizador */}
+                {!esInvitado && (
+                  <button
+                    onClick={() => window.print()}
+                    style={{ width: "100%", marginTop: 10, background: "linear-gradient(135deg,#F8FAFF,#EEF2FF)", border: "1.5px solid rgba(79,70,229,0.22)", borderRadius: 14, padding: "13px", fontSize: 14, fontWeight: 600, cursor: "pointer", color: "#3730A3", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit", transition: "all .15s" }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 6 2 18 2 18 9"/>
+                      <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+                      <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    Imprimir tarjetas para invitados
+                  </button>
+                )}
+
+                <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 8, textAlign: "center" }}>
+                  Comparte el QR o el link — van directo al formulario
+                </p>
+              </div>
+            )}
+
+            {/* STEP: Form */}
+            {step === "form" && (
+              <div style={{ animation: "wlFadeUp 0.3s ease" }}>
+                <div style={{ textAlign: "center", marginBottom: 24 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 18, background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", border: "1.5px solid rgba(79,70,229,0.15)" }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="1.8" strokeLinecap="round">
+                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </div>
+                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "#1E1B4B", marginBottom: 4 }}>¿Cuál es tu nombre?</div>
+                  <p style={{ fontSize: 13, color: "#6B7280" }}>Te registraremos como invitado del evento</p>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <input
+                    className="wl-input"
+                    type="text"
+                    value={nombre}
+                    onChange={(e) => { setNombre(e.target.value); setError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && registrar()}
+                    placeholder="Tu nombre completo"
+                    autoFocus
+                    style={{ width: "100%", border: "1.5px solid #E0E7FF", borderRadius: 14, padding: "15px 16px", fontSize: 16, fontFamily: "inherit", background: "#FAFBFF", color: "#1E1B4B", transition: "border-color .15s, box-shadow .15s" }}
+                  />
+                  {error && (
+                    <p style={{ fontSize: 12, color: "#EF4444", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                      <span>⚠</span> {error}
+                    </p>
+                  )}
+                  <button
+                    className="wl-btn-primary"
+                    onClick={registrar}
+                    disabled={registrando || !nombre.trim()}
+                    style={{ width: "100%", background: nombre.trim() ? "linear-gradient(135deg,#3730A3,#4F46E5)" : "#E5E7EB", color: nombre.trim() ? "white" : "#9CA3AF", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, cursor: nombre.trim() ? "pointer" : "default", transition: "all .2s", boxShadow: nombre.trim() ? "0 8px 24px rgba(79,70,229,0.30)" : "none", fontFamily: "inherit" }}
+                  >
+                    {registrando ? "Registrando..." : "Confirmar asistencia →"}
+                  </button>
+                  <button className="wl-btn-back" onClick={() => setStep("qr")}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                    Volver al QR
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP: Done */}
+            {step === "done" && token && (
+              <div style={{ textAlign: "center", animation: "wlPop 0.3s ease" }}>
+                <div style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 36, boxShadow: "0 10px 32px rgba(79,70,229,0.35)", animation: "wlPulse 2s ease infinite" }}>
+                  🎉
+                </div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, color: "#1E1B4B", marginBottom: 6 }}>¡Bienvenido/a!</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#4F46E5", marginBottom: 10 }}>{nombre}</div>
+                <p style={{ fontSize: 13, color: "#6366F1", marginBottom: 24, lineHeight: 1.7, background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", borderRadius: 14, padding: "12px 16px", border: "1px solid rgba(79,70,229,0.12)" }}>
+                  Ya sos parte del evento. Podés ver el muro de fotos y dejar tu deseo para los anfitriones.
+                </p>
+                <a
+                  href={`/muro/${eventoId}?token=${token}`}
+                  style={{ width: "100%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "white", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 8px 24px rgba(79,70,229,0.32)", fontFamily: "inherit" }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                  Ver muro del evento
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 20, opacity: 0.55 }}>
+            <AppLogo size={14} />
+            <span style={{ fontSize: 10, color: "#4F46E5", fontWeight: 700, letterSpacing: "1.2px", textTransform: "uppercase" }}>Powered by Evorix</span>
+          </div>
+        </div>
+      </main>
+
+      {/* ── TARJETAS DE IMPRESIÓN (solo visible al imprimir) ── */}
+      <div className="wl-print-only wl-print-page">
+        {[0, 1].map((i) => (
+          <div key={i} className="wl-print-card">
+            <div className="wl-print-inner">
+              {/* Columna izquierda: QR */}
+              <div className="wl-print-left">
+                {qrUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={qrUrl} alt="QR" className="wl-print-qr" />
+                )}
+                <div className="wl-print-scan-label">✦ Escanea el QR ✦</div>
+              </div>
+
+              {/* Columna derecha: texto */}
+              <div className="wl-print-right">
+                <div className="wl-print-brand">✦ Evorix ✦</div>
+                <div className="wl-print-event-name">{evento.nombre}</div>
+                <div className="wl-print-hosts">{evento.anfitriones}</div>
+                {fechaFormateada && (
+                  <div className="wl-print-date">{fechaFormateada}</div>
+                )}
+                <div className="wl-print-divider" />
+                <div className="wl-print-steps">
+                  <div className="wl-print-step">
+                    <div className="wl-print-step-dot" />
+                    <span>Ingresa tu nombre completo para registrarte como invitado</span>
+                  </div>
+                  <div className="wl-print-step">
+                    <div className="wl-print-step-dot" />
+                    <span>Sube hasta 5 fotos del evento para que los anfitriones tengan ese recuerdo</span>
+                  </div>
+                  <div className="wl-print-step">
+                    <div className="wl-print-step-dot" />
+                    <span>Escribe un deseo especial para los novios desde tu corazón</span>
+                  </div>
+                  <div className="wl-print-step">
+                    <div className="wl-print-step-dot" />
+                    <span>Accede al muro del evento y ve todo lo que los invitados están compartiendo</span>
+                  </div>
+                </div>
+                <div className="wl-print-thanks">
+                  &ldquo;Gracias por ser parte de este momento tan especial.{evento.tipo === "boda" ? " ¡Los novios guardarán este recuerdo para siempre!" : " ¡Tu presencia hace este día inolvidable!"}&rdquo;
+                </div>
               </div>
             </div>
-          )}
-
-          {/* STEP: Done */}
-          {step === "done" && token && (
-            <div style={{ textAlign: "center", animation: "wlPop 0.3s ease" }}>
-              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 36, boxShadow: "0 10px 32px rgba(79,70,229,0.35)", animation: "wlPulse 2s ease infinite" }}>
-                🎉
-              </div>
-              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, color: "#1E1B4B", marginBottom: 6 }}>¡Bienvenido/a!</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#4F46E5", marginBottom: 10 }}>{nombre}</div>
-              <p style={{ fontSize: 13, color: "#6366F1", marginBottom: 24, lineHeight: 1.7, background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", borderRadius: 14, padding: "12px 16px", border: "1px solid rgba(79,70,229,0.12)" }}>
-                Ya sos parte del evento. Podés ver el muro de fotos y dejar tu deseo para los anfitriones.
-              </p>
-              <a
-                href={`/muro/${eventoId}?token=${token}`}
-                style={{ width: "100%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "white", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 8px 24px rgba(79,70,229,0.32)", fontFamily: "inherit" }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                Ver muro del evento
-              </a>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 20, opacity: 0.55 }}>
-          <AppLogo size={14} />
-          <span style={{ fontSize: 10, color: "#4F46E5", fontWeight: 700, letterSpacing: "1.2px", textTransform: "uppercase" }}>Powered by Evorix</span>
-        </div>
+          </div>
+        ))}
       </div>
-    </main>
+    </>
   );
 }
