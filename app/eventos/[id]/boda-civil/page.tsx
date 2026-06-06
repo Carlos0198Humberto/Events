@@ -7,8 +7,26 @@ type Meta = { video_url: string | null; fotos: string[]; nombres: string };
 
 const MAX_FOTOS = 20;
 const MIN_FOTOS = 3;
-const MAX_VIDEO_MB = 500;
-const BUCKET = "boda-civil";
+
+function toEmbedUrl(url: string): string {
+  // Google Drive: /file/d/ID/view → /file/d/ID/preview
+  const drive = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (drive) return `https://drive.google.com/file/d/${drive[1]}/preview`;
+  // YouTube watch
+  const ytw = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+  if (ytw && url.includes("youtube")) return `https://www.youtube.com/embed/${ytw[1]}`;
+  // YouTube short youtu.be
+  const yts = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+  if (yts) return `https://www.youtube.com/embed/${yts[1]}`;
+  // Vimeo
+  const vim = url.match(/vimeo\.com\/(\d+)/);
+  if (vim) return `https://player.vimeo.com/video/${vim[1]}`;
+  return url;
+}
+
+function isEmbedUrl(url: string) {
+  return url.includes("drive.google.com") || url.includes("youtube.com/embed") || url.includes("player.vimeo.com");
+}
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -90,12 +108,11 @@ export default function BodaCivilAdminPage() {
   const [nombres, setNombres] = useState("");
   const [savingNombres, setSavingNombres] = useState(false);
   const [toast, setToast] = useState("");
-  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoLink, setVideoLink] = useState("");
+  const [savingVideo, setSavingVideo] = useState(false);
   const [uploadingFotos, setUploadingFotos] = useState(false);
-  const [videoProgress, setVideoProgress] = useState(0);
   const [fotosProgress, setFotosProgress] = useState(0);
   const [fotosLabel, setFotosLabel] = useState("");
-  const videoRef = useRef<HTMLInputElement>(null);
   const fotosRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -119,6 +136,7 @@ export default function BodaCivilAdminPage() {
         const data: Meta = await res.json();
         setMeta(data);
         setNombres(data.nombres || ev.anfitriones || "");
+        if (data.video_url) setVideoLink(data.video_url);
       } else {
         setNombres(ev.anfitriones || "");
       }
@@ -144,61 +162,19 @@ export default function BodaCivilAdminPage() {
     setSavingNombres(false);
   }
 
-  async function subirVideo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
-      showToast(`El video no puede superar ${MAX_VIDEO_MB} MB`); return;
-    }
-    setUploadingVideo(true);
-    setVideoProgress(1);
-
-    try {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "mp4";
-      const path = `${eventoId}/video.${ext}`;
-
-      // 1. Obtener signed upload URL desde la API (usa service_role, sin RLS)
-      const fdUrl = new FormData();
-      fdUrl.append("type", "get_upload_url");
-      fdUrl.append("path", path);
-      const urlRes = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fdUrl });
-      const urlJson = await urlRes.json();
-      if (!urlJson.ok) throw new Error(urlJson.error ?? "No se pudo obtener URL de subida");
-
-      // 2. Subir con XHR a la signed URL (progreso real)
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) {
-            setVideoProgress(Math.round((ev.loaded / ev.total) * 100));
-          }
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
-        };
-        xhr.onerror = () => reject(new Error("Error de red"));
-        xhr.open("PUT", urlJson.signedUrl);
-        xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
-        xhr.send(file);
-      });
-
-      // 3. Obtener URL pública y guardar en meta.json
-      const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      const fd = new FormData();
-      fd.append("type", "set_video_url");
-      fd.append("url", urlData.publicUrl);
-      const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
-      const json = await res.json();
-      if (json.ok) { setMeta(json.meta); showToast("Video subido ✓"); }
-      else showToast("Video subido pero hubo un error al guardar");
-
-    } catch (err: unknown) {
-      showToast("Error: " + (err instanceof Error ? err.message : "desconocido"));
-    }
-
-    setUploadingVideo(false); setVideoProgress(0);
-    if (videoRef.current) videoRef.current.value = "";
+  async function guardarVideoLink() {
+    const raw = videoLink.trim();
+    if (!raw) return;
+    const embed = toEmbedUrl(raw);
+    setSavingVideo(true);
+    const fd = new FormData();
+    fd.append("type", "set_video_url");
+    fd.append("url", embed);
+    const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
+    const json = await res.json();
+    if (json.ok) { setMeta(json.meta); setVideoLink(embed); showToast("Link guardado ✓"); }
+    else showToast("Error al guardar link");
+    setSavingVideo(false);
   }
 
   async function eliminarVideo() {
@@ -207,7 +183,7 @@ export default function BodaCivilAdminPage() {
     fd.append("type", "delete_video");
     const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
     const json = await res.json();
-    if (json.ok) { setMeta(json.meta); showToast("Video eliminado"); }
+    if (json.ok) { setMeta(json.meta); setVideoLink(""); showToast("Video eliminado"); }
   }
 
   async function subirFotos(e: React.ChangeEvent<HTMLInputElement>) {
@@ -244,7 +220,7 @@ export default function BodaCivilAdminPage() {
           xhr.send(file);
         });
 
-        const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+        const { data: urlData } = supabase.storage.from("boda-civil").getPublicUrl(path);
         const fd = new FormData();
         fd.append("type", "add_foto_url");
         fd.append("url", urlData.publicUrl);
@@ -339,52 +315,44 @@ export default function BodaCivilAdminPage() {
             <div>
               <div className="sec-title" style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 Video de la boda civil
-                {meta.video_url && <span className="badge-ok">Subido ✓</span>}
+                {meta.video_url && <span className="badge-ok">Guardado ✓</span>}
               </div>
-              <div className="sec-sub">Máx. {MAX_VIDEO_MB} MB · MP4 / MOV / WebM</div>
+              <div className="sec-sub">Pega el link de Google Drive, YouTube o Vimeo</div>
             </div>
           </div>
 
-          {uploadingVideo && (
-            <div style={{marginBottom:16}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                <span style={{fontSize:13,color:"var(--accent)",fontWeight:600}}>Subiendo video…</span>
-                <span style={{fontSize:13,fontWeight:700,color:"var(--accent)"}}>{videoProgress}%</span>
-              </div>
-              <div className="progress-wrap">
-                <div className="progress-fill" style={{width:`${videoProgress}%`}} />
-              </div>
-              <p style={{fontSize:11,color:"var(--text2)",marginTop:6,textAlign:"center"}}>No cierres esta pantalla</p>
-            </div>
+          {meta.video_url && isEmbedUrl(meta.video_url) && (
+            <iframe
+              src={meta.video_url}
+              allow="autoplay"
+              style={{width:"100%",height:200,border:"none",borderRadius:14,marginBottom:12,background:"#000"}}
+            />
           )}
 
-          {!uploadingVideo && meta.video_url ? (
-            <>
-              <video src={meta.video_url} controls className="video-preview" />
-              <div className="btn-row">
-                <label style={{cursor:"pointer"}}>
-                  <span className="btn-sec">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Cambiar video
-                  </span>
-                  <input ref={videoRef} type="file" accept="video/*" style={{display:"none"}} onChange={subirVideo} />
-                </label>
-                <button className="btn-sec btn-danger" onClick={eliminarVideo}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                  Eliminar
-                </button>
-              </div>
-            </>
-          ) : !uploadingVideo ? (
-            <label className="upload-area">
-              <div className="upload-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{color:"var(--accent)"}}><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-              </div>
-              <div className="upload-label">Toca para seleccionar video</div>
-              <div className="upload-hint">MP4 · MOV · WebM · máx {MAX_VIDEO_MB} MB</div>
-              <input ref={videoRef} type="file" accept="video/*" style={{display:"none"}} onChange={subirVideo} />
-            </label>
-          ) : null}
+          <div className="campo">
+            <label className="field-label">Link del video</label>
+            <input
+              className="field-input"
+              value={videoLink}
+              onChange={e => setVideoLink(e.target.value)}
+              placeholder="https://drive.google.com/file/d/..."
+            />
+            <p style={{fontSize:11,color:"var(--text2)",marginTop:6}}>
+              Drive: abre el video → compartir → "Cualquiera con el enlace" → copia el link
+            </p>
+          </div>
+
+          <div className="btn-row" style={{marginTop:14}}>
+            <button className="btn-guardar" style={{flex:1}} onClick={guardarVideoLink} disabled={savingVideo || !videoLink.trim()}>
+              {savingVideo ? <><div className="spinner sm" /> Guardando...</> : "Guardar link"}
+            </button>
+            {meta.video_url && (
+              <button className="btn-sec btn-danger" onClick={eliminarVideo}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                Eliminar
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 3. Fotos */}

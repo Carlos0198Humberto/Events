@@ -2938,7 +2938,16 @@ export default function MuroPublico() {
                   Video de la boda civil
                 </div>
                 <div className="boda-frame-outer">
-                  <video src={bodaCivil.video_url} controls className="boda-video" playsInline preload="metadata" />
+                  {(bodaCivil.video_url.includes("drive.google.com") || bodaCivil.video_url.includes("youtube.com/embed") || bodaCivil.video_url.includes("player.vimeo.com")) ? (
+                    <iframe
+                      src={bodaCivil.video_url}
+                      allow="autoplay; encrypted-media"
+                      allowFullScreen
+                      style={{width:"100%",height:280,border:"none",display:"block",borderRadius:"16px 16px 0 0",background:"#000"}}
+                    />
+                  ) : (
+                    <video src={bodaCivil.video_url} controls className="boda-video" playsInline preload="metadata" />
+                  )}
                   {bodaCivil.nombres && (
                     <div className="boda-nombres-bar">
                       <div className="boda-nombres-text">
@@ -3091,7 +3100,6 @@ export default function MuroPublico() {
                 : []),
             ] as { key: Vista; icon: React.ReactNode; label: string; count: number }[]).map((tab) => (
               <button
-                key={tab.key}
                 className={`nav-tab${vista === tab.key ? " active" : ""}`}
                 onClick={() => setVista(tab.key)}
               >
