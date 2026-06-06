@@ -1746,7 +1746,8 @@ export default function MuroPublico() {
   const [bodaCivil, setBodaCivil] = useState<BodaCivilMeta | null>(null);
   const [bodaCarruselIdx, setBodaCarruselIdx] = useState(0);
   const [bodaLightbox, setBodaLightbox] = useState<string | null>(null);
-  const [bodaConfetti, setBodaConfetti] = useState(false);
+  const [bodaConfettiKey, setBodaConfettiKey] = useState(0);
+  const [bodaVideoActivo, setBodaVideoActivo] = useState(false);
   const [bodaReactions, setBodaReactions] = useState<{ nombre: string; ts: number }[]>([]);
   const [bodaYaReaccione, setBodaYaReaccione] = useState(false);
   const [bodaEnviandoReaccion, setBodaEnviandoReaccion] = useState(false);
@@ -2030,6 +2031,14 @@ export default function MuroPublico() {
 
     document.title = evento.nombre ? `${evento.nombre} · Evorix` : "Evorix";
   }, [evento]);
+
+  // Confetti al entrar al tab de boda civil
+  useEffect(() => {
+    if (vista === "boda" && bodaCivil) {
+      setBodaConfettiKey(k => k + 1);
+      setBodaVideoActivo(false);
+    }
+  }, [vista, bodaCivil]);
 
   const acento = "#4F46E5";
 
@@ -2320,9 +2329,14 @@ export default function MuroPublico() {
         .boda-lightbox-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.15); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .boda-carousel-slide img { cursor: zoom-in; }
         .boda-reaction-title { font-size: 12px; font-weight: 700; color: #be185d; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
-        @keyframes bodaFall { 0% { transform: translateY(-40px) rotate(0deg) scale(1); opacity: 1; } 100% { transform: translateY(110vh) rotate(720deg) scale(0.6); opacity: 0; } }
+        @keyframes bodaFall { 0% { transform: translateY(-40px) rotate(0deg) scale(1); opacity: 1; } 80% { opacity: 1; } 100% { transform: translateY(110vh) rotate(720deg) scale(0.5); opacity: 0; } }
+        @keyframes bodaFloat { 0%,100% { transform: translateY(0) rotate(-8deg) scale(1); opacity:0.7; } 50% { transform: translateY(-18px) rotate(8deg) scale(1.08); opacity:1; } }
         .boda-confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 8888; overflow: hidden; }
-        .boda-confetti-piece { position: absolute; top: -40px; animation: bodaFall linear forwards; font-size: 22px; }
+        .boda-confetti-piece { position: absolute; top: -50px; animation: bodaFall linear forwards; }
+        .boda-video-overlay { position: relative; cursor: pointer; border-radius: 16px; overflow: hidden; background: #1a1033; display: flex; align-items: center; justify-content: center; height: 220px; }
+        .boda-video-overlay-btn { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .boda-video-play-circle { width: 64px; height: 64px; background: rgba(79,70,229,0.85); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(79,70,229,0.5); }
+        .boda-video-overlay-label { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); }
       `}</style>
 
       {/* ── Bordes festivos ── */}
@@ -2951,13 +2965,24 @@ export default function MuroPublico() {
                 </div>
                 <div className="boda-frame-outer">
                   {(bodaCivil.video_url.includes("drive.google.com") || bodaCivil.video_url.includes("youtube.com/embed") || bodaCivil.video_url.includes("player.vimeo.com")) ? (
-                    <div className="boda-iframe-wrap">
-                      <iframe
-                        src={bodaCivil.video_url}
-                        allow="autoplay; encrypted-media"
-                        allowFullScreen
-                      />
-                    </div>
+                    bodaVideoActivo ? (
+                      <div className="boda-iframe-wrap">
+                        <iframe
+                          src={bodaCivil.video_url + (bodaCivil.video_url.includes("?") ? "&" : "?") + "autoplay=1"}
+                          allow="autoplay; encrypted-media"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : (
+                      <div className="boda-video-overlay" onClick={() => setBodaVideoActivo(true)}>
+                        <div className="boda-video-overlay-btn">
+                          <div className="boda-video-play-circle">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          </div>
+                          <span className="boda-video-overlay-label">Toca para reproducir</span>
+                        </div>
+                      </div>
+                    )
                   ) : (
                     <video src={bodaCivil.video_url} controls className="boda-video" playsInline preload="metadata" />
                   )}
@@ -3023,7 +3048,7 @@ export default function MuroPublico() {
                   fd.append("nombre", nombreReact);
                   const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
                   const json = await res.json();
-                  if (json.ok) { setBodaReactions(json.reactions ?? []); setBodaYaReaccione(true); setBodaConfetti(true); setTimeout(() => setBodaConfetti(false), 4000); }
+                  if (json.ok) { setBodaReactions(json.reactions ?? []); setBodaYaReaccione(true); setBodaConfettiKey(k => k + 1); }
                   setBodaEnviandoReaccion(false);
                 }}
               >
@@ -3153,15 +3178,16 @@ export default function MuroPublico() {
         />
       )}
       {/* Confetti boda civil */}
-      {bodaConfetti && (
-        <div className="boda-confetti-layer">
-          {Array.from({length: 28}, (_, i) => {
-            const emojis = ["❤️","🌸","💕","🌺","💗","🌷","💖","✨"];
-            const e = emojis[i % emojis.length];
-            const left = (i * 37 + Math.sin(i * 1.7) * 20 + 50) % 100;
-            const dur = 2.2 + (i % 5) * 0.4;
-            const delay = (i % 7) * 0.18;
-            return <span key={i} className="boda-confetti-piece" style={{ left: `${left}%`, animationDuration: `${dur}s`, animationDelay: `${delay}s` }}>{e}</span>;
+      {bodaConfettiKey > 0 && (
+        <div key={bodaConfettiKey} className="boda-confetti-layer">
+          {Array.from({length: 36}, (_, i) => {
+            const pieces = ["❤️","🌸","💕","🌺","💗","🌷","💖","✨","🎊","💝","🌼","💫"];
+            const e = pieces[i % pieces.length];
+            const left = ((i * 31 + i * i * 0.7) % 98) + 1;
+            const dur = 2.5 + (i % 6) * 0.35;
+            const delay = (i % 9) * 0.15;
+            const size = 18 + (i % 4) * 5;
+            return <span key={i} className="boda-confetti-piece" style={{ left: `${left}%`, animationDuration: `${dur}s`, animationDelay: `${delay}s`, fontSize: size }}>{e}</span>;
           })}
         </div>
       )}
