@@ -2959,28 +2959,133 @@ export default function MuroPublico() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
                   Video de la boda civil
                 </div>
-                <div className="boda-frame-outer">
-                  {(bodaCivil.video_url.includes("drive.google.com") || bodaCivil.video_url.includes("youtube.com/embed") || bodaCivil.video_url.includes("player.vimeo.com")) ? (
-                    <div className="boda-iframe-wrap">
-                      <iframe
-                        src={bodaCivil.video_url}
-                        allow="autoplay; encrypted-media; fullscreen"
-                        allowFullScreen
-                      />
-                    </div>
-                  ) : (
-                    <video src={bodaCivil.video_url} controls className="boda-video" playsInline preload="metadata" />
-                  )}
-                  {bodaCivil.nombres && (
-                    <div className="boda-nombres-bar">
-                      <div className="boda-nombres-text">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginRight:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        {bodaCivil.nombres}
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginLeft:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                {(() => {
+                  const url = bodaCivil.video_url;
+                  const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+                  const isDrive = url.includes("drive.google.com") && !!driveMatch;
+                  const isYouTube = url.includes("youtube.com/embed") || url.includes("youtu.be");
+                  const isVimeo = url.includes("player.vimeo.com") || url.includes("vimeo.com");
+
+                  if (isDrive && driveMatch) {
+                    const fileId = driveMatch[1];
+                    const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+                    const viewUrl = `https://drive.google.com/file/d/${fileId}/view`;
+                    return (
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", background: "#0f0e17" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={thumbUrl}
+                          alt="Video de la boda civil"
+                          style={{ width: "100%", display: "block", maxHeight: 280, objectFit: "cover", opacity: 0.85 }}
+                        />
+                        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, background: "linear-gradient(to bottom, rgba(10,9,20,0.25) 0%, rgba(10,9,20,0.55) 100%)" }}>
+                          <a
+                            href={viewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textDecoration: "none" }}
+                          >
+                            <div style={{ width: 68, height: 68, borderRadius: "50%", background: "rgba(79,70,229,0.92)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 28px rgba(79,70,229,0.55)", backdropFilter: "blur(4px)" }}>
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            </div>
+                            <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, background: "rgba(0,0,0,0.45)", borderRadius: 99, padding: "5px 14px", backdropFilter: "blur(4px)", letterSpacing: "0.3px" }}>
+                              Reproducir video
+                            </span>
+                          </a>
+                        </div>
+                        {bodaCivil.nombres && (
+                          <div className="boda-nombres-bar">
+                            <div className="boda-nombres-text">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginRight:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                              {bodaCivil.nombres}
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginLeft:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            </div>
+                          </div>
+                        )}
                       </div>
+                    );
+                  }
+
+                  if (isYouTube) {
+                    const ytMatch = url.match(/(?:youtube\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                    const ytId = ytMatch ? ytMatch[1] : null;
+                    const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null;
+                    const ytSrc = ytId
+                      ? `https://www.youtube.com/embed/${ytId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&playsinline=1&color=white`
+                      : url;
+                    return (
+                      <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", background: "#0f0e17", aspectRatio: "16/9" }}>
+                        {!bodaVideoActivo ? (
+                          <>
+                            {ytThumb && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={ytThumb}
+                                alt="Video de la boda civil"
+                                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+                                }}
+                              />
+                            )}
+                            <div
+                              onClick={() => setBodaVideoActivo(true)}
+                              style={{ position: "absolute", inset: 0, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "linear-gradient(to bottom, rgba(10,9,20,0.15) 0%, rgba(10,9,20,0.5) 100%)" }}
+                            >
+                              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(79,70,229,0.90)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 32px rgba(79,70,229,0.6)", backdropFilter: "blur(4px)", transition: "transform .15s" }}>
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                              </div>
+                              <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, background: "rgba(0,0,0,0.40)", borderRadius: 99, padding: "5px 16px", backdropFilter: "blur(4px)", letterSpacing: "0.3px" }}>
+                                Toca para reproducir
+                              </span>
+                            </div>
+                            {bodaCivil.nombres && (
+                              <div className="boda-nombres-bar">
+                                <div className="boda-nombres-text">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginRight:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                  {bodaCivil.nombres}
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginLeft:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <iframe
+                            src={ytSrc}
+                            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                            allowFullScreen
+                            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+                          />
+                        )}
+                      </div>
+                    );
+                  }
+
+                  if (isVimeo) {
+                    return (
+                      <div className="boda-frame-outer">
+                        <div className="boda-iframe-wrap">
+                          <iframe src={url} allow="autoplay; encrypted-media; fullscreen" allowFullScreen />
+                        </div>
+                        {bodaCivil.nombres && (
+                          <div className="boda-nombres-bar">
+                            <div className="boda-nombres-text">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginRight:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                              {bodaCivil.nombres}
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" style={{display:"inline",verticalAlign:"middle",marginLeft:6}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div style={{ borderRadius: 16, overflow: "hidden" }}>
+                      <video src={url} controls className="boda-video" playsInline preload="metadata" />
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </>
             )}
 
