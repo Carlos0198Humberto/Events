@@ -47,9 +47,11 @@ export default function WalkInPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && eventoId) {
-      const url = `${window.location.origin}/walk-in/${eventoId}`;
-      setRegisterUrl(`${window.location.origin}/walk-in/${eventoId}?registrar=1`);
-      const qrData = `${window.location.origin}/walk-in/${eventoId}?registrar=1`;
+      // Usar dominio de producción si está configurado, si no el origen actual
+      // (evita que el QR apunte a un preview de Vercel con auth wall)
+      const origin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || window.location.origin;
+      setRegisterUrl(`${origin}/walk-in/${eventoId}?registrar=1`);
+      const qrData = `${origin}/walk-in/${eventoId}?registrar=1`;
       setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(qrData)}&format=png&margin=10`);
     }
   }, [eventoId]);

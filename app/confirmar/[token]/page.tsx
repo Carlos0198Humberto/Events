@@ -2086,44 +2086,53 @@ export default function ConfirmarPage() {
     cargarDatos();
   }, []);
 
-  // ── Desbloqueo de audio en el primer gesto del usuario ──────────────────────
-  // iOS y Android bloquean autoplay — la única forma es llamar .play()
-  // dentro de un event handler. Usamos capture:true para interceptar
-  // el primer toque/click en cualquier parte de la pantalla.
+  // ── Desbloqueo de audio ──────────────────────────────────────────────────────
+  // iOS/Android bloquean autoplay de audio con sonido. Estrategia:
+  // 1. Intentar muted autoplay inmediato (funciona en Chrome/desktop).
+  // 2. Si falla: esperar primer touchstart/mousedown capturado.
+  // 3. En el unlock: play muted → unmute (truco iOS más confiable).
   useEffect(() => {
     let desbloqueado = false;
+
+    const getAudio = () =>
+      globalAudioRef.current ??
+      (document.getElementById("inv-audio-hidden") as HTMLAudioElement | null);
 
     const unlock = () => {
       if (desbloqueado) return;
       desbloqueado = true;
-
-      const audio = globalAudioRef.current ??
-        (document.getElementById("inv-audio-hidden") as HTMLAudioElement | null);
-      if (!audio) return;
-
-      audio.muted = false;
-      audio.play().catch(() => {});
-
       document.removeEventListener("touchstart", unlock, true);
       document.removeEventListener("mousedown", unlock, true);
-    };
-
-    // Intentar autoplay inmediato (funciona en desktop / algunos Android)
-    const tryImmediate = () => {
-      const audio = globalAudioRef.current ??
-        (document.getElementById("inv-audio-hidden") as HTMLAudioElement | null);
+      const audio = getAudio();
       if (!audio) return;
-      audio.muted = false;
-      audio.play().then(() => { desbloqueado = true; }).catch(() => {
-        // Bloqueado (iOS/Android) → esperar primer toque
-        document.addEventListener("touchstart", unlock, { capture: true, once: true });
-        document.addEventListener("mousedown", unlock, { capture: true, once: true });
-      });
+      // Truco iOS: play en muted (permitido) → unmute inmediatamente
+      audio.muted = true;
+      audio.play()
+        .then(() => { audio.muted = false; })
+        .catch(() => {
+          audio.muted = false;
+          audio.play().catch(() => {});
+        });
     };
 
-    // Esperar a que el elemento audio esté listo
-    const timer = setTimeout(tryImmediate, 100);
+    // Exponer función de unlock para que el botón de bienvenida la llame directo
+    (window as unknown as Record<string, unknown>).__unlockAudio = unlock;
 
+    const tryImmediate = () => {
+      const audio = getAudio();
+      if (!audio) return;
+      // Intentar muted autoplay (Chrome lo permite; iOS lo bloqueará)
+      audio.muted = true;
+      audio.play()
+        .then(() => { audio.muted = false; desbloqueado = true; })
+        .catch(() => {
+          // Bloqueado — esperar primer gesto
+          document.addEventListener("touchstart", unlock, { capture: true, once: true });
+          document.addEventListener("mousedown", unlock, { capture: true, once: true });
+        });
+    };
+
+    const timer = setTimeout(tryImmediate, 80);
     return () => {
       clearTimeout(timer);
       document.removeEventListener("touchstart", unlock, true);
@@ -2992,6 +3001,11 @@ export default function ConfirmarPage() {
           {/* CTA */}
           <button
             className="welcome-btn"
+            onTouchStart={() => {
+              // iOS: desbloquear audio en el touchstart del botón (antes del click)
+              const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
+              if (typeof fn === "function") (fn as () => void)();
+            }}
             onClick={() => {
               const el = document.getElementById("welcome-overlay");
               if (el) { el.classList.add("leaving"); }
