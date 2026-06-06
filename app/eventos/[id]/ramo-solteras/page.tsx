@@ -54,17 +54,26 @@ export default function RamoSolterasPage() {
     return () => { stopPolling(); stopGiro(); };
   }, [ramo?.activa]);
 
+  // Ref para siempre tener los últimos participantes (evita stale closure)
+  const ramoRef = useRef<RamoDato | null>(null);
+  useEffect(() => { ramoRef.current = ramo; }, [ramo]);
+
   useEffect(() => {
     if (!ramo?.activa) return;
-    const t = calcTiempo(ramo.inicio, ramo.duracion);
+    const inicio = ramo.inicio;
+    const duracion = ramo.duracion;
+    const t = calcTiempo(inicio, duracion);
     setTiempoRestante(t);
     const tick = setInterval(() => {
-      const r = calcTiempo(ramo.inicio, ramo.duracion);
+      const r = calcTiempo(inicio, duracion);
       setTiempoRestante(r);
       if (r <= 0 && !finalizadoRef.current) {
         finalizadoRef.current = true;
-        const ganadora = calcGanadora(ramo.participantes.map(p => p.nombre), ramo.inicio);
-        finalizarRamo(ganadora);
+        // Usar ramoRef para obtener participantes actualizados
+        const latest = ramoRef.current;
+        const participantes = latest?.participantes.map(p => p.nombre) ?? [];
+        const ganadora = calcGanadora(participantes, inicio);
+        finalizarRamoConParticipantes(ganadora);
       }
     }, 1000);
     return () => clearInterval(tick);
@@ -120,13 +129,23 @@ export default function RamoSolterasPage() {
     setAccion(false);
   }
 
-  async function finalizarRamo(ganadora: string) {
+  async function finalizarRamoConParticipantes(ganadoraCalculada: string) {
+    // Fetch final para asegurar participantes más recientes del servidor
+    let ganadora = ganadoraCalculada;
+    try {
+      const res = await fetch(`/api/boda-civil/${id}`);
+      const data = await res.json();
+      const latest = data.ramo as RamoDato | null;
+      if (latest?.participantes.length) {
+        ganadora = calcGanadora(latest.participantes.map(p => p.nombre), latest.inicio);
+      }
+    } catch { /* usar ganadora calculada */ }
     const fd = new FormData();
     fd.append("type", "finalizar_ramo");
     fd.append("ganadora", ganadora);
-    const res = await fetch(`/api/boda-civil/${id}`, { method: "POST", body: fd });
-    const data = await res.json();
-    if (data.ok) setRamo(data.ramo);
+    const res2 = await fetch(`/api/boda-civil/${id}`, { method: "POST", body: fd });
+    const data2 = await res2.json();
+    if (data2.ok) setRamo(data2.ramo);
   }
 
   async function resetRifa() {
