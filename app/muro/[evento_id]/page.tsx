@@ -1745,6 +1745,8 @@ export default function MuroPublico() {
   const [mounted, setMounted] = useState(false);
   const [bodaCivil, setBodaCivil] = useState<BodaCivilMeta | null>(null);
   const [bodaCarruselIdx, setBodaCarruselIdx] = useState(0);
+  const [bodaLightbox, setBodaLightbox] = useState<string | null>(null);
+  const [bodaConfetti, setBodaConfetti] = useState(false);
   const [bodaReactions, setBodaReactions] = useState<{ nombre: string; ts: number }[]>([]);
   const [bodaYaReaccione, setBodaYaReaccione] = useState(false);
   const [bodaEnviandoReaccion, setBodaEnviandoReaccion] = useState(false);
@@ -2290,6 +2292,8 @@ export default function MuroPublico() {
         .boda-deco-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
         .boda-nombres { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 600; color: #1E1B4B; letter-spacing: -0.3px; margin-bottom: 2px; }
         .boda-frame-outer { position: relative; border-radius: 16px; overflow: hidden; background: #000; margin: 0 0 4px; box-shadow: 0 4px 24px rgba(79,70,229,0.12); }
+        .boda-iframe-wrap { overflow: hidden; height: 280px; border-radius: 16px; background: #000; }
+        .boda-iframe-wrap iframe { display: block; width: 100%; height: 320px; border: none; margin-top: -40px; }
         .boda-nombres-bar { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(15,14,23,0.88) 0%, transparent 100%); padding: 32px 16px 14px; z-index: 3; text-align: center; pointer-events: none; }
         .boda-nombres-text { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-style: italic; color: #fff; letter-spacing: 0.3px; }
         .boda-video { width: 100%; display: block; max-height: 380px; background: #000; border-radius: 16px; }
@@ -2311,6 +2315,14 @@ export default function MuroPublico() {
         .boda-reaction-btn.done { background: rgba(236,72,153,0.14); border-color: rgba(236,72,153,0.5); }
         .boda-reaction-list { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
         .boda-reaction-chip { background: #F8FAFF; border: 1px solid rgba(79,70,229,0.14); border-radius: 99px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: #3730A3; display: flex; align-items: center; gap: 4px; }
+        .boda-lightbox { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadeIn .18s ease; }
+        .boda-lightbox img { max-width: 100%; max-height: 90dvh; object-fit: contain; border-radius: 12px; display: block; }
+        .boda-lightbox-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.15); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .boda-carousel-slide img { cursor: zoom-in; }
+        .boda-reaction-title { font-size: 12px; font-weight: 700; color: #be185d; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+        @keyframes bodaFall { 0% { transform: translateY(-40px) rotate(0deg) scale(1); opacity: 1; } 100% { transform: translateY(110vh) rotate(720deg) scale(0.6); opacity: 0; } }
+        .boda-confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 8888; overflow: hidden; }
+        .boda-confetti-piece { position: absolute; top: -40px; animation: bodaFall linear forwards; font-size: 22px; }
       `}</style>
 
       {/* ── Bordes festivos ── */}
@@ -2939,12 +2951,13 @@ export default function MuroPublico() {
                 </div>
                 <div className="boda-frame-outer">
                   {(bodaCivil.video_url.includes("drive.google.com") || bodaCivil.video_url.includes("youtube.com/embed") || bodaCivil.video_url.includes("player.vimeo.com")) ? (
-                    <iframe
-                      src={bodaCivil.video_url}
-                      allow="autoplay; encrypted-media"
-                      allowFullScreen
-                      style={{width:"100%",height:280,border:"none",display:"block",borderRadius:"16px 16px 0 0",background:"#000"}}
-                    />
+                    <div className="boda-iframe-wrap">
+                      <iframe
+                        src={bodaCivil.video_url}
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                      />
+                    </div>
                   ) : (
                     <video src={bodaCivil.video_url} controls className="boda-video" playsInline preload="metadata" />
                   )}
@@ -2973,7 +2986,7 @@ export default function MuroPublico() {
                     {bodaCivil.fotos.map((url, i) => (
                       <div key={url} className="boda-carousel-slide">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt={`Foto boda ${i + 1}`} />
+                        <img src={url} alt={`Foto boda ${i + 1}`} onClick={() => setBodaLightbox(url)} />
                       </div>
                     ))}
                   </div>
@@ -3010,7 +3023,7 @@ export default function MuroPublico() {
                   fd.append("nombre", nombreReact);
                   const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
                   const json = await res.json();
-                  if (json.ok) { setBodaReactions(json.reactions ?? []); setBodaYaReaccione(true); }
+                  if (json.ok) { setBodaReactions(json.reactions ?? []); setBodaYaReaccione(true); setBodaConfetti(true); setTimeout(() => setBodaConfetti(false), 4000); }
                   setBodaEnviandoReaccion(false);
                 }}
               >
@@ -3018,13 +3031,19 @@ export default function MuroPublico() {
                 {bodaYaReaccione ? "¡Compartiste tu felicidad!" : bodaEnviandoReaccion ? "Enviando…" : "Me comparto tu felicidad"}
               </button>
               {bodaReactions.length > 0 && (
-                <div className="boda-reaction-list">
-                  {bodaReactions.slice(-20).map((r, i) => (
-                    <span key={i} className="boda-reaction-chip">
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="#EC4899" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                      {r.nombre}
-                    </span>
-                  ))}
+                <div style={{marginTop:14}}>
+                  <div className="boda-reaction-title">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#EC4899" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    {bodaReactions.length} {bodaReactions.length === 1 ? "persona compartió" : "personas compartieron"} su felicidad
+                  </div>
+                  <div className="boda-reaction-list">
+                    {bodaReactions.map((r, i) => (
+                      <span key={i} className="boda-reaction-chip">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="#EC4899" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        {r.nombre}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -3132,6 +3151,27 @@ export default function MuroPublico() {
           onIrAFoto={() => { setModalDeseo(false); setModalSubir(true); }}
           t={t}
         />
+      )}
+      {/* Confetti boda civil */}
+      {bodaConfetti && (
+        <div className="boda-confetti-layer">
+          {Array.from({length: 28}, (_, i) => {
+            const emojis = ["❤️","🌸","💕","🌺","💗","🌷","💖","✨"];
+            const e = emojis[i % emojis.length];
+            const left = (i * 37 + Math.sin(i * 1.7) * 20 + 50) % 100;
+            const dur = 2.2 + (i % 5) * 0.4;
+            const delay = (i % 7) * 0.18;
+            return <span key={i} className="boda-confetti-piece" style={{ left: `${left}%`, animationDuration: `${dur}s`, animationDelay: `${delay}s` }}>{e}</span>;
+          })}
+        </div>
+      )}
+      {/* Lightbox fotos boda civil */}
+      {bodaLightbox && (
+        <div className="boda-lightbox" onClick={() => setBodaLightbox(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={bodaLightbox} alt="Foto boda" onClick={e => e.stopPropagation()} />
+          <button className="boda-lightbox-close" onClick={() => setBodaLightbox(null)}>×</button>
+        </div>
       )}
     </main>
   );
