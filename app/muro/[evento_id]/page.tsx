@@ -2301,8 +2301,8 @@ export default function MuroPublico() {
         .boda-deco-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
         .boda-nombres { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 600; color: #1E1B4B; letter-spacing: -0.3px; margin-bottom: 2px; }
         .boda-frame-outer { position: relative; border-radius: 16px; overflow: hidden; background: #000; margin: 0 0 4px; box-shadow: 0 4px 24px rgba(79,70,229,0.12); }
-        .boda-iframe-wrap { position: relative; width: 100%; padding-bottom: 56.25%; border-radius: 16px; overflow: hidden; background: #000; }
-        .boda-iframe-wrap iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        .boda-iframe-wrap { position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: 16px; background: #000; }
+        .boda-iframe-wrap iframe { position: absolute; top: -44px; left: 0; width: 100%; height: calc(100% + 44px); border: none; }
         .boda-nombres-bar { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(15,14,23,0.88) 0%, transparent 100%); padding: 32px 16px 14px; z-index: 3; text-align: center; pointer-events: none; }
         .boda-nombres-text { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-style: italic; color: #fff; letter-spacing: 0.3px; }
         .boda-video { width: 100%; display: block; max-height: 380px; background: #000; border-radius: 16px; }
