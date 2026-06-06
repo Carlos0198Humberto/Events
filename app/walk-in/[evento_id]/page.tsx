@@ -317,17 +317,6 @@ export default function WalkInPage() {
           )}
         </div>
 
-          <a
-                href={`/muro/${eventoId}?token=${token}`}
-                style={{ width: "100%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "white", border: "none", borderRadius: 16, padding: "16px", fontSize: 15, fontWeight: 700, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 8px 24px rgba(79,70,229,0.32)", fontFamily: "inherit" }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                Ver muro del evento
-              </a>
-            </div>
-          )}
-        </div>
-
         {/* Footer */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 20, opacity: 0.55 }}>
           <AppLogo size={14} />
