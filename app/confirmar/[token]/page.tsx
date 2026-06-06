@@ -3736,6 +3736,28 @@ export default function ConfirmarPage() {
                   <svg style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4 }} width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M7 5l5 5-5 5"/></svg>
                 </button>
 
+                {/* ── Ramo a las Solteras (solo bodas) ── */}
+                {evento.tipo === "boda" && (
+                  <button
+                    className="btn-accion-full"
+                    style={{ background: "linear-gradient(135deg,#fce7f3,#fdf2f8)", border: "1.5px solid rgba(249,168,212,0.45)" }}
+                    onClick={() => window.open(`/muro/${invitado.evento_id}?token=${invitado.token}`, "_blank")}
+                  >
+                    <div className="btn-accion-ico" style={{ background: "rgba(236,72,153,0.10)" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#be185d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="7" r="3"/><circle cx="6.5" cy="12" r="2.5"/><circle cx="17.5" cy="12" r="2.5"/>
+                        <circle cx="9" cy="17.5" r="2.5"/><circle cx="15" cy="17.5" r="2.5"/>
+                        <line x1="12" y1="10" x2="12" y2="13"/>
+                      </svg>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#9d174d" }}>💐 Ramo a las Solteras</span>
+                      <span style={{ fontSize: 11, opacity: 0.65, color: "#be185d" }}>¡Participa en la rifa del ramo!</span>
+                    </div>
+                    <svg style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4 }} width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M7 5l5 5-5 5"/></svg>
+                  </button>
+                )}
+
                 {/* ── Listo, cerrar ── */}
                 <button className="btn-cerrar" onClick={confirmarYCerrar}>
                   <div className="btn-accion-ico">
