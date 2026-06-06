@@ -1364,6 +1364,12 @@ export default function Dashboard() {
                             Mi Boda Civil
                           </Link>
                         )}
+                        {evento.tipo === "boda" && (
+                          <Link href={`/eventos/${evento.id}/ramo-solteras`} className="pa-link">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="3"/><circle cx="6" cy="13" r="2.5"/><circle cx="18" cy="13" r="2.5"/><circle cx="9" cy="18" r="2.5"/><circle cx="15" cy="18" r="2.5"/><line x1="12" y1="11" x2="12" y2="14"/></svg>
+                            Ramo Solteras
+                          </Link>
+                        )}
                       </div>
 
                       {/* Expand */}
