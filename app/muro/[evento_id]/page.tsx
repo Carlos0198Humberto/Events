@@ -2090,8 +2090,10 @@ export default function MuroPublico() {
     try {
       const res = await fetch(`/api/boda-civil/${eventoId}`);
       const d = await res.json();
-      setRamoData(d.ramo ?? null);
-    } catch { /* ignore */ }
+      const ramo = d.ramo ?? null;
+      setRamoData(ramo);
+      return ramo;
+    } catch { return null; }
   }
 
   useEffect(() => {
@@ -2725,21 +2727,14 @@ export default function MuroPublico() {
             </>
           ))}
 
-        {/* ── Ramo: botón al final del muro de fotos (solo bodas) ── */}
-        {vista === "fotos" && evento?.tipo === "boda" && bodaRamoStep === "idle" && (
-          <div style={{ padding: "20px 16px 32px", display: "flex", flexDirection: "column", gap: 10, maxWidth: 400, margin: "0 auto", width: "100%" }}>
-            <p style={{ textAlign: "center", fontSize: 11, color: "#be185d", opacity: 0.6, fontStyle: "italic", marginBottom: 2 }}>Ramo a las Solteras 💐</p>
+        {/* ── Acceso rápido a Boda Civil desde muro de fotos (solo bodas) ── */}
+        {vista === "fotos" && evento?.tipo === "boda" && bodaCivil && (
+          <div style={{ padding: "12px 16px 32px", textAlign: "center" }}>
             <button
-              onClick={() => { setBodaRamoNombre(""); setBodaRamoPreselect("soltera"); setBodaRamoStep("nombre"); }}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: "linear-gradient(135deg,#ec4899,#be185d)", color: "#fff", border: "none", borderRadius: 14, padding: "13px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 20px rgba(236,72,153,0.28)", letterSpacing: "0.3px" }}
+              onClick={() => setVista("boda" as Vista)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg,#fce7f3,#fdf2f8)", color: "#be185d", border: "1.5px solid rgba(249,168,212,0.5)", borderRadius: 14, padding: "12px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 4px 16px rgba(236,72,153,0.15)" }}
             >
-              <span style={{ fontSize: 17 }}>💐</span> Soy soltera — ¡quiero participar!
-            </button>
-            <button
-              onClick={() => { setBodaRamoNombre(""); setBodaRamoPreselect("casada"); setBodaRamoStep("nombre"); }}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff", border: "none", borderRadius: 14, padding: "13px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 20px rgba(109,40,217,0.25)", letterSpacing: "0.3px" }}
-            >
-              <span style={{ fontSize: 17 }}>💑</span> Soy casada — ver mensaje especial
+              <span style={{ fontSize: 16 }}>💐</span> Ramo a las Solteras — ¡toca acá!
             </button>
           </div>
         )}
@@ -3462,24 +3457,17 @@ export default function MuroPublico() {
                 <button
                   onClick={async () => {
                     setBodaRamoStep("uniendo");
-                    // Refrescar datos antes de decidir
-                    await fetchRamo();
-                    setRamoData(current => {
-                      if (current?.activa) {
-                        // Hay rifa activa: unirse
-                        const fd = new FormData();
-                        fd.append("type", "add_ramo_participante");
-                        fd.append("nombre", bodaRamoNombre.trim());
-                        fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd }).then(() => {
-                          fetchRamo();
-                          setBodaRamoStep("espera");
-                        });
-                      } else {
-                        // No hay rifa activa: mostrar espera
-                        setBodaRamoStep("espera-rifa");
-                      }
-                      return current;
-                    });
+                    const latest = await fetchRamo();
+                    if (latest?.activa) {
+                      const fd = new FormData();
+                      fd.append("type", "add_ramo_participante");
+                      fd.append("nombre", bodaRamoNombre.trim());
+                      await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
+                      await fetchRamo();
+                      setBodaRamoStep("espera");
+                    } else {
+                      setBodaRamoStep("espera-rifa");
+                    }
                   }}
                   style={{ background: "linear-gradient(135deg,#ec4899,#be185d)", color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 20px rgba(236,72,153,0.3)" }}
                 >
