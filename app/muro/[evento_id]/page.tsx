@@ -2455,7 +2455,7 @@ export default function MuroPublico() {
             { key: "albumes" as Vista, icon: Ico.folder(18, vista === "albumes" ? "#4F46E5" : "#94a3b8"), label: t.albumes, count: albumes.length },
             { key: "deseos" as Vista, icon: Ico.heart(18, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
             ...(evento?.tipo === "boda" && bodaCivil
-              ? [{ key: "boda" as Vista, icon: <span style={{fontSize:15}}>💍</span>, label: "Boda Civil", count: 0 }]
+              ? [{ key: "boda" as Vista, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={vista === "boda" ? "#4F46E5" : "#94a3b8"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>, label: "Boda Civil", count: 0 }]
               : []),
           ] as { key: Vista; icon: React.ReactNode; label: string; count: number }[]).map((tab) => (
             <button
@@ -3087,7 +3087,7 @@ export default function MuroPublico() {
               { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
               { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
               ...(evento?.tipo === "boda" && bodaCivil
-                ? [{ key: "boda" as Vista, icon: <span style={{fontSize:17}}>{"\ud83d\udc8d"}</span>, label: "Boda Civil", count: 0 }]
+                ? [{ key: "boda" as Vista, icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={vista === "boda" ? "#4F46E5" : "#94a3b8"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>, label: "Boda Civil", count: 0 }]
                 : []),
             ] as { key: Vista; icon: React.ReactNode; label: string; count: number }[]).map((tab) => (
               <button
