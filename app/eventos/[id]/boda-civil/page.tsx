@@ -151,41 +151,52 @@ export default function BodaCivilAdminPage() {
       showToast(`El video no puede superar ${MAX_VIDEO_MB} MB`); return;
     }
     setUploadingVideo(true);
-    setVideoProgress(0);
+    setVideoProgress(1);
 
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "mp4";
-    const path = `${eventoId}/video.${ext}`;
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "mp4";
+      const path = `${eventoId}/video.${ext}`;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
-    // Subida directa a Supabase Storage con progreso real
-    const { data, error } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, file, {
-        upsert: true,
-        contentType: file.type || "video/mp4",
-        // @ts-ignore - onUploadProgress es soportado pero no está en todos los tipos
-        onUploadProgress: (p: { loaded: number; total: number }) => {
-          setVideoProgress(Math.round((p.loaded / p.total) * 100));
-        },
+      // Obtener token de sesión
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+
+      // XHR con progreso real
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) {
+            setVideoProgress(Math.round((ev.loaded / ev.total) * 100));
+          }
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`HTTP ${xhr.status}: ${xhr.responseText}`));
+        };
+        xhr.onerror = () => reject(new Error("Error de red"));
+        xhr.open("POST", `${supabaseUrl}/storage/v1/object/${BUCKET}/${path}`);
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        xhr.setRequestHeader("x-upsert", "true");
+        xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
+        xhr.send(file);
       });
 
-    if (error) {
-      showToast("Error al subir: " + error.message);
-      setUploadingVideo(false); setVideoProgress(0);
-      return;
+      // URL pública
+      const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+
+      // Actualizar meta.json
+      const fd = new FormData();
+      fd.append("type", "set_video_url");
+      fd.append("url", urlData.publicUrl);
+      const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
+      const json = await res.json();
+      if (json.ok) { setMeta(json.meta); showToast("Video subido ✓"); }
+      else showToast("Video subido pero hubo un error al guardar");
+
+    } catch (err: unknown) {
+      showToast("Error: " + (err instanceof Error ? err.message : "desconocido"));
     }
-
-    // Obtener URL pública
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    const publicUrl = urlData.publicUrl;
-
-    // Actualizar meta.json via API (request pequeño)
-    const fd = new FormData();
-    fd.append("type", "set_video_url");
-    fd.append("url", publicUrl);
-    const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
-    const json = await res.json();
-    if (json.ok) { setMeta(json.meta); showToast("Video subido ✓"); }
-    else showToast("Video subido pero error al guardar");
 
     setUploadingVideo(false); setVideoProgress(0);
     if (videoRef.current) videoRef.current.value = "";
@@ -208,6 +219,9 @@ export default function BodaCivilAdminPage() {
     const toUpload = files.slice(0, disponibles);
     setUploadingFotos(true);
     let latestMeta = { ...meta };
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? "";
 
     for (let i = 0; i < toUpload.length; i++) {
       const file = toUpload[i];
@@ -215,11 +229,16 @@ export default function BodaCivilAdminPage() {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
       const path = `${eventoId}/fotos/${Date.now()}_${i}.${ext}`;
 
-      const { error } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, file, { upsert: false, contentType: file.type || "image/jpeg" });
-
-      if (!error) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = () => xhr.status < 300 ? resolve() : reject(new Error(`${xhr.status}`));
+          xhr.onerror = () => reject(new Error("red"));
+          xhr.open("POST", `${supabaseUrl}/storage/v1/object/${BUCKET}/${path}`);
+          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          xhr.setRequestHeader("Content-Type", file.type || "image/jpeg");
+          xhr.send(file);
+        });
         const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
         const fd = new FormData();
         fd.append("type", "add_foto_url");
@@ -227,7 +246,8 @@ export default function BodaCivilAdminPage() {
         const res = await fetch(`/api/boda-civil/${eventoId}`, { method: "POST", body: fd });
         const json = await res.json();
         if (json.ok) latestMeta = json.meta;
-      }
+      } catch { /* continua con la siguiente */ }
+
       setFotosProgress(Math.round(((i + 1) / toUpload.length) * 100));
     }
 
