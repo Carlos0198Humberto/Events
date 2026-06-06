@@ -1751,6 +1751,7 @@ export default function MuroPublico() {
   const [bodaReactions, setBodaReactions] = useState<{ nombre: string; ts: number }[]>([]);
   const [bodaYaReaccione, setBodaYaReaccione] = useState(false);
   const [bodaEnviandoReaccion, setBodaEnviandoReaccion] = useState(false);
+  const [bodaRamoKey, setBodaRamoKey] = useState(0);
 
   const t = T[lang];
 
@@ -2333,6 +2334,25 @@ export default function MuroPublico() {
         @keyframes bodaFloat { 0%,100% { transform: translateY(0) rotate(-8deg) scale(1); opacity:0.7; } 50% { transform: translateY(-18px) rotate(8deg) scale(1.08); opacity:1; } }
         .boda-confetti-layer { position: fixed; inset: 0; pointer-events: none; z-index: 8888; overflow: hidden; }
         .boda-confetti-piece { position: absolute; top: -50px; animation: bodaFall linear forwards; }
+        /* ── Decoración marco video ── */
+        .boda-video-deco { position: relative; padding: 10px; margin: 0 12px; }
+        .boda-video-deco::before, .boda-video-deco::after { content: ''; position: absolute; width: 38px; height: 38px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 6 C16 2 10 2 8 6 C6 10 8 14 12 16 C8 17 6 20 8 24 C10 28 16 28 20 24 C24 28 30 28 32 24 C34 20 32 17 28 16 C32 14 34 10 32 6 C30 2 24 2 20 6Z' fill='%23f9a8d4' opacity='0.9'/%3E%3Ccircle cx='20' cy='32' r='3' fill='%23fbcfe8'/%3E%3Crect x='18.5' y='25' width='3' height='8' rx='1.5' fill='%2386efac'/%3E%3Cpath d='M15 28 C13 26 14 24 16 25' stroke='%2386efac' strokeWidth='1.5' fill='none' strokeLinecap='round'/%3E%3Cpath d='M25 28 C27 26 26 24 24 25' stroke='%2386efac' strokeWidth='1.5' fill='none' strokeLinecap='round'/%3E%3C/svg%3E"); background-size: contain; background-repeat: no-repeat; }
+        .boda-video-deco::before { top: -2px; left: -2px; transform: rotate(-15deg); }
+        .boda-video-deco::after { top: -2px; right: -2px; transform: rotate(15deg) scaleX(-1); }
+        .boda-video-deco-b::before, .boda-video-deco-b::after { content: ''; position: absolute; width: 38px; height: 38px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 6 C16 2 10 2 8 6 C6 10 8 14 12 16 C8 17 6 20 8 24 C10 28 16 28 20 24 C24 28 30 28 32 24 C34 20 32 17 28 16 C32 14 34 10 32 6 C30 2 24 2 20 6Z' fill='%23f9a8d4' opacity='0.9'/%3E%3Ccircle cx='20' cy='32' r='3' fill='%23fbcfe8'/%3E%3Crect x='18.5' y='25' width='3' height='8' rx='1.5' fill='%2386efac'/%3E%3Cpath d='M15 28 C13 26 14 24 16 25' stroke='%2386efac' strokeWidth='1.5' fill='none' strokeLinecap='round'/%3E%3Cpath d='M25 28 C27 26 26 24 24 25' stroke='%2386efac' strokeWidth='1.5' fill='none' strokeLinecap='round'/%3E%3C/svg%3E"); background-size: contain; background-repeat: no-repeat; }
+        .boda-video-deco-b::before { bottom: -2px; left: -2px; transform: rotate(15deg) scaleY(-1); }
+        .boda-video-deco-b::after { bottom: -2px; right: -2px; transform: rotate(-15deg) scale(-1); }
+        .boda-deco-ring-left { position: absolute; left: -14px; top: 50%; transform: translateY(-50%); }
+        .boda-deco-ring-right { position: absolute; right: -14px; top: 50%; transform: translateY(-50%); }
+        /* ── Botón ramo ── */
+        .boda-ramo-section { margin: 20px 14px 0; background: linear-gradient(135deg,#fff0f6,#fdf2f8); border: 1.5px solid rgba(236,72,153,0.2); border-radius: 20px; padding: 18px 16px; text-align: center; }
+        .boda-ramo-btn { width: 100%; border: none; background: linear-gradient(135deg,#ec4899,#be185d); border-radius: 16px; padding: 15px 16px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px; font-family: 'DM Sans',sans-serif; box-shadow: 0 6px 24px rgba(236,72,153,0.35); transition: all .15s; -webkit-tap-highlight-color: transparent; }
+        .boda-ramo-btn:active { transform: scale(0.97); }
+        .boda-ramo-sub { font-size: 11px; color: #be185d; opacity: 0.8; margin-top: 8px; font-style: italic; }
+        /* ── Animación ramo ── */
+        @keyframes ramoFall { 0% { transform: translateY(-60px) rotate(0deg); opacity: 1; } 85% { opacity: 0.9; } 100% { transform: translateY(108vh) rotate(480deg); opacity: 0; } }
+        .boda-ramo-layer { position: fixed; inset: 0; pointer-events: all; z-index: 8889; overflow: hidden; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; animation: fadeIn .2s ease; }
+        .boda-ramo-piece { position: absolute; top: -70px; animation: ramoFall linear forwards; pointer-events: none; }
       `}</style>
 
       {/* ── Bordes festivos ── */}
@@ -2959,6 +2979,22 @@ export default function MuroPublico() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
                   Video de la boda civil
                 </div>
+                <div className="boda-video-deco boda-video-deco-b">
+                  {/* Argollas laterales */}
+                  <div className="boda-deco-ring-left">
+                    <svg width="22" height="38" viewBox="0 0 22 38" fill="none">
+                      <ellipse cx="11" cy="10" rx="8" ry="8" stroke="#f9a8d4" strokeWidth="2.5" fill="none"/>
+                      <ellipse cx="11" cy="28" rx="8" ry="8" stroke="#c4b5fd" strokeWidth="2.5" fill="none"/>
+                      <path d="M7 17 C7 19 15 19 15 21" stroke="#f9a8d4" strokeWidth="1.5" fill="none"/>
+                    </svg>
+                  </div>
+                  <div className="boda-deco-ring-right">
+                    <svg width="22" height="38" viewBox="0 0 22 38" fill="none">
+                      <ellipse cx="11" cy="10" rx="8" ry="8" stroke="#f9a8d4" strokeWidth="2.5" fill="none"/>
+                      <ellipse cx="11" cy="28" rx="8" ry="8" stroke="#c4b5fd" strokeWidth="2.5" fill="none"/>
+                      <path d="M7 17 C7 19 15 19 15 21" stroke="#c4b5fd" strokeWidth="1.5" fill="none"/>
+                    </svg>
+                  </div>
                 {(() => {
                   const url = bodaCivil.video_url;
                   const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
@@ -3086,6 +3122,7 @@ export default function MuroPublico() {
                     </div>
                   );
                 })()}
+                </div>{/* /boda-video-deco */}
               </>
             )}
 
@@ -3163,6 +3200,108 @@ export default function MuroPublico() {
               )}
             </div>
 
+            {/* ── Botón ramo de novia ── */}
+            <div className="boda-ramo-section">
+              <svg width="44" height="44" viewBox="0 0 44 44" fill="none" style={{ marginBottom: 8, animation: "bodaFloat 3s ease-in-out infinite", display: "block", margin: "0 auto 8px" }}>
+                <circle cx="22" cy="14" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                <circle cx="14" cy="20" r="5" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                <circle cx="30" cy="20" r="5" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                <circle cx="18" cy="28" r="5" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                <circle cx="26" cy="28" r="5" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                <rect x="20" y="30" width="4" height="10" rx="2" fill="#86efac"/>
+                <path d="M17 34 C15 31 17 29 19 30" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                <path d="M27 34 C29 31 27 29 25 30" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+              </svg>
+              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontWeight: 600, color: "#9d174d", marginBottom: 4, lineHeight: 1.4 }}>
+                Tradición del ramo de novia
+              </p>
+              <p style={{ fontSize: 12, color: "#be185d", opacity: 0.8, marginBottom: 14, lineHeight: 1.6 }}>
+                De parte de Alisson, con todo su amor 🤍
+              </p>
+              <button
+                className="boda-ramo-btn"
+                onClick={() => setBodaRamoKey(k => k + 1)}
+              >
+                <svg width="18" height="18" viewBox="0 0 44 44" fill="none">
+                  <circle cx="22" cy="14" r="6" fill="white"/>
+                  <circle cx="14" cy="20" r="5" fill="white"/>
+                  <circle cx="30" cy="20" r="5" fill="white"/>
+                  <circle cx="18" cy="28" r="5" fill="white"/>
+                  <circle cx="26" cy="28" r="5" fill="white"/>
+                  <rect x="20" y="30" width="4" height="10" rx="2" fill="#bbf7d0"/>
+                </svg>
+                La próxima en casarse, mi deseo es que seas tú
+              </button>
+              <p className="boda-ramo-sub">¡Toca si estás soltera y recibe el ramo!</p>
+            </div>
+
+          </div>
+        )}
+
+        {/* ── Animación ramo: flores blancas + mensaje ── */}
+        {bodaRamoKey > 0 && (
+          <div key={bodaRamoKey} className="boda-ramo-layer" onClick={() => setBodaRamoKey(0)}>
+            {/* Flores blancas cayendo */}
+            {Array.from({ length: 32 }).map((_, i) => {
+              const sizes = [18, 22, 26, 30, 16, 24];
+              const sz = sizes[i % sizes.length];
+              const rotations = [0, 30, 60, 90, 120, 45];
+              const rot = rotations[i % rotations.length];
+              return (
+                <div
+                  key={i}
+                  className="boda-ramo-piece"
+                  style={{
+                    left: `${(i * 3.1 + Math.sin(i) * 20 + 50) % 100}%`,
+                    animationDuration: `${2.4 + (i % 5) * 0.4}s`,
+                    animationDelay: `${(i % 8) * 0.18}s`,
+                  }}
+                >
+                  <svg width={sz} height={sz} viewBox="0 0 30 30" fill="none" style={{ transform: `rotate(${rot}deg)` }}>
+                    <ellipse cx="15" cy="7" rx="5" ry="7" fill="white" opacity="0.95"/>
+                    <ellipse cx="23" cy="12" rx="5" ry="7" fill="white" opacity="0.9" transform="rotate(60 23 12)"/>
+                    <ellipse cx="21" cy="22" rx="5" ry="7" fill="white" opacity="0.9" transform="rotate(120 21 22)"/>
+                    <ellipse cx="9" cy="22" rx="5" ry="7" fill="white" opacity="0.9" transform="rotate(-120 9 22)"/>
+                    <ellipse cx="7" cy="12" rx="5" ry="7" fill="white" opacity="0.9" transform="rotate(-60 7 12)"/>
+                    <circle cx="15" cy="15" r="4" fill="#fce7f3"/>
+                  </svg>
+                </div>
+              );
+            })}
+            {/* Mensaje central */}
+            <div style={{
+              position: "absolute", top: "50%", left: "50%",
+              transform: "translate(-50%,-50%)",
+              background: "rgba(255,255,255,0.96)",
+              borderRadius: 24, padding: "28px 28px",
+              textAlign: "center", maxWidth: 300, width: "85%",
+              boxShadow: "0 16px 64px rgba(236,72,153,0.25)",
+              border: "1.5px solid rgba(249,168,212,0.4)",
+              animation: "wlPop 0.3s ease",
+              pointerEvents: "all",
+            }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>
+                <svg width="50" height="50" viewBox="0 0 44 44" fill="none" style={{ display: "block", margin: "0 auto" }}>
+                  <circle cx="22" cy="12" r="7" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                  <circle cx="13" cy="19" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                  <circle cx="31" cy="19" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                  <circle cx="17" cy="29" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                  <circle cx="27" cy="29" r="6" fill="white" stroke="#f9a8d4" strokeWidth="1.5"/>
+                  <rect x="20" y="32" width="4" height="10" rx="2" fill="#86efac"/>
+                  <path d="M16 36 C14 33 16 31 18 32" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                  <path d="M28 36 C30 33 28 31 26 32" stroke="#86efac" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "#9d174d", lineHeight: 1.3, marginBottom: 10 }}>
+                La próxima en casarse, mi deseo es que seas tú
+              </p>
+              <p style={{ fontSize: 12, color: "#be185d", lineHeight: 1.7, marginBottom: 14, opacity: 0.85 }}>
+                Con todo mi amor, este ramo es para ti. Que el amor que hoy compartimos contigo llegue pronto a tu vida ✨
+              </p>
+              <p style={{ fontSize: 11, color: "#9CA3AF", fontStyle: "italic" }}>— Alisson</p>
+              <div style={{ marginTop: 14, width: 40, height: 1, background: "linear-gradient(90deg,transparent,#f9a8d4,transparent)", margin: "14px auto 0" }}/>
+              <p style={{ fontSize: 10, color: "#D1D5DB", marginTop: 10 }}>Toca para cerrar</p>
+            </div>
           </div>
         )}
 
