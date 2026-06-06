@@ -20,12 +20,12 @@ async function getMeta(admin: ReturnType<typeof adminClient>, evento_id: string)
   const { data, error } = await admin.storage
     .from(BUCKET)
     .download(`${evento_id}/meta.json`);
-  if (error || !data) return { video_url: null, fotos: [] as string[], nombres: "" };
+  if (error || !data) return { video_url: null, fotos: [] as string[], nombres: "", reactions: [] as { nombre: string; ts: number }[] };
   try {
     const text = await data.text();
-    return JSON.parse(text) as { video_url: string | null; fotos: string[]; nombres: string };
+    return JSON.parse(text) as { video_url: string | null; fotos: string[]; nombres: string; reactions?: { nombre: string; ts: number }[] };
   } catch {
-    return { video_url: null, fotos: [] as string[], nombres: "" };
+    return { video_url: null, fotos: [] as string[], nombres: "", reactions: [] as { nombre: string; ts: number }[] };
   }
 }
 

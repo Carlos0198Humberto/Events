@@ -1870,14 +1870,6 @@ export default function MuroPublico() {
         }
       } catch { /* boda civil no disponible */ }
     }
-      try {
-        const res = await fetch(`/api/boda-civil/${eventoId}`);
-        if (res.ok) {
-          const data: BodaCivilMeta = await res.json();
-          if (data.video_url || data.fotos.length >= 3) setBodaCivil(data);
-        }
-      } catch { /* silencioso */ }
-    }
     setLoading(false);
   }
 
