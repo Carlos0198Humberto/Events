@@ -1717,8 +1717,11 @@ function DeseoCard({
   );
 }
 
+// ─── Tipos Boda Civil ──────────────────────────────────────────────────────────
+type BodaCivilMeta = { video_url: string | null; fotos: string[]; nombres: string };
+
 // ─── COMPONENTE PRINCIPAL ──────────────────────────────────────────────────────
-type Vista = "fotos" | "albumes" | "deseos";
+type Vista = "fotos" | "albumes" | "deseos" | "boda";
 
 export default function MuroPublico() {
   const params = useParams();
@@ -1740,6 +1743,8 @@ export default function MuroPublico() {
   const [yaDeseo, setYaDeseo] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
   const [mounted, setMounted] = useState(false);
+  const [bodaCivil, setBodaCivil] = useState<BodaCivilMeta | null>(null);
+  const [bodaCarruselIdx, setBodaCarruselIdx] = useState(0);
 
   const t = T[lang];
 
@@ -1751,8 +1756,8 @@ export default function MuroPublico() {
     const tabParam = new URLSearchParams(window.location.search).get(
       "tab",
     ) as Vista | null;
-    if (tabParam && ["fotos", "albumes", "deseos"].includes(tabParam)) {
-      setVista(tabParam);
+    if (tabParam && ["fotos", "albumes", "deseos", "boda"].includes(tabParam)) {
+      setVista(tabParam as Vista);
     }
 
     if (token) {
@@ -1849,6 +1854,16 @@ export default function MuroPublico() {
       .single();
     if (ev) setEvento(ev);
     await Promise.all([cargarFotos(), cargarDeseos()]);
+    // Cargar boda civil si aplica
+    if (ev?.tipo === "boda") {
+      try {
+        const res = await fetch(`/api/boda-civil/${eventoId}`);
+        if (res.ok) {
+          const data: BodaCivilMeta = await res.json();
+          if (data.video_url || data.fotos.length >= 3) setBodaCivil(data);
+        }
+      } catch { /* silencioso */ }
+    }
     setLoading(false);
   }
 
@@ -2263,6 +2278,51 @@ export default function MuroPublico() {
           padding: 1px 4px; min-width: 14px; text-align: center;
           border: 1.5px solid white;
         }
+        /* ── Boda Civil ── */
+        .boda-wrap { padding: 0 4px 32px; }
+        .boda-frame-outer {
+          position: relative; border-radius: 18px; overflow: hidden;
+          border: 2px solid rgba(212,175,55,0.6);
+          box-shadow: 0 0 0 6px rgba(212,175,55,0.12), 0 8px 32px rgba(0,0,0,0.35);
+          background: #0f0e17; margin-bottom: 18px;
+        }
+        .boda-frame-deco {
+          position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+          pointer-events: none; z-index: 2;
+        }
+        .boda-video { width: 100%; display: block; max-height: 360px; background: #000; }
+        .boda-nombres-bar {
+          position: absolute; bottom: 0; left: 0; right: 0;
+          background: linear-gradient(to top, rgba(15,14,23,0.95) 0%, rgba(15,14,23,0.6) 70%, transparent 100%);
+          padding: 28px 16px 14px; z-index: 3; text-align: center;
+        }
+        .boda-nombres-text {
+          font-family: 'Cormorant Garamond', serif; font-size: 22px;
+          font-style: italic; color: #d4af37;
+          text-shadow: 0 2px 12px rgba(0,0,0,0.9); letter-spacing: 0.5px;
+        }
+        .boda-carousel { position: relative; overflow: hidden; border-radius: 14px; margin-bottom: 8px; background: #0f0e17; }
+        .boda-carousel-track { display: flex; transition: transform .4s cubic-bezier(.22,1,.36,1); }
+        .boda-carousel-slide { flex-shrink: 0; width: 100%; }
+        .boda-carousel-slide img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; border-radius: 14px; }
+        .boda-carousel-btn {
+          position: absolute; top: 50%; transform: translateY(-50%);
+          background: rgba(0,0,0,0.55); border: 1px solid rgba(212,175,55,0.4);
+          color: #d4af37; border-radius: 50%; width: 36px; height: 36px;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; z-index: 4; font-size: 16px; transition: background .18s;
+        }
+        .boda-carousel-btn:hover { background: rgba(212,175,55,0.25); }
+        .boda-carousel-prev { left: 8px; }
+        .boda-carousel-next { right: 8px; }
+        .boda-carousel-dots { display: flex; justify-content: center; gap: 6px; padding: 8px 0; flex-wrap: wrap; }
+        .boda-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(212,175,55,0.3); cursor: pointer; transition: all .2s; border: none; padding: 0; }
+        .boda-dot.active { background: #d4af37; transform: scale(1.3); }
+        .boda-section-title {
+          font-family: 'Cormorant Garamond', serif; font-size: 18px;
+          font-style: italic; color: #d4af37; text-align: center;
+          margin: 22px 0 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
       `}</style>
 
       {/* ── Bordes festivos ── */}
@@ -2406,7 +2466,10 @@ export default function MuroPublico() {
             { key: "fotos" as Vista, icon: Ico.grid(18, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
             { key: "albumes" as Vista, icon: Ico.folder(18, vista === "albumes" ? "#4F46E5" : "#94a3b8"), label: t.albumes, count: albumes.length },
             { key: "deseos" as Vista, icon: Ico.heart(18, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
-          ] as const).map((tab) => (
+            ...(evento?.tipo === "boda" && bodaCivil
+              ? [{ key: "boda" as Vista, icon: <span style={{fontSize:15}}>💍</span>, label: "Boda Civil", count: 0 }]
+              : []),
+          ] as { key: Vista; icon: React.ReactNode; label: string; count: number }[]).map((tab) => (
             <button
               key={tab.key}
               className={`org-tab${vista === tab.key ? " active" : ""}`}
@@ -2860,112 +2923,147 @@ export default function MuroPublico() {
             )}
           </div>
         )}
+
+        {/* ── BODA CIVIL ── */}
+        {vista === "boda" && bodaCivil && (
+          <div className="boda-wrap">
+            <div style={{ textAlign: "center", marginBottom: 16 }}>
+              <div style={{ fontSize: 26, letterSpacing: 8 }}>{"💒 ❤️ 💍"}</div>
+              {bodaCivil.nombres && (
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontStyle: "italic", color: "#d4af37", marginTop: 6 }}>
+                  {bodaCivil.nombres}
+                </div>
+              )}
+            </div>
+
+            {bodaCivil.video_url && (
+              <>
+                <h2 className="boda-section-title">
+                  <span>{"🎬"}</span> Video de la Boda Civil
+                </h2>
+                <div className="boda-frame-outer">
+                  <svg style={{ position:"absolute",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:2 }} viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                    <text x="2" y="9" fontSize="7" fill="#d4af37" opacity="0.85">{"♥"}</text>
+                    <text x="89" y="9" fontSize="7" fill="#d4af37" opacity="0.85">{"♥"}</text>
+                    <text x="2" y="99" fontSize="7" fill="#d4af37" opacity="0.85">{"♥"}</text>
+                    <text x="89" y="99" fontSize="7" fill="#d4af37" opacity="0.85">{"♥"}</text>
+                    <text x="41" y="7" fontSize="5" fill="#d4af37" opacity="0.55">{"✦ ✦ ✦"}</text>
+                    <text x="41" y="98" fontSize="5" fill="#d4af37" opacity="0.55">{"✦ ✦ ✦"}</text>
+                  </svg>
+                  <video src={bodaCivil.video_url} controls className="boda-video" playsInline preload="metadata" />
+                  {bodaCivil.nombres && (
+                    <div className="boda-nombres-bar">
+                      <div className="boda-nombres-text">{"♥"}&nbsp;&nbsp;{bodaCivil.nombres}&nbsp;&nbsp;{"♥"}</div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {bodaCivil.fotos.length >= 3 && (
+              <>
+                <h2 className="boda-section-title"><span>{"📸"}</span> Momentos de nuestra boda</h2>
+                <div className="boda-carousel">
+                  <div className="boda-carousel-track" style={{ transform: `translateX(-${bodaCarruselIdx * 100}%)` }}>
+                    {bodaCivil.fotos.map((url, i) => (
+                      <div key={url} className="boda-carousel-slide">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`Foto boda ${i + 1}`} />
+                      </div>
+                    ))}
+                  </div>
+                  {bodaCivil.fotos.length > 1 && (
+                    <>
+                      <button className="boda-carousel-btn boda-carousel-prev" onClick={() => setBodaCarruselIdx(i => (i - 1 + bodaCivil.fotos.length) % bodaCivil.fotos.length)}>{"‹"}</button>
+                      <button className="boda-carousel-btn boda-carousel-next" onClick={() => setBodaCarruselIdx(i => (i + 1) % bodaCivil.fotos.length)}>{"›"}</button>
+                    </>
+                  )}
+                </div>
+                <div className="boda-carousel-dots">
+                  {bodaCivil.fotos.map((_, i) => (
+                    <button key={i} className={`boda-dot${bodaCarruselIdx === i ? " active" : ""}`} onClick={() => setBodaCarruselIdx(i)} />
+                  ))}
+                </div>
+                <p style={{ textAlign:"center", fontSize:11, color:"#94a3b8", marginTop:4 }}>{bodaCarruselIdx + 1} / {bodaCivil.fotos.length}</p>
+              </>
+            )}
+
+            <div style={{ textAlign:"center", marginTop:28, padding:"20px 0", borderTop:"1px solid rgba(212,175,55,0.2)" }}>
+              <div style={{ fontSize:22, letterSpacing:6 }}>{"🌹 💍 🌹"}</div>
+              <p style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:14, fontStyle:"italic", color:"rgba(212,175,55,0.7)", marginTop:8 }}>
+                Un momento eterno lleno de amor
+              </p>
+            </div>
+          </div>
+        )}
+
       </div>
 
-      {/* ══ Lightbox ══ */}
+
+      {/* Lightbox */}
       {fotoActiva !== null && fotos[fotoActiva] && (
         <Lightbox
-          foto={fotos[fotoActiva]}
-          acento={acento}
-          esOrg={esOrg}
+          fotos={fotos}
+          idx={fotoActiva}
           onClose={() => setFotoActiva(null)}
-          onDelete={() => eliminarFoto(fotos[fotoActiva].id)}
-          onPrev={() => setFotoActiva((i) => (i !== null && i > 0 ? i - 1 : i))}
-          onNext={() =>
-            setFotoActiva((i) =>
-              i !== null && i < fotos.length - 1 ? i + 1 : i,
-            )
-          }
-          hasPrev={fotoActiva > 0}
-          hasNext={fotoActiva < fotos.length - 1}
-          t={t}
+          onPrev={() => setFotoActiva(i => Math.max(0, (i ?? 0) - 1))}
+          onNext={() => setFotoActiva(i => Math.min(fotos.length - 1, (i ?? 0) + 1))}
+          esOrg={esOrg}
+          onDelete={eliminarFoto}
         />
       )}
 
-      {/* ══ Modales ══ */}
-      {modalSubir && invId && (
-        <ModalSubirFoto
-          eventoId={eventoId}
-          invitadoId={invId}
-          onClose={() => setModalSubir(false)}
-          onSubida={async () => {
-            await cargarFotos();
-            setYaFoto(true);
-          }}
-          t={t}
-        />
-      )}
-      {modalDeseo && invId && (
-        <ModalDeseo
-          invitadoNombre={invNombre}
-          yaDejoDeseo={yaDeseo}
-          yaSubioFoto={yaFoto}
-          onClose={() => setModalDeseo(false)}
-          onPublicado={publicarDeseo}
-          onIrAFoto={() => {
-            setModalDeseo(false);
-            setModalSubir(true);
-          }}
-          t={t}
-        />
-      )}
-
-      {/* ══ BOTTOM NAV ══ */}
-      {esOrg ? (
+      {/* Barra organizador fija */}
+      {esOrg && (
         <div className="org-bottom-bar">
-          {esOrg && <button className="org-btn-back" onClick={() => router.push("/dashboard")}>
-            ← Regresar al dashboard
-          </button>}
+          <Link href="/dashboard" className="org-btn-back">
+            {Ico.dashboard(16,"#4F46E5")} Dashboard
+          </Link>
         </div>
-      ) : (
-        <nav className="bottom-nav">
-          {/* Acciones del invitado */}
-          {invId && (
-            <div className="nav-guest-row">
-              <button
-                className="nav-guest-btn"
-                onClick={() => setModalSubir(true)}
-                style={{
-                  background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,#4F46E5,#3730A3)",
-                  color: yaFoto ? "#16a34a" : "white",
-                  border: yaFoto ? "1.5px solid rgba(22,163,74,0.28)" : "none",
-                  boxShadow: yaFoto ? "none" : "0 3px 14px rgba(79, 70, 229,0.38)",
-                }}
-              >
-                {yaFoto ? Ico.check(15, "#16a34a") : Ico.camera(15, "white")}
-                {t.subirMiFoto}
-                {yaFoto && <span style={{ fontSize: 10, background: "#22c55e", color: "white", borderRadius: 99, padding: "1px 5px", marginLeft: 2 }}>✓</span>}
-              </button>
-              <button
-                className="nav-guest-btn"
-                onClick={() => setModalDeseo(true)}
-                style={{
-                  background: yaDeseo ? "rgba(22,163,74,0.10)" : yaFoto ? "linear-gradient(135deg,#4F46E5,#3730A3)" : "#F3EDE4",
-                  color: yaDeseo ? "#16a34a" : yaFoto ? "white" : "#4F46E5",
-                  border: yaDeseo ? "1.5px solid rgba(22,163,74,0.28)" : yaFoto ? "none" : "1.5px solid rgba(79, 70, 229,0.28)",
-                  boxShadow: yaFoto && !yaDeseo ? "0 3px 14px rgba(79, 70, 229,0.38)" : "none",
-                }}
-              >
-                {yaDeseo ? Ico.check(15, "#16a34a") : Ico.heart(15, yaFoto ? "white" : "#4F46E5")}
-                {t.miDeseo}
-                {yaDeseo && <span style={{ fontSize: 10, background: "#22c55e", color: "white", borderRadius: 99, padding: "1px 5px", marginLeft: 2 }}>✓</span>}
-              </button>
-            </div>
-          )}
+      )}
 
-          {/* Tabs */}
-          <div className="nav-tabs">
-            {(esOrg
-              ? [
-                  { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
-                  { key: "albumes" as Vista, icon: Ico.folder(20, vista === "albumes" ? "#4F46E5" : "#94a3b8"), label: t.albumes, count: albumes.length },
-                  { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
-                ]
-              : [
-                  { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
-                  { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
-                ]
-            ).map((tab) => (
+      {/* Nav bottom invitados: Fotos / Deseos / Boda Civil (sin Albums) */}
+      {!esOrg && invId && (
+        <nav className="bottom-nav">
+          <div className="nav-guest-row">
+            <button
+              className="nav-guest-btn"
+              onClick={() => setModalSubir(true)}
+              style={{
+                background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,#4F46E5,#3730A3)",
+                color: yaFoto ? "#16a34a" : "white",
+                border: yaFoto ? "1.5px solid rgba(22,163,74,0.28)" : "none",
+                boxShadow: !yaFoto ? "0 3px 14px rgba(79,70,229,0.38)" : "none",
+              }}
+            >
+              {yaFoto ? Ico.check(15,"#16a34a") : Ico.camera(15,"white")}
+              {yaFoto ? t.yaCompartiste : t.comparteMomento}
+              {yaFoto && <span style={{ fontSize:10, background:"#22c55e", color:"white", borderRadius:99, padding:"1px 5px", marginLeft:2 }}>{"\u2713"}</span>}
+            </button>
+            <button
+              className="nav-guest-btn"
+              onClick={() => setModalDeseo(true)}
+              style={{
+                background: yaDeseo ? "rgba(22,163,74,0.10)" : yaFoto ? "linear-gradient(135deg,#4F46E5,#3730A3)" : "#F3EDE4",
+                color: yaDeseo ? "#16a34a" : yaFoto ? "white" : "#4F46E5",
+                border: yaDeseo ? "1.5px solid rgba(22,163,74,0.28)" : yaFoto ? "none" : "1.5px solid rgba(79,70,229,0.28)",
+                boxShadow: yaFoto && !yaDeseo ? "0 3px 14px rgba(79,70,229,0.38)" : "none",
+              }}
+            >
+              {yaDeseo ? Ico.check(15,"#16a34a") : Ico.heart(15, yaFoto ? "white" : "#4F46E5")}
+              {t.miDeseo}
+              {yaDeseo && <span style={{ fontSize:10, background:"#22c55e", color:"white", borderRadius:99, padding:"1px 5px", marginLeft:2 }}>{"\u2713"}</span>}
+            </button>
+          </div>
+
+          <div className="nav-tabs" style={{ gridTemplateColumns: evento?.tipo === "boda" && bodaCivil ? "repeat(3,1fr)" : "repeat(2,1fr)" }}>
+            {([
+              { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
+              { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
+              ...(evento?.tipo === "boda" && bodaCivil
+                ? [{ key: "boda" as Vista, icon: <span style={{fontSize:17}}>{"\ud83d\udc8d"}</span>, label: "Boda Civil", count: 0 }]
+                : []),
+            ] as { key: Vista; icon: React.ReactNode; label: string; count: number }[]).map((tab) => (
               <button
                 key={tab.key}
                 className={`nav-tab${vista === tab.key ? " active" : ""}`}
@@ -2978,6 +3076,28 @@ export default function MuroPublico() {
             ))}
           </div>
         </nav>
+      )}
+
+      {modalSubir && invId && (
+        <ModalSubirFoto
+          invitadoId={invId}
+          eventoId={eventoId}
+          onClose={() => setModalSubir(false)}
+          onFotoSubida={() => { setYaFoto(true); setModalSubir(false); cargarFotos(); }}
+          t={t}
+        />
+      )}
+      {modalDeseo && invId && (
+        <ModalDeseo
+          invitadoId={invId}
+          eventoId={eventoId}
+          invNombre={invNombre}
+          yaFoto={yaFoto}
+          onClose={() => setModalDeseo(false)}
+          onDeseoGuardado={() => { setYaDeseo(true); setModalDeseo(false); cargarDeseos(); }}
+          onIrAFoto={() => { setModalDeseo(false); setModalSubir(true); }}
+          t={t}
+        />
       )}
     </main>
   );

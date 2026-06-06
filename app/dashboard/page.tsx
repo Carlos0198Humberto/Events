@@ -1358,6 +1358,12 @@ export default function Dashboard() {
                           </svg>
                           QR Walk-in
                         </Link>
+                        {evento.tipo === "boda" && (
+                          <Link href={`/eventos/${evento.id}/boda-civil`} className="pa-link" style={{ background: "linear-gradient(135deg,rgba(212,175,55,0.12),rgba(212,175,55,0.06))", borderColor: "rgba(212,175,55,0.35)", color: "#b8932a" }}>
+                            <span style={{ fontSize: 14 }}>💍</span>
+                            Mi Boda Civil
+                          </Link>
+                        )}
                       </div>
 
                       {/* Expand */}
@@ -1462,24 +1468,4 @@ export default function Dashboard() {
                           {eliminando === evento.id ? "..." : t.delete}
                         </button>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          <div className="footer-line">
-            <Ornament width={80} />
-          </div>
-          {esAdmin && (
-            <Link href="/admin" className="footer-admin">
-              {t.adminPanel}
-            </Link>
-          )}
-          <p className="footer-copy">Evorix · Humb3rsec 2026</p>
-        </div>
-      </div>
-    </>
-  );
-}
+            
