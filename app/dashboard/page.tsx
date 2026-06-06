@@ -385,6 +385,32 @@ const Icon = {
       <path d="M5 8l5 5 5-5" />
     </svg>
   ),
+  qr: ({ size = 14 }: IconProps = {}) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+      <rect x="2" y="2" width="6" height="6" rx="1"/>
+      <rect x="12" y="2" width="6" height="6" rx="1"/>
+      <rect x="2" y="12" width="6" height="6" rx="1"/>
+      <rect x="12" y="12" width="6" height="6" rx="1"/>
+      <rect x="3.5" y="3.5" width="3" height="3" rx="0.5" fill="currentColor" stroke="none"/>
+      <rect x="13.5" y="3.5" width="3" height="3" rx="0.5" fill="currentColor" stroke="none"/>
+      <rect x="3.5" y="13.5" width="3" height="3" rx="0.5" fill="currentColor" stroke="none"/>
+    </svg>
+  ),
+  heart: ({ size = 14 }: IconProps = {}) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 17S2 11.5 2 6.5A4 4 0 0110 4.5 4 4 0 0118 6.5C18 11.5 10 17 10 17z"/>
+    </svg>
+  ),
+  bouquet: ({ size = 14 }: IconProps = {}) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="6" r="2.5"/>
+      <circle cx="5.5" cy="10" r="2"/>
+      <circle cx="14.5" cy="10" r="2"/>
+      <circle cx="7.5" cy="14.5" r="2"/>
+      <circle cx="12.5" cy="14.5" r="2"/>
+      <line x1="10" y1="8.5" x2="10" y2="11"/>
+    </svg>
+  ),
   pencil: ({ size = 14 }: IconProps = {}) => (
     <svg
       width={size}
@@ -1351,22 +1377,18 @@ export default function Dashboard() {
                           {s && s.total_presentes > 0 && <span className="pa-check">✓</span>}
                         </Link>
                         <Link href={`/walk-in/${evento.id}`} className="pa-link" target="_blank">
-                          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-                            <rect x="2" y="2" width="6" height="6" rx="1"/><rect x="12" y="2" width="6" height="6" rx="1"/>
-                            <rect x="2" y="12" width="6" height="6" rx="1"/><circle cx="15" cy="15" r="2.5"/>
-                            <path d="M12 12h2M15 12v1"/>
-                          </svg>
+                          <Icon.qr />
                           QR Walk-in
                         </Link>
                         {evento.tipo === "boda" && (
                           <Link href={`/eventos/${evento.id}/boda-civil`} className="pa-link">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>
+                            <Icon.heart />
                             Mi Boda Civil
                           </Link>
                         )}
                         {evento.tipo === "boda" && (
                           <Link href={`/eventos/${evento.id}/ramo-solteras`} className="pa-link">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="3"/><circle cx="6" cy="13" r="2.5"/><circle cx="18" cy="13" r="2.5"/><circle cx="9" cy="18" r="2.5"/><circle cx="15" cy="18" r="2.5"/><line x1="12" y1="11" x2="12" y2="14"/></svg>
+                            <Icon.bouquet />
                             Ramo Solteras
                           </Link>
                         )}

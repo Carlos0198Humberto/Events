@@ -2062,6 +2062,18 @@ export default function MuroPublico() {
     "¡Eres bendecida, {n}! El plan de Dios es perfecto para ti 💐",
     "Dios te ama profundamente, {n}, y su timing es perfecto ⏳",
     "Mantén tu fe, {n}, porque Dios está obrando en tu vida 🙏",
+    "Eres una mujer de valor, {n}, Proverbios 31 habla de ti 👑",
+    "Dios tiene escritas todas tus lágrimas, {n}, y viene la alegría 🕊️",
+    "¡Sé paciente, {n}! La espera de Dios siempre vale la pena 🌺",
+    "El Señor pelea por ti, {n}, solo necesitas tener fe 💪",
+    "Eres amada por Dios con amor eterno, {n} ✝️",
+    "No te rindas, {n}, Él que prometió es fiel 🌟",
+    "Tu historia de amor está siendo escrita por Dios, {n} 📜",
+    "Cuando Dios da, {n}, da en abundancia y en el momento perfecto 🎁",
+    "¡Tú vales muchísimo, {n}! Dios tiene a alguien especial para ti 💎",
+    "Que tu corazón descanse en Dios, {n}, Él nunca falla 🕊️",
+    "La espera con fe es semilla, {n}, pronto verás la cosecha 🌻",
+    "Dios te ve, {n}, y tiene planes llenos de esperanza para ti 🌈",
   ];
 
   function calcGanadoraMuro(participantes: string[], inicio: number): string {
@@ -2114,7 +2126,7 @@ export default function MuroPublico() {
         setRamoGiro({ nombre: n, msg: MSGS_GIRO[msgIdx].replace("{n}", n) });
         return r;
       });
-    }, 750);
+    }, 2000);
     setRamoTiempo(Math.max(0, ramoData.duracion - Math.floor((Date.now() - ramoData.inicio) / 1000)));
     return () => {
       if (ramoIntervalRef.current) clearInterval(ramoIntervalRef.current);
@@ -3294,7 +3306,7 @@ export default function MuroPublico() {
                   <p style={{ fontSize: 11, color: "#be185d", opacity: 0.6, marginBottom: 10, fontStyle: "italic" }}>Ramo a las solteras</p>
                   <button className="boda-ramo-btn" onClick={() => setBodaRamoStep("nombre")}>
                     <span style={{ fontSize: 18 }}>🤍</span>
-                    Si eres soltera, toca acá
+                    Si eres soltera o casada, toca acá
                   </button>
                 </div>
               );
@@ -3303,25 +3315,28 @@ export default function MuroPublico() {
               if (ramoData?.activa) return (
                 <div className="boda-ramo-section" style={{ padding: "0 0 4px" }}>
                   {/* Header */}
-                  <div style={{ textAlign: "center", padding: "16px 16px 12px" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#be185d", letterSpacing: "2px", textTransform: "uppercase", marginBottom: 6, opacity: 0.8 }}>🎰 Rifa del Ramo en Vivo</div>
-                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 32, fontWeight: 600, color: ramoTiempo <= 10 ? "#ec4899" : "#9d174d", lineHeight: 1, marginBottom: 8, transition: "color .3s" }}>
+                  <div style={{ textAlign: "center", padding: "20px 16px 14px" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#be185d", letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: 8, opacity: 0.85 }}>💐 Rifa del Ramo en Vivo</div>
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 44, fontWeight: 600, color: ramoTiempo <= 10 ? "#ec4899" : "#9d174d", lineHeight: 1, marginBottom: 10, transition: "color .3s", letterSpacing: 2 }}>
                       {ramoFmt(ramoTiempo)}
                     </div>
-                    <div style={{ height: 5, background: "rgba(236,72,153,0.12)", borderRadius: 99, overflow: "hidden", marginBottom: 14 }}>
-                      <div style={{ height: "100%", width: `${pct * 100}%`, background: "linear-gradient(90deg,#ec4899,#be185d)", borderRadius: 99, transition: "width 1s linear" }} />
+                    <div style={{ height: 6, background: "rgba(236,72,153,0.12)", borderRadius: 99, overflow: "hidden", marginBottom: 6 }}>
+                      <div style={{ height: "100%", width: `${pct * 100}%`, background: ramoTiempo <= 10 ? "linear-gradient(90deg,#f43f5e,#ec4899)" : "linear-gradient(90deg,#ec4899,#be185d)", borderRadius: 99, transition: "width 1s linear" }} />
                     </div>
+                    <div style={{ fontSize: 10, color: "#be185d", opacity: 0.5, marginBottom: 4 }}>tiempo restante</div>
                   </div>
                   {/* Tambola */}
-                  <div style={{ background: "linear-gradient(135deg,#9d174d,#be185d)", margin: "0 14px", borderRadius: 18, padding: "20px 16px", textAlign: "center", minHeight: 90, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <div style={{ background: "linear-gradient(135deg,#7e1038,#9d174d,#be185d)", margin: "0 10px", borderRadius: 22, padding: "28px 20px", textAlign: "center", minHeight: 130, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 8px 30px rgba(157,23,77,0.35)", border: "1px solid rgba(255,255,255,0.12)" }}>
                     {ramoData.participantes.length === 0 ? (
-                      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, color: "rgba(255,255,255,0.6)", fontStyle: "italic" }}>Esperando solteras...</div>
+                      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, color: "rgba(255,255,255,0.6)", fontStyle: "italic" }}>Esperando participantes...</div>
                     ) : (
                       <>
-                        <div key={ramoGiro.nombre} style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, color: "#fff", animation: "giroRamo 0.75s ease" }}>
+                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", letterSpacing: 2, textTransform: "uppercase", marginBottom: 2 }}>girando...</div>
+                        <div key={ramoGiro.nombre} style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 32, fontWeight: 600, color: "#fff", animation: "giroRamo 0.75s ease", textShadow: "0 2px 12px rgba(0,0,0,0.2)" }}>
                           {ramoGiro.nombre || ramoData.participantes[0].nombre}
                         </div>
-                        <div key={ramoGiro.msg} style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontStyle: "italic", animation: "giroRamo 0.75s ease" }}>
+                        <div style={{ width: 40, height: 1, background: "rgba(255,255,255,0.25)", margin: "2px auto" }}/>
+                        <div key={ramoGiro.msg} style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", fontStyle: "italic", animation: "giroRamo 0.75s ease", lineHeight: 1.5, maxWidth: 240 }}>
                           {ramoGiro.msg}
                         </div>
                       </>
