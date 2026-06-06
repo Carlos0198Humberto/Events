@@ -7,7 +7,7 @@ type Meta = { video_url: string | null; fotos: string[]; nombres: string };
 
 const MAX_FOTOS = 20;
 const MIN_FOTOS = 3;
-const MAX_VIDEO_MB = 250;
+const MAX_VIDEO_MB = 500;
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
@@ -25,9 +25,9 @@ const styles = `
   @keyframes spin{to{transform:rotate(360deg)}}
   .page-wrap{min-height:calc(100dvh - env(safe-area-inset-top,0px));background:var(--bg);opacity:0;transition:opacity .35s}
   .page-wrap.vis{opacity:1}
-  .top-bar{display:flex;align-items:center;justify-content:center;height:54px;padding:0 16px;background:rgba(250,251,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:30;width:100%}
+  .top-bar{display:flex;align-items:center;justify-content:center;height:54px;padding:0 16px;background:rgba(500,251,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:30;width:100%}
   .top-bar-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--text);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(250,251,255,0.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;align-items:center;padding-left:16px;padding-right:16px;box-shadow:0 -4px 20px rgba(79,70,229,0.07)}
+  .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(500,251,255,0.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;align-items:center;padding-left:16px;padding-right:16px;box-shadow:0 -4px 20px rgba(79,70,229,0.07)}
   .btn-back{display:inline-flex;align-items:center;gap:8px;background:transparent;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;padding:10px 4px;border-radius:10px;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
   .btn-back:active{opacity:.6}
   .content{max-width:520px;margin:0 auto;padding:18px 14px calc(100px + env(safe-area-inset-bottom,0px))}
