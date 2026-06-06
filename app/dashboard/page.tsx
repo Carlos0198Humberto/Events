@@ -1468,4 +1468,48 @@ export default function Dashboard() {
                           {eliminando === evento.id ? "..." : t.delete}
                         </button>
                       </div>
-            
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <div className="footer-line">
+            <Ornament width={80} />
+          </div>
+          {esAdmin && (
+            <Link href="/admin" className="footer-admin">
+              {t.adminPanel}
+            </Link>
+          )}
+          <p className="footer-copy">Evorix · Humb3rsec 2026</p>
+        </div>
+      </div>
+    </>
+  );
+}
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <div className="footer-line">
+            <Ornament width={80} />
+          </div>
+          {esAdmin && (
+            <Link href="/admin" className="footer-admin">
+              {t.adminPanel}
+            </Link>
+          )}
+          <p className="footer-copy">Evorix · Humb3rsec 2026</p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+  );
+}

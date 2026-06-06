@@ -3083,18 +3083,18 @@ export default function MuroPublico() {
           invitadoId={invId}
           eventoId={eventoId}
           onClose={() => setModalSubir(false)}
-          onFotoSubida={() => { setYaFoto(true); setModalSubir(false); cargarFotos(); }}
+          onSubida={() => { setYaFoto(true); setModalSubir(false); cargarFotos(); }}
           t={t}
         />
       )}
-      {modalDeseo && invId && (
+
+      {modalDeseo && (
         <ModalDeseo
-          invitadoId={invId}
-          eventoId={eventoId}
-          invNombre={invNombre}
-          yaFoto={yaFoto}
+          invitadoNombre={invNombre}
+          yaDejoDeseo={yaDeseo}
+          yaSubioFoto={yaFoto}
           onClose={() => setModalDeseo(false)}
-          onDeseoGuardado={() => { setYaDeseo(true); setModalDeseo(false); cargarDeseos(); }}
+          onPublicado={() => { setYaDeseo(true); setModalDeseo(false); cargarDeseos(); }}
           onIrAFoto={() => { setModalDeseo(false); setModalSubir(true); }}
           t={t}
         />
