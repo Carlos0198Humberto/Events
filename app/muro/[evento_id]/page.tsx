@@ -3656,13 +3656,16 @@ export default function MuroPublico() {
       {/* Lightbox */}
       {fotoActiva !== null && fotos[fotoActiva] && (
         <Lightbox
-          fotos={fotos}
-          idx={fotoActiva}
+          foto={fotos[fotoActiva]}
+          acento={acento}
+          t={t}
           onClose={() => setFotoActiva(null)}
           onPrev={() => setFotoActiva(i => Math.max(0, (i ?? 0) - 1))}
           onNext={() => setFotoActiva(i => Math.min(fotos.length - 1, (i ?? 0) + 1))}
+          hasPrev={fotoActiva > 0}
+          hasNext={fotoActiva < fotos.length - 1}
           esOrg={esOrg}
-          onDelete={eliminarFoto}
+          onDelete={() => eliminarFoto(fotos[fotoActiva].id)}
         />
       )}
 

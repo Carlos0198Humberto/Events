@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
+import qrcode from "qrcode-generator";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -142,6 +143,118 @@ function abrirGoogleCalendar(evento: Evento) {
     `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${fechaInicio}/${fechaFin}&details=${desc}&location=${lugar}`,
     "_blank",
   );
+}
+
+// ─── Descargar archivo .ics (Apple/Outlook/Google) con recordatorio 24 h antes ─
+function descargarICS(evento: Evento) {
+  if (!evento.fecha) return;
+  const [y, m, d] = evento.fecha.split("T")[0].split("-");
+  let dtStart: string, dtEnd: string, allDay = false;
+  if (evento.hora) {
+    const [h, min] = evento.hora.replace(".", ":").split(":");
+    const hPad = String(parseInt(h)).padStart(2, "0");
+    const mPad = String(parseInt(min || "0")).padStart(2, "0");
+    const hFin = String(Math.min(23, parseInt(hPad) + 3)).padStart(2, "0");
+    dtStart = `${y}${m}${d}T${hPad}${mPad}00`;
+    dtEnd = `${y}${m}${d}T${hFin}${mPad}00`;
+  } else {
+    dtStart = `${y}${m}${d}`;
+    dtEnd = `${y}${m}${d}`;
+    allDay = true;
+  }
+  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  const lineas = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Evorix//Invitaciones//ES",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${evento.id}@evorix`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`,
+    allDay ? `DTSTART;VALUE=DATE:${dtStart}` : `DTSTART:${dtStart}`,
+    allDay ? `DTEND;VALUE=DATE:${dtEnd}` : `DTEND:${dtEnd}`,
+    `SUMMARY:${esc(`🎓 ${evento.nombre}`)}`,
+    `DESCRIPTION:${esc(`${TIPO_LABEL[evento.tipo] || "Evento"} de ${evento.anfitriones}. ¡No faltes!`)}`,
+    evento.lugar ? `LOCATION:${esc(evento.lugar)}` : "",
+    "BEGIN:VALARM",
+    "ACTION:DISPLAY",
+    `DESCRIPTION:${esc(`Mañana es ${evento.nombre} 🎓`)}`,
+    "TRIGGER:-P1D",
+    "END:VALARM",
+    "BEGIN:VALARM",
+    "ACTION:DISPLAY",
+    `DESCRIPTION:${esc(`¡Hoy es ${evento.nombre}! Faltan 3 horas 🎉`)}`,
+    "TRIGGER:-PT3H",
+    "END:VALARM",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].filter(Boolean);
+  const blob = new Blob([lineas.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${evento.nombre.replace(/[^\wáéíóúñÁÉÍÓÚÑ ]/g, "").trim() || "evento"}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+// ─── Sonido de celebración: fanfarria + aplausos sintetizados (sin archivos) ──
+function sonidoCelebracion() {
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const master = ctx.createGain();
+    master.gain.value = 0.5;
+    master.connect(ctx.destination);
+    // Fanfarria: Do–Mi–Sol–Do agudo con timbre de trompeta (sawtooth suavizado)
+    const notas = [523.25, 659.25, 783.99, 1046.5];
+    notas.forEach((f, i) => {
+      const t0 = ctx.currentTime + i * 0.16;
+      const dur = i === notas.length - 1 ? 0.7 : 0.22;
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const g = ctx.createGain();
+      const filt = ctx.createBiquadFilter();
+      filt.type = "lowpass";
+      filt.frequency.value = 2600;
+      osc.type = "sawtooth"; osc.frequency.value = f;
+      osc2.type = "triangle"; osc2.frequency.value = f * 2;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.28, t0 + 0.03);
+      g.gain.setValueAtTime(0.24, t0 + dur * 0.6);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      osc.connect(filt); osc2.connect(filt); filt.connect(g); g.connect(master);
+      osc.start(t0); osc2.start(t0);
+      osc.stop(t0 + dur + 0.05); osc2.stop(t0 + dur + 0.05);
+    });
+    // Aplausos: ráfagas de ruido filtrado durante ~2 s
+    const dur = 2.2;
+    const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      const t = i / ctx.sampleRate;
+      // Densidad de "palmadas" que decae al final
+      const burst = Math.random() < 0.028 * (1 - t / dur * 0.55) ? 1 : 0;
+      data[i] = data[i - 1] * 0.62 + burst * (Math.random() * 2 - 1) * 0.9;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 1900; bp.Q.value = 0.7;
+    const ga = ctx.createGain();
+    const tA = ctx.currentTime + 0.25;
+    ga.gain.setValueAtTime(0, tA);
+    ga.gain.linearRampToValueAtTime(0.5, tA + 0.25);
+    ga.gain.setValueAtTime(0.5, tA + dur - 0.7);
+    ga.gain.linearRampToValueAtTime(0, tA + dur);
+    src.connect(bp); bp.connect(ga); ga.connect(master);
+    src.start(tA);
+    setTimeout(() => { try { ctx.close(); } catch {} }, (dur + 1.5) * 1000);
+  } catch { /* audio opcional */ }
 }
 
 // ─── Confetti para pantalla de bienvenida (determinista, sin random) ─────────
@@ -518,29 +631,78 @@ function DecoracionEvento({ tipo }: { tipo: string }) {
   if (tipo === "graduacion") {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "6px 0" }}>
-        {/* Birrete de graduación */}
-        <svg width="90" height="60" viewBox="0 0 90 60" fill="none">
-          {/* Borla */}
-          <line x1="68" y1="18" x2="72" y2="38" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-          <circle cx="72" cy="40" r="4" fill="#4F46E5" opacity="0.75" />
-          {/* Tablero superior */}
-          <path d="M45 6 L82 22 L45 38 L8 22 Z" fill="rgba(79,70,229,0.18)" stroke="#4F46E5" strokeWidth="2.2" strokeLinejoin="round" />
-          {/* Parte superior brillante */}
-          <path d="M45 6 L82 22 L45 26 L8 22 Z" fill="rgba(79,70,229,0.12)" />
-          {/* Cuerpo del birrete */}
-          <path d="M24 26 L24 42 Q45 50 66 42 L66 26" stroke="#4F46E5" strokeWidth="2" fill="rgba(79,70,229,0.1)" strokeLinejoin="round" />
-          {/* Diploma */}
-          <rect x="12" y="40" width="22" height="14" rx="2" stroke="#4F46E5" strokeWidth="1.5" fill="rgba(79,70,229,0.08)" />
-          <line x1="15" y1="45" x2="31" y2="45" stroke="#4F46E5" strokeWidth="1" opacity="0.5" />
-          <line x1="15" y1="49" x2="28" y2="49" stroke="#4F46E5" strokeWidth="1" opacity="0.4" />
-          <path d="M29 38 Q33 36 34 40 Q33 44 29 42 Z" fill="#4F46E5" opacity="0.6" />
+        {/* Emblema de graduación realista: laureles + birrete con sombreado + borla dorada */}
+        <svg width="150" height="80" viewBox="0 0 150 80" fill="none">
+          <defs>
+            <linearGradient id="gradCapBoard" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#4338ca" />
+              <stop offset="45%" stopColor="#312e81" />
+              <stop offset="100%" stopColor="#1e1b4b" />
+            </linearGradient>
+            <linearGradient id="gradCapBody" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#312e81" />
+              <stop offset="100%" stopColor="#1e1b4b" />
+            </linearGradient>
+            <linearGradient id="gradGold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#FDE68A" />
+              <stop offset="50%" stopColor="#F59E0B" />
+              <stop offset="100%" stopColor="#B45309" />
+            </linearGradient>
+            <radialGradient id="gradGlow" cx="0.5" cy="0.35" r="0.7">
+              <stop offset="0%" stopColor="rgba(252,211,77,0.35)" />
+              <stop offset="100%" stopColor="rgba(252,211,77,0)" />
+            </radialGradient>
+          </defs>
+          {/* Resplandor de fondo */}
+          <ellipse cx="75" cy="38" rx="60" ry="34" fill="url(#gradGlow)" />
+          {/* Laurel izquierdo */}
+          <g stroke="#B45309" strokeWidth="1.4" fill="rgba(245,158,11,0.30)">
+            <path d="M28 66 Q14 52 14 30 Q14 22 18 14" fill="none" strokeWidth="1.8"/>
+            {[[16,18,-40],[14,28,-15],[15,38,5],[18,47,20],[23,56,38],[29,63,52]].map(([x,y,rot],i)=>(
+              <ellipse key={i} cx={x} cy={y} rx="6.5" ry="3" transform={`rotate(${rot} ${x} ${y})`} />
+            ))}
+          </g>
+          {/* Laurel derecho */}
+          <g stroke="#B45309" strokeWidth="1.4" fill="rgba(245,158,11,0.30)">
+            <path d="M122 66 Q136 52 136 30 Q136 22 132 14" fill="none" strokeWidth="1.8"/>
+            {[[134,18,40],[136,28,15],[135,38,-5],[132,47,-20],[127,56,-38],[121,63,-52]].map(([x,y,rot],i)=>(
+              <ellipse key={i} cx={x} cy={y} rx="6.5" ry="3" transform={`rotate(${rot} ${x} ${y})`} />
+            ))}
+          </g>
+          {/* Sombra del birrete */}
+          <ellipse cx="75" cy="64" rx="30" ry="4.5" fill="rgba(15,23,42,0.12)" />
+          {/* Cuerpo del birrete (casquete) */}
+          <path d="M55 40 L55 54 Q75 63 95 54 L95 40 Z" fill="url(#gradCapBody)" />
+          <path d="M55 40 L55 54 Q75 63 95 54 L95 40" stroke="#1e1b4b" strokeWidth="1" fill="none" opacity="0.6"/>
+          {/* Tablero (mortarboard) con perspectiva */}
+          <path d="M75 18 L118 36 L75 54 L32 36 Z" fill="url(#gradCapBoard)" />
+          {/* Brillo del tablero */}
+          <path d="M75 18 L118 36 L75 41 L32 36 Z" fill="rgba(255,255,255,0.14)" />
+          <path d="M75 18 L118 36 L75 54 L32 36 Z" stroke="#1e1b4b" strokeWidth="1.4" strokeLinejoin="round" fill="none" opacity="0.55"/>
+          {/* Botón central dorado */}
+          <circle cx="75" cy="34" r="3.4" fill="url(#gradGold)" stroke="#92400E" strokeWidth="0.6"/>
+          {/* Cordón de la borla */}
+          <path d="M75 34 Q96 36 103 52" stroke="url(#gradGold)" strokeWidth="2.4" fill="none" strokeLinecap="round"/>
+          {/* Borla dorada con hilos */}
+          <circle cx="103" cy="53" r="3.2" fill="url(#gradGold)" />
+          <path d="M100.5 55 L99.5 66 M103 56 L103 67 M105.5 55 L106.5 66" stroke="url(#gradGold)" strokeWidth="2" strokeLinecap="round"/>
+          <rect x="99" y="54.5" width="8" height="2.6" rx="1.3" fill="#B45309" />
+          {/* Diploma con lazo */}
+          <g transform="translate(38,52) rotate(-12)">
+            <rect x="0" y="0" width="24" height="9" rx="4.5" fill="#FEF3C7" stroke="#D97706" strokeWidth="1.2"/>
+            <rect x="9" y="-1.5" width="6" height="12" rx="2" fill="#DC2626" opacity="0.85"/>
+          </g>
+          {/* Destellos */}
+          <path d="M75 4 L76.5 9 L81 10.5 L76.5 12 L75 17 L73.5 12 L69 10.5 L73.5 9 Z" fill="#F59E0B" opacity="0.9"/>
+          <circle cx="46" cy="14" r="1.6" fill="#FCD34D" />
+          <circle cx="106" cy="12" r="1.6" fill="#FCD34D" />
         </svg>
-        {/* Estrellas y destellos */}
+        {/* Guirnalda de estrellas doradas */}
         <svg width="200" height="28" viewBox="0 0 200 28" fill="none">
-          <path d="M0 14 Q50 5 100 14 Q150 23 200 14" stroke="#4F46E5" strokeWidth="0.8" fill="none" opacity="0.4" />
+          <path d="M0 14 Q50 5 100 14 Q150 23 200 14" stroke="#D97706" strokeWidth="0.8" fill="none" opacity="0.45" />
           {[20, 60, 100, 140, 180].map((x, i) => (
             <g key={x} transform={`translate(${x},14)`}>
-              <path d={`M0 -${i===2?7:5} L1.5 -2 L${i===2?7:5} 0 L1.5 2 L0 ${i===2?7:5} L-1.5 2 L-${i===2?7:5} 0 L-1.5 -2 Z`} fill="#4F46E5" opacity={i===2?0.9:0.6} />
+              <path d={`M0 -${i===2?7:5} L1.5 -2 L${i===2?7:5} 0 L1.5 2 L0 ${i===2?7:5} L-1.5 2 L-${i===2?7:5} 0 L-1.5 -2 Z`} fill="#F59E0B" opacity={i===2?0.95:0.65} />
             </g>
           ))}
         </svg>
@@ -671,9 +833,133 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
 // ─── Ref global de audio para control de volumen desde TTS ───────────────────
 const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
 
+// ─── Cuenta regresiva dorada para graduación ──────────────────────────────────
+function CountdownGrad({ fecha, hora }: { fecha: string; hora?: string | null }) {
+  const target = new Date(`${fecha}T${hora && /^\d{2}:\d{2}/.test(hora) ? hora.slice(0, 5) : "12:00"}:00`).getTime();
+  const [restante, setRestante] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setRestante(Math.max(0, target - Date.now()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [target]);
+  if (restante === null) return null;
+  const d = Math.floor(restante / 86400000);
+  const h = Math.floor((restante % 86400000) / 3600000);
+  const m = Math.floor((restante % 3600000) / 60000);
+  const s = Math.floor((restante % 60000) / 1000);
+  const unidades = [
+    { v: d, l: "días" },
+    { v: h, l: "horas" },
+    { v: m, l: "min" },
+    { v: s, l: "seg" },
+  ];
+  return (
+    <div style={{
+      margin: "14px 0 4px",
+      borderRadius: 18,
+      padding: "16px 12px 14px",
+      background: "linear-gradient(135deg,#1e1b4b 0%,#312e81 55%,#4338ca 100%)",
+      border: "1.5px solid rgba(245,158,11,0.45)",
+      boxShadow: "0 8px 26px rgba(30,27,75,0.35), inset 0 1px 0 rgba(252,211,77,0.18)",
+      textAlign: "center",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      <style>{`
+        @keyframes cdShine{0%{transform:translateX(-120%) skewX(-18deg)}100%{transform:translateX(320%) skewX(-18deg)}}
+        @keyframes cdPulseSeg{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+      `}</style>
+      <div style={{ position:"absolute", top:0, bottom:0, width:"32%", background:"linear-gradient(105deg,transparent,rgba(252,211,77,0.10),transparent)", animation:"cdShine 4.5s ease-in-out infinite", pointerEvents:"none" }}/>
+      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 2.5, color: "#FCD34D", textTransform: "uppercase", marginBottom: 10 }}>
+        🎓 Falta poco para la graduación
+      </div>
+      <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+        {restante === 0 ? (
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 700, color: "#FDE68A" }}>
+            ¡Es hoy! 🎉
+          </div>
+        ) : unidades.map((u, i) => (
+          <div key={u.l} style={{
+            minWidth: 62,
+            background: "rgba(255,255,255,0.07)",
+            border: "1px solid rgba(252,211,77,0.30)",
+            borderRadius: 12,
+            padding: "8px 4px 7px",
+            backdropFilter: "blur(4px)",
+          }}>
+            <div style={{
+              fontFamily: "'Cormorant Garamond',serif",
+              fontSize: 27, fontWeight: 700, lineHeight: 1,
+              color: "#FDE68A",
+              textShadow: "0 2px 10px rgba(252,211,77,0.35)",
+              animation: i === 3 ? "cdPulseSeg 1s ease-in-out infinite" : "none",
+            }}>
+              {String(u.v).padStart(2, "0")}
+            </div>
+            <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: 1.4, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", marginTop: 3 }}>
+              {u.l}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Burbuja karaoke: muestra la frase que se está leyendo con la palabra actual resaltada ─
+function KaraokeBubble({ texto, charIdx }: { texto: string; charIdx: number }) {
+  if (!texto) return null;
+  // Dividir en oraciones conservando offsets
+  const oraciones: { start: number; text: string }[] = [];
+  const re = /[^.!?…]+[.!?…]*\s*/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(texto))) oraciones.push({ start: m.index, text: m[0] });
+  if (!oraciones.length) oraciones.push({ start: 0, text: texto });
+  // Oración que contiene el carácter actual
+  let actual = oraciones[0];
+  for (const o of oraciones) {
+    if (charIdx >= o.start && charIdx < o.start + o.text.length) { actual = o; break; }
+    if (o.start <= charIdx) actual = o;
+  }
+  // Palabras con offset absoluto
+  const palabras: { start: number; w: string }[] = [];
+  const wre = /\S+/g;
+  while ((m = wre.exec(actual.text))) palabras.push({ start: actual.start + m.index, w: m[0] });
+  return (
+    <div style={{
+      pointerEvents: "none",
+      maxWidth: 250,
+      background: "rgba(15,23,42,0.92)",
+      backdropFilter: "blur(10px)",
+      borderRadius: "16px 16px 4px 16px",
+      border: "1px solid rgba(252,211,77,0.35)",
+      padding: "10px 14px",
+      marginBottom: 8,
+      boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
+      animation: "mascIn .3s ease both",
+    }}>
+      <div style={{ fontSize: 13.5, lineHeight: 1.55, fontFamily: "'DM Sans',sans-serif" }}>
+        {palabras.map((p, i) => {
+          const dicha = p.start <= charIdx;
+          const esActual = dicha && (i === palabras.length - 1 || palabras[i + 1].start > charIdx);
+          return (
+            <span key={i} style={{
+              color: esActual ? "#FCD34D" : dicha ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.42)",
+              fontWeight: esActual ? 800 : dicha ? 600 : 400,
+              textShadow: esActual ? "0 0 12px rgba(252,211,77,0.55)" : "none",
+              transition: "color .12s, font-weight .12s",
+            }}>{p.w}{" "}</span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Mascota flotante sobre la invitación ────────────────────────────────────
 function FloatingMascot({
-  invitado, evento, token: _token, fase, setFase, hablando, leer, detener,
+  invitado, evento, token: _token, fase, setFase, hablando, leer, detener, textoActual, charIdx,
 }: {
   invitado: { nombre: string };
   evento: { nombre: string; tipo: string; anfitriones?: string; frase_evento?: string | null;
@@ -684,6 +970,8 @@ function FloatingMascot({
   hablando: boolean;
   leer: (t: string, cb?: () => void) => void;
   detener: () => void;
+  textoActual: string;
+  charIdx: number;
 }) {
   const [minimizado, setMinimizado] = useState(false);
 
@@ -732,20 +1020,30 @@ function FloatingMascot({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
 
+  // ── FASE 4: Despedida si no puede asistir ─────────────────────────────────
+  useEffect(() => {
+    if (fase !== "despedida") return;
+    const primerNombre = invitado.nombre.trim().split(" ")[0];
+    leer(
+      `Lamentamos mucho que no puedas acompañarnos, ${primerNombre}. Igual podés dejarle un deseo al graduado desde el muro. ¡Gracias por avisarnos y que estés muy bien!`,
+      () => setFase("oculto")
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fase]);
+
   if (minimizado) {
     return (
       <div
         onClick={() => setMinimizado(false)}
         style={{ position:"fixed", bottom:130, right:14, zIndex:8000, cursor:"pointer",
           width:56, height:56, borderRadius:"50%",
-          background:"linear-gradient(135deg,#4F46E5,#3730A3)",
-          display:"flex", alignItems:"center", justifyContent:"center",
+          overflow:"hidden",
           boxShadow:"0 6px 20px rgba(79,70,229,0.45)",
           animation: hablando ? "mascPulse 0.6s ease-in-out infinite alternate" : "none",
         }}
       >
         <style>{`@keyframes mascPulse{from{transform:scale(1)}to{transform:scale(1.12)}}`}</style>
-        <span style={{ fontSize:26 }}>🎓</span>
+        <GradAvatar size={56} hablando={hablando} />
       </div>
     );
   }
@@ -778,11 +1076,108 @@ function FloatingMascot({
         </button>
       </div>
 
+      {/* Burbuja con el texto leído en sincronía con la voz */}
+      {hablando && <KaraokeBubble texto={textoActual} charIdx={charIdx} />}
+
       {/* Mascota */}
       <div className="masc-wrap">
         <GradMascot hablando={hablando} />
       </div>
     </div>
+  );
+}
+
+// ─── Avatar animado de graduado: parpadea, habla y balancea la borla ──────────
+function GradAvatar({ size = 64, hablando }: { size?: number; hablando: boolean }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      className={hablando ? "av-root talking" : "av-root"}
+      style={{ display: "block" }}
+    >
+      <style>{`
+        .av-eyes{transform-box:fill-box;transform-origin:center;animation:avBlink 4.2s ease-in-out infinite}
+        @keyframes avBlink{0%,91%,100%{transform:scaleY(1)}94%,96%{transform:scaleY(0.08)}}
+        .av-head{transform-box:fill-box;transform-origin:50% 62%}
+        .av-root.talking .av-head{animation:avNod 0.95s ease-in-out infinite}
+        @keyframes avNod{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+        .av-mouth-talk{transform-box:fill-box;transform-origin:center;animation:avTalk .26s ease-in-out infinite alternate}
+        @keyframes avTalk{from{transform:scaleY(0.3) scaleX(1.15)}to{transform:scaleY(1.1) scaleX(0.92)}}
+        .av-tassel{transform-box:fill-box;transform-origin:0% 0%;animation:avSwing 2.8s ease-in-out infinite}
+        .av-root.talking .av-tassel{animation-duration:1.1s}
+        @keyframes avSwing{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(8deg)}}
+        @keyframes avNote{0%{opacity:0;transform:translate(6px,4px) scale(.5)}40%{opacity:1}100%{opacity:0;transform:translate(-5px,-7px) scale(1.2)}}
+        .av-note-1{animation:avNote 1.3s ease-out infinite}
+        .av-note-2{animation:avNote 1.3s .45s ease-out infinite}
+        .av-note-3{animation:avNote 1.3s .9s ease-out infinite}
+      `}</style>
+      <defs>
+        <linearGradient id="avBg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#6366F1" />
+          <stop offset="100%" stopColor="#3730A3" />
+        </linearGradient>
+        <linearGradient id="avCap" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#3b3663" />
+          <stop offset="100%" stopColor="#1e1b4b" />
+        </linearGradient>
+        <linearGradient id="avGold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FDE68A" />
+          <stop offset="100%" stopColor="#D97706" />
+        </linearGradient>
+      </defs>
+      {/* Fondo */}
+      <circle cx="32" cy="32" r="31" fill="url(#avBg)" />
+      <circle cx="32" cy="32" r="31" fill="none" stroke="rgba(252,211,77,0.55)" strokeWidth="1.6" />
+      {/* Toga con cuello dorado */}
+      <path d="M13 58 Q17 42 32 42 Q47 42 51 58 Z" fill="#1e1b4b" />
+      <path d="M27 43 L32 51 L37 43 L32 41.5 Z" fill="#FCD34D" />
+      <g className="av-head">
+        {/* Orejas y cabeza */}
+        <circle cx="19.5" cy="30" r="2.6" fill="#F8C9A0" />
+        <circle cx="44.5" cy="30" r="2.6" fill="#F8C9A0" />
+        <circle cx="32" cy="30" r="13" fill="#F8C9A0" />
+        {/* Mejillas */}
+        <circle cx="24.5" cy="33.5" r="2.6" fill="#F59E9E" opacity="0.5" />
+        <circle cx="39.5" cy="33.5" r="2.6" fill="#F59E9E" opacity="0.5" />
+        {/* Ojos (parpadean) */}
+        <g className="av-eyes">
+          <circle cx="26.5" cy="29" r="2.2" fill="#1e1b4b" />
+          <circle cx="37.5" cy="29" r="2.2" fill="#1e1b4b" />
+          <circle cx="27.2" cy="28.3" r="0.7" fill="white" />
+          <circle cx="38.2" cy="28.3" r="0.7" fill="white" />
+        </g>
+        {/* Cejas */}
+        <path d="M23.5 25 Q26.5 23.2 29 25" stroke="#7c4a21" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+        <path d="M35 25 Q37.5 23.2 40.5 25" stroke="#7c4a21" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+        {/* Boca: se mueve al ritmo del habla, sonríe en reposo */}
+        {hablando ? (
+          <ellipse className="av-mouth-talk" cx="32" cy="37" rx="3.4" ry="2.6" fill="#7c2d12" />
+        ) : (
+          <path d="M28.5 36.5 Q32 39.6 35.5 36.5" stroke="#7c2d12" strokeWidth="1.7" fill="none" strokeLinecap="round" />
+        )}
+        {/* Birrete */}
+        <path d="M32 10 L52 19 L32 28 L12 19 Z" fill="url(#avCap)" />
+        <path d="M32 10 L52 19 L32 22.5 L12 19 Z" fill="rgba(255,255,255,0.13)" />
+        <path d="M24 21.5 L24 26.5 Q32 30.5 40 26.5 L40 21.5" fill="#1e1b4b" />
+        <circle cx="32" cy="19" r="1.8" fill="url(#avGold)" />
+        {/* Borla (se balancea) */}
+        <g className="av-tassel">
+          <path d="M32 19 Q44 21 46 30" stroke="url(#avGold)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+          <circle cx="46" cy="31" r="1.9" fill="url(#avGold)" />
+          <path d="M44.6 32.2 L44 37 M46 32.8 L46 38 M47.4 32.2 L48 37" stroke="url(#avGold)" strokeWidth="1.3" strokeLinecap="round" />
+        </g>
+      </g>
+      {/* Notas de voz cuando habla */}
+      {hablando && (
+        <g className="av-notes" fill="#FCD34D">
+          <circle cx="9" cy="22" r="1.6" className="av-note-1" />
+          <circle cx="7" cy="30" r="1.3" className="av-note-2" />
+          <circle cx="10" cy="38" r="1.1" className="av-note-3" />
+        </g>
+      )}
+    </svg>
   );
 }
 
@@ -793,32 +1188,58 @@ function GradMascot({ hablando }: { hablando: boolean }) {
       <style>{`
         @keyframes voicePulse{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,0.5)}70%{box-shadow:0 0 0 14px rgba(79,70,229,0)}}
         @keyframes voiceIdle{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-        .vbtn{width:64px;height:64px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:30px;transition:transform .15s;-webkit-tap-highlight-color:transparent}
+        .vbtn{width:64px;height:64px;border-radius:50%;border:none;cursor:pointer;padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;transition:transform .15s;-webkit-tap-highlight-color:transparent}
         .vbtn.talking{animation:voicePulse 1s ease-out infinite}
         .vbtn.idle{animation:voiceIdle 2.5s ease-in-out infinite}
       `}</style>
       <div
         className={`vbtn ${hablando ? "talking" : "idle"}`}
-        style={{ background: hablando
-          ? "linear-gradient(135deg,#4F46E5,#3730A3)"
-          : "linear-gradient(135deg,#6366F1,#4F46E5)",
-          boxShadow:"0 6px 20px rgba(79,70,229,0.40)"
-        }}
+        style={{ boxShadow: "0 6px 20px rgba(79,70,229,0.40)" }}
       >
-        🎓
+        <GradAvatar size={64} hablando={hablando} />
       </div>
     </div>
   );
 }
 
-// ─── TTS — Lee la invitación en voz alta ──────────────────────────────────────
+// ─── TTS — Lee la invitación en voz alta (con sincronización palabra a palabra) ─
 function useTTS() {
   const [hablando, setHablando] = useState(false);
   const [listo, setListo] = useState(false);
+  // Texto que se está leyendo + índice del carácter actual (para karaoke)
+  const [textoActual, setTextoActual] = useState("");
+  const [charIdx, setCharIdx] = useState(0);
+  const fallbackTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const boundaryFired = useRef(false);
+
+  function limpiarFallback() {
+    if (fallbackTimer.current) { clearInterval(fallbackTimer.current); fallbackTimer.current = null; }
+  }
+
+  // Elegir la voz en español más natural disponible (neural/online > Google > local)
+  function mejorVozEs(): SpeechSynthesisVoice | null {
+    const voces = window.speechSynthesis.getVoices().filter(v => v.lang?.toLowerCase().startsWith("es"));
+    if (!voces.length) return null;
+    const score = (v: SpeechSynthesisVoice) => {
+      const n = v.name.toLowerCase();
+      let p = 0;
+      if (n.includes("natural")) p += 6;      // Microsoft Edge voces neurales
+      if (n.includes("neural")) p += 6;
+      if (n.includes("online")) p += 3;
+      if (n.includes("google")) p += 4;       // Chrome: "Google español"
+      if (n.includes("premium") || n.includes("enhanced") || n.includes("mejorada")) p += 3;
+      if (n.includes("paulina") || n.includes("mónica") || n.includes("monica") || n.includes("sabina") || n.includes("helena") || n.includes("dalia")) p += 2;
+      if (v.lang.toLowerCase() === "es-es" || v.lang.toLowerCase() === "es-us" || v.lang.toLowerCase() === "es-mx") p += 1;
+      if (!v.localService) p += 2;            // voces en la nube suenan mejor
+      return p;
+    };
+    return voces.sort((a, b) => score(b) - score(a))[0];
+  }
 
   function leer(texto: string, onFin?: () => void) {
     if (!window.speechSynthesis) { onFin?.(); return; }
     window.speechSynthesis.cancel();
+    limpiarFallback();
     const u = new SpeechSynthesisUtterance(texto);
     u.lang = "es-ES";
     u.rate = 0.88;
@@ -827,19 +1248,44 @@ function useTTS() {
     // Bajar música mientras habla
     const audio = globalAudioRef.current;
     if (audio) audio.volume = 0.12;
-    u.onstart = () => setHablando(true);
-    u.onend = () => {
+    boundaryFired.current = false;
+    u.onstart = () => {
+      setHablando(true);
+      setTextoActual(texto);
+      setCharIdx(0);
+      // Fallback iOS/Safari: si no llegan eventos boundary, estimar avance por tiempo
+      const t0 = Date.now();
+      const charsPorSeg = 13.5 * u.rate; // ≈ velocidad de lectura en español
+      fallbackTimer.current = setInterval(() => {
+        if (boundaryFired.current) { limpiarFallback(); return; }
+        const est = Math.min(texto.length, Math.floor(((Date.now() - t0) / 1000) * charsPorSeg));
+        setCharIdx(est);
+      }, 220);
+    };
+    // Sincronización real: el navegador avisa en cada palabra
+    u.onboundary = (e: SpeechSynthesisEvent) => {
+      if (typeof e.charIndex === "number") {
+        boundaryFired.current = true;
+        limpiarFallback();
+        setCharIdx(e.charIndex);
+      }
+    };
+    const fin = () => {
       setHablando(false);
+      setTextoActual("");
+      setCharIdx(0);
+      limpiarFallback();
       if (audio) audio.volume = 1;
       onFin?.();
     };
-    u.onerror = () => {
-      setHablando(false);
-      if (audio) audio.volume = 1;
-      onFin?.();
+    u.onend = fin;
+    u.onerror = fin;
+    // Esperar que las voces estén disponibles y elegir la más natural
+    const go = () => {
+      const voz = mejorVozEs();
+      if (voz) { u.voice = voz; u.lang = voz.lang; }
+      window.speechSynthesis.speak(u);
     };
-    // Esperar que las voces estén disponibles
-    const go = () => window.speechSynthesis.speak(u);
     if (window.speechSynthesis.getVoices().length) go();
     else { window.speechSynthesis.onvoiceschanged = go; }
     setListo(true);
@@ -848,11 +1294,14 @@ function useTTS() {
   function detener() {
     window.speechSynthesis?.cancel();
     setHablando(false);
+    setTextoActual("");
+    setCharIdx(0);
+    limpiarFallback();
     const audio = globalAudioRef.current;
     if (audio) audio.volume = 1;
   }
 
-  return { hablando, listo, leer, detener };
+  return { hablando, listo, leer, detener, textoActual, charIdx };
 }
 
 // ─── MusicPlayer con autoplay ─────────────────────────────────────────────────
@@ -1208,9 +1657,22 @@ async function generarTarjetaCanvas(
   evento: Evento,
   origin: string,
 ): Promise<Blob | null> {
+  const esGradTipo = evento.tipo === "graduacion";
+  // Foto del graduado (solo graduación): cargarla antes de dibujar
+  let fotoGrad: HTMLImageElement | null = null;
+  if (esGradTipo && evento.imagen_url) {
+    fotoGrad = await new Promise<HTMLImageElement | null>((res) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      const to = setTimeout(() => res(null), 6000);
+      img.onload = () => { clearTimeout(to); res(img); };
+      img.onerror = () => { clearTimeout(to); res(null); };
+      img.src = evento.imagen_url as string;
+    });
+  }
   return new Promise((resolve) => {
     const W = 800,
-      H = 1050;
+      H = esGradTipo ? (fotoGrad ? 1460 : 1320) : 1050;
     const canvas = document.createElement("canvas");
     canvas.width = W;
     canvas.height = H;
@@ -1219,13 +1681,48 @@ async function generarTarjetaCanvas(
       resolve(null);
       return;
     }
-    // Fondo exterior: beige muy suave para enmarcar la tarjeta
-    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-    bgGrad.addColorStop(0, "#F8FAFC");
-    bgGrad.addColorStop(0.5, "#EEF2FF");
-    bgGrad.addColorStop(1, "#F8FAFC");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, W, H);
+    const esGrad = evento.tipo === "graduacion";
+    // Helper: estrella dorada
+    const drawStar = (x: number, y: number, rad: number, color: string, alpha = 1) => {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(x, y);
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const a = (Math.PI / 5) * i - Math.PI / 2;
+        const rr = i % 2 === 0 ? rad : rad * 0.45;
+        if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.restore();
+    };
+    // Fondo exterior
+    if (esGrad) {
+      // Graduación: noche estrellada azul profundo con marco dorado
+      const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+      bgGrad.addColorStop(0, "#0f172a");
+      bgGrad.addColorStop(0.5, "#1e1b4b");
+      bgGrad.addColorStop(1, "#0f172a");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+      // Estrellas dispersas en el marco
+      const estrellas = [
+        [24, 40, 5], [W - 28, 60, 4], [30, H / 2, 4], [W - 24, H / 2 + 40, 5],
+        [26, H - 60, 4], [W - 30, H - 44, 5], [W / 2 - 300, 30, 3], [W / 2 + 310, H - 26, 3],
+        [W / 2, 24, 4], [W / 2 - 100, H - 22, 3], [W / 2 + 140, 26, 3],
+      ] as const;
+      estrellas.forEach(([x, y, s], i) => drawStar(x, y, s, "#FCD34D", 0.55 + (i % 3) * 0.15));
+    } else {
+      const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+      bgGrad.addColorStop(0, "#F8FAFC");
+      bgGrad.addColorStop(0.5, "#EEF2FF");
+      bgGrad.addColorStop(1, "#F8FAFC");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+    }
     const cX = 50,
       cY = 80,
       cW = W - 100,
@@ -1233,23 +1730,94 @@ async function generarTarjetaCanvas(
       r = 36;
     // Sombra suave de la tarjeta
     ctx.save();
-    ctx.shadowColor = "rgba(15,23,42,0.18)";
-    ctx.shadowBlur = 40;
+    ctx.shadowColor = esGrad ? "rgba(252,211,77,0.30)" : "rgba(15,23,42,0.18)";
+    ctx.shadowBlur = esGrad ? 50 : 40;
     ctx.shadowOffsetY = 14;
     rrFill(ctx, cX, cY, cW, cH, r, "#FFFFFF");
     ctx.restore();
     rrFill(ctx, cX, cY, cW, cH, r, "#FFFFFF");
-    // Header: gradiente índigo sólido (profesional, contrastado)
-    const hH = 260;
+    if (esGrad) {
+      // Doble borde dorado alrededor de la tarjeta
+      ctx.strokeStyle = "#D97706";
+      ctx.lineWidth = 3;
+      rrStroke(ctx, cX - 6, cY - 6, cW + 12, cH + 12, r + 6);
+      ctx.strokeStyle = "rgba(252,211,77,0.85)";
+      ctx.lineWidth = 1.5;
+      rrStroke(ctx, cX - 12, cY - 12, cW + 24, cH + 24, r + 10);
+    }
+    // Header
+    const hH = esGrad ? (fotoGrad ? 400 : 260) : 260;
     ctx.save();
     ctx.beginPath();
     rrPath(ctx, cX, cY, cW, hH, { tl: r, tr: r, bl: 0, br: 0 });
     ctx.clip();
-    const hGrad = ctx.createLinearGradient(cX, cY, cX + cW, cY + hH);
-    hGrad.addColorStop(0, "#3730A3");
-    hGrad.addColorStop(1, "#4F46E5");
-    ctx.fillStyle = hGrad;
-    ctx.fillRect(cX, cY, cW, hH);
+    if (esGrad) {
+      // Graduación: azul noche → índigo con destellos dorados
+      const hGrad = ctx.createLinearGradient(cX, cY, cX + cW, cY + hH);
+      hGrad.addColorStop(0, "#1e1b4b");
+      hGrad.addColorStop(0.55, "#312e81");
+      hGrad.addColorStop(1, "#4338ca");
+      ctx.fillStyle = hGrad;
+      ctx.fillRect(cX, cY, cW, hH);
+      // Resplandor dorado superior
+      const glow = ctx.createRadialGradient(cX + cW / 2, cY, 10, cX + cW / 2, cY, 240);
+      glow.addColorStop(0, "rgba(252,211,77,0.22)");
+      glow.addColorStop(1, "rgba(252,211,77,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(cX, cY, cW, hH);
+      // Estrellas dentro del header
+      drawStar(cX + 60, cY + 46, 6, "#FCD34D", 0.9);
+      drawStar(cX + cW - 60, cY + 46, 6, "#FCD34D", 0.9);
+      drawStar(cX + 110, cY + 120, 4, "#FCD34D", 0.6);
+      drawStar(cX + cW - 110, cY + 120, 4, "#FCD34D", 0.6);
+      drawStar(cX + 42, cY + hH - 60, 4, "#FCD34D", 0.5);
+      drawStar(cX + cW - 42, cY + hH - 60, 4, "#FCD34D", 0.5);
+      if (fotoGrad) {
+        // Foto del graduado en círculo con doble anillo dorado
+        const pX = cX + cW / 2, pY = cY + 138, pR = 66;
+        const ring = ctx.createLinearGradient(pX - pR, pY - pR, pX + pR, pY + pR);
+        ring.addColorStop(0, "#FDE68A");
+        ring.addColorStop(0.5, "#F59E0B");
+        ring.addColorStop(1, "#B45309");
+        ctx.beginPath(); ctx.arc(pX, pY, pR + 9, 0, Math.PI * 2);
+        ctx.fillStyle = ring; ctx.fill();
+        ctx.beginPath(); ctx.arc(pX, pY, pR + 3, 0, Math.PI * 2);
+        ctx.fillStyle = "#1e1b4b"; ctx.fill();
+        ctx.save();
+        ctx.beginPath(); ctx.arc(pX, pY, pR, 0, Math.PI * 2); ctx.clip();
+        const s = Math.max((pR * 2) / fotoGrad.width, (pR * 2) / fotoGrad.height);
+        const dw = fotoGrad.width * s, dh = fotoGrad.height * s;
+        ctx.drawImage(fotoGrad, pX - dw / 2, pY - dh / 2, dw, dh);
+        ctx.restore();
+        // Birrete coronando la foto
+        ctx.font = "36px serif";
+        ctx.textAlign = "center";
+        ctx.fillText("🎓", pX + pR - 8, pY - pR + 14);
+        // Birretes a los lados
+        ctx.font = "34px serif";
+        ctx.fillText("🎓", cX + 74, cY + 160);
+        ctx.fillText("🎓", cX + cW - 74, cY + 160);
+      } else {
+        // Birretes flanqueando el nombre
+        ctx.font = "42px serif";
+        ctx.textAlign = "center";
+        ctx.fillText("🎓", cX + 90, cY + 190);
+        ctx.fillText("🎓", cX + cW - 90, cY + 190);
+      }
+      // Línea dorada al pie del header
+      const goldLine = ctx.createLinearGradient(cX, 0, cX + cW, 0);
+      goldLine.addColorStop(0, "rgba(252,211,77,0)");
+      goldLine.addColorStop(0.5, "#FCD34D");
+      goldLine.addColorStop(1, "rgba(252,211,77,0)");
+      ctx.fillStyle = goldLine;
+      ctx.fillRect(cX, cY + hH - 5, cW, 5);
+    } else {
+      const hGrad = ctx.createLinearGradient(cX, cY, cX + cW, cY + hH);
+      hGrad.addColorStop(0, "#3730A3");
+      hGrad.addColorStop(1, "#4F46E5");
+      ctx.fillStyle = hGrad;
+      ctx.fillRect(cX, cY, cW, hH);
+    }
     const nombres = (() => {
       if (invitado.nombres_personas) {
         try {
@@ -1263,20 +1831,41 @@ async function generarTarjetaCanvas(
       nombres.length > 1
         ? `${nombres.slice(0, 2).join(" & ")}`
         : `${invitado.nombre}`;
-    // Textos del header (blanco sobre índigo)
-    ctx.font = "italic 20px 'Georgia',serif";
-    ctx.fillStyle = "rgba(255,255,255,0.80)";
-    ctx.textAlign = "center";
-    ctx.fillText(TIPO_LABEL[evento.tipo] || "Invitación", cX + cW / 2, cY + 50);
-    ctx.font = "bold 52px 'Georgia',serif";
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillText(saludo, cX + cW / 2, cY + 118, cW - 80);
-    ctx.font = "300 22px 'Arial'";
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.fillText(`Invitación de ${evento.anfitriones}`, cX + cW / 2, cY + 158);
-    ctx.font = "bold 28px 'Georgia',serif";
-    ctx.fillStyle = "#E0E7FF";
-    ctx.fillText(evento.nombre, cX + cW / 2, cY + 205, cW - 80);
+    // Textos del header
+    if (esGrad) {
+      // Con foto, los textos bajan para dejar espacio al retrato
+      const tOff = fotoGrad ? 172 : 0;
+      ctx.font = "700 17px 'Arial'";
+      ctx.fillStyle = "#FCD34D";
+      ctx.textAlign = "center";
+      ctx.fillText("G R A D U A C I Ó N", cX + cW / 2, cY + (fotoGrad ? 40 : 52));
+      ctx.font = "bold 54px 'Georgia',serif";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.shadowColor = "rgba(252,211,77,0.45)";
+      ctx.shadowBlur = 18;
+      ctx.fillText(saludo, cX + cW / 2, cY + 120 + tOff, cW - 80);
+      ctx.shadowBlur = 0;
+      ctx.font = "300 22px 'Arial'";
+      ctx.fillStyle = "rgba(255,255,255,0.78)";
+      ctx.fillText(`Invitación de ${evento.anfitriones}`, cX + cW / 2, cY + 160 + tOff);
+      ctx.font = "italic bold 28px 'Georgia',serif";
+      ctx.fillStyle = "#FDE68A";
+      ctx.fillText(evento.nombre, cX + cW / 2, cY + 207 + tOff, cW - 200);
+    } else {
+      ctx.font = "italic 20px 'Georgia',serif";
+      ctx.fillStyle = "rgba(255,255,255,0.80)";
+      ctx.textAlign = "center";
+      ctx.fillText(TIPO_LABEL[evento.tipo] || "Invitación", cX + cW / 2, cY + 50);
+      ctx.font = "bold 52px 'Georgia',serif";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillText(saludo, cX + cW / 2, cY + 118, cW - 80);
+      ctx.font = "300 22px 'Arial'";
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillText(`Invitación de ${evento.anfitriones}`, cX + cW / 2, cY + 158);
+      ctx.font = "bold 28px 'Georgia',serif";
+      ctx.fillStyle = "#E0E7FF";
+      ctx.fillText(evento.nombre, cX + cW / 2, cY + 205, cW - 80);
+    }
     ctx.restore();
     // Cuerpo (texto oscuro sobre blanco)
     let dY = cY + hH + 32;
@@ -1291,7 +1880,7 @@ async function generarTarjetaCanvas(
     }
     const drawRow = (label: string, val: string) => {
       ctx.font = "700 11px 'Arial'";
-      ctx.fillStyle = "#4F46E5";
+      ctx.fillStyle = esGrad ? "#B45309" : "#4F46E5";
       ctx.textAlign = "left";
       ctx.fillText(label.toUpperCase(), dX, dY - 4);
       ctx.font = "500 22px 'Arial'";
@@ -1312,9 +1901,10 @@ async function generarTarjetaCanvas(
     ctx.beginPath();
     ctx.moveTo(cX + 44, dY);
     ctx.lineTo(cX + cW - 44, dY);
-    ctx.strokeStyle = "rgba(79,70,229,0.22)";
+    ctx.strokeStyle = esGrad ? "rgba(217,119,6,0.40)" : "rgba(79,70,229,0.22)";
     ctx.lineWidth = 1;
     ctx.stroke();
+    if (esGrad) drawStar(cX + cW / 2, dY, 6, "#D97706", 0.9);
     dY += 22;
     if (evento.mensaje_invitacion) {
       ctx.font = "italic 18px 'Georgia',serif";
@@ -1329,32 +1919,41 @@ async function generarTarjetaCanvas(
       bR = 14,
       bGap = 10;
     const gBtn = ctx.createLinearGradient(dX, dY, dX + bW, dY + bH);
-    gBtn.addColorStop(0, "#3730A3");
-    gBtn.addColorStop(1, "#4F46E5");
+    if (esGrad) {
+      gBtn.addColorStop(0, "#B45309");
+      gBtn.addColorStop(0.5, "#F59E0B");
+      gBtn.addColorStop(1, "#B45309");
+    } else {
+      gBtn.addColorStop(0, "#3730A3");
+      gBtn.addColorStop(1, "#4F46E5");
+    }
     rrFill(ctx, dX, dY, bW, bH, bR, gBtn);
     ctx.font = "bold 24px 'Arial'";
     ctx.fillStyle = "#FFFFFF";
     ctx.textAlign = "center";
-    ctx.fillText("✅  Confirmar asistencia", dX + bW / 2, dY + 38);
+    ctx.fillText(esGrad ? "🎓  Confirmar asistencia" : "✅  Confirmar asistencia", dX + bW / 2, dY + 38);
     dY += bH + bGap;
-    // CTA secundarios (outline índigo sobre fondo pálido)
-    rrFill(ctx, dX, dY, bW, bH, bR, "#EEF2FF");
-    ctx.strokeStyle = "rgba(79,70,229,0.45)";
+    // CTA secundarios (outline sobre fondo pálido)
+    const secBg = esGrad ? "#FFFBEB" : "#EEF2FF";
+    const secBorder = esGrad ? "rgba(217,119,6,0.45)" : "rgba(79,70,229,0.45)";
+    const secTxt = esGrad ? "#92400E" : "#3730A3";
+    rrFill(ctx, dX, dY, bW, bH, bR, secBg);
+    ctx.strokeStyle = secBorder;
     ctx.lineWidth = 1.5;
     rrStroke(ctx, dX, dY, bW, bH, bR);
     ctx.font = "bold 22px 'Arial'";
-    ctx.fillStyle = "#3730A3";
+    ctx.fillStyle = secTxt;
     ctx.textAlign = "center";
     ctx.fillText("📸  Subir foto al muro", dX + bW / 2, dY + 38);
     dY += bH + bGap;
-    rrFill(ctx, dX, dY, bW, bH, bR, "#EEF2FF");
-    ctx.strokeStyle = "rgba(79,70,229,0.45)";
+    rrFill(ctx, dX, dY, bW, bH, bR, secBg);
+    ctx.strokeStyle = secBorder;
     ctx.lineWidth = 1.5;
     rrStroke(ctx, dX, dY, bW, bH, bR);
     ctx.font = "bold 22px 'Arial'";
-    ctx.fillStyle = "#3730A3";
+    ctx.fillStyle = secTxt;
     ctx.textAlign = "center";
-    ctx.fillText("💌  Dejar mi deseo", dX + bW / 2, dY + 38);
+    ctx.fillText(esGrad ? "💌  Dejar un deseo al graduado" : "💌  Dejar mi deseo", dX + bW / 2, dY + 38);
     dY += bH + 14;
     // Link + firma
     ctx.font = "400 15px 'Arial'";
@@ -1366,8 +1965,84 @@ async function generarTarjetaCanvas(
       dY,
       colW,
     );
+    // ── Graduación: QR al muro + sello "Promoción" ──
+    if (esGrad) {
+      dY += 22;
+      try {
+        const qr = qrcode(0, "M");
+        qr.addData(`${origin}/muro/${evento.id}`);
+        qr.make();
+        const n = qr.getModuleCount();
+        const qSize = 128, cell = qSize / n;
+        const qX = cX + cW / 2 - qSize - 55, qY = dY + 6;
+        // Marco blanco con borde dorado
+        rrFill(ctx, qX - 12, qY - 12, qSize + 24, qSize + 24, 14, "#FFFFFF");
+        ctx.strokeStyle = "#D97706";
+        ctx.lineWidth = 2.5;
+        rrStroke(ctx, qX - 12, qY - 12, qSize + 24, qSize + 24, 14);
+        ctx.fillStyle = "#1e1b4b";
+        for (let rw = 0; rw < n; rw++)
+          for (let cl = 0; cl < n; cl++)
+            if (qr.isDark(rw, cl))
+              ctx.fillRect(qX + cl * cell, qY + rw * cell, Math.ceil(cell), Math.ceil(cell));
+        ctx.font = "600 14px 'Arial'";
+        ctx.fillStyle = "#92400E";
+        ctx.textAlign = "center";
+        ctx.fillText("Escaneá y mirá el muro", qX + qSize / 2, qY + qSize + 32);
+        ctx.fillText("de fotos del evento", qX + qSize / 2, qY + qSize + 50);
+      } catch { /* QR opcional */ }
+      // Sello medalla "Promoción YYYY"
+      const anio = evento.fecha
+        ? new Date(evento.fecha + "T12:00:00").getFullYear()
+        : new Date().getFullYear();
+      const sX = cX + cW / 2 + 130, sY = dY + 76;
+      // Cintas rojas
+      ctx.save();
+      ctx.fillStyle = "#DC2626";
+      ctx.beginPath();
+      ctx.moveTo(sX - 26, sY + 30); ctx.lineTo(sX - 40, sY + 88); ctx.lineTo(sX - 22, sY + 78); ctx.lineTo(sX - 10, sY + 92); ctx.lineTo(sX - 4, sY + 40);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(sX + 26, sY + 30); ctx.lineTo(sX + 40, sY + 88); ctx.lineTo(sX + 22, sY + 78); ctx.lineTo(sX + 10, sY + 92); ctx.lineTo(sX + 4, sY + 40);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+      // Borde dentado dorado
+      ctx.save();
+      ctx.translate(sX, sY);
+      ctx.fillStyle = "#B45309";
+      for (let i = 0; i < 24; i++) {
+        const a = (Math.PI * 2 * i) / 24;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 54, Math.sin(a) * 54, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      // Medalla con gradiente dorado
+      const sg = ctx.createRadialGradient(sX - 14, sY - 14, 6, sX, sY, 58);
+      sg.addColorStop(0, "#FDE68A");
+      sg.addColorStop(0.55, "#F59E0B");
+      sg.addColorStop(1, "#B45309");
+      ctx.beginPath(); ctx.arc(sX, sY, 54, 0, Math.PI * 2);
+      ctx.fillStyle = sg; ctx.fill();
+      ctx.strokeStyle = "#92400E"; ctx.lineWidth = 2; ctx.stroke();
+      // Disco interior
+      ctx.beginPath(); ctx.arc(sX, sY, 42, 0, Math.PI * 2);
+      ctx.fillStyle = "#FFFBEB"; ctx.fill();
+      ctx.strokeStyle = "rgba(146,64,14,0.5)"; ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+      // Contenido del sello
+      ctx.font = "22px serif";
+      ctx.textAlign = "center";
+      ctx.fillText("🎓", sX, sY - 12);
+      ctx.font = "700 11px 'Arial'";
+      ctx.fillStyle = "#92400E";
+      ctx.fillText("PROMOCIÓN", sX, sY + 8);
+      ctx.font = "bold 24px 'Georgia',serif";
+      ctx.fillStyle = "#B45309";
+      ctx.fillText(String(anio), sX, sY + 32);
+    }
     ctx.font = "bold 17px 'Arial'";
-    ctx.fillStyle = "#4F46E5";
+    ctx.fillStyle = esGrad ? "#B45309" : "#4F46E5";
     ctx.textAlign = "center";
     ctx.fillText("Evorix · Invitaciones digitales", cX + cW / 2, cY + cH - 28);
     canvas.toBlob((blob) => resolve(blob), "image/png", 0.95);
@@ -2051,12 +2726,13 @@ export default function ConfirmarPage() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [showEvorixPromo, setShowEvorixPromo] = useState(false);
   // showMascota eliminado — reemplazado por FloatingMascot
-  const [mascotaFase, setMascotaFase] = useState<"leyendo"|"esperando_confirm"|"post_confirm"|"esperando_submit"|"instrucciones"|"oculto">("oculto");
-  // Cuando pasa a form (cuántas personas) → birrete habla
+  const [mascotaFase, setMascotaFase] = useState<"leyendo"|"esperando_confirm"|"post_confirm"|"esperando_submit"|"instrucciones"|"despedida"|"oculto">("oculto");
+  // Cuando cambia de pantalla → el birrete lee la nueva pantalla
   const prevStepRef = useRef(step);
   useEffect(() => {
     const prev = prevStepRef.current;
     prevStepRef.current = step;
+    if (prev === step) return;
     if (prev === "vista" && step === "form") {
       if (mascotaFase === "esperando_confirm" || mascotaFase === "leyendo" || mascotaFase === "oculto") {
         setMascotaFase("post_confirm");
@@ -2064,10 +2740,21 @@ export default function ConfirmarPage() {
     }
     if (prev !== "confirmado" && step === "confirmado") {
       setMascotaFase("instrucciones");
+      // Lluvia de birretes al confirmar (solo graduación)
+      if (evento?.tipo === "graduacion") setGradCapsKey(k => k + 1);
+    }
+    if (prev !== "rechazado" && step === "rechazado") {
+      setMascotaFase("despedida");
     }
   }, [step, mascotaFase]);
-  // textoBurbuja eliminado — mascota ya no muestra texto
-  const { hablando, leer, detener } = useTTS();
+  const [gradCapsKey, setGradCapsKey] = useState(0);
+  // Auto-limpiar la lluvia de birretes al terminar la animación
+  useEffect(() => {
+    if (!gradCapsKey) return;
+    const t = setTimeout(() => setGradCapsKey(0), 7000);
+    return () => clearTimeout(t);
+  }, [gradCapsKey]);
+  const { hablando, leer, detener, textoActual, charIdx } = useTTS();
   const [itinerario, setItinerario] = useState<ItemItinerario[]>([]);
   // Mesa self-selection
   type MesaConOcupacion = { id: string; nombre: string; capacidad: number; ocupados: number };
@@ -2352,9 +3039,16 @@ export default function ConfirmarPage() {
         ctx!.save();
         ctx!.translate(p.x, p.y);
         ctx!.rotate((p.rotation * Math.PI) / 180);
-        ctx!.fillStyle = p.color;
         ctx!.globalAlpha = Math.max(0, 1 - frame / 80);
-        ctx!.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        if (evento?.tipo === "graduacion") {
+          // Birretes en lugar de confeti genérico
+          ctx!.font = `${Math.max(16, p.size * 1.7)}px serif`;
+          ctx!.textAlign = "center";
+          ctx!.fillText("🎓", 0, p.size / 2);
+        } else {
+          ctx!.fillStyle = p.color;
+          ctx!.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        }
         ctx!.restore();
       });
       frame++;
@@ -2954,6 +3648,63 @@ export default function ConfirmarPage() {
           className="welcome-overlay"
           id="welcome-overlay"
         >
+          {/* ── Apertura tipo diploma (solo graduación): el pergamino con nombre se desenrolla ── */}
+          {evento.tipo === "graduacion" && (
+            <div style={{ position: "absolute", inset: 0, zIndex: 60, pointerEvents: "none", overflow: "hidden" }}>
+              <style>{`
+                @keyframes gradUnrollTop{0%{transform:translateY(0)}100%{transform:translateY(-102%)}}
+                @keyframes gradUnrollBottom{0%{transform:translateY(0)}100%{transform:translateY(102%)}}
+                @keyframes gradSealPop{0%{transform:scale(1) rotate(0deg);opacity:1}55%{transform:scale(1.15) rotate(-6deg);opacity:1}100%{transform:scale(0.2) rotate(30deg);opacity:0}}
+                @keyframes gradDiplomaTxt{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+                .grad-scroll-half{position:absolute;left:0;right:0;height:51%;
+                  background:
+                    repeating-linear-gradient(90deg, rgba(180,83,9,0.05) 0 2px, transparent 2px 26px),
+                    linear-gradient(180deg,#fdf6e3 0%,#fbeecb 55%,#f6e0a8 100%);
+                }
+                .grad-scroll-top{top:0;animation:gradUnrollTop 1.25s 2.5s cubic-bezier(.65,0,.35,1) both;
+                  border-bottom:none;box-shadow:0 6px 18px rgba(120,53,15,0.28)}
+                .grad-scroll-top::after{content:"";position:absolute;left:0;right:0;bottom:-11px;height:22px;border-radius:11px;
+                  background:linear-gradient(180deg,#b45309,#92400e 45%,#78350f);box-shadow:0 4px 10px rgba(69,26,3,0.5)}
+                .grad-scroll-bottom{bottom:0;animation:gradUnrollBottom 1.25s 2.5s cubic-bezier(.65,0,.35,1) both;
+                  box-shadow:0 -6px 18px rgba(120,53,15,0.28)}
+                .grad-scroll-bottom::after{content:"";position:absolute;left:0;right:0;top:-11px;height:22px;border-radius:11px;
+                  background:linear-gradient(180deg,#b45309,#92400e 45%,#78350f);box-shadow:0 -4px 10px rgba(69,26,3,0.5)}
+                .grad-seal-open{position:absolute;top:50%;left:50%;margin:-44px 0 0 -44px;width:88px;height:88px;border-radius:50%;z-index:3;
+                  display:flex;align-items:center;justify-content:center;flex-direction:column;
+                  background:radial-gradient(circle at 32% 30%,#fde68a,#f59e0b 55%,#b45309);
+                  border:3px solid #92400e;box-shadow:0 10px 30px rgba(69,26,3,0.45), inset 0 2px 6px rgba(255,255,255,0.45);
+                  animation:gradSealPop 1.1s .15s cubic-bezier(.5,0,.6,1) both}
+                .grad-diploma-txt{position:absolute;left:0;right:0;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;
+                  animation:gradDiplomaTxt .6s 1.0s ease both}
+                .grad-diploma-tit{bottom:14px;font-size:15px;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:#92400e}
+                .grad-diploma-tit::before,.grad-diploma-tit::after{content:"✦";margin:0 10px;color:#b45309;font-size:12px}
+                .grad-diploma-nom{top:16px;color:#78350f}
+                .grad-diploma-nom .gd-oto{display:block;font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;opacity:.75;margin-bottom:4px}
+                .grad-diploma-nom .gd-nombre{display:block;font-size:30px;font-weight:700;font-style:italic;line-height:1.15;
+                  background:linear-gradient(90deg,#92400e,#d97706,#92400e);-webkit-background-clip:text;background-clip:text;color:transparent;
+                  padding:0 24px}
+                .grad-diploma-nom .gd-linea{display:block;width:130px;height:2px;margin:10px auto 0;
+                  background:linear-gradient(90deg,transparent,#b45309,transparent)}
+              `}</style>
+              <div className="grad-scroll-half grad-scroll-top">
+                {/* Título del diploma — mitad superior del pergamino */}
+                <div className="grad-diploma-txt grad-diploma-tit">Diploma de Invitación</div>
+              </div>
+              <div className="grad-scroll-half grad-scroll-bottom">
+                {/* Nombre del invitado grabado — mitad inferior */}
+                <div className="grad-diploma-txt grad-diploma-nom">
+                  <span className="gd-oto">Otorgado a</span>
+                  <span className="gd-nombre">{invitado.nombre.split(" ").slice(0, 3).join(" ")}</span>
+                  <span className="gd-linea" />
+                </div>
+              </div>
+              <div className="grad-seal-open">
+                <span style={{ fontSize: 30, lineHeight: 1 }}>🎓</span>
+                <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.2, color: "#78350f", marginTop: 2 }}>INVITACIÓN</span>
+              </div>
+            </div>
+          )}
+
           {/* Fondo de puntos */}
           <div className="welcome-dots" />
           <div className="welcome-glow" />
@@ -3050,7 +3801,38 @@ export default function ConfirmarPage() {
           hablando={hablando}
           leer={leer}
           detener={detener}
+          textoActual={textoActual}
+          charIdx={charIdx}
         />
+      )}
+
+      {/* ── Lluvia de birretes al confirmar asistencia (graduación) ── */}
+      {gradCapsKey > 0 && (
+        <div key={gradCapsKey} style={{ position: "fixed", inset: 0, zIndex: 9500, pointerEvents: "none", overflow: "hidden" }}>
+          <style>{`
+            @keyframes gradCapFall{
+              0%{transform:translateY(-60px) rotate(-20deg);opacity:0}
+              8%{opacity:1}
+              100%{transform:translateY(110vh) rotate(340deg);opacity:0.9}
+            }
+            @keyframes gradCapSway{0%,100%{margin-left:0}50%{margin-left:26px}}
+          `}</style>
+          {Array.from({ length: 26 }, (_, i) => {
+            const left = ((i * 37 + i * i * 1.3) % 96) + 2;
+            const dur = 2.6 + (i % 5) * 0.45;
+            const delay = (i % 8) * 0.22;
+            const size = 22 + (i % 4) * 8;
+            const esEstrella = i % 5 === 4;
+            return (
+              <span key={i} style={{
+                position: "absolute", top: -50, left: `${left}%`,
+                fontSize: size, lineHeight: 1,
+                animation: `gradCapFall ${dur}s ${delay}s cubic-bezier(.3,.4,.6,1) forwards, gradCapSway ${1.4 + (i % 3) * 0.4}s ease-in-out infinite`,
+                filter: "drop-shadow(0 3px 6px rgba(30,27,75,0.35))",
+              }}>{esEstrella ? "⭐" : "🎓"}</span>
+            );
+          })}
+        </div>
       )}
 
       {/* Modal tarjeta */}
@@ -3238,6 +4020,11 @@ export default function ConfirmarPage() {
                 {/* 1️⃣ Música — autoplay, siempre arriba */}
                 {evento.musica_url && (
                   <MusicPlayer url={evento.musica_url} nombre={evento.musica_nombre} />
+                )}
+
+                {/* Cuenta regresiva — solo graduación */}
+                {evento.tipo === "graduacion" && evento.fecha && (
+                  <CountdownGrad fecha={evento.fecha} hora={evento.hora} />
                 )}
 
                 <OrnamentoDivider tipo={evento.tipo} />
