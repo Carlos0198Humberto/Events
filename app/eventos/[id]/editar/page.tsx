@@ -16,6 +16,7 @@ type Evento = {
   foto_lugar_2_url?: string | null; foto_lugar_3_url?: string | null;
   color_primario?: string | null; color_secundario?: string | null;
   plantilla?: string | null;
+  fotos_carrusel?: string[] | null;
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -196,6 +197,10 @@ export default function EditarEvento() {
   // Fotos
   const [imagenUrl, setImagenUrl] = useState<string | null>(null);
   const [mediaLugar, setMediaLugar] = useState<string | null>(null);
+  // Carrusel de fotos (graduación): historia del graduado
+  const [fotosCarrusel, setFotosCarrusel] = useState<string[]>([]);
+  const [subiendoCarrusel, setSubiendoCarrusel] = useState(false);
+  const carruselInputRef = useRef<HTMLInputElement>(null);
   // Música
   const [musicaNombre, setMusicaNombre] = useState("");
   const [musicaUrl, setMusicaUrl] = useState<string | null>(null);
@@ -210,7 +215,7 @@ export default function EditarEvento() {
     setLoading(true);
     const { data, error: errLoad } = await supabase
       .from("eventos")
-      .select("id,nombre,tipo,anfitriones,frase_evento,mensaje_invitacion,fecha,hora,lugar,maps_url,como_llegar,cupo_personas,fecha_limite_confirmacion,musica_nombre,musica_url,imagen_url,foto_lugar_url,color_primario,color_secundario,plantilla")
+      .select("*")
       .eq("id", eventoId)
       .single<Evento>();
     if (errLoad || !data) { setError("No se pudo cargar el evento"); setLoading(false); return; }
@@ -230,6 +235,7 @@ export default function EditarEvento() {
     setMusicaUrl(data.musica_url ?? null);
     setImagenUrl(data.imagen_url ?? null);
     setMediaLugar(data.foto_lugar_url ?? null);
+    setFotosCarrusel(Array.isArray(data.fotos_carrusel) ? data.fotos_carrusel : []);
     setColorPrimario(data.color_primario ?? "#0D9488");
     setColorSecundario(data.color_secundario ?? "#5EEAD4");
     setPlantilla(data.plantilla ?? "clasica");
@@ -243,7 +249,7 @@ export default function EditarEvento() {
       return;
     }
     setGuardando(true);
-    const { error: errUpdate } = await supabase.from("eventos").update({
+    const payload: Record<string, unknown> = {
       nombre: nombre.trim(), anfitriones: anfitriones.trim(),
       frase_evento: frase.trim() || null,
       mensaje_invitacion: mensajeInvitacion.trim() || null,
@@ -259,7 +265,17 @@ export default function EditarEvento() {
       color_primario: colorPrimario,
       color_secundario: colorSecundario,
       plantilla,
-    }).eq("id", eventoId);
+      fotos_carrusel: fotosCarrusel.length ? fotosCarrusel : null,
+    };
+    let { error: errUpdate } = await supabase.from("eventos").update(payload).eq("id", eventoId);
+    // Si la columna fotos_carrusel no existe aún, reintentar sin ella
+    if (errUpdate && /fotos_carrusel/i.test(errUpdate.message || "")) {
+      delete payload.fotos_carrusel;
+      ({ error: errUpdate } = await supabase.from("eventos").update(payload).eq("id", eventoId));
+      if (!errUpdate) {
+        setError("Guardado, pero el carrusel necesita la migración: ejecutá supabase-graduacion-extras.sql en Supabase.");
+      }
+    }
     setGuardando(false);
     if (errUpdate) { setError("Error al guardar: " + errUpdate.message); return; }
     setGuardado(true);
@@ -462,6 +478,85 @@ export default function EditarEvento() {
                 onUploaded={setImagenUrl}
               />
             </div>
+
+            {/* ── 4b. Carrusel "Su historia" (solo graduación) ── */}
+            {tipo === "graduacion" && (
+              <div className="section-card">
+                <p className="section-title">
+                  <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="12" height="10" rx="2"/><path d="M16 6h1a1 1 0 011 1v8a1 1 0 01-1 1H7a1 1 0 01-1-1v-1"/></svg>
+                  Carrusel &quot;Su historia&quot; 🎓
+                </p>
+                <p className="field-hint" style={{ marginBottom: 10 }}>
+                  Subí varias fotos del graduado (de bebé hasta hoy). Se muestran deslizándose en la invitación. Máximo 8 fotos.
+                </p>
+                {fotosCarrusel.length > 0 && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 10 }}>
+                    {fotosCarrusel.map((url, i) => (
+                      <div key={url + i} style={{ position: "relative", aspectRatio: "1", borderRadius: 10, overflow: "hidden", border: "1.5px solid var(--border-mid)" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`Foto ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        <span style={{ position: "absolute", top: 3, left: 4, fontSize: 9, fontWeight: 800, color: "white", background: "rgba(15,23,42,0.6)", borderRadius: 6, padding: "1px 5px" }}>{i + 1}</span>
+                        <button
+                          onClick={() => setFotosCarrusel(f => f.filter((_, j) => j !== i))}
+                          aria-label="Quitar foto"
+                          style={{ position: "absolute", top: 2, right: 2, width: 20, height: 20, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(220,38,38,0.9)", color: "white", fontSize: 11, fontWeight: 800, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+                        >×</button>
+                        {i > 0 && (
+                          <button
+                            onClick={() => setFotosCarrusel(f => { const c = [...f]; [c[i - 1], c[i]] = [c[i], c[i - 1]]; return c; })}
+                            aria-label="Mover antes"
+                            style={{ position: "absolute", bottom: 2, left: 2, width: 20, height: 20, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(255,255,255,0.85)", color: "var(--accent2)", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}
+                          >‹</button>
+                        )}
+                        {i < fotosCarrusel.length - 1 && (
+                          <button
+                            onClick={() => setFotosCarrusel(f => { const c = [...f]; [c[i], c[i + 1]] = [c[i + 1], c[i]]; return c; })}
+                            aria-label="Mover después"
+                            style={{ position: "absolute", bottom: 2, right: 2, width: 20, height: 20, borderRadius: 6, border: "none", cursor: "pointer", background: "rgba(255,255,255,0.85)", color: "var(--accent2)", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}
+                          >›</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {fotosCarrusel.length < 8 && (
+                  <button
+                    onClick={() => carruselInputRef.current?.click()}
+                    disabled={subiendoCarrusel}
+                    style={{ width: "100%", border: "2px dashed rgba(79,70,229,0.30)", borderRadius: 12, background: "rgba(79,70,229,0.04)", padding: "14px", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--accent)", fontFamily: "'DM Sans',sans-serif" }}
+                  >
+                    {subiendoCarrusel ? "Subiendo fotos..." : `+ Agregar fotos (${fotosCarrusel.length}/8)`}
+                  </button>
+                )}
+                <input
+                  ref={carruselInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []).slice(0, 8 - fotosCarrusel.length);
+                    if (!files.length) return;
+                    setSubiendoCarrusel(true);
+                    const nuevas: string[] = [];
+                    for (const file of files) {
+                      if (file.size > 10 * 1024 * 1024) continue;
+                      const ext = file.name.split(".").pop() ?? "jpg";
+                      const path = `${eventoId}/carrusel-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+                      const { error: upErr } = await supabase.storage.from("eventos").upload(path, file, { upsert: true, contentType: file.type });
+                      if (!upErr) {
+                        const { data } = supabase.storage.from("eventos").getPublicUrl(path);
+                        nuevas.push(data.publicUrl);
+                      }
+                    }
+                    setFotosCarrusel(f => [...f, ...nuevas].slice(0, 8));
+                    setSubiendoCarrusel(false);
+                    e.target.value = "";
+                  }}
+                />
+                <p className="field-hint" style={{ marginTop: 8 }}>Recordá tocar <strong>Guardar</strong> al final para aplicar los cambios.</p>
+              </div>
+            )}
 
             {/* ── 5. Foto / Video del lugar ── */}
             <div className="section-card">

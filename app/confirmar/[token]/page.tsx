@@ -55,6 +55,7 @@ type Evento = {
   vestimenta_colores?: string | null;
   vestimenta_nota?: string | null;
   plano_mesas_url?: string | null;
+  fotos_carrusel?: string[] | null;
 };
 
 type ItemItinerario = {
@@ -239,7 +240,7 @@ function sonidoCelebracion() {
       const t = i / ctx.sampleRate;
       // Densidad de "palmadas" que decae al final
       const burst = Math.random() < 0.028 * (1 - t / dur * 0.55) ? 1 : 0;
-      data[i] = data[i - 1] * 0.62 + burst * (Math.random() * 2 - 1) * 0.9;
+      data[i] = (i > 0 ? data[i - 1] : 0) * 0.62 + burst * (Math.random() * 2 - 1) * 0.9;
     }
     const src = ctx.createBufferSource();
     src.buffer = buf;
@@ -832,6 +833,105 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
 
 // ─── Ref global de audio para control de volumen desde TTS ───────────────────
 const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
+
+// ─── Carrusel de fotos del graduado (bebé → hoy) ──────────────────────────────
+function CarruselGrad({ fotos }: { fotos: string[] }) {
+  const [idx, setIdx] = useState(0);
+  const [pausado, setPausado] = useState(false);
+  const touchX = useRef<number | null>(null);
+  useEffect(() => {
+    if (pausado || fotos.length < 2) return;
+    const id = setInterval(() => setIdx(i => (i + 1) % fotos.length), 3800);
+    return () => clearInterval(id);
+  }, [pausado, fotos.length]);
+  if (!fotos.length) return null;
+  return (
+    <div style={{ margin: "14px 0 4px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right,transparent,rgba(217,119,6,0.5))" }} />
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#B45309", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+          📸 Su historia
+        </span>
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to left,transparent,rgba(217,119,6,0.5))" }} />
+      </div>
+      <div
+        style={{
+          position: "relative", borderRadius: 18, overflow: "hidden",
+          aspectRatio: "4 / 3", background: "#1e1b4b",
+          border: "2px solid rgba(217,119,6,0.45)",
+          boxShadow: "0 10px 30px rgba(30,27,75,0.30)",
+        }}
+        onMouseEnter={() => setPausado(true)}
+        onMouseLeave={() => setPausado(false)}
+        onTouchStart={(e) => { touchX.current = e.touches[0].clientX; setPausado(true); }}
+        onTouchEnd={(e) => {
+          const x0 = touchX.current;
+          touchX.current = null;
+          setPausado(false);
+          if (x0 === null) return;
+          const dx = e.changedTouches[0].clientX - x0;
+          if (Math.abs(dx) > 40) {
+            setIdx(i => (i + (dx < 0 ? 1 : fotos.length - 1)) % fotos.length);
+          }
+        }}
+      >
+        {fotos.map((url, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={url + i}
+            src={url}
+            alt={`Foto ${i + 1}`}
+            style={{
+              position: "absolute", inset: 0, width: "100%", height: "100%",
+              objectFit: "cover",
+              opacity: i === idx ? 1 : 0,
+              transform: i === idx ? "scale(1)" : "scale(1.06)",
+              transition: "opacity .9s ease, transform 4.5s ease",
+            }}
+          />
+        ))}
+        {/* Degradado inferior + contador */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "34%", background: "linear-gradient(to top,rgba(10,10,30,0.55),transparent)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 10, right: 12, background: "rgba(15,23,42,0.55)", backdropFilter: "blur(6px)", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: "#FDE68A" }}>
+          {idx + 1} / {fotos.length}
+        </div>
+        {/* Flechas */}
+        {fotos.length > 1 && (
+          <>
+            <button
+              onClick={() => setIdx(i => (i + fotos.length - 1) % fotos.length)}
+              aria-label="Anterior"
+              style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(255,255,255,0.85)", color: "#92400E", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}
+            >‹</button>
+            <button
+              onClick={() => setIdx(i => (i + 1) % fotos.length)}
+              aria-label="Siguiente"
+              style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(255,255,255,0.85)", color: "#92400E", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}
+            >›</button>
+          </>
+        )}
+      </div>
+      {/* Puntos */}
+      {fotos.length > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10 }}>
+          {fotos.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              aria-label={`Foto ${i + 1}`}
+              style={{
+                width: i === idx ? 22 : 8, height: 8, borderRadius: 8,
+                border: "none", cursor: "pointer", padding: 0,
+                background: i === idx ? "linear-gradient(90deg,#D97706,#F59E0B)" : "rgba(217,119,6,0.30)",
+                transition: "all .3s",
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Cuenta regresiva dorada para graduación ──────────────────────────────────
 function CountdownGrad({ fecha, hora }: { fecha: string; hora?: string | null }) {
@@ -2501,19 +2601,93 @@ function DeseoFormInline({
   const [color, setColor] = useState(COLORES_DESEO_FORM[0]);
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  // ── Dedicatoria con voz ──
+  const [grabando, setGrabando] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [segGrabados, setSegGrabados] = useState(0);
+  const [errAudio, setErrAudio] = useState("");
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const MAX_SEG = 60;
+
+  function detenerGrabacion() {
+    if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    setGrabando(false);
+  }
+
+  async function iniciarGrabacion() {
+    setErrAudio("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", ""].find(
+        (t) => !t || (window.MediaRecorder && MediaRecorder.isTypeSupported(t)),
+      );
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      rec.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        setAudioBlob(blob);
+        setAudioPreview(URL.createObjectURL(blob));
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      recRef.current = rec;
+      rec.start();
+      setGrabando(true);
+      setSegGrabados(0);
+      timerRef.current = setInterval(() => {
+        setSegGrabados((s) => {
+          if (s + 1 >= MAX_SEG) detenerGrabacion();
+          return s + 1;
+        });
+      }, 1000);
+    } catch {
+      setErrAudio("No se pudo acceder al micrófono. Revisá los permisos del navegador.");
+    }
+  }
+
+  function borrarAudio() {
+    if (audioPreview) URL.revokeObjectURL(audioPreview);
+    setAudioBlob(null);
+    setAudioPreview(null);
+    setSegGrabados(0);
+  }
 
   async function publicar() {
-    if (!mensaje.trim()) return;
+    if (!mensaje.trim() && !audioBlob) return;
     setEnviando(true);
-    await supabase.from("deseos").insert({
+    // Subir el audio (si hay) al storage
+    let audioUrl: string | null = null;
+    if (audioBlob) {
+      const ext = audioBlob.type.includes("mp4") ? "m4a" : "webm";
+      const path = `audios/${eventoId}/${invitadoId}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("fotos-eventos")
+        .upload(path, audioBlob, { contentType: audioBlob.type || "audio/webm" });
+      if (!upErr) {
+        const { data } = supabase.storage.from("fotos-eventos").getPublicUrl(path);
+        audioUrl = data.publicUrl;
+      }
+    }
+    const fila: Record<string, unknown> = {
       evento_id: eventoId,
       invitado_id: invitadoId,
       nombre_autor: invitadoNombre || "Invitado",
-      mensaje: mensaje.trim(),
+      mensaje: mensaje.trim() || "🎤 Dedicatoria de voz",
       emoji_sticker: sticker,
       color_fondo: color,
       aprobado: true,
-    });
+    };
+    if (audioUrl) fila.audio_url = audioUrl;
+    let { error } = await supabase.from("deseos").insert(fila);
+    // Si la columna audio_url no existe aún (falta migración), publicar sin audio
+    if (error && /audio_url/i.test(error.message || "")) {
+      delete fila.audio_url;
+      ({ error } = await supabase.from("deseos").insert(fila));
+    }
     setEnviando(false);
     setEnviado(true);
     onPublicado();
@@ -2574,10 +2748,58 @@ function DeseoFormInline({
       />
       <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: -10, textAlign: "right" }}>{mensaje.length}/300</div>
 
+      {/* ── Dedicatoria con voz ── */}
+      <div style={{ border: "1.5px dashed rgba(79,70,229,0.35)", borderRadius: 14, padding: "12px 14px", background: "rgba(79,70,229,0.04)" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
+          🎤 Dedicatoria de voz (opcional)
+        </div>
+        {!audioPreview && !grabando && (
+          <button
+            onClick={iniciarGrabacion}
+            style={{ width: "100%", border: "none", borderRadius: 12, padding: "12px", background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", color: "#3730A3", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3"/>
+              <path d="M5 10v1a7 7 0 0014 0v-1M12 18v4M8 22h8"/>
+            </svg>
+            Grabar mensaje de voz
+          </button>
+        )}
+        {grabando && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <style>{`@keyframes recPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.55}}`}</style>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#dc2626", animation: "recPulse 1s ease-in-out infinite", flexShrink: 0 }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#dc2626", flex: 1 }}>
+              Grabando... {String(Math.floor(segGrabados / 60)).padStart(1, "0")}:{String(segGrabados % 60).padStart(2, "0")} / 1:00
+            </span>
+            <button
+              onClick={detenerGrabacion}
+              style={{ border: "none", borderRadius: 10, padding: "8px 14px", background: "#dc2626", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              ■ Detener
+            </button>
+          </div>
+        )}
+        {audioPreview && !grabando && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <audio controls src={audioPreview} style={{ width: "100%", height: 38 }} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={borrarAudio}
+                style={{ flex: 1, border: "1.5px solid rgba(220,38,38,0.4)", borderRadius: 10, padding: "8px", background: "white", color: "#dc2626", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                🗑 Borrar y regrabar
+              </button>
+            </div>
+          </div>
+        )}
+        {errAudio && <p style={{ fontSize: 11, color: "#dc2626", marginTop: 6 }}>{errAudio}</p>}
+      </div>
+
       <button
         onClick={publicar}
-        disabled={enviando || !mensaje.trim()}
-        style={{ width: "100%", background: mensaje.trim() ? "linear-gradient(135deg,#3730A3,#4F46E5)" : "#E5E7EB", color: mensaje.trim() ? "white" : "#9CA3AF", border: "none", borderRadius: 14, padding: "15px", fontFamily: "inherit", fontSize: 15, fontWeight: 700, cursor: mensaje.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all .2s", boxShadow: mensaje.trim() ? "0 6px 20px rgba(79,70,229,0.30)" : "none" }}
+        disabled={enviando || (!mensaje.trim() && !audioBlob)}
+        style={{ width: "100%", background: (mensaje.trim() || audioBlob) ? "linear-gradient(135deg,#3730A3,#4F46E5)" : "#E5E7EB", color: (mensaje.trim() || audioBlob) ? "white" : "#9CA3AF", border: "none", borderRadius: 14, padding: "15px", fontFamily: "inherit", fontSize: 15, fontWeight: 700, cursor: (mensaje.trim() || audioBlob) ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all .2s", boxShadow: (mensaje.trim() || audioBlob) ? "0 6px 20px rgba(79,70,229,0.30)" : "none" }}
       >
         <span style={{ fontSize: 18 }}>{sticker}</span>
         {enviando ? "Publicando..." : "Publicar mi deseo"}
@@ -2740,8 +2962,11 @@ export default function ConfirmarPage() {
     }
     if (prev !== "confirmado" && step === "confirmado") {
       setMascotaFase("instrucciones");
-      // Lluvia de birretes al confirmar (solo graduación)
-      if (evento?.tipo === "graduacion") setGradCapsKey(k => k + 1);
+      // Lluvia de birretes + fanfarria y aplausos (solo graduación)
+      if (evento?.tipo === "graduacion") {
+        setGradCapsKey(k => k + 1);
+        sonidoCelebracion();
+      }
     }
     if (prev !== "rechazado" && step === "rechazado") {
       setMascotaFase("despedida");
@@ -2754,6 +2979,26 @@ export default function ConfirmarPage() {
     const t = setTimeout(() => setGradCapsKey(0), 7000);
     return () => clearTimeout(t);
   }, [gradCapsKey]);
+  // ── Contador de confirmados en vivo ──
+  const [totalConfirmados, setTotalConfirmados] = useState<number | null>(null);
+  useEffect(() => {
+    if (!invitado?.evento_id) return;
+    let activo = true;
+    const cargar = async () => {
+      const { data } = await supabase
+        .from("invitados")
+        .select("num_personas")
+        .eq("evento_id", invitado.evento_id)
+        .eq("estado", "confirmado");
+      if (activo && data) {
+        setTotalConfirmados(data.reduce((s, i) => s + (i.num_personas || 1), 0));
+      }
+    };
+    cargar();
+    const int = setInterval(cargar, 25000); // refresco "en vivo"
+    return () => { activo = false; clearInterval(int); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invitado?.evento_id, step]);
   const { hablando, leer, detener, textoActual, charIdx } = useTTS();
   const [itinerario, setItinerario] = useState<ItemItinerario[]>([]);
   // Mesa self-selection
@@ -4022,9 +4267,32 @@ export default function ConfirmarPage() {
                   <MusicPlayer url={evento.musica_url} nombre={evento.musica_nombre} />
                 )}
 
+                {/* Carrusel de fotos del graduado — solo graduación */}
+                {evento.tipo === "graduacion" && Array.isArray(evento.fotos_carrusel) && evento.fotos_carrusel.length > 0 && (
+                  <CarruselGrad fotos={evento.fotos_carrusel} />
+                )}
+
                 {/* Cuenta regresiva — solo graduación */}
                 {evento.tipo === "graduacion" && evento.fecha && (
                   <CountdownGrad fecha={evento.fecha} hora={evento.hora} />
+                )}
+
+                {/* Contador de confirmados en vivo — solo graduación */}
+                {evento.tipo === "graduacion" && (totalConfirmados ?? 0) >= 2 && (
+                  <div style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    margin: "10px 0 2px", padding: "10px 14px",
+                    background: "linear-gradient(135deg,#FFFBEB,#FEF3C7)",
+                    border: "1.5px solid rgba(217,119,6,0.35)",
+                    borderRadius: 14,
+                  }}>
+                    <span style={{ position: "relative", display: "inline-flex", width: 9, height: 9 }}>
+                      <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#16a34a", animation: "cdPulseSeg 1.6s ease-in-out infinite" }} />
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#92400E" }}>
+                      🎓 {totalConfirmados} personas ya confirmaron su asistencia
+                    </span>
+                  </div>
                 )}
 
                 <OrnamentoDivider tipo={evento.tipo} />
@@ -4522,6 +4790,36 @@ export default function ConfirmarPage() {
                   </div>
                   <svg style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4 }} width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M7 5l5 5-5 5"/></svg>
                 </button>
+
+                {/* ── Agendar en el calendario (.ics con recordatorios) ── */}
+                {evento.fecha && (
+                  <>
+                    <button
+                      className="btn-accion-full"
+                      onClick={() => descargarICS(evento)}
+                    >
+                      <div className="btn-accion-ico">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                          <path d="M9 15l2 2 4-4"/>
+                        </svg>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>Agendar en mi calendario</span>
+                        <span style={{ fontSize: 11, opacity: 0.65 }}>Con recordatorio automático un día antes</span>
+                      </div>
+                      <svg style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4 }} width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M7 5l5 5-5 5"/></svg>
+                    </button>
+                    <button
+                      onClick={() => abrirGoogleCalendar(evento)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 600, color: "#4F46E5", textDecoration: "underline", padding: "0 0 4px", fontFamily: "inherit", marginTop: -6 }}
+                    >
+                      o abrir directo en Google Calendar
+                    </button>
+                  </>
+                )}
 
                 {/* ── Ramo a las Solteras (solo bodas) ── */}
                 {evento.tipo === "boda" && (

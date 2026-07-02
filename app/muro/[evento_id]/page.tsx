@@ -37,6 +37,7 @@ type Deseo = {
   color_fondo: string;
   created_at: string;
   aprobado: boolean;
+  audio_url?: string | null;
 };
 
 // ─── i18n ──────────────────────────────────────────────────────────────────────
@@ -1657,6 +1658,15 @@ function DeseoCard({
       >
         "{deseo.mensaje}"
       </p>
+      {/* Dedicatoria con voz */}
+      {deseo.audio_url && (
+        <div style={{ background: "rgba(255,255,255,0.65)", borderRadius: 12, padding: "6px 8px", border: "1px solid rgba(79,70,229,0.15)" }}>
+          <div style={{ fontSize: 9.5, fontWeight: 800, color: "#4F46E5", letterSpacing: 1, textTransform: "uppercase", marginBottom: 3 }}>
+            🎤 Dedicatoria de voz
+          </div>
+          <audio controls src={deseo.audio_url} preload="none" style={{ width: "100%", height: 32 }} />
+        </div>
+      )}
       <div
         style={{
           display: "flex",
