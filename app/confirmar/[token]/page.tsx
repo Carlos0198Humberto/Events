@@ -834,6 +834,45 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
 // ─── Ref global de audio para control de volumen desde TTS ───────────────────
 const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
 
+// ─── Frase con efecto máquina de escribir (graduación) ────────────────────────
+function TypewriterFrase({ texto }: { texto: string }) {
+  const [visible, setVisible] = useState(0);
+  const [arranca, setArranca] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  // Arranca cuando la frase entra en pantalla
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") { setArranca(true); return; }
+    const obs = new IntersectionObserver(
+      (entries) => { if (entries[0]?.isIntersecting) { setArranca(true); obs.disconnect(); } },
+      { threshold: 0.4 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!arranca || visible >= texto.length) return;
+    const t = setTimeout(() => setVisible(v => v + 1), 55);
+    return () => clearTimeout(t);
+  }, [arranca, visible, texto.length]);
+  const terminado = visible >= texto.length;
+  return (
+    <div ref={ref} style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px", minHeight: 26 }}>
+      <style>{`@keyframes twBlink{0%,49%{opacity:1}50%,100%{opacity:0}}`}</style>
+      <span style={{ color: "#B45309", marginRight: 4 }}>❝</span>
+      {texto.slice(0, visible)}
+      <span style={{
+        display: "inline-block", width: 2, height: 18, verticalAlign: "-3px",
+        background: "linear-gradient(180deg,#F59E0B,#B45309)", marginLeft: 2,
+        animation: "twBlink 0.85s step-end infinite",
+        opacity: terminado ? 0 : 1,
+        transition: terminado ? "opacity .8s 1.2s" : "none",
+      }} />
+      {terminado && <span style={{ color: "#B45309", marginLeft: 4 }}>❞</span>}
+    </div>
+  );
+}
+
 // ─── Carrusel de fotos del graduado (bebé → hoy) ──────────────────────────────
 function CarruselGrad({ fotos }: { fotos: string[] }) {
   const [idx, setIdx] = useState(0);
@@ -2149,6 +2188,140 @@ async function generarTarjetaCanvas(
   });
 }
 
+// ─── Tarjeta formato Instagram Stories 9:16 (graduación) ─────────────────────
+async function generarStoryCanvas(
+  invitado: Invitado,
+  evento: Evento,
+  origin: string,
+): Promise<Blob | null> {
+  // Foto del graduado (opcional)
+  let foto: HTMLImageElement | null = null;
+  if (evento.imagen_url) {
+    foto = await new Promise<HTMLImageElement | null>((res) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      const to = setTimeout(() => res(null), 6000);
+      img.onload = () => { clearTimeout(to); res(img); };
+      img.onerror = () => { clearTimeout(to); res(null); };
+      img.src = evento.imagen_url as string;
+    });
+  }
+  return new Promise((resolve) => {
+    const W = 1080, H = 1920;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) { resolve(null); return; }
+    const star = (x: number, y: number, rad: number, alpha = 1) => {
+      ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const a = (Math.PI / 5) * i - Math.PI / 2;
+        const rr = i % 2 === 0 ? rad : rad * 0.45;
+        if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      ctx.closePath(); ctx.fillStyle = "#FCD34D"; ctx.fill(); ctx.restore();
+    };
+    // Fondo noche estrellada
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#312e81");
+    bg.addColorStop(0.45, "#1e1b4b");
+    bg.addColorStop(1, "#0f172a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    // Resplandor central
+    const glow = ctx.createRadialGradient(W / 2, 520, 40, W / 2, 520, 560);
+    glow.addColorStop(0, "rgba(252,211,77,0.20)");
+    glow.addColorStop(1, "rgba(252,211,77,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+    // Estrellas dispersas
+    ([[90,140,7],[980,190,6],[140,420,5],[950,480,7],[80,860,6],[1000,900,5],
+      [120,1300,6],[970,1350,7],[200,1650,5],[880,1700,6],[540,110,5],[420,1800,4]] as const)
+      .forEach(([x, y, s], i) => star(x, y, s, 0.5 + (i % 3) * 0.18));
+    // Doble marco dorado
+    ctx.strokeStyle = "#D97706"; ctx.lineWidth = 6;
+    rrStroke(ctx, 42, 42, W - 84, H - 84, 44);
+    ctx.strokeStyle = "rgba(252,211,77,0.8)"; ctx.lineWidth = 2.5;
+    rrStroke(ctx, 60, 60, W - 120, H - 120, 34);
+    ctx.textAlign = "center";
+    // Encabezado
+    ctx.font = "110px serif";
+    ctx.fillText("🎓", W / 2, 240);
+    ctx.font = "700 34px 'Arial'";
+    ctx.fillStyle = "#FCD34D";
+    ctx.fillText("G R A D U A C I Ó N", W / 2, 320);
+    star(W / 2 - 230, 308, 9); star(W / 2 + 230, 308, 9);
+    // Foto circular
+    let yCursor = 400;
+    if (foto) {
+      const pX = W / 2, pY = 580, pR = 170;
+      const ring = ctx.createLinearGradient(pX - pR, pY - pR, pX + pR, pY + pR);
+      ring.addColorStop(0, "#FDE68A"); ring.addColorStop(0.5, "#F59E0B"); ring.addColorStop(1, "#B45309");
+      ctx.beginPath(); ctx.arc(pX, pY, pR + 16, 0, Math.PI * 2); ctx.fillStyle = ring; ctx.fill();
+      ctx.beginPath(); ctx.arc(pX, pY, pR + 6, 0, Math.PI * 2); ctx.fillStyle = "#1e1b4b"; ctx.fill();
+      ctx.save();
+      ctx.beginPath(); ctx.arc(pX, pY, pR, 0, Math.PI * 2); ctx.clip();
+      const s = Math.max((pR * 2) / foto.width, (pR * 2) / foto.height);
+      ctx.drawImage(foto, pX - (foto.width * s) / 2, pY - (foto.height * s) / 2, foto.width * s, foto.height * s);
+      ctx.restore();
+      yCursor = 850;
+    }
+    // Nombre del evento
+    ctx.font = "italic bold 64px 'Georgia',serif";
+    ctx.fillStyle = "#FDE68A";
+    ctx.shadowColor = "rgba(252,211,77,0.4)"; ctx.shadowBlur = 24;
+    ctx.fillText(evento.nombre, W / 2, yCursor + 60, W - 220);
+    ctx.shadowBlur = 0;
+    // Anfitriones
+    ctx.font = "300 34px 'Arial'";
+    ctx.fillStyle = "rgba(255,255,255,0.80)";
+    ctx.fillText(`de ${evento.anfitriones}`, W / 2, yCursor + 130, W - 240);
+    // Línea dorada
+    const gl = ctx.createLinearGradient(W / 2 - 260, 0, W / 2 + 260, 0);
+    gl.addColorStop(0, "rgba(252,211,77,0)"); gl.addColorStop(0.5, "#FCD34D"); gl.addColorStop(1, "rgba(252,211,77,0)");
+    ctx.fillStyle = gl;
+    ctx.fillRect(W / 2 - 260, yCursor + 170, 520, 4);
+    // Detalles
+    let dy = yCursor + 250;
+    const fila = (emoji: string, txt: string) => {
+      ctx.font = "36px serif";
+      ctx.fillText(emoji, W / 2, dy - 44);
+      ctx.font = "600 38px 'Arial'";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillText(txt, W / 2, dy, W - 220);
+      dy += 116;
+    };
+    if (evento.fecha) fila("📅", formatFechaCorta(evento.fecha));
+    if (evento.hora) fila("🕐", formatHora(evento.hora));
+    if (evento.lugar) fila("📍", evento.lugar);
+    // QR de confirmación
+    try {
+      const qr = qrcode(0, "M");
+      qr.addData(`${origin}/confirmar/${invitado.token}`);
+      qr.make();
+      const n = qr.getModuleCount();
+      const qSize = 300, cell = qSize / n;
+      const qX = W / 2 - qSize / 2, qY = H - 560;
+      rrFill(ctx, qX - 26, qY - 26, qSize + 52, qSize + 52, 30, "#FFFFFF");
+      ctx.strokeStyle = "#D97706"; ctx.lineWidth = 5;
+      rrStroke(ctx, qX - 26, qY - 26, qSize + 52, qSize + 52, 30);
+      ctx.fillStyle = "#1e1b4b";
+      for (let rw = 0; rw < n; rw++)
+        for (let cl = 0; cl < n; cl++)
+          if (qr.isDark(rw, cl)) ctx.fillRect(qX + cl * cell, qY + rw * cell, Math.ceil(cell), Math.ceil(cell));
+      ctx.font = "700 34px 'Arial'";
+      ctx.fillStyle = "#FCD34D";
+      ctx.fillText("Escaneá y confirmá tu asistencia", W / 2, qY + qSize + 90);
+    } catch { /* QR opcional */ }
+    // Footer
+    ctx.font = "bold 28px 'Arial'";
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.fillText("Evorix · Invitaciones digitales", W / 2, H - 96);
+    canvas.toBlob((blob) => resolve(blob), "image/png", 0.95);
+  });
+}
+
 function rrFill(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -2999,6 +3172,23 @@ export default function ConfirmarPage() {
     return () => { activo = false; clearInterval(int); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invitado?.evento_id, step]);
+  // ── Vista previa del muro (últimas fotos) — solo graduación ──
+  const [muroPreview, setMuroPreview] = useState<{ urls: string[]; total: number } | null>(null);
+  useEffect(() => {
+    if (!invitado?.evento_id || evento?.tipo !== "graduacion") return;
+    (async () => {
+      const { data, count } = await supabase
+        .from("fotos")
+        .select("url", { count: "exact" })
+        .eq("evento_id", invitado.evento_id)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (data && data.length) {
+        setMuroPreview({ urls: data.map((f: { url: string }) => f.url), total: count ?? data.length });
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invitado?.evento_id, evento?.tipo]);
   const { hablando, leer, detener, textoActual, charIdx } = useTTS();
   const [itinerario, setItinerario] = useState<ItemItinerario[]>([]);
   // Mesa self-selection
@@ -3378,6 +3568,32 @@ export default function ConfirmarPage() {
     a.click();
   }
 
+  // ── Versión Instagram Stories 9:16 (graduación) ──
+  const [generandoStory, setGenerandoStory] = useState(false);
+  async function compartirStory() {
+    if (!invitado || !evento || generandoStory) return;
+    setGenerandoStory(true);
+    try {
+      const blob = await generarStoryCanvas(invitado, evento, window.location.origin);
+      if (!blob) return;
+      const file = new File([blob], `story_${evento.nombre.replace(/\s/g, "_")}.png`, { type: "image/png" });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: `🎓 ${evento.nombre}` });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `story_${evento.nombre.replace(/\s/g, "_")}.png`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+      }
+    } catch (err) {
+      console.error("Error al generar story:", err);
+    } finally {
+      setGenerandoStory(false);
+    }
+  }
+
   const nombresEnTarjeta: string[] = (() => {
     if (invitado?.nombres_personas) {
       try {
@@ -3415,8 +3631,19 @@ export default function ConfirmarPage() {
       --border:rgba(5,150,105,0.14);--border-mid:rgba(5,150,105,0.28);
       --shadow:0 8px 28px rgba(6,78,59,0.06);--shadow-lg:0 20px 48px rgba(6,78,59,0.10);
     `,
+    // Tema exclusivo de graduación: dorado + azul noche
+    graduacion: `
+      --gold:#D97706;--gold-dark:#92400E;--gold-light:#FDE68A;--gold-pale:#FFFBEB;
+      --dark:#FFFBEB;--dark2:#FEF3C7;--ink:#1E1B4B;--ink2:#44406B;--ink3:#92400E;
+      --cream:#FFFBEB;--cream2:#FEF3C7;--surface:#FFFFFF;
+      --on-dark:#78350F;--on-dark-sub:#B45309;
+      --border:rgba(217,119,6,0.18);--border-mid:rgba(217,119,6,0.34);
+      --shadow:0 8px 28px rgba(120,53,15,0.07);--shadow-lg:0 20px 48px rgba(120,53,15,0.12);
+    `,
   };
-  const temaVars = TEMAS[evento?.tema ?? "clasico"] ?? TEMAS.clasico;
+  const temaVars = evento?.tipo === "graduacion"
+    ? TEMAS.graduacion
+    : (TEMAS[evento?.tema ?? "clasico"] ?? TEMAS.clasico);
 
   // ─── ESTILOS ───────────────────────────────────────────────────────────────
   const styles = `
@@ -3786,6 +4013,31 @@ export default function ConfirmarPage() {
       background:radial-gradient(circle,rgba(79,70,229,0.10) 0%,transparent 70%);
       pointer-events:none;
     }
+    ${evento?.tipo === "graduacion" ? `
+    /* ── Overrides dorados de graduación (bienvenida noche estrellada + detalles ámbar) ── */
+    .page{background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(245,158,11,0.10) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 100%,rgba(217,119,6,0.06) 0%,transparent 60%)}
+    .welcome-overlay{background:radial-gradient(ellipse 70% 55% at 50% 28%,#312e81 0%,#1e1b4b 52%,#0f172a 100%)}
+    .welcome-dots{background-image:radial-gradient(circle,rgba(252,211,77,0.12) 1px,transparent 1px)}
+    .welcome-glow{background:radial-gradient(circle,rgba(252,211,77,0.16) 0%,transparent 70%)}
+    .welcome-logo-ring{background:rgba(255,255,255,0.07);border:1px solid rgba(252,211,77,0.38);box-shadow:0 10px 36px -6px rgba(0,0,0,0.55)}
+    .welcome-hola{color:#FCD34D}
+    .welcome-nombre{color:#FFFFFF;text-shadow:0 2px 22px rgba(252,211,77,0.30)}
+    .welcome-divider{background:linear-gradient(90deg,transparent,rgba(252,211,77,0.75),transparent)}
+    .welcome-evento-nombre{color:#FDE68A}
+    .welcome-anfitrion{color:rgba(255,255,255,0.68)}
+    .welcome-btn{background:linear-gradient(135deg,#B45309,#F59E0B);box-shadow:0 10px 28px -6px rgba(245,158,11,0.50), 0 2px 6px rgba(0,0,0,0.35)}
+    .welcome-btn:hover{box-shadow:0 14px 36px -6px rgba(245,158,11,0.62)}
+    .conf-hero{background:linear-gradient(155deg,#FFFBEB 0%,#FEF3C7 100%)}
+    .conf-hero::before{background-image:radial-gradient(circle,#D97706 1px,transparent 1px)}
+    .conf-check{background:rgba(217,119,6,0.12);border-color:rgba(217,119,6,0.40)}
+    .decision-bar{border-top:1px solid rgba(217,119,6,0.20);box-shadow:0 -8px 32px rgba(120,53,15,0.14)}
+    .btn-si{box-shadow:0 6px 20px -4px rgba(217,119,6,0.45)}
+    .btn-si:hover{box-shadow:0 10px 28px -4px rgba(217,119,6,0.55)}
+    .music-icon-wrap{box-shadow:0 4px 12px rgba(217,119,6,0.35)}
+    .btn-confirmar-final{box-shadow:0 8px 22px -6px rgba(217,119,6,0.45), 0 2px 6px rgba(217,119,6,0.18)}
+    .spinner{border:2px solid rgba(217,119,6,0.30);border-top-color:var(--gold)}
+    .lightbox-caption{color:rgba(146,64,14,0.75)}
+    ` : ""}
   `;
 
   if (loading)
@@ -3893,60 +4145,120 @@ export default function ConfirmarPage() {
           className="welcome-overlay"
           id="welcome-overlay"
         >
-          {/* ── Apertura tipo diploma (solo graduación): el pergamino con nombre se desenrolla ── */}
+          {/* ── Apertura tipo diploma (solo graduación): pergamino centrado que se desenrolla ── */}
           {evento.tipo === "graduacion" && (
-            <div style={{ position: "absolute", inset: 0, zIndex: 60, pointerEvents: "none", overflow: "hidden" }}>
+            <div
+              className="gd-back"
+              onClick={(e) => { (e.currentTarget as HTMLDivElement).style.display = "none"; }}
+            >
               <style>{`
-                @keyframes gradUnrollTop{0%{transform:translateY(0)}100%{transform:translateY(-102%)}}
-                @keyframes gradUnrollBottom{0%{transform:translateY(0)}100%{transform:translateY(102%)}}
-                @keyframes gradSealPop{0%{transform:scale(1) rotate(0deg);opacity:1}55%{transform:scale(1.15) rotate(-6deg);opacity:1}100%{transform:scale(0.2) rotate(30deg);opacity:0}}
-                @keyframes gradDiplomaTxt{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
-                .grad-scroll-half{position:absolute;left:0;right:0;height:51%;
+                @keyframes gdBackOut{0%{opacity:1}100%{opacity:0;visibility:hidden}}
+                @keyframes gdDrop{0%{opacity:0;transform:translateY(-52px) scale(.9)}62%{opacity:1;transform:translateY(7px) scale(1.015)}82%{transform:translateY(-3px) scale(.998)}100%{opacity:1;transform:translateY(0) scale(1)}}
+                @keyframes gdSealBreak{
+                  0%,52%{transform:scale(1) rotate(0deg);opacity:1}
+                  58%{transform:scale(1.06) rotate(-4deg)}
+                  64%{transform:scale(1.03) rotate(3deg)}
+                  70%{transform:scale(1.09) rotate(-3deg)}
+                  80%{transform:scale(1.22) rotate(-8deg);opacity:1}
+                  100%{transform:scale(.25) rotate(32deg) translateY(60px);opacity:0}}
+                @keyframes gdUnroll{0%{height:0}100%{height:400px}}
+                @keyframes gdTxt{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+                @keyframes gdSparkle{0%{transform:translateY(14px) scale(.5);opacity:0}30%{opacity:.85}100%{transform:translateY(-80px) scale(1.15);opacity:0}}
+                @keyframes gdRingPulse{0%,100%{box-shadow:0 0 0 0 rgba(252,211,77,.45)}70%{box-shadow:0 0 0 16px rgba(252,211,77,0)}}
+                @keyframes gdHint{0%,20%{opacity:0}35%,80%{opacity:.65}100%{opacity:0}}
+                .gd-back{position:absolute;inset:0;z-index:60;overflow:hidden;cursor:pointer;
+                  display:flex;align-items:center;justify-content:center;
+                  background:radial-gradient(ellipse at 50% 32%,#312e81 0%,#1e1b4b 48%,#0f172a 100%);
+                  animation:gdBackOut .9s 6.6s ease both}
+                .gd-glow{position:absolute;width:420px;height:420px;border-radius:50%;pointer-events:none;
+                  background:radial-gradient(circle,rgba(252,211,77,.16) 0%,transparent 65%)}
+                .gd-sparkle{position:absolute;border-radius:50%;background:#FCD34D;pointer-events:none;
+                  animation:gdSparkle 2.6s ease-out infinite}
+                .gd-wrap{position:relative;display:flex;flex-direction:column;align-items:center;
+                  animation:gdDrop 1s .2s cubic-bezier(.34,1.4,.5,1) both}
+                .gd-roller{width:min(88vw,362px);height:24px;border-radius:12px;position:relative;z-index:2;flex-shrink:0;
+                  background:linear-gradient(180deg,#b45309 0%,#7c2d12 55%,#5b1f0a 100%);
+                  box-shadow:0 5px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22)}
+                .gd-roller::before,.gd-roller::after{content:"";position:absolute;top:3px;width:18px;height:18px;border-radius:50%;
+                  background:radial-gradient(circle at 34% 32%,#fde68a,#d97706 55%,#92400e);box-shadow:0 2px 5px rgba(0,0,0,.45)}
+                .gd-roller::before{left:-9px}
+                .gd-roller::after{right:-9px}
+                .gd-body{width:min(80vw,330px);height:0;max-height:62vh;overflow:hidden;position:relative;z-index:1;
+                  display:flex;align-items:center;justify-content:center;
                   background:
-                    repeating-linear-gradient(90deg, rgba(180,83,9,0.05) 0 2px, transparent 2px 26px),
-                    linear-gradient(180deg,#fdf6e3 0%,#fbeecb 55%,#f6e0a8 100%);
-                }
-                .grad-scroll-top{top:0;animation:gradUnrollTop 1.25s 2.5s cubic-bezier(.65,0,.35,1) both;
-                  border-bottom:none;box-shadow:0 6px 18px rgba(120,53,15,0.28)}
-                .grad-scroll-top::after{content:"";position:absolute;left:0;right:0;bottom:-11px;height:22px;border-radius:11px;
-                  background:linear-gradient(180deg,#b45309,#92400e 45%,#78350f);box-shadow:0 4px 10px rgba(69,26,3,0.5)}
-                .grad-scroll-bottom{bottom:0;animation:gradUnrollBottom 1.25s 2.5s cubic-bezier(.65,0,.35,1) both;
-                  box-shadow:0 -6px 18px rgba(120,53,15,0.28)}
-                .grad-scroll-bottom::after{content:"";position:absolute;left:0;right:0;top:-11px;height:22px;border-radius:11px;
-                  background:linear-gradient(180deg,#b45309,#92400e 45%,#78350f);box-shadow:0 -4px 10px rgba(69,26,3,0.5)}
-                .grad-seal-open{position:absolute;top:50%;left:50%;margin:-44px 0 0 -44px;width:88px;height:88px;border-radius:50%;z-index:3;
+                    repeating-linear-gradient(90deg, rgba(180,83,9,.045) 0 2px, transparent 2px 30px),
+                    linear-gradient(180deg,#f6e6bf 0%,#fdf6e3 14%,#fdf6e3 86%,#f3ddab 100%);
+                  box-shadow:inset 0 16px 20px -14px rgba(120,53,15,.55), inset 0 -16px 20px -14px rgba(120,53,15,.55),
+                    inset 8px 0 14px -10px rgba(120,53,15,.35), inset -8px 0 14px -10px rgba(120,53,15,.35),
+                    0 14px 44px rgba(0,0,0,.45);
+                  animation:gdUnroll 1.8s 2.7s cubic-bezier(.7,0,.22,1) both}
+                .gd-inner{flex-shrink:0;width:100%;padding:26px 22px;text-align:center;
+                  font-family:'Cormorant Garamond',Georgia,serif;color:#78350f}
+                .gd-t{animation:gdTxt .65s ease both}
+                .gd-t1{animation-delay:3.3s}
+                .gd-t2{animation-delay:3.6s}
+                .gd-t3{animation-delay:3.9s}
+                .gd-t4{animation-delay:4.25s}
+                .gd-ring{width:58px;height:58px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;
+                  background:radial-gradient(circle at 34% 30%,#fde68a,#f59e0b 60%,#b45309);border:2.5px solid #92400e;
+                  font-size:28px;animation:gdTxt .65s 3.3s ease both, gdRingPulse 2.2s 4s ease-out infinite}
+                .gd-tit{font-size:15px;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:#92400e}
+                .gd-div{display:flex;align-items:center;gap:8px;margin:12px 0 14px}
+                .gd-div::before,.gd-div::after{content:"";flex:1;height:1.5px;background:linear-gradient(90deg,transparent,#b45309)}
+                .gd-div::after{background:linear-gradient(90deg,#b45309,transparent)}
+                .gd-div span{color:#b45309;font-size:13px}
+                .gd-oto{font-size:11.5px;font-weight:600;letter-spacing:2.6px;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+                .gd-nombre{font-size:32px;font-weight:700;font-style:italic;line-height:1.15;padding:0 6px;
+                  background:linear-gradient(90deg,#92400e,#d97706 50%,#92400e);-webkit-background-clip:text;background-clip:text;color:transparent}
+                .gd-evento{font-size:14px;font-style:italic;color:#92400e;opacity:.85;margin-top:14px;line-height:1.4}
+                .gd-seal{position:absolute;top:50%;left:50%;margin:-47px 0 0 -47px;width:94px;height:94px;border-radius:50%;z-index:5;
                   display:flex;align-items:center;justify-content:center;flex-direction:column;
                   background:radial-gradient(circle at 32% 30%,#fde68a,#f59e0b 55%,#b45309);
-                  border:3px solid #92400e;box-shadow:0 10px 30px rgba(69,26,3,0.45), inset 0 2px 6px rgba(255,255,255,0.45);
-                  animation:gradSealPop 1.1s .15s cubic-bezier(.5,0,.6,1) both}
-                .grad-diploma-txt{position:absolute;left:0;right:0;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;
-                  animation:gradDiplomaTxt .6s 1.0s ease both}
-                .grad-diploma-tit{bottom:14px;font-size:15px;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:#92400e}
-                .grad-diploma-tit::before,.grad-diploma-tit::after{content:"✦";margin:0 10px;color:#b45309;font-size:12px}
-                .grad-diploma-nom{top:16px;color:#78350f}
-                .grad-diploma-nom .gd-oto{display:block;font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;opacity:.75;margin-bottom:4px}
-                .grad-diploma-nom .gd-nombre{display:block;font-size:30px;font-weight:700;font-style:italic;line-height:1.15;
-                  background:linear-gradient(90deg,#92400e,#d97706,#92400e);-webkit-background-clip:text;background-clip:text;color:transparent;
-                  padding:0 24px}
-                .grad-diploma-nom .gd-linea{display:block;width:130px;height:2px;margin:10px auto 0;
-                  background:linear-gradient(90deg,transparent,#b45309,transparent)}
+                  border:3px solid #92400e;box-shadow:0 12px 34px rgba(69,26,3,.55), inset 0 2px 7px rgba(255,255,255,.45);
+                  animation:gdSealBreak 2.6s .3s cubic-bezier(.5,0,.6,1) both}
+                .gd-hint{position:absolute;bottom:26px;left:0;right:0;text-align:center;font-size:11px;font-weight:600;
+                  letter-spacing:1.6px;text-transform:uppercase;color:#FDE68A;animation:gdHint 6.6s ease both;pointer-events:none}
               `}</style>
-              <div className="grad-scroll-half grad-scroll-top">
-                {/* Título del diploma — mitad superior del pergamino */}
-                <div className="grad-diploma-txt grad-diploma-tit">Diploma de Invitación</div>
-              </div>
-              <div className="grad-scroll-half grad-scroll-bottom">
-                {/* Nombre del invitado grabado — mitad inferior */}
-                <div className="grad-diploma-txt grad-diploma-nom">
-                  <span className="gd-oto">Otorgado a</span>
-                  <span className="gd-nombre">{invitado.nombre.split(" ").slice(0, 3).join(" ")}</span>
-                  <span className="gd-linea" />
+
+              {/* Resplandor y destellos dorados */}
+              <div className="gd-glow" />
+              {[
+                { l: "16%", t: "26%", s: 5, d: "0s" }, { l: "78%", t: "22%", s: 4, d: ".7s" },
+                { l: "10%", t: "62%", s: 4, d: "1.3s" }, { l: "86%", t: "58%", s: 5, d: ".4s" },
+                { l: "26%", t: "78%", s: 3, d: "1.8s" }, { l: "68%", t: "80%", s: 4, d: "1s" },
+                { l: "50%", t: "14%", s: 3, d: "1.5s" }, { l: "38%", t: "20%", s: 3, d: "2.1s" },
+              ].map((p, i) => (
+                <span key={i} className="gd-sparkle" style={{ left: p.l, top: p.t, width: p.s, height: p.s, animationDelay: p.d }} />
+              ))}
+
+              {/* Pergamino: rodillo — cuerpo que se desenrolla — rodillo */}
+              <div className="gd-wrap">
+                <div className="gd-roller" />
+                <div className="gd-body">
+                  <div className="gd-inner">
+                    <div className="gd-ring">🎓</div>
+                    <div className="gd-t gd-t2">
+                      <div className="gd-tit">Diploma de Invitación</div>
+                      <div className="gd-div"><span>✦</span></div>
+                    </div>
+                    <div className="gd-t gd-t3">
+                      <div className="gd-oto">Otorgado a</div>
+                      <div className="gd-nombre">{invitado.nombre.split(" ").slice(0, 3).join(" ")}</div>
+                    </div>
+                    <div className="gd-t gd-t4">
+                      <div className="gd-evento">{evento.nombre}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="gd-roller" />
+                {/* Sello de lacre que se rompe */}
+                <div className="gd-seal">
+                  <span style={{ fontSize: 32, lineHeight: 1 }}>🎓</span>
+                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.2, color: "#78350f", marginTop: 2 }}>INVITACIÓN</span>
                 </div>
               </div>
-              <div className="grad-seal-open">
-                <span style={{ fontSize: 30, lineHeight: 1 }}>🎓</span>
-                <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.2, color: "#78350f", marginTop: 2 }}>INVITACIÓN</span>
-              </div>
+
+              <div className="gd-hint">Tocá la pantalla para saltar</div>
             </div>
           )}
 
@@ -3954,25 +4266,45 @@ export default function ConfirmarPage() {
           <div className="welcome-dots" />
           <div className="welcome-glow" />
 
-          {/* Confeti */}
+          {/* Confeti — birretes y estrellas doradas en graduación */}
           <div className="welcome-confetti-layer">
             {CONFETTI_PIECES.map((p) => (
-              <div
-                key={p.id}
-                className="confetti-piece"
-                style={{
-                  left: `${p.left}%`,
-                  width: p.wide ? p.size * 2 : p.size,
-                  height: p.wide ? p.size * 0.5 : p.size,
-                  borderRadius: p.wide ? 2 : p.size / 2,
-                  background: p.color,
-                  animationDuration: `${p.dur}s, ${p.dur * 0.8}s`,
-                  animationDelay: `${p.delay}s, ${p.delay}s`,
-                  animationIterationCount: "infinite, infinite",
-                  transform: `rotate(${p.rot}deg)`,
-                  opacity: 0.85,
-                }}
-              />
+              evento.tipo === "graduacion" ? (
+                <div
+                  key={p.id}
+                  className="confetti-piece"
+                  style={{
+                    left: `${p.left}%`,
+                    fontSize: 10 + p.size * 1.6,
+                    lineHeight: 1,
+                    animationDuration: `${p.dur * 1.4}s, ${p.dur * 1.1}s`,
+                    animationDelay: `${p.delay}s, ${p.delay}s`,
+                    animationIterationCount: "infinite, infinite",
+                    transform: `rotate(${p.rot}deg)`,
+                    opacity: 0.85,
+                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.35))",
+                  }}
+                >
+                  {p.id % 4 === 0 ? "⭐" : p.id % 7 === 0 ? "✨" : "🎓"}
+                </div>
+              ) : (
+                <div
+                  key={p.id}
+                  className="confetti-piece"
+                  style={{
+                    left: `${p.left}%`,
+                    width: p.wide ? p.size * 2 : p.size,
+                    height: p.wide ? p.size * 0.5 : p.size,
+                    borderRadius: p.wide ? 2 : p.size / 2,
+                    background: p.color,
+                    animationDuration: `${p.dur}s, ${p.dur * 0.8}s`,
+                    animationDelay: `${p.delay}s, ${p.delay}s`,
+                    animationIterationCount: "infinite, infinite",
+                    transform: `rotate(${p.rot}deg)`,
+                    opacity: 0.85,
+                  }}
+                />
+              )
             ))}
           </div>
 
@@ -4119,6 +4451,29 @@ export default function ConfirmarPage() {
               >
                 <IcoDescargar /> Descargar imagen
               </button>
+              {evento.tipo === "graduacion" && (
+                <button
+                  onClick={compartirStory}
+                  disabled={generandoStory}
+                  style={{
+                    width: "100%",
+                    background: "linear-gradient(135deg,#7c3aed 0%,#db2777 55%,#f59e0b 100%)",
+                    color: "white", border: "none", borderRadius: 14, padding: "14px",
+                    fontFamily: "inherit", fontSize: 14, fontWeight: 700,
+                    cursor: generandoStory ? "wait" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    boxShadow: "0 6px 20px rgba(219,39,119,0.35)",
+                    opacity: generandoStory ? 0.7 : 1,
+                  }}
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5"/>
+                    <circle cx="12" cy="12" r="4.5"/>
+                    <circle cx="17.5" cy="6.5" r="1.2" fill="white"/>
+                  </svg>
+                  {generandoStory ? "Generando..." : "Versión para Instagram Stories"}
+                </button>
+              )}
               <button className="modal-cancelar" onClick={cerrarModal}>
                 Cerrar
               </button>
@@ -4253,11 +4608,15 @@ export default function ConfirmarPage() {
                 {/* Nombre del evento */}
                 <div className="inv-evento-nombre">{evento.nombre}</div>
 
-                {/* Frase opcional */}
+                {/* Frase opcional — con efecto máquina de escribir en graduación */}
                 {evento.frase_evento && (
-                  <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px" }}>
-                    ❝ {evento.frase_evento} ❞
-                  </div>
+                  evento.tipo === "graduacion" ? (
+                    <TypewriterFrase texto={evento.frase_evento} />
+                  ) : (
+                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px" }}>
+                      ❝ {evento.frase_evento} ❞
+                    </div>
+                  )
                 )}
               </div>
 
@@ -4335,8 +4694,8 @@ export default function ConfirmarPage() {
                   </div>
                 )}
 
-                {/* ⏱ Cuenta regresiva */}
-                {evento.fecha && <CountdownTimer fecha={evento.fecha} hora={evento.hora} />}
+                {/* ⏱ Cuenta regresiva genérica (graduación ya tiene la suya dorada) */}
+                {evento.fecha && evento.tipo !== "graduacion" && <CountdownTimer fecha={evento.fecha} hora={evento.hora} />}
 
                 {/* 📍 Google Maps — botón principal */}
                 {evento.maps_url && (
@@ -4386,6 +4745,30 @@ export default function ConfirmarPage() {
                   </div>
                 )}
 
+                {/* 🗺️ Cómo llegar rápido (graduación): Google Maps + Waze aunque no haya maps_url */}
+                {evento.tipo === "graduacion" && (evento.maps_url || evento.lugar) && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <a
+                      href={evento.maps_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evento.lugar || "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "linear-gradient(135deg,#FFFBEB,#FEF3C7)", border: "1.5px solid rgba(217,119,6,0.35)", borderRadius: 13, padding: "12px 8px", textDecoration: "none", fontSize: 12.5, fontWeight: 700, color: "#92400E" }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2a6 6 0 016 6c0 5-6 10-6 10S4 13 4 8a6 6 0 016-6z" stroke="#92400E" strokeWidth="1.6" fill="rgba(217,119,6,0.18)"/><circle cx="10" cy="8" r="2.2" fill="#92400E"/></svg>
+                      Google Maps
+                    </a>
+                    <a
+                      href={`https://waze.com/ul?q=${encodeURIComponent(evento.lugar || "")}&navigate=yes`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "linear-gradient(135deg,#FFFBEB,#FEF3C7)", border: "1.5px solid rgba(217,119,6,0.35)", borderRadius: 13, padding: "12px 8px", textDecoration: "none", fontSize: 12.5, fontWeight: 700, color: "#92400E" }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3c5 0 9 3.6 9 8 0 3.2-2.1 5.9-5.2 7.2.1.4.2.9.2 1.3 0 .8-.7 1.5-1.5 1.5s-1.5-.7-1.5-1.5c0-.2 0-.4.1-.6h-1.4c0 .2.1.4.1.6 0 .8-.7 1.5-1.5 1.5S8 20.3 8 19.5c0-.5.1-.9.3-1.3C5.2 16.9 3 14.3 3 11c0-4.4 4-8 9-8z"/><circle cx="9.5" cy="10" r=".8" fill="#92400E"/><circle cx="14.5" cy="10" r=".8" fill="#92400E"/><path d="M9.5 13.5c.7.7 1.6 1 2.5 1s1.8-.3 2.5-1"/></svg>
+                      Waze
+                    </a>
+                  </div>
+                )}
+
                 {/* 5b️⃣ Código de vestimenta */}
                 {evento.vestimenta_activo && evento.vestimenta_tipo && (
                   <VestimentaCard evento={evento} />
@@ -4425,6 +4808,71 @@ export default function ConfirmarPage() {
                 {/* 8️⃣ Programa del evento */}
                 {itinerario.length > 0 && (
                   <ProgramaCard items={itinerario} />
+                )}
+
+                {/* 📸 Vista previa del muro en vivo — solo graduación */}
+                {evento.tipo === "graduacion" && muroPreview && muroPreview.total > 0 && (
+                  <div
+                    onClick={() => window.open(`/muro/${invitado.evento_id}?token=${invitado.token}`, "_blank")}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
+                      background: "linear-gradient(135deg,#1e1b4b,#312e81)",
+                      border: "1.5px solid rgba(252,211,77,0.40)",
+                      borderRadius: 16, padding: "14px 16px",
+                      boxShadow: "0 8px 24px rgba(30,27,75,0.30)",
+                    }}
+                  >
+                    {/* Miniaturas superpuestas */}
+                    <div style={{ display: "flex", flexShrink: 0 }}>
+                      {muroPreview.urls.map((u, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={u + i}
+                          src={u}
+                          alt=""
+                          style={{
+                            width: 42, height: 42, borderRadius: "50%", objectFit: "cover",
+                            border: "2px solid #FCD34D",
+                            marginLeft: i > 0 ? -14 : 0,
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+                          }}
+                        />
+                      ))}
+                      {muroPreview.total > 3 && (
+                        <div style={{ width: 42, height: 42, borderRadius: "50%", marginLeft: -14, background: "rgba(252,211,77,0.9)", border: "2px solid #FCD34D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#78350F" }}>
+                          +{muroPreview.total - 3}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>
+                        Ya hay {muroPreview.total} foto{muroPreview.total !== 1 ? "s" : ""} en el muro 📸
+                      </div>
+                      <div style={{ fontSize: 11, color: "#FDE68A", marginTop: 2 }}>
+                        Mirá los momentos que ya compartieron →
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ✍️ Firma del graduado — cierre emotivo */}
+                {evento.tipo === "graduacion" && evento.anfitriones && (
+                  <div style={{ textAlign: "center", padding: "16px 0 4px" }}>
+                    <div style={{ fontSize: 14, fontStyle: "italic", color: "var(--ink2)", fontFamily: "'Cormorant Garamond',serif", marginBottom: 8 }}>
+                      Será un honor contar con tu presencia,
+                    </div>
+                    <div style={{
+                      fontFamily: "'Cormorant Garamond',serif", fontSize: 36, fontStyle: "italic", fontWeight: 600,
+                      lineHeight: 1.1, display: "inline-block", transform: "rotate(-3deg)",
+                      background: "linear-gradient(90deg,#92400E,#D97706 50%,#92400E)",
+                      WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+                      padding: "0 10px",
+                    }}>
+                      {evento.anfitriones}
+                    </div>
+                    <div style={{ width: 130, height: 1.5, margin: "10px auto 0", background: "linear-gradient(90deg,transparent,#D97706,transparent)" }} />
+                    <div style={{ fontSize: 17, marginTop: 8 }}>🎓</div>
+                  </div>
                 )}
 
                 <OrnamentoDivider tipo={evento.tipo} />
@@ -4538,7 +4986,41 @@ export default function ConfirmarPage() {
                 </p>
               </div>
               <div className="conf-body">
-                {invitado.numero_confirmacion && (
+                {invitado.numero_confirmacion && evento.tipo === "graduacion" ? (
+                  /* ── Medalla dorada con el número de confirmado (graduación) ── */
+                  <div style={{ textAlign: "center", padding: "6px 0 2px" }}>
+                    <style>{`
+                      @keyframes medalDrop{0%{opacity:0;transform:translateY(-26px) scale(.7)}60%{opacity:1;transform:translateY(4px) scale(1.05)}100%{opacity:1;transform:translateY(0) scale(1)}}
+                      @keyframes medalShine{0%{transform:translateX(-150%) rotate(20deg)}100%{transform:translateX(250%) rotate(20deg)}}
+                    `}</style>
+                    <div style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", animation: "medalDrop .7s .2s cubic-bezier(.34,1.4,.5,1) both" }}>
+                      {/* Cinta */}
+                      <div style={{ display: "flex", gap: 2, marginBottom: -8, zIndex: 0 }}>
+                        <div style={{ width: 16, height: 34, background: "linear-gradient(180deg,#1e1b4b,#312e81)", transform: "skewX(12deg)", borderRadius: "3px 3px 0 0" }} />
+                        <div style={{ width: 16, height: 34, background: "linear-gradient(180deg,#B45309,#F59E0B)", transform: "skewX(-12deg)", borderRadius: "3px 3px 0 0" }} />
+                      </div>
+                      {/* Medalla */}
+                      <div style={{
+                        position: "relative", zIndex: 1, width: 108, height: 108, borderRadius: "50%",
+                        background: "radial-gradient(circle at 32% 28%,#FDE68A,#F59E0B 55%,#B45309)",
+                        border: "3px solid #92400E",
+                        boxShadow: "0 12px 30px rgba(146,64,14,0.40), inset 0 2px 8px rgba(255,255,255,0.45)",
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                        overflow: "hidden",
+                      }}>
+                        <div style={{ position: "absolute", top: 0, bottom: 0, width: "36%", background: "linear-gradient(105deg,transparent,rgba(255,255,255,0.5),transparent)", animation: "medalShine 3.2s 1s ease-in-out infinite" }} />
+                        <span style={{ fontSize: 20, lineHeight: 1 }}>🎓</span>
+                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.4, color: "#78350F", margin: "3px 0 1px" }}>INVITADO N°</span>
+                        <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 30, fontWeight: 700, lineHeight: 1, color: "#78350F" }}>
+                          {String(invitado.numero_confirmacion).padStart(3, "0")}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "var(--ink3)", fontWeight: 600, marginTop: 10, letterSpacing: 0.4 }}>
+                      Sos el invitado confirmado N° {invitado.numero_confirmacion} 🎉
+                    </div>
+                  </div>
+                ) : invitado.numero_confirmacion ? (
                   <div className="num-badge">
                     <div className="num-icono">
                       <svg
@@ -4563,7 +5045,7 @@ export default function ConfirmarPage() {
                       </div>
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 <div className="resumen">
                   {fechaCorta && (
