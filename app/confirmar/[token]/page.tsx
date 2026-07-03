@@ -1375,72 +1375,144 @@ function useTTS() {
     return voces.sort((a, b) => score(b) - score(a))[0];
   }
 
-  function leer(texto: string, onFin?: () => void) {
-    if (!window.speechSynthesis) { onFin?.(); return; }
-    window.speechSynthesis.cancel();
+  const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sesionRef = useRef(0); // invalida callbacks de lecturas viejas/canceladas
+
+  function limpiarTimers() {
     limpiarFallback();
-    const u = new SpeechSynthesisUtterance(texto);
-    u.lang = "es-ES";
-    u.rate = 0.88;
-    u.pitch = 1.05;
-    u.volume = 1;
+    if (watchdog.current) { clearTimeout(watchdog.current); watchdog.current = null; }
+  }
+
+  function leer(texto: string, onFin?: () => void) {
+    if (typeof window === "undefined" || !window.speechSynthesis) { onFin?.(); return; }
+    const ss = window.speechSynthesis;
+    const sesion = ++sesionRef.current;
+    try { ss.cancel(); } catch {}
+    limpiarTimers();
     // Bajar música mientras habla
     const audio = globalAudioRef.current;
     if (audio) audio.volume = 0.12;
+
+    // Estado OPTIMISTA: el avatar habla desde ya.
+    // iOS Safari muchas veces NO dispara onstart, y sin esto la boca/burbuja no aparecían.
+    setHablando(true);
+    setTextoActual(texto);
+    setCharIdx(0);
     boundaryFired.current = false;
-    u.onstart = () => {
-      setHablando(true);
-      setTextoActual(texto);
-      setCharIdx(0);
-      // Fallback iOS/Safari: si no llegan eventos boundary, estimar avance por tiempo
-      const t0 = Date.now();
-      const charsPorSeg = 13.5 * u.rate; // ≈ velocidad de lectura en español
-      fallbackTimer.current = setInterval(() => {
-        if (boundaryFired.current) { limpiarFallback(); return; }
-        const est = Math.min(texto.length, Math.floor(((Date.now() - t0) / 1000) * charsPorSeg));
-        setCharIdx(est);
-      }, 220);
-    };
-    // Sincronización real: el navegador avisa en cada palabra
-    u.onboundary = (e: SpeechSynthesisEvent) => {
-      if (typeof e.charIndex === "number") {
-        boundaryFired.current = true;
-        limpiarFallback();
-        setCharIdx(e.charIndex);
-      }
-    };
+
+    // Karaoke por tiempo (iOS no dispara onboundary): estimación continua
+    const rate = 0.88;
+    const charsPorSeg = 13.5 * rate;
+    const t0 = Date.now();
+    fallbackTimer.current = setInterval(() => {
+      if (sesion !== sesionRef.current) return;
+      if (boundaryFired.current) return; // los eventos reales toman el control
+      setCharIdx(Math.min(texto.length, Math.floor(((Date.now() - t0) / 1000) * charsPorSeg)));
+    }, 200);
+
     const fin = () => {
+      if (sesion !== sesionRef.current) return;
+      sesionRef.current++;
+      limpiarTimers();
       setHablando(false);
       setTextoActual("");
       setCharIdx(0);
-      limpiarFallback();
       if (audio) audio.volume = 1;
       onFin?.();
     };
-    u.onend = fin;
-    u.onerror = fin;
-    // Esperar que las voces estén disponibles y elegir la más natural
-    const go = () => {
+
+    // Leer por FRASES: evita que Android/Chrome corte textos largos
+    // y permite reanudar la cola de forma confiable en iOS.
+    const chunks = (texto.match(/[^.!?…]+[.!?…]*\s*/g) ?? [texto]).filter(c => c.trim().length > 0);
+    let idx = 0;
+    let offset = 0;
+    const hablarSiguiente = () => {
+      if (sesion !== sesionRef.current) return;
+      if (idx >= chunks.length) { fin(); return; }
+      const parte = chunks[idx];
+      const chunkOffset = texto.indexOf(parte, offset) >= 0 ? texto.indexOf(parte, offset) : offset;
+      const u = new SpeechSynthesisUtterance(parte);
+      u.lang = "es-ES";
+      u.rate = rate;
+      u.pitch = 1.05;
+      u.volume = 1;
       const voz = mejorVozEs();
       if (voz) { u.voice = voz; u.lang = voz.lang; }
-      window.speechSynthesis.speak(u);
+      u.onboundary = (e: SpeechSynthesisEvent) => {
+        if (sesion !== sesionRef.current) return;
+        if (typeof e.charIndex === "number") {
+          boundaryFired.current = true;
+          setCharIdx(chunkOffset + e.charIndex);
+        }
+      };
+      const siguiente = () => {
+        if (sesion !== sesionRef.current) return;
+        idx++;
+        offset = chunkOffset + parte.length;
+        if (boundaryFired.current) setCharIdx(offset);
+        hablarSiguiente();
+      };
+      u.onend = siguiente;
+      u.onerror = (ev: SpeechSynthesisErrorEvent) => {
+        // "canceled"/"interrupted" llegan al cortar nosotros — los ignora la guardia de sesión
+        if (ev.error === "canceled" || ev.error === "interrupted") return;
+        siguiente(); // otros errores: saltar a la frase siguiente
+      };
+      try {
+        ss.speak(u);
+        ss.resume(); // iOS a veces arranca la cola en pausa
+      } catch { siguiente(); }
     };
-    if (window.speechSynthesis.getVoices().length) go();
-    else { window.speechSynthesis.onvoiceschanged = go; }
+
+    // Arrancar SIN esperar indefinidamente las voces:
+    // en iOS getVoices() llega vacío y onvoiceschanged puede no dispararse jamás.
+    let arrancado = false;
+    const arrancar = () => {
+      if (arrancado || sesion !== sesionRef.current) return;
+      arrancado = true;
+      hablarSiguiente();
+    };
+    if (ss.getVoices().length) {
+      arrancar();
+    } else {
+      ss.onvoiceschanged = arrancar;
+      setTimeout(arrancar, 300); // iOS: hablar igual con la voz por defecto
+    }
+
+    // Watchdog: si el motor de voz muere en silencio, liberar el avatar y seguir el flujo
+    const durMax = (texto.length / charsPorSeg) * 1000 + 8000;
+    watchdog.current = setTimeout(fin, durMax);
     setListo(true);
   }
 
   function detener() {
-    window.speechSynthesis?.cancel();
+    sesionRef.current++; // invalida cualquier lectura en curso
+    try { window.speechSynthesis?.cancel(); } catch {}
     setHablando(false);
     setTextoActual("");
     setCharIdx(0);
-    limpiarFallback();
+    limpiarTimers();
     const audio = globalAudioRef.current;
     if (audio) audio.volume = 1;
   }
 
   return { hablando, listo, leer, detener, textoActual, charIdx };
+}
+
+// ─── Desbloqueo de TTS en iOS: debe llamarse DENTRO de un gesto del usuario ────
+// iPhone bloquea speechSynthesis si la primera locución no nace de un toque.
+// Hablar una locución muda dentro del gesto "abre la puerta" para las siguientes.
+function desbloquearTTS() {
+  try {
+    const ss = window.speechSynthesis;
+    if (!ss) return;
+    ss.cancel();
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    u.rate = 2;
+    ss.speak(u);
+    ss.resume();
+  } catch { /* opcional */ }
 }
 
 // ─── MusicPlayer con autoplay ─────────────────────────────────────────────────
@@ -3189,6 +3261,27 @@ export default function ConfirmarPage() {
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invitado?.evento_id, evento?.tipo]);
+  // ── Aparición suave de las secciones al hacer scroll ──
+  useEffect(() => {
+    if (loading || step !== "vista") return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const els = Array.from(document.querySelectorAll(".inv-body > *"));
+    if (!els.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            en.target.classList.add("rv-in");
+            io.unobserve(en.target);
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -30px 0px" },
+    );
+    els.forEach((el) => { el.classList.add("rv-prep"); io.observe(el); });
+    return () => io.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, step, evento?.id]);
   const { hablando, leer, detener, textoActual, charIdx } = useTTS();
   const [itinerario, setItinerario] = useState<ItemItinerario[]>([]);
   // Mesa self-selection
@@ -4013,6 +4106,20 @@ export default function ConfirmarPage() {
       background:radial-gradient(circle,rgba(79,70,229,0.10) 0%,transparent 70%);
       pointer-events:none;
     }
+
+    /* ── Pulido visual: aparición al hacer scroll ── */
+    .rv-prep{opacity:0;transform:translateY(22px)}
+    .rv-prep.rv-in{opacity:1;transform:translateY(0);transition:opacity .7s ease,transform .7s cubic-bezier(.22,1,.36,1)}
+    @media (prefers-reduced-motion: reduce){.rv-prep{opacity:1;transform:none}}
+    /* ── Ken Burns: la foto principal respira lentamente ── */
+    @keyframes heroKen{0%{transform:scale(1.03) translateY(0)}100%{transform:scale(1.12) translateY(-8px)}}
+    .inv-hero-foto{animation:heroKen 16s ease-in-out infinite alternate}
+    /* ── Destello que recorre el badge del tipo de evento ── */
+    .inv-tipo-badge{position:relative;overflow:hidden}
+    .inv-tipo-badge::after{content:"";position:absolute;top:0;bottom:0;width:45%;
+      background:linear-gradient(105deg,transparent,rgba(255,255,255,0.55),transparent);
+      transform:translateX(-180%) skewX(-18deg);animation:badgeShine 4.5s 1.2s ease-in-out infinite;pointer-events:none}
+    @keyframes badgeShine{0%{transform:translateX(-180%) skewX(-18deg)}45%,100%{transform:translateX(340%) skewX(-18deg)}}
     ${evento?.tipo === "graduacion" ? `
     /* ── Overrides dorados de graduación (bienvenida noche estrellada + detalles ámbar) ── */
     .page{background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(245,158,11,0.10) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 100%,rgba(217,119,6,0.06) 0%,transparent 60%)}
@@ -4333,8 +4440,12 @@ export default function ConfirmarPage() {
               // iOS: desbloquear audio en el touchstart del botón (antes del click)
               const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
               if (typeof fn === "function") (fn as () => void)();
+              // iOS: desbloquear también la voz (speechSynthesis) dentro del gesto
+              if (evento.tipo === "graduacion") desbloquearTTS();
             }}
             onClick={() => {
+              // El click también cuenta como gesto (Android/desktop no disparan touchstart con mouse)
+              if (evento.tipo === "graduacion") desbloquearTTS();
               const el = document.getElementById("welcome-overlay");
               if (el) { el.classList.add("leaving"); }
               setTimeout(() => {

@@ -2725,7 +2725,7 @@ export default function MuroPublico() {
                         acento={acento}
                         esOrg={esOrg}
                         onDelete={eliminarFoto}
-                        onClick={() => setFotoActiva([...fotos].reverse().indexOf(foto))}
+                        onClick={() => setFotoActiva(fotos.length - 1 - idx)}
                         t={t}
                         idx={idx}
                         nombreInvitado={fotos.find(f=>f.invitado_id === invId)?.invitados?.nombre ?? ""}
@@ -3670,10 +3670,12 @@ export default function MuroPublico() {
           acento={acento}
           t={t}
           onClose={() => setFotoActiva(null)}
-          onPrev={() => setFotoActiva(i => Math.max(0, (i ?? 0) - 1))}
-          onNext={() => setFotoActiva(i => Math.min(fotos.length - 1, (i ?? 0) + 1))}
-          hasPrev={fotoActiva > 0}
-          hasNext={fotoActiva < fotos.length - 1}
+          /* El muro muestra las fotos de más nueva a más vieja (orden invertido):
+             las flechas siguen ese orden visual */
+          onPrev={() => setFotoActiva(i => Math.min(fotos.length - 1, (i ?? 0) + 1))}
+          onNext={() => setFotoActiva(i => Math.max(0, (i ?? 0) - 1))}
+          hasPrev={fotoActiva < fotos.length - 1}
+          hasNext={fotoActiva > 0}
           esOrg={esOrg}
           onDelete={() => eliminarFoto(fotos[fotoActiva].id)}
         />
