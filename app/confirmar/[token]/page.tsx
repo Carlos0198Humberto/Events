@@ -1113,7 +1113,7 @@ function FloatingMascot({
   charIdx: number;
 }) {
   const [minimizado, setMinimizado] = useState(false);
-
+  const esCumple = evento.tipo === "cumpleaños";
 
   // ── FASE 1: Lee la invitación y termina con "dale click a Confirmar" ──────
   useEffect(() => {
@@ -1143,7 +1143,7 @@ function FloatingMascot({
   useEffect(() => {
     if (fase !== "post_confirm") return;
     leer(
-      "¡Perfecto! Ahora indicá cuántas personas irán contigo a la graduación, incluyéndote a vos.",
+      `¡Perfecto! Ahora indicá cuántas personas irán contigo ${esCumple ? "al cumpleaños" : "a la graduación"}, incluyéndote a vos.`,
       () => setFase("esperando_submit")
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1153,7 +1153,7 @@ function FloatingMascot({
   useEffect(() => {
     if (fase !== "instrucciones") return;
     leer(
-      "¡Listo, ya quedaste registrado! Si querés compartir un momento especial, podés subir hasta cinco fotos del evento, las cuales se verán en el muro para que todos las disfruten. También podés escribirle un deseo al graduado, agendar la fecha en tu calendario, o ver el muro. Si no deseás hacer nada más, usá el botón de salir. ¡Muchas gracias y que disfruten la celebración!",
+      `¡Listo, ya quedaste registrado! Si querés compartir un momento especial, podés subir hasta cinco fotos del evento, las cuales se verán en el muro para que todos las disfruten. También podés escribirle un deseo ${esCumple ? "de cumpleaños al festejado" : "al graduado"}, agendar la fecha en tu calendario, o ver el muro. Si no deseás hacer nada más, usá el botón de salir. ¡Muchas gracias y que disfruten la celebración!`,
       () => setFase("oculto")
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1164,7 +1164,7 @@ function FloatingMascot({
     if (fase !== "despedida") return;
     const primerNombre = invitado.nombre.trim().split(" ")[0];
     leer(
-      `Lamentamos mucho que no puedas acompañarnos, ${primerNombre}. Igual podés dejarle un deseo al graduado desde el muro. ¡Gracias por avisarnos y que estés muy bien!`,
+      `Lamentamos mucho que no puedas acompañarnos, ${primerNombre}. Igual podés dejarle un deseo ${esCumple ? "al festejado" : "al graduado"} desde el muro. ¡Gracias por avisarnos y que estés muy bien!`,
       () => setFase("oculto")
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1182,7 +1182,7 @@ function FloatingMascot({
         }}
       >
         <style>{`@keyframes mascPulse{from{transform:scale(1)}to{transform:scale(1.12)}}`}</style>
-        <GradAvatar size={56} hablando={hablando} />
+        <GradAvatar size={56} hablando={hablando} tipo={evento.tipo} />
       </div>
     );
   }
@@ -1220,14 +1220,15 @@ function FloatingMascot({
 
       {/* Mascota */}
       <div className="masc-wrap">
-        <GradMascot hablando={hablando} />
+        <GradMascot hablando={hablando} tipo={evento.tipo} />
       </div>
     </div>
   );
 }
 
-// ─── Avatar animado de graduado: parpadea, habla y balancea la borla ──────────
-function GradAvatar({ size = 64, hablando }: { size?: number; hablando: boolean }) {
+// ─── Avatar animado: graduado (birrete/borla) o cumpleañero (gorrito/globo) ───
+function GradAvatar({ size = 64, hablando, tipo = "graduacion" }: { size?: number; hablando: boolean; tipo?: string }) {
+  const esCumple = tipo === "cumpleaños";
   return (
     <svg
       width={size}
@@ -1254,9 +1255,17 @@ function GradAvatar({ size = 64, hablando }: { size?: number; hablando: boolean 
       `}</style>
       <defs>
         <linearGradient id="avBg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#6366F1" />
-          <stop offset="100%" stopColor="#3730A3" />
+          <stop offset="0%" stopColor={esCumple ? "#F97316" : "#6366F1"} />
+          <stop offset="100%" stopColor={esCumple ? "#DB2777" : "#3730A3"} />
         </linearGradient>
+        <linearGradient id="avHat" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#F472B6" />
+          <stop offset="100%" stopColor="#7C3AED" />
+        </linearGradient>
+        <radialGradient id="avBalloon" cx="0.35" cy="0.3" r="1">
+          <stop offset="0%" stopColor="#FDA4AF" />
+          <stop offset="100%" stopColor="#E11D48" />
+        </radialGradient>
         <linearGradient id="avCap" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#3b3663" />
           <stop offset="100%" stopColor="#1e1b4b" />
@@ -1269,8 +1278,15 @@ function GradAvatar({ size = 64, hablando }: { size?: number; hablando: boolean 
       {/* Fondo */}
       <circle cx="32" cy="32" r="31" fill="url(#avBg)" />
       <circle cx="32" cy="32" r="31" fill="none" stroke="rgba(252,211,77,0.55)" strokeWidth="1.6" />
-      {/* Toga con cuello dorado */}
-      <path d="M13 58 Q17 42 32 42 Q47 42 51 58 Z" fill="#1e1b4b" />
+      {/* Traje: toga (graduación) o remera festiva con lunares (cumpleaños) */}
+      <path d="M13 58 Q17 42 32 42 Q47 42 51 58 Z" fill={esCumple ? "#7C3AED" : "#1e1b4b"} />
+      {esCumple && (
+        <>
+          <circle cx="23" cy="52" r="1.7" fill="rgba(255,255,255,0.55)" />
+          <circle cx="41" cy="54" r="1.7" fill="rgba(255,255,255,0.55)" />
+          <circle cx="32" cy="57" r="1.5" fill="rgba(255,255,255,0.45)" />
+        </>
+      )}
       <path d="M27 43 L32 51 L37 43 L32 41.5 Z" fill="#FCD34D" />
       <g className="av-head">
         {/* Orejas y cabeza */}
@@ -1296,17 +1312,41 @@ function GradAvatar({ size = 64, hablando }: { size?: number; hablando: boolean 
         ) : (
           <path d="M28.5 36.5 Q32 39.6 35.5 36.5" stroke="#7c2d12" strokeWidth="1.7" fill="none" strokeLinecap="round" />
         )}
-        {/* Birrete */}
-        <path d="M32 10 L52 19 L32 28 L12 19 Z" fill="url(#avCap)" />
-        <path d="M32 10 L52 19 L32 22.5 L12 19 Z" fill="rgba(255,255,255,0.13)" />
-        <path d="M24 21.5 L24 26.5 Q32 30.5 40 26.5 L40 21.5" fill="#1e1b4b" />
-        <circle cx="32" cy="19" r="1.8" fill="url(#avGold)" />
-        {/* Borla (se balancea) */}
-        <g className="av-tassel">
-          <path d="M32 19 Q44 21 46 30" stroke="url(#avGold)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-          <circle cx="46" cy="31" r="1.9" fill="url(#avGold)" />
-          <path d="M44.6 32.2 L44 37 M46 32.8 L46 38 M47.4 32.2 L48 37" stroke="url(#avGold)" strokeWidth="1.3" strokeLinecap="round" />
-        </g>
+        {esCumple ? (
+          <>
+            {/* Gorrito de fiesta con pompón dorado */}
+            <g transform="rotate(-10 32 14)">
+              <path d="M32 3 L42 23 L22 23 Z" fill="url(#avHat)" />
+              <path d="M28.5 10.5 L36.5 23 L31.5 23 Z" fill="rgba(255,255,255,0.35)" />
+              <circle cx="32" cy="16" r="1.3" fill="#FCD34D" />
+              <circle cx="29" cy="20.5" r="1.1" fill="#FCD34D" opacity="0.85" />
+              <circle cx="36" cy="20" r="1.1" fill="#FCD34D" opacity="0.85" />
+              <path d="M22 23 Q27 20.6 32 23 Q37 25.4 42 23" stroke="#FCD34D" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+              <circle cx="32" cy="3" r="3" fill="url(#avGold)" />
+            </g>
+            {/* Globo flotante (se balancea como la borla) */}
+            <g className="av-tassel">
+              <path d="M43 31 Q46 26 45.5 21" stroke="rgba(255,255,255,0.75)" strokeWidth="1" fill="none" />
+              <ellipse cx="45.5" cy="15.5" rx="5.2" ry="6.2" fill="url(#avBalloon)" />
+              <path d="M43.6 11.5 Q42.4 13 42.8 15" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+              <path d="M44.5 21.5 L46.5 21.5 L45.5 23.5 Z" fill="#BE123C" />
+            </g>
+          </>
+        ) : (
+          <>
+            {/* Birrete */}
+            <path d="M32 10 L52 19 L32 28 L12 19 Z" fill="url(#avCap)" />
+            <path d="M32 10 L52 19 L32 22.5 L12 19 Z" fill="rgba(255,255,255,0.13)" />
+            <path d="M24 21.5 L24 26.5 Q32 30.5 40 26.5 L40 21.5" fill="#1e1b4b" />
+            <circle cx="32" cy="19" r="1.8" fill="url(#avGold)" />
+            {/* Borla (se balancea) */}
+            <g className="av-tassel">
+              <path d="M32 19 Q44 21 46 30" stroke="url(#avGold)" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+              <circle cx="46" cy="31" r="1.9" fill="url(#avGold)" />
+              <path d="M44.6 32.2 L44 37 M46 32.8 L46 38 M47.4 32.2 L48 37" stroke="url(#avGold)" strokeWidth="1.3" strokeLinecap="round" />
+            </g>
+          </>
+        )}
       </g>
       {/* Notas de voz cuando habla */}
       {hablando && (
@@ -1321,7 +1361,7 @@ function GradAvatar({ size = 64, hablando }: { size?: number; hablando: boolean 
 }
 
 // ─── Botón flotante de voz ───────────────────────────────────────────────────
-function GradMascot({ hablando }: { hablando: boolean }) {
+function GradMascot({ hablando, tipo = "graduacion" }: { hablando: boolean; tipo?: string }) {
   return (
     <div style={{ width: 64, height: 64 }}>
       <style>{`
@@ -1333,9 +1373,9 @@ function GradMascot({ hablando }: { hablando: boolean }) {
       `}</style>
       <div
         className={`vbtn ${hablando ? "talking" : "idle"}`}
-        style={{ boxShadow: "0 6px 20px rgba(79,70,229,0.40)" }}
+        style={{ boxShadow: tipo === "cumpleaños" ? "0 6px 20px rgba(219,39,119,0.45)" : "0 6px 20px rgba(79,70,229,0.40)" }}
       >
-        <GradAvatar size={64} hablando={hablando} />
+        <GradAvatar size={64} hablando={hablando} tipo={tipo} />
       </div>
     </div>
   );
@@ -3207,8 +3247,8 @@ export default function ConfirmarPage() {
     }
     if (prev !== "confirmado" && step === "confirmado") {
       setMascotaFase("instrucciones");
-      // Lluvia de birretes + fanfarria y aplausos (solo graduación)
-      if (evento?.tipo === "graduacion") {
+      // Lluvia temática + fanfarria y aplausos (graduación y cumpleaños)
+      if (evento?.tipo === "graduacion" || evento?.tipo === "cumpleaños") {
         setGradCapsKey(k => k + 1);
         sonidoCelebracion();
       }
@@ -4441,17 +4481,17 @@ export default function ConfirmarPage() {
               const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
               if (typeof fn === "function") (fn as () => void)();
               // iOS: desbloquear también la voz (speechSynthesis) dentro del gesto
-              if (evento.tipo === "graduacion") desbloquearTTS();
+              if (evento.tipo === "graduacion" || evento.tipo === "cumpleaños") desbloquearTTS();
             }}
             onClick={() => {
               // El click también cuenta como gesto (Android/desktop no disparan touchstart con mouse)
-              if (evento.tipo === "graduacion") desbloquearTTS();
+              if (evento.tipo === "graduacion" || evento.tipo === "cumpleaños") desbloquearTTS();
               const el = document.getElementById("welcome-overlay");
               if (el) { el.classList.add("leaving"); }
               setTimeout(() => {
                 setShowWelcome(false);
-                // Para graduación: solo hablar si NO ha confirmado ya
-                if (evento.tipo === "graduacion") {
+                // Graduación y cumpleaños: solo hablar si NO ha confirmado ya
+                if (evento.tipo === "graduacion" || evento.tipo === "cumpleaños") {
                   if (step === "confirmado" || step === "rechazado") {
                     // Ya completó el flujo — no repetir la invitación
                     setMascotaFase("oculto");
@@ -4470,6 +4510,8 @@ export default function ConfirmarPage() {
                   <path d="M6 12v5c3.33 1.67 8.67 1.67 12 0v-5"/>
                 </svg>
               </>
+            ) : evento.tipo === "cumpleaños" ? (
+              <>¡A festejar! 🎈</>
             ) : "Ver mi invitación"}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M5 12h14M13 6l6 6-6 6" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -4478,8 +4520,8 @@ export default function ConfirmarPage() {
         </div>
       )}
 
-      {/* ── Mascota flotante de graduación — lee la invitación sin pantalla extra ── */}
-      {evento && evento.tipo === "graduacion" && !showWelcome && mascotaFase !== "oculto" && (
+      {/* ── Mascota flotante (graduación y cumpleaños) — lee la invitación sin pantalla extra ── */}
+      {evento && (evento.tipo === "graduacion" || evento.tipo === "cumpleaños") && !showWelcome && mascotaFase !== "oculto" && (
         <FloatingMascot
           invitado={invitado}
           evento={evento}
@@ -4510,14 +4552,16 @@ export default function ConfirmarPage() {
             const dur = 2.6 + (i % 5) * 0.45;
             const delay = (i % 8) * 0.22;
             const size = 22 + (i % 4) * 8;
-            const esEstrella = i % 5 === 4;
+            const emoji = evento?.tipo === "cumpleaños"
+              ? ["🎈", "🎉", "🎂", "✨", "🎁"][i % 5]
+              : (i % 5 === 4 ? "⭐" : "🎓");
             return (
               <span key={i} style={{
                 position: "absolute", top: -50, left: `${left}%`,
                 fontSize: size, lineHeight: 1,
                 animation: `gradCapFall ${dur}s ${delay}s cubic-bezier(.3,.4,.6,1) forwards, gradCapSway ${1.4 + (i % 3) * 0.4}s ease-in-out infinite`,
                 filter: "drop-shadow(0 3px 6px rgba(30,27,75,0.35))",
-              }}>{esEstrella ? "⭐" : "🎓"}</span>
+              }}>{emoji}</span>
             );
           })}
         </div>
