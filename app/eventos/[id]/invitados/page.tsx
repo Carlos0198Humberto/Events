@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
-import { armarDatosTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
-import { armarMensajeInvitacion, armarMensajeRecordatorio, diasHasta } from "@/lib/mensajeInvitacion";
+import { armarMensajeDia, armarMensajeInvitacion, armarMensajeRecordatorio, diasHasta } from "@/lib/mensajeInvitacion";
 import { versiculoDe, type Versiculo } from "@/lib/versiculos";
 import EnvioEnGrupo, { type MarcasEnvio, type TipoEnvio } from "./EnvioEnGrupo";
 import VersiculoEvento from "./VersiculoEvento";
@@ -33,9 +33,11 @@ type Evento = {
   fecha?: string | null;
   hora?: string | null;
   lugar?: string | null;
+  imagen_url?: string | null;
   fecha_limite_confirmacion?: string | null;
   versiculo_texto?: string | null;
   versiculo_cita?: string | null;
+  tarjeta?: ExtrasTarjeta | null;
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -132,14 +134,20 @@ export default function AgregarInvitados() {
       (async () => {
         const { data } = await supabase
           .from("eventos")
-          .select("nombre, tipo, anfitriones, fecha, hora, lugar, fecha_limite_confirmacion")
+          .select("nombre, tipo, anfitriones, fecha, hora, lugar, imagen_url, fecha_limite_confirmacion")
           .eq("id", id)
           .single();
         if (!data) return;
         // El versículo vive en columnas de supabase-envios.sql: si todavía no
         // existen, el evento carga igual, sin versículo
         const extra = await supabase.from("eventos").select("versiculo_texto, versiculo_cita").eq("id", id).single();
-        setEvento({ ...data, ...(extra.error || !extra.data ? {} : extra.data) });
+        // Igual con los datos de la tarjeta (supabase-tarjeta.sql)
+        const tarjeta = await supabase.from("eventos").select("tarjeta").eq("id", id).single();
+        setEvento({
+          ...data,
+          ...(extra.error || !extra.data ? {} : extra.data),
+          ...(tarjeta.error || !tarjeta.data ? {} : tarjeta.data),
+        });
       })();
       cargarTodosInvitados();
     }
@@ -192,6 +200,7 @@ export default function AgregarInvitados() {
         unidas[r.token] = {
           enviado_at: r.enviado_at ?? locales[r.token]?.enviado_at ?? null,
           recordatorio_at: r.recordatorio_at ?? locales[r.token]?.recordatorio_at ?? null,
+          dia_at: locales[r.token]?.dia_at ?? null, // solo existe en este navegador
         };
       });
     }
@@ -253,7 +262,7 @@ export default function AgregarInvitados() {
   }
 
   function marcarEnvio(inv: Invitado, tipo: TipoEnvio) {
-    const campo = tipo === "invitacion" ? "enviado_at" : "recordatorio_at";
+    const campo = tipo === "invitacion" ? "enviado_at" : tipo === "recordatorio" ? "recordatorio_at" : "dia_at";
     const ahora = new Date().toISOString();
     if (tipo === "invitacion") setEnviados((prev) => new Set(prev).add(inv.token));
     setMarcas((prev) => {
@@ -262,18 +271,23 @@ export default function AgregarInvitados() {
       return nuevas;
     });
     // Si la columna todavía no existe, falla en silencio: queda la marca local
-    if (inv.id) supabase.from("invitados").update({ [campo]: ahora }).eq("id", inv.id).then(() => {});
+    // (el mensaje del día no tiene columna: queda solo la marca local)
+    if (inv.id && campo !== "dia_at") supabase.from("invitados").update({ [campo]: ahora }).eq("id", inv.id).then(() => {});
   }
 
   const yaEnviado = (inv: Invitado): boolean => enviados.has(inv.token) || !!marcas[inv.token]?.enviado_at;
 
   function buildMensaje(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
-    return armarMensajeInvitacion(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
+    // Si el invitado elige cuántos van, no se le dice un número de lugares
+    const personas = inv.cupo_elije_invitado ? null : inv.num_personas ?? null;
+    return armarMensajeInvitacion(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, new Date(), { personas });
   }
 
   function buildWhatsAppUrl(inv: Invitado, tipo: TipoEnvio = "invitacion") {
     const texto = tipo === "recordatorio"
       ? armarMensajeRecordatorio(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), tratoInvitado(inv))
+      : tipo === "dia"
+      ? armarMensajeDia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), tratoInvitado(inv))
       : buildMensaje(inv);
     const msg = encodeURIComponent(texto);
     const rawPhone = inv.telefono ?? "";
@@ -433,6 +447,28 @@ export default function AgregarInvitados() {
     toast.success(copiada ? "Tarjeta copiada: en el chat pegala con Ctrl+V" : "Tarjeta descargada: adjuntala en el chat");
   }
 
+  // Versión para estados de WhatsApp / Instagram (1080×1920): la ve todo el
+  // mundo, así que va sin el nombre del invitado ni el llamado a confirmar
+  const [generandoHistoria, setGenerandoHistoria] = useState(false);
+  async function tarjetaParaEstados() {
+    if (!evento || generandoHistoria) return;
+    setGenerandoHistoria(true);
+    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, ""), "historia");
+    setGenerandoHistoria(false);
+    if (!blob) { toast.error("No se pudo generar la versión para estados."); return; }
+    const archivo = new File([blob], "invitacion_para_estados.png", { type: "image/png" });
+    if (compartirEsLoPrincipal()) {
+      try { await navigator.share({ files: [archivo] }); return; }
+      catch (e) { if ((e as Error)?.name === "AbortError") return; /* sin gesto reciente: se descarga */ }
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(archivo);
+    a.download = archivo.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast.success("Listo: publicala en tu estado");
+  }
+
   function descargarTarjeta() {
     if (!tarjeta?.blob) return;
     const archivo = archivoTarjeta(tarjeta.inv, tarjeta.blob);
@@ -457,6 +493,10 @@ export default function AgregarInvitados() {
   const sinConfirmar = todosInvitados.filter((i) => !i.estado || i.estado === "pendiente");
   const sinRecordar = sinConfirmar.filter((i) => !marcas[i.token]?.recordatorio_at);
   const mostrarRecordatorio = diasFaltan !== null && diasFaltan >= 0 && diasFaltan <= 7 && sinConfirmar.length > 0;
+  // La víspera y el mismo día: el mensaje con la hora y cómo llegar, para los confirmados
+  const confirmados = todosInvitados.filter((i) => i.estado === "confirmado");
+  const sinMensajeDia = confirmados.filter((i) => !marcas[i.token]?.dia_at);
+  const mostrarMensajeDia = (diasFaltan === 0 || diasFaltan === 1) && confirmados.length > 0;
 
   const versiculoActual = versiculoDe(evento?.versiculo_texto, evento?.versiculo_cita);
 
@@ -869,6 +909,8 @@ export default function AgregarInvitados() {
         .tarjeta-principal { width: 100%; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--wa-green), var(--wa-dark)); color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 16px rgba(37,211,102,0.35); margin-bottom: 8px; }
         .tarjeta-principal:disabled { opacity: .5; cursor: wait; box-shadow: none; }
         .tarjeta-secundarias { display: flex; gap: 8px; }
+        .tarjeta-estados { width: 100%; padding: 11px; border-radius: 12px; border: 1.5px dashed rgba(79,70,229,0.35); background: rgba(79,70,229,0.05); color: #3730A3; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-bottom: 8px; }
+        .tarjeta-estados:disabled { opacity: .6; cursor: wait; }
         .tarjeta-secundarias .btn-cancel { padding: 11px 6px; font-size: 13px; }
         .tarjeta-secundarias .btn-cancel:disabled { opacity: .5; cursor: wait; }
 
@@ -968,6 +1010,9 @@ export default function AgregarInvitados() {
             {compartirEsLoPrincipal()
               ? <button className="tarjeta-principal" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">Enviar tarjeta</button>
               : <button className="tarjeta-principal" onClick={copiarYAbrirWhatsApp} disabled={!tarjeta.blob} type="button">Copiar y abrir WhatsApp</button>}
+            <button className="tarjeta-estados" onClick={tarjetaParaEstados} disabled={generandoHistoria} type="button">
+              {generandoHistoria ? "Preparando…" : "Versión para estados (sin nombre del invitado)"}
+            </button>
             <div className="tarjeta-secundarias">
               <button className="btn-cancel" onClick={enviarSoloMensaje} type="button">Solo el mensaje</button>
               <button className="btn-cancel" onClick={descargarTarjeta} disabled={!tarjeta.blob} type="button">Descargar</button>
@@ -1053,6 +1098,27 @@ export default function AgregarInvitados() {
                 onClick={() => abrirEnvioGrupo("recordatorio", (sinRecordar.length > 0 ? sinRecordar : sinConfirmar).map((i) => i.token))}
               >
                 Recordar
+              </button>
+            </div>
+          )}
+
+          {/* ── Mensaje del día: la víspera y el mismo día ── */}
+          {mostrarMensajeDia && (
+            <div className="recordatorio-banner anim-card">
+              <div className="recordatorio-icono" aria-hidden="true">🎉</div>
+              <div className="recordatorio-cuerpo">
+                <div className="recordatorio-titulo">{diasFaltan === 0 ? "¡Hoy es el día!" : "Mañana es el día"}</div>
+                <div className="recordatorio-sub">
+                  Mandales a los {confirmados.length} confirmado{confirmados.length !== 1 ? "s" : ""} la hora y cómo llegar
+                  {sinMensajeDia.length < confirmados.length && ` · ya enviaste ${confirmados.length - sinMensajeDia.length}`}
+                </div>
+              </div>
+              <button
+                className="recordatorio-btn"
+                type="button"
+                onClick={() => abrirEnvioGrupo("dia", (sinMensajeDia.length > 0 ? sinMensajeDia : confirmados).map((i) => i.token))}
+              >
+                Enviar
               </button>
             </div>
           )}

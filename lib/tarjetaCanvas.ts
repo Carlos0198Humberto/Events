@@ -1,18 +1,28 @@
 // ─── Tarjeta de invitación en imagen (navegador) ──────────────────────────────
 //
-// Negro y oro, como una invitación impresa de gala: marco dorado fino, dos
-// bandas de filigrana cruzando las esquinas, birrete en línea dorada, el título
-// en caligrafía, la fecha en mayúsculas finas y un sello con las iniciales.
+// Como una invitación impresa de gala: marco dorado fino, dos bandas de
+// filigrana cruzando las esquinas, la foto en un círculo dorado (o el birrete),
+// el título en caligrafía, la fecha en mayúsculas finas y un sello con las
+// iniciales. Los colores salen de la paleta del evento (datos.paleta).
+//
+// Dos formatos: "tarjeta" (1080×1350, la que va con el mensaje) e "historia"
+// (1080×1920, para estados de WhatsApp e Instagram).
 //
 // No lleva QR: la confirmación es el enlace del mensaje que acompaña a la
 // imagen, que en WhatsApp sí se puede tocar. Una imagen no puede tener un
 // enlace adentro.
 
-import { DORADO, NEGRO_ORO, type DatosTarjeta } from "@/lib/tarjetaInvitacion";
+import { PALETAS_TARJETA, type DatosTarjeta, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, sello, separador } from "@/lib/ornamentosTarjeta";
 
 const W = 1080;
-const H = 1350;
+// Alto y paleta de la tarjeta que se está dibujando. Se fijan después de todas
+// las esperas (fuentes, foto) y el dibujo es sincrónico de ahí al final: dos
+// tarjetas generadas a la vez no se pisan los colores.
+let H = 1350;
+let P: PaletaTarjeta = PALETAS_TARJETA.negro;
+
+export type FormatoTarjeta = "tarjeta" | "historia";
 const SCRIPT = "'Great Vibes', cursive";
 const CAPS = "'Cinzel', Georgia, serif";
 const SERIF = "'Playfair Display', Georgia, serif";
@@ -49,7 +59,7 @@ export async function cargarFuentesTarjeta() {
 
 function oro(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) {
   const g = ctx.createLinearGradient(x0, y0, x1, y1);
-  DORADO.forEach(([p, c]) => g.addColorStop(p, c));
+  P.dorado.forEach(([p, c]) => g.addColorStop(p, c));
   return g;
 }
 
@@ -69,9 +79,9 @@ function banda(ctx: CanvasRenderingContext2D) {
   ctx.translate(BANDA_C, 0);
   ctx.rotate(Math.PI / 4);
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.7)";
+  ctx.shadowColor = P.sombra;
   ctx.shadowBlur = 26;
-  ctx.fillStyle = NEGRO_ORO.banda;
+  ctx.fillStyle = P.banda;
   ctx.fillRect(desde, -h, hasta - desde, 2 * h);
   ctx.restore();
   const g = oro(ctx, desde, -h, hasta, h);
@@ -85,14 +95,15 @@ function banda(ctx: CanvasRenderingContext2D) {
   trazo(ctx, fi.festones, 1.4);
   trazo(ctx, fi.anillos, 1.3);
   ctx.fill(new Path2D(fi.rellenos));
-  ctx.fillStyle = NEGRO_ORO.banda;
+  ctx.fillStyle = P.banda;
   ctx.fill(new Path2D(fi.huecos));
   ctx.restore();
 }
 
-function birrete(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number) {
+function birrete(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, giro = 0) {
   ctx.save();
   ctx.translate(cx, cy);
+  if (giro) ctx.rotate(giro);
   ctx.scale(s, s);
   const g = oro(ctx, -176, -64, 176, 112);
   ctx.strokeStyle = g;
@@ -101,7 +112,7 @@ function birrete(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: numbe
   trazo(ctx, BIRRETE.casquete, 3.4);
   trazo(ctx, BIRRETE.bandaCasquete, 1.6);
   const tablero = new Path2D(BIRRETE.tablero);
-  ctx.fillStyle = NEGRO_ORO.fondoCentro;
+  ctx.fillStyle = P.fondoCentro;
   ctx.fill(tablero);
   ctx.lineWidth = 3.4;
   ctx.stroke(tablero);
@@ -123,7 +134,7 @@ function dibujarSello(ctx: CanvasRenderingContext2D, cx: number, cy: number, R: 
   ctx.fillStyle = "rgba(0,0,0,0.22)";
   ctx.fill(cintas);
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.55)";
+  ctx.shadowColor = P.sombra;
   ctx.shadowBlur = 14;
   ctx.fillStyle = oro(ctx, -R, -R, R, R);
   ctx.fill(new Path2D(s.roseta));
@@ -132,13 +143,63 @@ function dibujarSello(ctx: CanvasRenderingContext2D, cx: number, cy: number, R: 
   trazo(ctx, s.anillo, 1.6);
   ctx.fillStyle = oro(ctx, R, -R, -R, R);
   ctx.fill(new Path2D(s.centro));
-  ctx.fillStyle = NEGRO_ORO.tinta;
+  ctx.fillStyle = P.tinta;
   ctx.fill(new Path2D(s.puntos));
   ctx.fill(new Path2D(s.estrellas));
   ctx.textAlign = "center";
   ctx.font = `italic 600 ${Math.round(R * 0.56)}px ${SERIF}`;
   ctx.fillText(iniciales, 0, R * 0.26);
   ctx.restore();
+}
+
+// La foto de portada (Supabase Storage la sirve con CORS abierto). Si el
+// navegador la tiene en caché de una carga sin CORS, se pide de nuevo con otra
+// URL; si igual falla, la tarjeta sale sin foto: nunca se queda sin generar.
+function cargarImagen(url: string): Promise<HTMLImageElement | null> {
+  const intento = (src: string) => new Promise<HTMLImageElement | null>((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.decoding = "async";
+    const t = setTimeout(() => resolve(null), 9000);
+    img.onload = () => { clearTimeout(t); resolve(img.naturalWidth > 0 ? img : null); };
+    img.onerror = () => { clearTimeout(t); resolve(null); };
+    img.src = src;
+  });
+  return intento(url).then((img) => img ?? intento(`${url}${url.includes("?") ? "&" : "?"}tarjeta=1`));
+}
+
+// Retrato redondo con doble anillo dorado. El recorte favorece la parte de
+// arriba de la foto, que es donde suele estar la cara.
+function retrato(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, cy: number, R: number) {
+  ctx.save();
+  ctx.shadowColor = "rgba(212,176,104,0.35)";
+  ctx.shadowBlur = 40;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R + 14, 0, Math.PI * 2);
+  ctx.fillStyle = P.fondoCentro;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.clip();
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const lado = Math.min(w, h);
+  const sx = (w - lado) / 2;
+  const sy = h > w ? (h - lado) * 0.18 : 0;
+  ctx.drawImage(img, sx, sy, lado, lado, cx - R, cy - R, R * 2, R * 2);
+  ctx.restore();
+
+  ctx.strokeStyle = oro(ctx, cx - R, cy - R, cx + R, cy + R);
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R + 3, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R + 16, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 type Opciones = {
@@ -193,9 +254,13 @@ function partirEnLineas(ctx: CanvasRenderingContext2D, texto: string, max: numbe
 
 type Bloque = { alto: number; antes: number; dibujar: (y: number) => void };
 
-/** Genera la tarjeta (1080×1350, formato vertical de WhatsApp/Instagram). */
-export async function generarTarjetaPNG(datos: DatosTarjeta): Promise<Blob | null> {
+/** Genera la tarjeta: 1080×1350 (va con el mensaje) o 1080×1920 (para estados). */
+export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTarjeta = "tarjeta"): Promise<Blob | null> {
   await cargarFuentesTarjeta();
+  const foto = datos.foto ? await cargarImagen(datos.foto) : null;
+  // Sin más esperas a partir de acá (ver H y P arriba)
+  H = formato === "historia" ? 1920 : 1350;
+  P = datos.paleta ?? PALETAS_TARJETA.negro;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -204,11 +269,11 @@ export async function generarTarjetaPNG(datos: DatosTarjeta): Promise<Blob | nul
   const cx = W / 2;
 
   // Fondo negro con una luz suave al centro
-  ctx.fillStyle = NEGRO_ORO.fondo;
+  ctx.fillStyle = P.fondo;
   ctx.fillRect(0, 0, W, H);
-  const luz = ctx.createRadialGradient(cx, H * 0.44, 40, cx, H * 0.46, 860);
-  luz.addColorStop(0, NEGRO_ORO.fondoCentro);
-  luz.addColorStop(1, "rgba(13,13,15,0)");
+  const luz = ctx.createRadialGradient(cx, H * 0.44, 40, cx, H * 0.46, H * 0.64);
+  luz.addColorStop(0, P.fondoCentro);
+  luz.addColorStop(1, `${P.fondo}00`);
   ctx.fillStyle = luz;
   ctx.fillRect(0, 0, W, H);
 
@@ -232,7 +297,15 @@ export async function generarTarjetaPNG(datos: DatosTarjeta): Promise<Blob | nul
   // Con versículo hay un bloque más: birrete, año y sello se achican un poco
   const compacta = !!datos.versiculo;
 
-  bloques.push(datos.esGraduacion
+  // Arriba: la foto en un círculo dorado (con el birrete apoyado, en graduación)
+  // o, sin foto, el birrete solo / un separador
+  const RF = compacta ? 118 : 132;
+  bloques.push(foto
+    ? { alto: RF * 2 + 32, antes: 0, dibujar: (y) => {
+      retrato(ctx, foto, cx, y + RF + 16, RF);
+      if (datos.esGraduacion) birrete(ctx, cx + RF * 0.66, y + RF * 0.36, 0.5, -0.32);
+    } }
+    : datos.esGraduacion
     ? compacta
       ? { alto: 128, antes: 0, dibujar: (y) => birrete(ctx, cx, y + 52, 0.78) }
       : { alto: 150, antes: 0, dibujar: (y) => birrete(ctx, cx, y + 60, 0.92) }
@@ -252,11 +325,25 @@ export async function generarTarjetaPNG(datos: DatosTarjeta): Promise<Blob | nul
 
   if (datos.honor) {
     bloques.push({ alto: 24, antes: 18, dibujar: (y) =>
-      escribir(ctx, `—  ${datos.honor}  —`, cx, y + 21, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 22, min: 16, max: 600, espacio: 5, color: NEGRO_ORO.oroPlano }) });
+      escribir(ctx, `—  ${datos.honor}  —`, cx, y + 21, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 22, min: 13, max: 800, espacio: 4, color: P.oroPlano }) });
   }
 
   bloques.push({ alto: 62, antes: 14, dibujar: (y) =>
     escribir(ctx, datos.protagonista.toLocaleUpperCase("es"), cx, y + 54, { fuente: (px) => `600 ${px}px ${CAPS}`, px: 62, min: 34, max: 760, espacio: 2, color: "oro" }) });
+
+  // De qué se gradúa y dónde: la carrera en cursiva clara, la institución en mayúsculas finas
+  if (datos.carrera) {
+    ctx.font = `italic 500 34px ${SERIF}`;
+    const lineasC = partirEnLineas(ctx, datos.carrera, 760).slice(0, 2);
+    bloques.push({ alto: lineasC.length * 42, antes: 14, dibujar: (y) => {
+      lineasC.forEach((l, i) =>
+        escribir(ctx, l, cx, y + 33 + i * 42, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 34, min: 24, max: 780, color: P.textoFuerte }));
+    } });
+  }
+  if (datos.institucion) {
+    bloques.push({ alto: 22, antes: datos.carrera ? 8 : 14, dibujar: (y) =>
+      escribir(ctx, datos.institucion!.toLocaleUpperCase("es"), cx, y + 19, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 19, min: 13, max: 780, espacio: 3, color: P.oroPlano }) });
+  }
 
   bloques.push({ alto: 16, antes: 22, dibujar: (y) => {
     const sep = separador(220);
@@ -276,10 +363,10 @@ export async function generarTarjetaPNG(datos: DatosTarjeta): Promise<Blob | nul
     const lineasV = partirEnLineas(ctx, `«${v.texto}»`, 690).slice(0, 4);
     bloques.push({ alto: lineasV.length * 34 + 30, antes: 22, dibujar: (y) => {
       ctx.font = `italic 500 25px ${SERIF}`;
-      ctx.fillStyle = "#EFE2C2";
+      ctx.fillStyle = P.textoVersiculo;
       ctx.textAlign = "center";
       lineasV.forEach((l, i) => ctx.fillText(l, cx, y + 25 + i * 34));
-      escribir(ctx, v.cita.toLocaleUpperCase("es"), cx, y + lineasV.length * 34 + 22, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 17, min: 13, max: 600, espacio: 3, color: NEGRO_ORO.oroPlano });
+      escribir(ctx, v.cita.toLocaleUpperCase("es"), cx, y + lineasV.length * 34 + 22, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 17, min: 13, max: 600, espacio: 3, color: P.oroPlano });
     } });
   }
 
@@ -296,52 +383,104 @@ export async function generarTarjetaPNG(datos: DatosTarjeta): Promise<Blob | nul
   }
   if (datos.diaHora) {
     bloques.push({ alto: 30, antes: 14, dibujar: (y) =>
-      escribir(ctx, datos.diaHora!, cx, y + 26, { fuente: (px) => `400 ${px}px ${SANS}`, px: 28, min: 20, max: 720, espacio: 5, color: NEGRO_ORO.textoSuave }) });
+      escribir(ctx, datos.diaHora!, cx, y + 26, { fuente: (px) => `400 ${px}px ${SANS}`, px: 28, min: 20, max: 720, espacio: 5, color: P.textoSuave }) });
   }
 
   if (datos.lugar) {
     bloques.push({ alto: 36, antes: 36, dibujar: (y) =>
       escribir(ctx, datos.lugar!.toLocaleUpperCase("es"), cx, y + 30, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 32, min: 22, max: 780, espacio: 2, color: "oro" }) });
     if (datos.direccion) {
-      bloques.push({ alto: 28, antes: 8, dibujar: (y) =>
-        escribir(ctx, datos.direccion!, cx, y + 23, { fuente: (px) => `300 ${px}px ${SANS}`, px: 25, min: 18, max: 780, color: NEGRO_ORO.textoSuave }) });
+      ctx.font = `300 25px ${SANS}`;
+      const lineasD = partirEnLineas(ctx, datos.direccion, 780).slice(0, 2);
+      bloques.push({ alto: lineasD.length * 32 - 4, antes: 8, dibujar: (y) => {
+        lineasD.forEach((l, i) =>
+          escribir(ctx, l, cx, y + 23 + i * 32, { fuente: (px) => `300 ${px}px ${SANS}`, px: 25, min: 18, max: 780, color: P.textoSuave }));
+      } });
+    }
+    if (datos.referencia) {
+      ctx.font = `italic 500 23px ${SERIF}`;
+      const lineasR = partirEnLineas(ctx, `Referencia: ${datos.referencia}`, 760).slice(0, 2);
+      bloques.push({ alto: lineasR.length * 30 - 4, antes: 6, dibujar: (y) => {
+        lineasR.forEach((l, i) =>
+          escribir(ctx, l, cx, y + 21 + i * 30, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 23, min: 18, max: 780, color: P.oroPlano }));
+      } });
     }
   }
 
-  // Párrafo con el saludo y la indicación de confirmar
+  // Para quién es (como el sobre de una invitación impresa), la frase que
+  // invita y qué hacer: confirmar en el enlace que acompaña a la imagen
+  if (datos.invitado) {
+    bloques.push({ alto: 46, antes: 34, dibujar: (y) =>
+      escribir(ctx, `Para ${datos.invitado}`, cx, y + 38, { fuente: (px) => `italic 600 ${px}px ${SERIF}`, px: 42, min: 28, max: 760, color: P.textoFuerte }) });
+  }
   ctx.font = `300 27px ${SANS}`;
-  const lineas = partirEnLineas(ctx, datos.parrafo, 700).slice(0, 4);
-  bloques.push({ alto: lineas.length * 39, antes: 30, dibujar: (y) => {
+  const lineas = partirEnLineas(ctx, datos.frase, 720).slice(0, 2);
+  bloques.push({ alto: lineas.length * 38, antes: datos.invitado ? 10 : 30, dibujar: (y) => {
     ctx.font = `300 27px ${SANS}`;
-    ctx.fillStyle = NEGRO_ORO.textoSuave;
+    ctx.fillStyle = P.textoSuave;
     ctx.textAlign = "center";
-    lineas.forEach((l, i) => ctx.fillText(l, cx, y + 28 + i * 39));
+    lineas.forEach((l, i) => ctx.fillText(l, cx, y + 28 + i * 38));
   } });
+  // El llamado a confirmar es para la tarjeta personal (va con el enlace); la
+  // genérica (para estados) no lleva enlace al lado
+  if (datos.invitado) {
+    bloques.push({ alto: 20, antes: 14, dibujar: (y) =>
+      escribir(ctx, datos.cta.toLocaleUpperCase("es"), cx, y + 18, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 17, min: 12, max: 760, espacio: 3, color: P.oroPlano }) });
+  }
+
+  // Quién invita, firmado en caligrafía como en una tarjeta impresa
+  if (datos.familia) {
+    bloques.push({ alto: 18, antes: 26, dibujar: (y) =>
+      escribir(ctx, "CON CARIÑO", cx, y + 17, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 17, min: 13, max: 500, espacio: 6, color: P.oroPlano }) });
+    bloques.push({ alto: 64, antes: 2, dibujar: (y) =>
+      escribir(ctx, datos.familia!, cx, y + 52, { fuente: (px) => `${px}px ${SCRIPT}`, px: 66, min: 40, max: 780, color: "oro" }) });
+  }
 
   if (datos.promocion) {
     bloques.push({ alto: 22, antes: 34, dibujar: (y) =>
-      escribir(ctx, "PROMOCIÓN", cx, y + 20, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 21, min: 16, max: 500, espacio: 9, color: NEGRO_ORO.oroPlano }) });
-    const pxAnio = compacta ? 104 : 124;
-    bloques.push({ alto: compacta ? 84 : 100, antes: 6, dibujar: (y) =>
-      escribir(ctx, String(datos.promocion), cx, y + (compacta ? 80 : 96), { fuente: (px) => `500 ${px}px ${SERIF}`, px: pxAnio, min: 80, max: 500, color: "oro" }) });
+      escribir(ctx, "PROMOCIÓN", cx, y + 20, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 21, min: 16, max: 500, espacio: 9, color: P.oroPlano }) });
+    const chico = compacta || !!foto;
+    const pxAnio = chico ? 96 : 124;
+    bloques.push({ alto: chico ? 78 : 100, antes: 6, dibujar: (y) =>
+      escribir(ctx, String(datos.promocion), cx, y + (chico ? 74 : 96), { fuente: (px) => `500 ${px}px ${SERIF}`, px: pxAnio, min: 72, max: 500, color: "oro" }) });
   }
 
-  const R = compacta ? 46 : 54;
-  bloques.push({ alto: R * 2.75, antes: 20, dibujar: (y) => dibujarSello(ctx, cx, y + R, R, datos.iniciales) });
-
-  // Reparte el espacio libre entre los bloques y centra el conjunto en el marco
   const arriba = 112;
-  const abajo = 1262;
+  const abajo = H - 88;
   const disponible = abajo - arriba;
-  const altos = bloques.reduce((s, b) => s + b.alto, 0);
-  const huecos = bloques.reduce((s, b) => s + b.antes, 0);
+  const medir = () => ({
+    altos: bloques.reduce((s, b) => s + b.alto, 0),
+    huecos: bloques.reduce((s, b) => s + b.antes, 0),
+  });
+
+  // El sello es adorno: entra solo si queda lugar
+  const R = compacta ? 46 : 54;
+  const bloqueSello = { alto: R * 2.75, antes: 20, dibujar: (y: number) => dibujarSello(ctx, cx, y + R, R, datos.iniciales) };
+  { const m = medir(); if (m.altos + bloqueSello.alto + (m.huecos + bloqueSello.antes) * 0.45 <= disponible) bloques.push(bloqueSello); }
+
+  // Reparte el espacio libre entre los bloques y centra el conjunto en el marco.
+  // Si aun con los huecos al mínimo no entra (carrera + familia + versículo…),
+  // todo el contenido se escala un poco alrededor del centro: mejor letra algo
+  // más chica que un texto que pisa el marco.
+  // En el formato para estados sobra alto: el contenido se agranda un poco
+  // en vez de quedar flotando en el medio.
+  const { altos, huecos } = medir();
   const factor = Math.min(1.5, Math.max(0.35, (disponible - altos) / Math.max(huecos, 1)));
-  let y = arriba + Math.max(0, (disponible - altos - huecos * factor) / 2);
+  const total = altos + huecos * factor;
+  const escala = total > disponible
+    ? disponible / total
+    : formato === "historia" ? Math.min(1.16, (disponible * 0.9) / total) : 1;
+  ctx.save();
+  ctx.translate(cx, arriba + (disponible - total * escala) / 2);
+  ctx.scale(escala, escala);
+  ctx.translate(-cx, 0);
+  let y = 0;
   for (const b of bloques) {
     y += b.antes * factor;
     b.dibujar(y);
     y += b.alto;
   }
+  ctx.restore();
 
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
 }

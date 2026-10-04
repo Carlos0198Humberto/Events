@@ -1,5 +1,5 @@
 "use client";
-// ─── Envío en grupo: invitación o recordatorio a varios invitados ─────────────
+// ─── Envío en grupo: invitación, recordatorio o mensaje del día ───────────────
 //
 // WhatsApp no deja que una página mande mensajes sola: cada envío lo confirma
 // una persona dentro de WhatsApp (mandar en simultáneo exige la API de
@@ -12,9 +12,16 @@ import { useMemo, useState } from "react";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import { saludo, type Trato } from "@/lib/tratoInvitado";
 
-export type TipoEnvio = "invitacion" | "recordatorio";
+export type TipoEnvio = "invitacion" | "recordatorio" | "dia";
 export type InvitadoEnvio = { nombre: string; token: string; telefono?: string; estado?: string };
-export type MarcasEnvio = Record<string, { enviado_at?: string | null; recordatorio_at?: string | null }>;
+export type MarcasEnvio = Record<string, { enviado_at?: string | null; recordatorio_at?: string | null; dia_at?: string | null }>;
+
+// Nombre de cada tipo en singular y plural, para los textos de la cola
+const NOMBRES: Record<TipoEnvio, [string, string]> = {
+  invitacion: ["invitación", "invitaciones"],
+  recordatorio: ["recordatorio", "recordatorios"],
+  dia: ["mensaje del día", "mensajes del día"],
+};
 
 type Props = {
   invitados: InvitadoEnvio[];
@@ -28,6 +35,10 @@ type Props = {
 };
 
 const pendiente = (inv: InvitadoEnvio) => !inv.estado || inv.estado === "pendiente";
+const confirmado = (inv: InvitadoEnvio) => inv.estado === "confirmado";
+// Invitación: a todos. Recordatorio: a quien no respondió. Día del evento: a quien confirmó.
+const corresponde = (tipo: TipoEnvio, inv: InvitadoEnvio) =>
+  tipo === "invitacion" || (tipo === "recordatorio" ? pendiente(inv) : confirmado(inv));
 
 export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, marcas, tratoDe, urlWhatsApp, onEnviado, onCerrar }: Props) {
   const [tipo, setTipo] = useState<TipoEnvio>(tipoInicial);
@@ -36,12 +47,18 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
   const [indice, setIndice] = useState(0);
   const [hechos, setHechos] = useState(0);
 
-  // Un recordatorio es para quien no confirmó: a los demás no se les ofrece
-  const disponible = (inv: InvitadoEnvio) => tipo === "invitacion" || pendiente(inv);
-  const visibles = invitados.filter(disponible);
+  // Un recordatorio es para quien no confirmó; el mensaje del día, para quien
+  // confirmó: a los demás no se les ofrece
+  const visibles = invitados.filter((inv) => corresponde(tipo, inv));
 
   const filtros = useMemo(() => {
-    const lista = invitados.filter((inv) => tipo === "invitacion" || pendiente(inv));
+    const lista = invitados.filter((inv) => corresponde(tipo, inv));
+    if (tipo === "dia") {
+      return [
+        { clave: "sin-dia", texto: "Sin mensaje del día", tokens: lista.filter((i) => !marcas[i.token]?.dia_at).map((i) => i.token) },
+        { clave: "todos", texto: "Todos los que confirmaron", tokens: lista.map((i) => i.token) },
+      ];
+    }
     return tipo === "invitacion"
       ? [
           // Quien ya respondió tiene la invitación aunque no figure como enviada
@@ -57,8 +74,9 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
 
   function cambiarTipo(t: TipoEnvio) {
     setTipo(t);
-    // Al pasar a recordatorio se sueltan los que ya confirmaron o rechazaron
-    if (t === "recordatorio") setElegidos((prev) => new Set([...prev].filter((tk) => invitados.some((i) => i.token === tk && pendiente(i)))));
+    // Al cambiar de tipo se sueltan los que no corresponden (ej. los que ya
+    // confirmaron, al pasar a recordatorio)
+    if (t !== "invitacion") setElegidos((prev) => new Set([...prev].filter((tk) => invitados.some((i) => i.token === tk && corresponde(t, i)))));
   }
 
   function alternar(token: string) {
@@ -86,7 +104,7 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
     setIndice((i) => i + 1);
   }
 
-  const nombreTipo = tipo === "invitacion" ? "invitación" : "recordatorio";
+  const [nombreTipo, nombreTipos] = NOMBRES[tipo];
   const seleccionados = visibles.filter((i) => elegidos.has(i.token)).length;
   const actual = cola && indice < cola.length ? cola[indice] : null;
 
@@ -97,7 +115,7 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
         .eg-titulo { font-family: 'Cormorant Garamond', serif; font-size: 23px; font-weight: 600; color: var(--text); text-align: center; }
         .eg-sub { font-size: 12.5px; color: var(--text2); text-align: center; line-height: 1.5; margin: 4px 0 14px; }
         .eg-tipos { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 3px; margin-bottom: 12px; }
-        .eg-tipo { flex: 1; padding: 9px; border: none; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 700; color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        .eg-tipo { flex: 1; padding: 9px 4px; border: none; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 700; color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; }
         .eg-tipo.activo { background: #1D1C20; color: #E8CB82; }
         .eg-filtros { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
         .eg-filtro { font-size: 11.5px; font-weight: 600; padding: 6px 10px; border-radius: 999px; border: 1.5px solid var(--border-input); background: var(--surface); color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; }
@@ -128,9 +146,9 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
             <div className="eg-sub">Elegí a quiénes. Después vas mandando de a uno, con un toque cada uno: WhatsApp no permite que una página envíe mensajes sola.</div>
 
             <div className="eg-tipos" role="tablist">
-              {(["invitacion", "recordatorio"] as TipoEnvio[]).map((t) => (
+              {(["invitacion", "recordatorio", "dia"] as TipoEnvio[]).map((t) => (
                 <button key={t} type="button" role="tab" aria-selected={tipo === t} className={`eg-tipo${tipo === t ? " activo" : ""}`} onClick={() => cambiarTipo(t)}>
-                  {t === "invitacion" ? "Invitación" : "Recordatorio"}
+                  {t === "invitacion" ? "Invitación" : t === "recordatorio" ? "Recordatorio" : "Día del evento"}
                 </button>
               ))}
             </div>
@@ -145,12 +163,16 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
             </div>
 
             {visibles.length === 0 ? (
-              <div className="eg-nota" style={{ margin: "18px 0" }}>Todos ya confirmaron o rechazaron: no hay a quién recordarle.</div>
+              <div className="eg-nota" style={{ margin: "18px 0" }}>
+                {tipo === "dia" ? "Todavía nadie confirmó: el mensaje del día es para quienes van a ir." : "Todos ya confirmaron o rechazaron: no hay a quién recordarle."}
+              </div>
             ) : (
               <div className="eg-lista">
                 {visibles.map((inv) => {
                   const m = marcas[inv.token];
-                  const marca = tipo === "invitacion" ? (m?.enviado_at ? "Ya enviada" : null) : (m?.recordatorio_at ? "Ya recordado" : null);
+                  const marca = tipo === "invitacion" ? (m?.enviado_at ? "Ya enviada" : null)
+                    : tipo === "recordatorio" ? (m?.recordatorio_at ? "Ya recordado" : null)
+                    : (m?.dia_at ? "Ya enviado" : null);
                   return (
                     <label key={inv.token} className="eg-fila">
                       <input type="checkbox" checked={elegidos.has(inv.token)} onChange={() => alternar(inv.token)} />
@@ -166,7 +188,7 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
             )}
 
             <button className="eg-principal" type="button" disabled={seleccionados === 0} onClick={empezar}>
-              {seleccionados === 0 ? "Elegí al menos uno" : `Empezar: ${seleccionados} ${seleccionados === 1 ? nombreTipo : tipo === "invitacion" ? "invitaciones" : "recordatorios"}`}
+              {seleccionados === 0 ? "Elegí al menos uno" : `Empezar: ${seleccionados} ${seleccionados === 1 ? nombreTipo : nombreTipos}`}
             </button>
             <div className="eg-secundarias">
               <button className="btn-cancel" type="button" onClick={onCerrar}>Cancelar</button>
@@ -176,7 +198,7 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
 
         {cola && actual && (
           <>
-            <div className="eg-titulo">Enviando {nombreTipo === "invitación" ? "invitaciones" : "recordatorios"}</div>
+            <div className="eg-titulo">Enviando {nombreTipos}</div>
             <div className="eg-sub">{indice + 1} de {cola.length}</div>
             <div className="eg-progreso"><div style={{ width: `${(indice / cola.length) * 100}%` }} /></div>
             <div className="eg-actual">
@@ -201,7 +223,7 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
             <div className="eg-sub">
               {hechos === 0
                 ? "No se abrió ningún envío."
-                : `Se abrieron ${hechos} ${hechos === 1 ? nombreTipo : tipo === "invitacion" ? "invitaciones" : "recordatorios"} en WhatsApp. Quedan marcados para no repetirlos.`}
+                : `Se abrieron ${hechos} ${hechos === 1 ? nombreTipo : nombreTipos} en WhatsApp. Quedan marcados para no repetirlos.`}
             </div>
             <button className="eg-principal" type="button" onClick={onCerrar}>Cerrar</button>
           </>

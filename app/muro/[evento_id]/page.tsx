@@ -23,6 +23,8 @@ type Evento = {
   frase_evento?: string | null;
   lugar?: string;
   muro_abierto?: boolean;
+  tema?: string | null; // clasico | rosado | esmeralda (el mismo de la invitación)
+  tarjeta?: { graduando?: string | null; carrera?: string | null } | null; // supabase-tarjeta.sql
 };
 type Deseo = {
   id: string;
@@ -58,6 +60,9 @@ const T = {
     sinDeseosSub2: "Sube tu foto primero, luego podrás dejar tu deseo",
     sinDeseosSub3: "Los invitados pueden escribir sus deseos",
     participantes: "participantes",
+    foto1: "Foto",
+    deseo1: "Deseo",
+    participante1: "participante",
     paso3: "Paso 3: Comparte tu foto del evento",
     paso4: "Paso 4: Escribe tu deseo al anfitrión",
     completaste: "¡Completaste tu journey! Gracias,",
@@ -129,6 +134,9 @@ const T = {
     sinDeseosSub2: "Upload your photo first, then you can leave a wish",
     sinDeseosSub3: "Guests can write their wishes",
     participantes: "participants",
+    foto1: "Photo",
+    deseo1: "Wish",
+    participante1: "participant",
     paso3: "Step 3: Share your event photo",
     paso4: "Step 4: Write your wish to the host",
     completaste: "Journey complete! Thank you,",
@@ -193,6 +201,50 @@ const COLORES_DESEO = [
   "#fff3e0",
   "#fbe9e7",
 ];
+// ─── Paletas del muro ─────────────────────────────────────────────────────────
+// El muro tiene que verse como la invitación de la que viene: graduación usa
+// azul noche + dorado; los demás eventos, el tema elegido al crearlo (los mismos
+// colores que TEMAS en app/confirmar/[token]/page.tsx). "clasico" no define
+// nada: las variables ya tienen el índigo de siempre como respaldo.
+type PaletaMuro = { vars: React.CSSProperties; tema: TemaMuro };
+const PALETAS_MURO: Record<string, PaletaMuro> = {
+  graduacion: {
+    vars: {
+      "--m-acc": "#1E2B5E", "--m-acc-rgb": "30 43 94", "--m-ink": "#141C42", "--m-deep": "#0F1733",
+      "--m-soft": "#F6F7FB", "--m-soft2": "#EDF0F7", "--m-bg": "#F6F7FB", "--m-gold": "#C9A54C",
+    } as React.CSSProperties,
+    tema: { acento: "#1E2B5E", tinta: "#0F1733", suave: "#F6F7FB", borde: "rgba(168,132,58,0.30)", destaque: "#E6CF8E", esqueleto: "#E7EAF2" },
+  },
+  rosado: {
+    vars: {
+      "--m-acc": "#E11D74", "--m-acc-rgb": "225 29 116", "--m-ink": "#9D174D", "--m-deep": "#4A1042",
+      "--m-soft": "#FDF2F8", "--m-soft2": "#FCE7F3", "--m-bg": "#FFF7FB",
+    } as React.CSSProperties,
+    tema: { acento: "#E11D74", tinta: "#4A1042", suave: "#FDF2F8", borde: "rgba(225,29,116,0.18)", destaque: "#FBCFE8", esqueleto: "#F7E1EC" },
+  },
+  esmeralda: {
+    vars: {
+      "--m-acc": "#059669", "--m-acc-rgb": "5 150 105", "--m-ink": "#065F46", "--m-deep": "#064E3B",
+      "--m-soft": "#ECFDF5", "--m-soft2": "#D1FAE5", "--m-bg": "#F0FDF6",
+    } as React.CSSProperties,
+    tema: { acento: "#059669", tinta: "#064E3B", suave: "#ECFDF5", borde: "rgba(5,150,105,0.18)", destaque: "#A7F3D0", esqueleto: "#DCF2E7" },
+  },
+};
+/** Emojis que recibió una foto, del más usado al menos usado. */
+function emojisDe(reacciones: ReaccionFila[], fotoId: string): string[] {
+  const cuenta = new Map<string, number>();
+  for (const r of reacciones) if (r.foto_id === fotoId) cuenta.set(r.emoji, (cuenta.get(r.emoji) ?? 0) + 1);
+  return [...cuenta.entries()].sort((a, b) => b[1] - a[1]).map(([e]) => e);
+}
+
+const TEMA_MURO_CLASICO: TemaMuro = { acento: "var(--m-acc,#4F46E5)", tinta: "var(--m-deep,#1E1B4B)", suave: "var(--m-soft,#EEF2FF)", borde: "rgb(var(--m-acc-rgb,79 70 229) / 0.18)", destaque: "#C7D2FE", esqueleto: "#E8EAF6" };
+
+function paletaMuro(evento: Pick<Evento, "tipo" | "tema"> | null): PaletaMuro | null {
+  if (!evento) return null;
+  if (evento.tipo === "graduacion") return PALETAS_MURO.graduacion;
+  return PALETAS_MURO[evento.tema ?? ""] ?? null;
+}
+
 const STICKERS = ["🌸", "💖", "✨", "🌟", "🎊", "🦋", "🌹", "💫", "🎀", "🍀"];
 const TIPO_EMOJI: Record<string, string> = {
   quinceañera: "👑",
@@ -1195,8 +1247,14 @@ function DeseoCard({
 }) {
   const fecha = new Date(deseo.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
   return (
-    // El color que eligió el invitado queda como filete arriba de la tarjeta
-    <article className="deseo" style={{ borderTopColor: deseo.color_fondo || "var(--m-soft2,#E0E7FF)" }}>
+    // El color que eligió el invitado tiñe la tarjeta (se desvanece hacia abajo para
+    // que el texto siempre se lea sobre blanco); el filete va en el color del tema
+    <article
+      className="deseo"
+      style={deseo.color_fondo && /^#[0-9a-f]{6}$/i.test(deseo.color_fondo)
+        ? { background: `linear-gradient(180deg, ${deseo.color_fondo} 0%, ${deseo.color_fondo}66 38%, #FFFFFF 78%)` }
+        : undefined}
+    >
       <span className="deseo-comilla" aria-hidden="true">“</span>
       {deseo.emoji_sticker && <span className="deseo-sticker" aria-hidden="true">{deseo.emoji_sticker}</span>}
       <p className="deseo-texto">{deseo.mensaje}</p>
@@ -1370,13 +1428,16 @@ export default function MuroPublico() {
   }
 
   async function cargarDatos() {
-    const { data: ev } = await supabase
-      .from("eventos")
-      .select(
-        "id,nombre,tipo,fecha,anfitriones,organizador_id,imagen_url,frase_evento,lugar,muro_abierto",
-      )
-      .eq("id", eventoId)
-      .single();
+    // Con el tema (para pintar el muro como la invitación); si la columna no
+    // existe todavía, se pide sin ella
+    const cols = "id,nombre,tipo,fecha,anfitriones,organizador_id,imagen_url,frase_evento,lugar,muro_abierto";
+    // (y con los datos de la tarjeta: nombre del graduando y carrera)
+    let ev: Evento | null = null;
+    for (const extra of [",tema,tarjeta", ",tema", ""]) {
+      const { data, error } = await supabase.from("eventos").select(`${cols}${extra}`).eq("id", eventoId).single();
+      if (!error) { ev = data as unknown as Evento; break; }
+      if (!/tema|tarjeta/i.test(error.message || "")) break; // no existe el evento: no tiene sentido reintentar
+    }
     if (ev) setEvento(ev);
     await Promise.all([cargarFotos(), cargarDeseos()]);
     // Cargar boda civil si aplica
@@ -1660,10 +1721,9 @@ export default function MuroPublico() {
 
   const acento = "var(--m-acc,#4F46E5)";
 
-  // Graduación usa la misma paleta de la invitación (azul noche + dorado)
-  const tema: TemaMuro = evento?.tipo === "graduacion"
-    ? { acento: "#1E2B5E", tinta: "#0F1733", suave: "#F6F7FB", borde: "rgba(168,132,58,0.30)", destaque: "#E6CF8E", esqueleto: "#E7EAF2" }
-    : { acento: "var(--m-acc,#4F46E5)", tinta: "var(--m-deep,#1E1B4B)", suave: "var(--m-soft,#EEF2FF)", borde: "rgb(var(--m-acc-rgb,79 70 229) / 0.18)", destaque: "#C7D2FE", esqueleto: "#E8EAF6" };
+  // La misma paleta de la invitación (graduación: azul noche + dorado; los demás, su tema)
+  const paleta = paletaMuro(evento);
+  const tema: TemaMuro = paleta?.tema ?? TEMA_MURO_CLASICO;
 
   // El muro se mira de la foto más nueva a la más vieja; el visor sigue ese orden
   const fotosOrden = [...fotos].reverse();
@@ -1783,6 +1843,9 @@ export default function MuroPublico() {
 
   const _soloFechaMuro = (evento.fecha || "").split("T")[0];
   const [_yMuro, _mMuro, _dMuro] = _soloFechaMuro.split("-").map((n) => parseInt(n, 10));
+  // Quién firma los mensajes del ramo: los novios de ESTE evento (antes había
+  // un nombre fijo que salía en las bodas de todos los clientes)
+  const firmaNovios = bodaCivil?.nombres?.trim() || evento.anfitriones?.trim() || "los novios";
   const fechaFmt = new Date(_yMuro, (_mMuro || 1) - 1, _dMuro || 1).toLocaleDateString("es-ES", {
     day: "numeric",
     month: "long",
@@ -1792,11 +1855,8 @@ export default function MuroPublico() {
   return (
     <main
       style={{
-        // Graduación: la misma paleta de la invitación (las variables tienen el índigo de siempre como respaldo)
-        ...(evento.tipo === "graduacion" ? {
-          "--m-acc": "#1E2B5E", "--m-acc-rgb": "30 43 94", "--m-ink": "#141C42", "--m-deep": "#0F1733",
-          "--m-soft": "#F6F7FB", "--m-soft2": "#EDF0F7", "--m-bg": "#F6F7FB", "--m-gold": "#C9A54C",
-        } as React.CSSProperties : {}),
+        // La misma paleta de la invitación (las variables tienen el índigo de siempre como respaldo)
+        ...(paleta?.vars ?? {}),
         minHeight: "100vh",
         background: "var(--m-bg,#FAFBFF)",
         paddingBottom: esOrg ? "calc(72px + env(safe-area-inset-bottom, 0px))" : 100,
@@ -1829,6 +1889,8 @@ export default function MuroPublico() {
         .confetti-bottom { bottom: 0; }
         .filete-oro { position: fixed; left: 0; right: 0; z-index: 9999; height: 3px; pointer-events: none;
           background: linear-gradient(90deg, #A8843A, #E6CF8E 50%, #A8843A); }
+        .filete-tema { position: fixed; left: 0; right: 0; z-index: 9999; height: 3px; pointer-events: none;
+          background: linear-gradient(90deg, rgb(var(--m-acc-rgb,79 70 229) / 0.55), var(--m-acc,#4F46E5) 50%, rgb(var(--m-acc-rgb,79 70 229) / 0.55)); }
         .filete-top { top: 0; }
         .filete-bottom { bottom: 0; }
         @keyframes popIn{from{opacity:0;transform:scale(0.93) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
@@ -2034,8 +2096,9 @@ export default function MuroPublico() {
       `}</style>
 
       {/* ── Bordes festivos (graduación: filete dorado sobrio) ── */}
-      <div className={evento.tipo === "graduacion" ? "filete-oro filete-top" : "confetti-top"} />
-      <div className={evento.tipo === "graduacion" ? "filete-oro filete-bottom" : "confetti-bottom"} />
+      {/* Borde: dorado en graduación, confeti de colores solo en cumpleaños; el resto, el color de su tema */}
+      <div className={evento.tipo === "graduacion" ? "filete-oro filete-top" : evento.tipo === "cumpleaños" ? "confetti-top" : "filete-tema filete-top"} />
+      <div className={evento.tipo === "graduacion" ? "filete-oro filete-bottom" : evento.tipo === "cumpleaños" ? "confetti-bottom" : "filete-tema filete-bottom"} />
 
       {/* ══ HERO ══ */}
       <div
@@ -2051,25 +2114,31 @@ export default function MuroPublico() {
           minHeight: evento.imagen_url ? 220 : undefined,
         }}
       >
-        {/* Foto de fondo a pantalla completa */}
+        {/* Fondo: la foto desenfocada. Nítida y recortada quedaba con la cara
+            justo detrás de los contadores; la foto nítida va en el retrato */}
         {evento.imagen_url && (
           <div
+            aria-hidden="true"
             style={{
               position: "absolute",
-              inset: 0,
+              inset: -40,
               backgroundImage: `url(${evento.imagen_url})`,
               backgroundSize: "cover",
-              backgroundPosition: "center top",
+              backgroundPosition: "center 30%",
+              filter: "blur(22px) saturate(1.1)",
+              transform: "scale(1.1)",
             }}
           />
         )}
-        {/* Degradado oscuro para legibilidad del texto */}
+        {/* Velo con el color del tema para que el texto se lea siempre */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             background: evento.imagen_url
-              ? "linear-gradient(180deg,rgba(0,0,0,0.45) 0%,rgba(0,0,0,0.72) 100%)"
+              ? evento.tipo === "graduacion"
+                ? "linear-gradient(180deg,rgba(10,15,36,0.62) 0%,rgba(10,15,36,0.86) 100%)"
+                : "linear-gradient(180deg,rgb(var(--m-acc-rgb,79 70 229) / 0.50) 0%,rgba(15,23,42,0.80) 100%)"
               : "linear-gradient(180deg,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.28) 100%)",
           }}
         />
@@ -2094,6 +2163,21 @@ export default function MuroPublico() {
 
         {/* ── Evento info ── */}
         <div style={{ position:"relative", zIndex:1 }}>
+          {/* Retrato: la foto de portada nítida, con la cara centrada */}
+          {evento.imagen_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={evento.imagen_url}
+              alt={evento.tarjeta?.graduando || evento.anfitriones || evento.nombre}
+              style={{
+                width: 104, height: 104, borderRadius: "50%", objectFit: "cover", objectPosition: "center 28%",
+                display: "block", margin: "0 auto 12px",
+                border: `3px solid ${evento.tipo === "graduacion" ? "#E6CF8E" : "rgba(255,255,255,0.9)"}`,
+                boxShadow: "0 10px 30px rgba(0,0,0,0.35), 0 0 0 6px rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.12)",
+              }}
+            />
+          )}
           {/* Badge tipo evento */}
           <div style={{ display:"inline-flex", alignItems:"center", gap:5, background:"rgba(255,255,255,0.18)", backdropFilter:"blur(8px)", borderRadius:20, padding:"4px 12px", marginBottom:10, fontSize:10, fontWeight:700, letterSpacing:"1.2px", textTransform:"uppercase", border:"1px solid rgba(255,255,255,0.25)" }}>
             <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7a2 2 0 012-2h1.2l1.6-2h6.4l1.6 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z"/><circle cx="10" cy="11" r="2.5"/></svg> Muro del evento
@@ -2101,8 +2185,11 @@ export default function MuroPublico() {
           <h1 style={{ fontSize:26, fontWeight:800, marginBottom:4, lineHeight:1.1, fontFamily:"'Playfair Display',serif", textShadow:"0 2px 12px rgba(0,0,0,0.3)" }}>
             {evento.nombre}
           </h1>
-          {evento.anfitriones && (
-            <p style={{ fontSize:13, opacity:0.9, marginBottom:2, fontWeight:500 }}>{evento.anfitriones}</p>
+          {(evento.tarjeta?.graduando || evento.anfitriones) && (
+            <p style={{ fontSize:14, opacity:0.95, marginBottom:2, fontWeight:600 }}>{evento.tarjeta?.graduando || evento.anfitriones}</p>
+          )}
+          {evento.tarjeta?.carrera && (
+            <p style={{ fontSize:12.5, fontStyle:"italic", opacity:0.85, marginBottom:4, fontFamily:"'Playfair Display',serif", color: evento.tipo === "graduacion" ? "#E6CF8E" : undefined }}>{evento.tarjeta.carrera}</p>
           )}
           {evento.frase_evento && (
             <p style={{ fontSize:12, fontStyle:"italic", opacity:0.78, fontFamily:"'Playfair Display',serif", marginBottom:6 }}>❝ {evento.frase_evento} ❞</p>
@@ -2114,18 +2201,18 @@ export default function MuroPublico() {
           {/* Stats */}
           <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:14 }}>
             {([
-              { num:fotos.length, label:t.fotos, svg:(
+              { num:fotos.length, label:fotos.length === 1 ? t.foto1 : t.fotos, svg:(
                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 7a2 2 0 012-2h1.2l1.6-2h6.4l1.6 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z"/>
                   <circle cx="10" cy="11" r="2.5"/>
                 </svg>
               )},
-              { num:deseos.length, label:t.deseos, svg:(
+              { num:deseos.length, label:deseos.length === 1 ? t.deseo1 : t.deseos, svg:(
                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round">
                   <path d="M3 4h14a1 1 0 011 1v8a1 1 0 01-1 1H6l-4 3V5a1 1 0 011-1z"/>
                 </svg>
               )},
-              { num:albumes.length, label:t.participantes, svg:(
+              { num:albumes.length, label:albumes.length === 1 ? t.participante1 : t.participantes, svg:(
                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round">
                   <path d="M13 15c0-2.2-1.3-4-3-4s-3 1.8-3 4M7 7a3 3 0 106 0 3 3 0 00-6 0M16 15c0-1.8-1-3.3-2.5-4M17 6.5a2.5 2.5 0 010 5"/>
                 </svg>
@@ -2252,7 +2339,7 @@ export default function MuroPublico() {
                 <span>{fotos.length} foto{fotos.length > 1 ? "s" : ""}</span>
                 <span className="galeria-orden">La más reciente primero</span>
               </div>
-              <div className="galeria">
+              <div className={`galeria${fotos.length <= 2 ? ` galeria-${fotos.length}` : ""}`}>
                 {fotosOrden.map((foto, i) => (
                   <MiniaturaFoto
                     key={foto.id}
@@ -2260,6 +2347,7 @@ export default function MuroPublico() {
                     nueva={i === 0}
                     tema={tema}
                     totalReacciones={reacciones.reduce((n, r) => n + (r.foto_id === foto.id ? 1 : 0), 0)}
+                    emojis={emojisDe(reacciones, foto.id)}
                     onAbrir={() => setFotoActiva(i)}
                   />
                 ))}
@@ -2492,7 +2580,8 @@ export default function MuroPublico() {
                 border:1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.22);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
               .deseos-lista{columns:1;column-gap:12px}
               @media (min-width:560px){.deseos-lista{columns:2}}
-              .deseo{position:relative;break-inside:avoid;margin:0 0 12px;background:#FFFFFF;border-radius:16px;border-top:4px solid;
+              .deseo{position:relative;break-inside:avoid;margin:0 0 12px;background:#FFFFFF;border-radius:16px;border-top:4px solid rgb(var(--m-acc-rgb,79 70 229) / 0.45);
+                border-left:1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.08);border-right:1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.08);border-bottom:1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.08);
                 padding:18px 16px 12px;box-shadow:0 2px 14px rgba(15,23,42,0.07);animation:deseoEntra .4s ease both}
               .deseo-comilla{position:absolute;top:2px;left:12px;font-family:'Playfair Display',serif;font-size:58px;line-height:1;color:var(--m-gold,var(--m-acc,#4F46E5));opacity:.28;pointer-events:none}
               .deseo-sticker{position:absolute;top:10px;right:12px;font-size:20px}
@@ -2500,11 +2589,11 @@ export default function MuroPublico() {
               .deseo-audio{margin-top:10px;background:var(--m-soft,#EEF2FF);border-radius:12px;padding:8px 10px}
               .deseo-audio span{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--m-acc,#4F46E5);margin-bottom:4px}
               .deseo-audio audio{width:100%;height:34px}
-              .deseo-pie{display:flex;align-items:center;gap:9px;margin-top:12px;padding-top:10px;border-top:1px solid #F1F5F9}
+              .deseo-pie{display:flex;align-items:center;gap:9px;margin-top:12px;padding-top:10px;border-top:1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.10)}
               .deseo-av{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--m-acc,#4F46E5);color:#FFFFFF;font-size:13px;font-weight:700}
               .deseo-autor{font-size:13px;font-weight:700;color:var(--m-deep,#1E1B4B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
               .deseo-fecha{font-size:11px;color:#94A3B8}
-              .deseo-btn{width:30px;height:30px;border-radius:9px;border:none;background:#F1F5F9;color:#64748B;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+              .deseo-btn{width:36px;height:36px;border-radius:9px;border:none;background:#F1F5F9;color:#64748B;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
               .deseo-btn-peligro{background:#FEE2E2;color:#DC2626}
               @media (prefers-reduced-motion: reduce){.deseo{animation:none}}
             `}</style>
@@ -2882,7 +2971,7 @@ export default function MuroPublico() {
                     {ramoData.ganadora} 💐
                   </div>
                   <p style={{ fontSize: 12, color: "#be185d", opacity: 0.75, lineHeight: 1.7, marginTop: 8, fontStyle: "italic" }}>
-                    La próxima en casarse, mi deseo es que seas tú ✨<br/>— Con amor, Alisson
+                    La próxima en casarse, mi deseo es que seas tú ✨<br/>— Con amor, {firmaNovios}
                   </p>
                 </div>
               );
@@ -3016,7 +3105,7 @@ export default function MuroPublico() {
                 Que sigan construyendo ese matrimonio que honre a Dios cada día. Nosotros hoy iniciamos este camino, y su amor nos inspira. 🙏<br/><br/>
                 <em>"Lo que Dios unió, que el hombre no lo separe." — Mc 10:9</em>
               </p>
-              <p style={{ fontSize:12, color:"#9CA3AF", fontStyle:"italic", marginBottom:18 }}>— Con amor, Alisson</p>
+              <p style={{ fontSize:12, color:"#9CA3AF", fontStyle:"italic", marginBottom:18 }}>— Con amor, {firmaNovios}</p>
               <button onClick={() => { setBodaRamoStep("idle"); setBodaRamoNombre(""); }} style={{ background:"linear-gradient(135deg,#fce7f3,#fdf2f8)", border:"1.5px solid rgba(249,168,212,0.5)", borderRadius:12, padding:"10px 22px", fontSize:13, fontWeight:600, color:"#be185d", cursor:"pointer", fontFamily:"inherit" }}>
                 Cerrar 🌸
               </button>
@@ -3052,7 +3141,7 @@ export default function MuroPublico() {
               <p style={{ fontSize:11, color:"#be185d", lineHeight:1.75, marginBottom:16, opacity:0.85 }}>
                 La próxima en casarse, mi deseo es que seas tú ✨<br/>
                 Que Dios guíe tu historia de amor y que cuando llegue ese día bendecido, sea tan especial como el nuestro. ¡Él tiene algo hermoso preparado para ti! 🙏💐<br/>
-                <span style={{fontStyle:"italic"}}>— Con amor y bendiciones, Alisson</span>
+                <span style={{fontStyle:"italic"}}>— Con amor y bendiciones, {firmaNovios}</span>
               </p>
               {/* Mensaje de consolación para todas las demás participantes */}
               {ramoData.participantes.length > 1 && (
@@ -3129,7 +3218,7 @@ export default function MuroPublico() {
               <p style={{ fontSize: 12, color: "#be185d", lineHeight: 1.75, marginBottom: 16, opacity: 0.85 }}>
                 {bodaRamoNombre}, eres especial y Dios te ama profundamente.<br/>La persona que Él tiene para ti vale la espera. Confía en Sus tiempos perfectos y sigue adelante con fe. ✨
               </p>
-              <p style={{ fontSize: 12, color: "#9CA3AF", fontStyle: "italic", marginBottom: 18 }}>— Con amor y bendiciones, Alisson</p>
+              <p style={{ fontSize: 12, color: "#9CA3AF", fontStyle: "italic", marginBottom: 18 }}>— Con amor y bendiciones, {firmaNovios}</p>
               <button onClick={() => { setBodaRamoStep("idle"); setBodaRamoNombre(""); }} style={{ background: "linear-gradient(135deg,#fce7f3,#fdf2f8)", border: "1.5px solid rgba(249,168,212,0.5)", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 600, color: "#be185d", cursor: "pointer", fontFamily: "inherit" }}>
                 Cerrar 🌸
               </button>
@@ -3168,9 +3257,12 @@ export default function MuroPublico() {
         </div>
       )}
 
-      {/* Nav bottom invitados: Fotos / Deseos / Boda Civil (sin Albums) */}
-      {!esOrg && invId && (
+      {/* Nav bottom invitados: Fotos / Deseos / Boda Civil (sin Albums). Quien llega
+          al muro sin su enlace de invitación (link compartido) igual puede ver los
+          deseos; los botones de subir foto y dejar deseo son solo para invitados. */}
+      {!esOrg && (
         <nav className="bottom-nav">
+          {invId && (
           <div className="nav-guest-row">
             <button
               className="nav-guest-btn"
@@ -3201,6 +3293,7 @@ export default function MuroPublico() {
               {yaDeseo && <span style={{ fontSize:10, background:"#22c55e", color:"white", borderRadius:99, padding:"1px 5px", marginLeft:2 }}>{"\u2713"}</span>}
             </button>
           </div>
+          )}
 
           <div className="nav-tabs" style={{ gridTemplateColumns: evento?.tipo === "boda" && bodaCivil ? "repeat(3,1fr)" : "repeat(2,1fr)" }}>
             {([
@@ -3211,6 +3304,7 @@ export default function MuroPublico() {
                 : []),
             ] as { key: Vista; icon: React.ReactNode; label: string; count: number }[]).map((tab) => (
               <button
+                key={tab.key}
                 className={`nav-tab${vista === tab.key ? " active" : ""}`}
                 onClick={() => setVista(tab.key)}
               >

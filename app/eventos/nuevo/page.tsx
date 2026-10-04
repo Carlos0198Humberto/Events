@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { AppLogo } from "@/app/components/AppLogo";
+import { achicarImagen } from "@/lib/fotos";
+import { CamposDireccion, CamposTarjeta, extrasParaGuardar } from "@/app/components/CamposTarjeta";
+import type { ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 
 // ─── Íconos ───────────────────────────────────────────────────────────────────
 const IconoCrown = () => (
@@ -294,8 +297,8 @@ const T = {
     comoLlegar: "Cómo llegar (instrucciones)",
     comoLlegarPH:
       "Ej: Al llegar al semáforo de la 5a Av., doblar a la derecha...",
-    fotoLugar: "Foto del lugar (se muestra destacada en la tarjeta)",
-    fotoLugarHint: "Aparecerá primero en la invitación con botón «Cómo llegar»",
+    fotoLugar: "Foto de referencia del lugar",
+    fotoLugarHint: "La fachada o la entrada: se muestra junto a la dirección para que los invitados reconozcan el lugar al llegar.",
     videoLugar: "Video corto del lugar",
     videoLugarHint: "MP4 — máx 30 MB",
     videoBtn: "Seleccionar video",
@@ -350,9 +353,9 @@ const T = {
     comoLlegar: "How to get there",
     comoLlegarPH:
       "Ex: When you reach the traffic light on 5th Ave., turn right...",
-    fotoLugar: "Venue photo (featured on the card)",
+    fotoLugar: "Venue reference photo",
     fotoLugarHint:
-      "Appears first on the invitation with a «How to get there» button",
+      "The front or entrance: shown next to the address so guests recognize the place when they arrive.",
     videoLugar: "Short venue video",
     videoLugarHint: "MP4 — max 30 MB",
     videoBtn: "Select video",
@@ -492,7 +495,9 @@ const TIPOS = [
 ];
 
 // ─── Upload helper ─────────────────────────────────────────────────────────────
-async function subirArchivo(file: File, bucket: string, prefijo: string) {
+async function subirArchivo(original: File, bucket: string, prefijo: string) {
+  // Las fotos se achican antes de subir; la música va tal cual
+  const file = await achicarImagen(original);
   const ext = file.name.split(".").pop();
   const fileName = `${prefijo}-${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from(bucket).upload(fileName, file, {
@@ -589,6 +594,8 @@ export default function NuevoEvento() {
   const [musicaNombre, setMusicaNombre] = useState("");
   const [cupo, setCupo] = useState("");
   const [tema, setTema] = useState("clasico");
+  // Datos propios de la tarjeta (frase de honor, graduando, carrera, familia, dirección…)
+  const [extras, setExtras] = useState<ExtrasTarjeta>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -616,6 +623,15 @@ export default function NuevoEvento() {
     setError("");
     if (!nombre || !fecha || !hora || !lugar || !fechaLimite || !anfitriones) {
       setError(t.errorCampos);
+      setLoading(false);
+      return;
+    }
+    // Confirmar después del evento no sirve de nada (y el mensaje diría
+    // "confirmá antes del 3 de noviembre" para una fiesta del 31 de octubre)
+    if (fechaLimite > fecha) {
+      setError(lang === "es"
+        ? "La fecha límite para confirmar tiene que ser antes del evento (o el mismo día)."
+        : "The RSVP deadline must be on or before the event date.");
       setLoading(false);
       return;
     }
@@ -692,6 +708,13 @@ export default function NuevoEvento() {
       } catch {
         // columna tema aún no migrada, ignorar
       }
+    }
+    // Igual con los datos de la tarjeta (supabase-tarjeta.sql): si la columna
+    // no existe, el evento queda creado y se completan después al editarlo
+    const tarjeta = extrasParaGuardar(extras);
+    if (nuevoEvento?.id && tarjeta) {
+      const { error: errTarjeta } = await supabase.from("eventos").update({ tarjeta }).eq("id", nuevoEvento.id);
+      if (errTarjeta) console.warn("Datos de tarjeta sin guardar (falta supabase-tarjeta.sql):", errTarjeta.message);
     }
 
     router.push("/dashboard");
@@ -1004,6 +1027,19 @@ export default function NuevoEvento() {
             </div>
           </div>
 
+          {/* 3b. Tarjeta de invitación */}
+          <div className="section-card">
+            <p className="section-title">
+              {lang === "es" ? "Tarjeta de invitación" : "Invitation card"}
+            </p>
+            <CamposTarjeta
+              tipo={tipo}
+              valor={extras}
+              onChange={setExtras}
+              evento={{ nombre, anfitriones, fecha, hora, lugar, imagen_url: preview }}
+            />
+          </div>
+
           {/* 4. Fecha y lugar */}
           <div className="section-card">
             <p className="section-title">{t.fechaLugar}</p>
@@ -1036,6 +1072,8 @@ export default function NuevoEvento() {
                   placeholder={cfg.pLugar}
                 />
               </Campo>
+
+              <CamposDireccion valor={extras} onChange={setExtras} />
 
               <Campo label={t.mapsLink} hint={t.mapsHint}>
                 <div className="input-icon-wrap">
@@ -1171,6 +1209,7 @@ export default function NuevoEvento() {
                 className="field-input"
                 type="date"
                 value={fechaLimite}
+                max={fecha || undefined}
                 onChange={(e) => setFechaLimite(e.target.value)}
               />
             </Campo>

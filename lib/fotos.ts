@@ -75,6 +75,28 @@ export async function prepararFoto(origen: Blob): Promise<FotoPreparada | null> 
   }
 }
 
+/**
+ * Portada, foto del lugar, carrusel: la foto achicada en el dispositivo antes
+ * de subirla (≤ 1800 px, JPEG). Una portada de 3–8 MB hacía lenta la
+ * invitación con datos móviles y la tarjeta. Si no es una imagen que el
+ * navegador pueda leer (HEIC en Chrome, un GIF animado) o achicarla no ahorra
+ * nada, se sube la original.
+ */
+export async function achicarImagen(archivo: File, ladoMax = 1800): Promise<File> {
+  if (!archivo.type.startsWith("image/") || archivo.type === "image/gif") return archivo;
+  const url = URL.createObjectURL(archivo);
+  try {
+    const img = await cargarImagen(url);
+    const blob = await redimensionar(img, ladoMax, 0.86);
+    if (!blob || blob.size >= archivo.size) return archivo;
+    return new File([blob], `${archivo.name.replace(/\.[^.]+$/, "") || "foto"}.jpg`, { type: "image/jpeg" });
+  } catch {
+    return archivo;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 const COLUMNA_FALTANTE = /thumb_url|ancho|alto/i;
 
 /**

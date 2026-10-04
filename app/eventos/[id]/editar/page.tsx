@@ -4,6 +4,9 @@ import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { AppLogo } from "@/app/components/AppLogo";
+import { achicarImagen } from "@/lib/fotos";
+import { CamposDireccion, CamposTarjeta, extrasParaGuardar } from "@/app/components/CamposTarjeta";
+import { extrasDe, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 
 type Evento = {
   id: string; nombre: string; tipo: string; anfitriones: string;
@@ -17,6 +20,7 @@ type Evento = {
   color_primario?: string | null; color_secundario?: string | null;
   plantilla?: string | null;
   fotos_carrusel?: string[] | null;
+  tarjeta?: ExtrasTarjeta | null;
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -59,10 +63,11 @@ function ImagenUploader({
   useEffect(() => { setPreview(currentUrl ?? null); }, [currentUrl]);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setErr("Máx 10 MB"); return; }
+    const original = e.target.files?.[0];
+    if (!original) return;
+    if (original.size > 20 * 1024 * 1024) { setErr("Máx 20 MB"); return; }
     setErr(""); setSubiendo(true);
+    const file = await achicarImagen(original);
     const ext = file.name.split(".").pop() ?? "jpg";
     const fullPath = `${storagePath}-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage.from(bucket).upload(fullPath, file, { upsert: true, contentType: file.type });
@@ -201,6 +206,8 @@ export default function EditarEvento() {
   const [fotosCarrusel, setFotosCarrusel] = useState<string[]>([]);
   const [subiendoCarrusel, setSubiendoCarrusel] = useState(false);
   const carruselInputRef = useRef<HTMLInputElement>(null);
+  // Datos propios de la tarjeta (frase de honor, graduando, carrera, familia, dirección…)
+  const [extras, setExtras] = useState<ExtrasTarjeta>({});
   // Música
   const [musicaNombre, setMusicaNombre] = useState("");
   const [musicaUrl, setMusicaUrl] = useState<string | null>(null);
@@ -239,6 +246,7 @@ export default function EditarEvento() {
     setColorPrimario(data.color_primario ?? "#0D9488");
     setColorSecundario(data.color_secundario ?? "#5EEAD4");
     setPlantilla(data.plantilla ?? "clasica");
+    setExtras(extrasDe(data));
     setLoading(false);
   }
 
@@ -246,6 +254,10 @@ export default function EditarEvento() {
     setError("");
     if (!nombre.trim() || !fecha || !hora || !lugar.trim() || !anfitriones.trim()) {
       setError("Por favor completá todos los campos obligatorios (*)");
+      return;
+    }
+    if (fechaLimite && fechaLimite > fecha) {
+      setError("La fecha límite para confirmar tiene que ser antes del evento (o el mismo día).");
       return;
     }
     setGuardando(true);
@@ -266,15 +278,25 @@ export default function EditarEvento() {
       color_secundario: colorSecundario,
       plantilla,
       fotos_carrusel: fotosCarrusel.length ? fotosCarrusel : null,
+      tarjeta: extrasParaGuardar(extras),
     };
+    // Columnas opcionales: si alguna todavía no existe en Supabase, se guarda
+    // lo demás y se avisa qué migración falta
+    const OPCIONALES: Record<string, string> = {
+      fotos_carrusel: "el carrusel necesita supabase-graduacion-extras.sql",
+      tarjeta: "los datos de la tarjeta necesitan supabase-tarjeta.sql",
+    };
+    const faltan: string[] = [];
     let { error: errUpdate } = await supabase.from("eventos").update(payload).eq("id", eventoId);
-    // Si la columna fotos_carrusel no existe aún, reintentar sin ella
-    if (errUpdate && /fotos_carrusel/i.test(errUpdate.message || "")) {
-      delete payload.fotos_carrusel;
+    for (let i = 0; errUpdate && i < 2; i++) {
+      const col = Object.keys(OPCIONALES).find((c) => c in payload && new RegExp(c, "i").test(errUpdate!.message || ""));
+      if (!col) break;
+      delete payload[col];
+      faltan.push(OPCIONALES[col]);
       ({ error: errUpdate } = await supabase.from("eventos").update(payload).eq("id", eventoId));
-      if (!errUpdate) {
-        setError("Guardado, pero el carrusel necesita la migración: ejecutá supabase-graduacion-extras.sql en Supabase.");
-      }
+    }
+    if (!errUpdate && faltan.length) {
+      setError(`Guardado, pero ${faltan.join(" y ")}: ejecutalo en el SQL Editor de Supabase.`);
     }
     setGuardando(false);
     if (errUpdate) { setError("Error al guardar: " + errUpdate.message); return; }
@@ -410,6 +432,20 @@ export default function EditarEvento() {
               </div>
             </div>
 
+            {/* ── 1b. Tarjeta de invitación ── */}
+            <div className="section-card">
+              <p className="section-title">
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="2" width="14" height="16" rx="2"/><path d="M7 7h6M7 10.5h6M8.5 14h3"/></svg>
+                Tarjeta de invitación
+              </p>
+              <CamposTarjeta
+                tipo={tipo}
+                valor={extras}
+                onChange={setExtras}
+                evento={{ nombre, anfitriones, fecha, hora, lugar, imagen_url: imagenUrl }}
+              />
+            </div>
+
             {/* ── 2. Fecha y lugar ── */}
             <div className="section-card">
               <p className="section-title">
@@ -431,6 +467,7 @@ export default function EditarEvento() {
                   <label className="field-label">Nombre del lugar *</label>
                   <input className="field-input" type="text" value={lugar} onChange={e => setLugar(e.target.value)} placeholder="Ej: Salón Primavera" />
                 </div>
+                <CamposDireccion valor={extras} onChange={setExtras} />
                 <div>
                   <label className="field-label">Link de Google Maps</label>
                   <input className="field-input" type="url" value={mapsUrl} onChange={e => setMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." />
@@ -457,7 +494,10 @@ export default function EditarEvento() {
                 </div>
                 <div>
                   <label className="field-label">Fecha límite para confirmar</label>
-                  <input className="field-input" type="date" value={fechaLimite} onChange={e => setFechaLimite(e.target.value)} />
+                  <input className="field-input" type="date" value={fechaLimite} max={fecha || undefined} onChange={e => setFechaLimite(e.target.value)} />
+                  {fechaLimite && fecha && fechaLimite > fecha && (
+                    <p className="field-hint" style={{ color: "var(--danger)", fontWeight: 700 }}>Está después del evento: elegí una fecha anterior.</p>
+                  )}
                   <p className="field-hint">Después de esta fecha los invitados no podrán confirmar.</p>
                 </div>
               </div>
@@ -539,8 +579,9 @@ export default function EditarEvento() {
                     if (!files.length) return;
                     setSubiendoCarrusel(true);
                     const nuevas: string[] = [];
-                    for (const file of files) {
-                      if (file.size > 10 * 1024 * 1024) continue;
+                    for (const original of files) {
+                      if (original.size > 20 * 1024 * 1024) continue;
+                      const file = await achicarImagen(original);
                       const ext = file.name.split(".").pop() ?? "jpg";
                       const path = `${eventoId}/carrusel-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
                       const { error: upErr } = await supabase.storage.from("eventos").upload(path, file, { upsert: true, contentType: file.type });
@@ -562,10 +603,10 @@ export default function EditarEvento() {
             <div className="section-card">
               <p className="section-title">
                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="2" y="4" width="16" height="13" rx="2"/><path d="M8 8l5 3-5 3V8z"/></svg>
-                Foto o video del lugar
+                Foto de referencia del lugar
               </p>
               <div className="fields-group">
-                <p className="field-hint" style={{ marginBottom:4 }}>Podés subir una foto del lugar <strong>o</strong> un video de hasta 1 minuto para que los invitados sepan cómo llegar.</p>
+                <p className="field-hint" style={{ marginBottom:4 }}>Una foto de la <strong>fachada o la entrada</strong> (o un video de hasta 1 minuto) para que los invitados reconozcan el lugar al llegar. Se muestra junto a la dirección.</p>
 
                 {/* Previsualización */}
                 {mediaLugar && (
@@ -584,11 +625,12 @@ export default function EditarEvento() {
                   <label style={{ flexShrink:0, padding:"10px 14px", borderRadius:11, background:"var(--accent)", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>
                     Subir
                     <input type="file" accept="image/*,video/*" style={{ display:"none" }} onChange={async (e) => {
-                      const file = e.target.files?.[0];
+                      let file = e.target.files?.[0];
                       if (!file) return;
                       const isVideo = file.type.startsWith("video/");
                       if (isVideo && file.size > 104857600) { alert("El video no puede superar 100 MB (≈1 min)"); return; }
-                      if (!isVideo && file.size > 10485760) { alert("La imagen no puede superar 10 MB"); return; }
+                      if (!isVideo && file.size > 20971520) { alert("La imagen no puede superar 20 MB"); return; }
+                      if (!isVideo) file = await achicarImagen(file);
                       const ext = file.name.split(".").pop() ?? (isVideo ? "mp4" : "jpg");
                       const path = `${eventoId}/lugar-media-${Date.now()}.${ext}`;
                       const bucket = isVideo ? "videos-lugar" : "eventos";

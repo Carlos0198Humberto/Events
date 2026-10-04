@@ -915,8 +915,14 @@ export default function Dashboard() {
 
         /* Cover */
         .event-cover{position:relative;aspect-ratio:4/3;width:100%;overflow:hidden;background:var(--paper-soft);display:flex;align-items:center;justify-content:center;color:var(--gold)}
-        .event-cover img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
-        .event-cover::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(15,23,42,.12) 100%);pointer-events:none}
+        /* La foto se ve ENTERA (contain: a veces es un afiche con texto) y los costados
+           se rellenan con la misma foto desenfocada: nada de bandas vacías cuando
+           la foto es vertical y la portada horizontal */
+        .event-cover-fondo{position:absolute;inset:-24px;width:calc(100% + 48px);height:calc(100% + 48px);object-fit:cover;object-position:center 30%;
+          filter:blur(24px) saturate(1.15) brightness(.92);transform:scale(1.04);display:block;pointer-events:none}
+        .event-cover-foto{position:relative;z-index:1;width:100%;height:100%;object-fit:contain;object-position:center;display:block;
+          filter:drop-shadow(0 10px 24px rgba(15,23,42,.28))}
+        .event-cover::after{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,transparent 55%,rgba(15,23,42,.12) 100%);pointer-events:none}
         .event-chip{position:absolute;top:14px;left:14px;z-index:2;display:inline-flex;align-items:center;gap:5px;
           padding:5px 12px;background:rgba(253,250,244,.94);
           backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
@@ -1278,11 +1284,21 @@ export default function Dashboard() {
                       {/* Cover */}
                       <div className="event-cover">
                         {evento.imagen_url ? (
-                          <img
-                            src={evento.imagen_url}
-                            alt=""
-                            loading="lazy"
-                          />
+                          <>
+                            <img
+                              className="event-cover-fondo"
+                              src={evento.imagen_url}
+                              alt=""
+                              aria-hidden="true"
+                              loading="lazy"
+                            />
+                            <img
+                              className="event-cover-foto"
+                              src={evento.imagen_url}
+                              alt=""
+                              loading="lazy"
+                            />
+                          </>
                         ) : (
                           <Ornament width={160} />
                         )}

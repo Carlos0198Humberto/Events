@@ -66,10 +66,12 @@ function Inicial({ nombre, size, fondo }: { nombre: string; size: number; fondo:
 }
 
 // ─── Mosaico de la grilla ─────────────────────────────────────────────────────
-export function MiniaturaFoto({ foto, nueva, totalReacciones, tema, onAbrir }: {
+export function MiniaturaFoto({ foto, nueva, totalReacciones, emojis, tema, onAbrir }: {
   foto: FotoMuro;
   nueva: boolean;
   totalReacciones: number;
+  /** Emojis que recibió la foto, el más usado primero (se muestran los dos primeros) */
+  emojis?: string[];
   tema: TemaMuro;
   onAbrir: () => void;
 }) {
@@ -97,7 +99,11 @@ export function MiniaturaFoto({ foto, nueva, totalReacciones, tema, onAbrir }: {
       <span className="mf-pie">
         <Inicial nombre={nombre} size={20} fondo={tema.acento} />
         <span className="mf-autor">{nombre.split(" ")[0]}</span>
-        {totalReacciones > 0 && <span className="mf-reac">❤️ {totalReacciones}</span>}
+        {totalReacciones > 0 && (
+          <span className="mf-reac" aria-label={`${totalReacciones} reacciones`}>
+            {(emojis?.length ? emojis.slice(0, 2) : ["❤️"]).join("")} {totalReacciones}
+          </span>
+        )}
       </span>
     </button>
   );
@@ -308,6 +314,10 @@ export function EstilosGaleria({ tema }: { tema: TemaMuro }) {
       .opt-banner button:disabled{opacity:.6;cursor:wait}
       .galeria{columns:2;column-gap:10px}
       @media (min-width:640px){.galeria{columns:3}}
+      /* Pocas fotos: no se reparten en columnas vacías (una sola foto quedaba
+         chiquita en una esquina). Una va centrada y grande; dos, lado a lado. */
+      .galeria.galeria-1{columns:1;max-width:420px;margin:0 auto}
+      @media (min-width:640px){.galeria.galeria-2{columns:2;max-width:640px;margin:0 auto}}
       .mf{position:relative;display:block;width:100%;margin:0 0 10px;padding:0;border:none;border-radius:14px;overflow:hidden;cursor:pointer;
         break-inside:avoid;box-shadow:0 2px 10px rgba(15,23,42,0.10);animation:mfEntra .45s ease both;-webkit-tap-highlight-color:transparent}
       .mf img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .45s ease;display:block}
@@ -318,7 +328,7 @@ export function EstilosGaleria({ tema }: { tema: TemaMuro }) {
       .mf-nueva{position:absolute;top:8px;left:8px;padding:3px 9px;border-radius:99px;color:${tema.tinta};font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 2px 8px rgba(0,0,0,0.25)}
       .mf-pie{position:absolute;left:8px;right:8px;bottom:8px;display:flex;align-items:center;gap:6px;color:#FFFFFF;font-size:11.5px;font-weight:600;text-align:left}
       .mf-autor{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,0.5)}
-      .mf-reac{flex-shrink:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);border-radius:99px;padding:2px 7px;font-size:10.5px}
+      .mf-reac{flex-shrink:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);border-radius:99px;padding:2px 7px;font-size:10.5px;letter-spacing:-.04em}
       @media (prefers-reduced-motion: reduce){.mf,.mf-brillo{animation:none}}
 
       .vf{position:fixed;inset:0;z-index:9999;background:#06080F;display:flex;flex-direction:column;animation:mfEntra .2s ease both}
@@ -340,11 +350,12 @@ export function EstilosGaleria({ tema }: { tema: TemaMuro }) {
       .vf-autor-cuando{font-size:11.5px;color:#94A3B8;margin-top:1px}
       .vf-caption{font-size:14px;color:#334155;font-style:italic;line-height:1.5;margin-top:10px}
       .vf-reacciones{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
-      .vf-reac{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;border:1.5px solid #E2E8F0;background:#F8FAFC;
+      .vf-reac{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;min-height:40px;border-radius:99px;border:1.5px solid #E2E8F0;background:#F8FAFC;
         font-size:12.5px;font-weight:600;color:#475569;cursor:pointer;transition:transform .12s,border-color .15s,background .15s}
       .vf-reac:active{transform:scale(.95)}
       .vf-reac b{background:#E2E8F0;color:#334155;border-radius:99px;padding:0 6px;font-size:11px}
       .vf-reac.activa{color:${tema.tinta}}
+      .vf-reac.activa b{background:${tema.acento};color:#FFFFFF}
       .vf-aviso{margin-top:8px;font-size:12px;color:#B45309}
       .vf-comentarios{margin-top:14px;border-top:1px solid #EEF0F4;padding-top:12px;display:flex;flex-direction:column;gap:8px}
       .vf-com{font-size:13.5px;color:#334155;line-height:1.45}

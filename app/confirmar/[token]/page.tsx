@@ -7,6 +7,8 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
+import { armarDatosTarjeta, extrasDe, familiaDe, protagonistaDe, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { tratoDe } from "@/lib/tratoInvitado";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -58,7 +60,35 @@ type Evento = {
   vestimenta_nota?: string | null;
   plano_mesas_url?: string | null;
   fotos_carrusel?: string[] | null;
+  foto_lugar_url?: string | null;
+  tarjeta?: ExtrasTarjeta | null; // supabase-tarjeta.sql
 };
+
+// Quién es quién en la invitación: el protagonista (graduando), lo que estudió,
+// la familia que invita y la dirección. Es la misma lógica que la tarjeta en
+// imagen (lib/tarjetaInvitacion.ts): lo que el organizador escribió a propósito
+// manda; si no, se deduce del nombre del evento y de los anfitriones.
+function personasDe(evento: Evento) {
+  const ex = extrasDe(evento);
+  const p = protagonistaDe(evento);
+  const anf = (evento.anfitriones || "").trim().toLowerCase();
+  return {
+    protagonista: p.nombre,
+    // "Andrea Castillo" organiza su propia graduación
+    esAnfitrion: p.esPersona && anf !== "" && anf === p.nombre.trim().toLowerCase(),
+    familia: familiaDe(evento),
+    honor: ex.honor ? ex.honor : null,
+    carrera: ex.carrera ?? null,
+    institucion: ex.institucion ?? null,
+    direccion: ex.direccion ?? null,
+    referencia: ex.referencia ?? null,
+  };
+}
+
+/** Lo que se busca en Maps/Waze: el lugar con su dirección, si la hay. */
+function consultaMapa(evento: Evento) {
+  return [evento.lugar, extrasDe(evento).direccion].filter(Boolean).join(", ");
+}
 
 // Momento del recorrido guiado del avatar (qué pantalla está explicando)
 type FaseMascota =
@@ -145,7 +175,7 @@ function formatHora(hora: string) {
 
 function abrirGoogleCalendar(evento: Evento) {
   const titulo = encodeURIComponent(evento.nombre);
-  const lugar = encodeURIComponent(evento.lugar || "");
+  const lugar = encodeURIComponent(consultaMapa(evento));
   const desc = encodeURIComponent(
     `${TIPO_LABEL[evento.tipo] || "Evento"} de ${evento.anfitriones}`,
   );
@@ -202,7 +232,7 @@ function descargarICS(evento: Evento) {
     allDay ? `DTEND;VALUE=DATE:${dtEnd}` : `DTEND:${dtEnd}`,
     `SUMMARY:${esc(`🎓 ${evento.nombre}`)}`,
     `DESCRIPTION:${esc(`${TIPO_LABEL[evento.tipo] || "Evento"} de ${evento.anfitriones}. ¡No faltes!`)}`,
-    evento.lugar ? `LOCATION:${esc(evento.lugar)}` : "",
+    evento.lugar ? `LOCATION:${esc(consultaMapa(evento))}` : "",
     "BEGIN:VALARM",
     "ACTION:DISPLAY",
     `DESCRIPTION:${esc(`Mañana es ${evento.nombre} 🎓`)}`,
@@ -1242,6 +1272,13 @@ function FloatingMascot({
   setSilencio: (v: boolean) => void;
 }) {
   const [minimizado, setMinimizado] = useState(false);
+  // Callado hace un rato (no entre frase y frase): se muestra chico, sin botones
+  const [quieto, setQuieto] = useState(false);
+  useEffect(() => {
+    if (hablando) { setQuieto(false); return; }
+    const t = setTimeout(() => setQuieto(true), 1800);
+    return () => clearTimeout(t);
+  }, [hablando]);
   const esCumple = evento.tipo === "cumpleaños";
   const esGrad = evento.tipo === "graduacion";
   const primerNombre = invitado.nombre.trim().split(" ")[0];
@@ -1461,6 +1498,27 @@ function FloatingMascot({
         <style>{`@keyframes mascPulse{from{transform:scale(1)}to{transform:scale(1.12)}}`}</style>
         <GradAvatar size={56} hablando={hablando} tipo={evento.tipo} />
       </div>
+    );
+  }
+
+  // Cuando no está hablando queda solo un avatar chico: los botones flotantes
+  // tapaban la cuenta regresiva y la firma en el teléfono. Tocarlo repite la
+  // última explicación (el silencio y "Saltar" vuelven a aparecer mientras habla).
+  if (quieto && !hablando) {
+    return (
+      <button
+        type="button"
+        onClick={repetir}
+        aria-label="Repetir la explicación"
+        title="Tocame para repetir"
+        style={{ position:"fixed", bottom:130, right:12, zIndex:8000, cursor:"pointer",
+          width:46, height:46, padding:0, border:"none", borderRadius:"50%", overflow:"hidden", background:"transparent",
+          boxShadow: esCumple ? "0 6px 18px rgba(79,70,229,0.40)" : "0 0 0 2px rgba(230,207,142,0.75), 0 6px 18px rgba(10,15,36,0.40)",
+          opacity: 0.92,
+        }}
+      >
+        <GradAvatar size={46} hablando={false} tipo={evento.tipo} />
+      </button>
     );
   }
 
@@ -2251,7 +2309,8 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   onEntrar: (conSonido: boolean) => void;
   onSinSonidoPrevio: () => void;
 }) {
-  const protagonista = evento.anfitriones?.trim() || evento.nombre;
+  const personas = personasDe(evento);
+  const protagonista = personas.protagonista;
   const anio = evento.fecha ? parseFechaLocal(evento.fecha).getFullYear() : null;
   const fecha = evento.fecha
     ? (() => { const f = parseFechaLocal(evento.fecha!).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" }); return f.charAt(0).toUpperCase() + f.slice(1); })()
@@ -2265,6 +2324,14 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   // El monograma está siempre debajo: mientras la foto carga (señal floja) o si
   // falla, la portada nunca queda vacía. La foto entra con un fundido.
   const [fotoLista, setFotoLista] = useState(false);
+  // Una foto cuadrada u horizontal a pantalla completa en un teléfono se
+  // amplía hasta cortar la cara: esas van enteras arriba, con la misma foto
+  // desenfocada de fondo. Las verticales siguen a sangre.
+  const [fotoAncha, setFotoAncha] = useState(false);
+  const fotoCargada = (img: HTMLImageElement) => {
+    setFotoAncha(img.naturalHeight / Math.max(img.naturalWidth, 1) < 1.2);
+    setFotoLista(true);
+  };
 
   return (
     <div className={`portada${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`}>
@@ -2286,6 +2353,9 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         .pt-foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%;display:block;
           opacity:0;transition:opacity 1.2s ease;animation:ptKen 18s ease-in-out infinite alternate}
         .pt-foto img.lista{opacity:1}
+        .pt-foto img.pt-borrosa{filter:blur(28px) saturate(1.1) brightness(.72);transform:scale(1.15);animation:none}
+        .pt-foto img.pt-entera{inset:auto;top:6%;left:0;right:0;margin:0 auto;width:auto;height:auto;max-width:100%;max-height:66%;
+          -webkit-mask-image:linear-gradient(to bottom,#000 70%,transparent);mask-image:linear-gradient(to bottom,#000 70%,transparent)}
         .pt-mono{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;padding-top:16vh;
           font-family:'Playfair Display',Georgia,serif;font-size:min(62vw,300px);font-weight:600;line-height:1;color:rgba(201,165,76,0.10);
           background:radial-gradient(ellipse 80% 50% at 50% 25%,${GRAD.navy3} 0%,${GRAD.navy} 55%,${GRAD.noche} 100%)}
@@ -2303,6 +2373,9 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         .pt-para{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:17px;color:${GRAD.oroClaro};animation:ptSube .7s .45s ease both}
         .pt-nombre{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:clamp(40px,12.5vw,58px);line-height:1.02;letter-spacing:-.01em;
           margin-top:8px;text-wrap:balance;text-shadow:0 4px 30px rgba(0,0,0,0.45);animation:ptSube .8s .6s ease both}
+        .pt-honor{font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:${GRAD.oroClaro};margin-top:12px;text-shadow:0 1px 8px rgba(0,0,0,0.5);animation:ptSube .7s .55s ease both}
+        .pt-carrera{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:clamp(16px,4.6vw,19px);line-height:1.3;color:#FFFFFF;opacity:.95;margin-top:10px;text-wrap:balance;text-shadow:0 2px 14px rgba(0,0,0,0.5);animation:ptSube .7s .7s ease both}
+        .pt-institucion{font-family:'Cinzel',Georgia,serif;font-size:10.5px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:${GRAD.oroClaro};margin-top:6px;text-wrap:balance;animation:ptSube .7s .75s ease both}
         .pt-filete{display:flex;align-items:center;justify-content:center;gap:10px;margin:18px auto 14px;animation:ptFilete .9s .85s ease both}
         .pt-filete i{display:block;width:64px;height:1px;background:linear-gradient(90deg,transparent,${GRAD.oro})}
         .pt-filete i:last-child{background:linear-gradient(90deg,${GRAD.oro},transparent)}
@@ -2321,19 +2394,22 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         .pt-birrete{position:absolute;bottom:22%;left:50%;z-index:3;pointer-events:none;animation:ptBirrete 1.15s cubic-bezier(.2,.7,.3,1) forwards}
         @media (prefers-reduced-motion: reduce){
           .pt-foto img,.pt-cta::after,.pt-polvo{animation:none}
-          .pt-arriba,.pt-para,.pt-nombre,.pt-filete,.pt-invita,.pt-fecha,.pt-abajo{animation:none}
+          .pt-arriba,.pt-para,.pt-honor,.pt-nombre,.pt-carrera,.pt-institucion,.pt-filete,.pt-invita,.pt-fecha,.pt-abajo{animation:none}
         }
       `}</style>
 
       <div className="pt-foto">
         <div className="pt-mono" aria-hidden="true">{mono}</div>
+        {evento.imagen_url && fotoAncha && (
+          <img src={evento.imagen_url} alt="" aria-hidden="true" className="pt-borrosa lista" />
+        )}
         {evento.imagen_url && (
           <img
             src={evento.imagen_url}
             alt=""
-            className={fotoLista ? "lista" : undefined}
-            onLoad={() => setFotoLista(true)}
-            ref={(el) => { if (el?.complete && el.naturalWidth > 0 && !fotoLista) setFotoLista(true); }}
+            className={[fotoLista && "lista", fotoAncha && "pt-entera"].filter(Boolean).join(" ") || undefined}
+            onLoad={(e) => fotoCargada(e.currentTarget)}
+            ref={(el) => { if (el?.complete && el.naturalWidth > 0 && !fotoLista) fotoCargada(el); }}
           />
         )}
       </div>
@@ -2349,9 +2425,16 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
 
       <div className="pt-centro">
         <p className="pt-para">Para {para}</p>
+        {personas.honor && <p className="pt-honor">{personas.honor}</p>}
         <h1 className="pt-nombre">{protagonista}</h1>
+        {personas.carrera && <p className="pt-carrera">{personas.carrera}</p>}
+        {personas.institucion && <p className="pt-institucion">{personas.institucion}</p>}
         <div className="pt-filete" aria-hidden="true"><i /><EstrellaSVG size={11} color={GRAD.oro} /><i /></div>
-        <p className="pt-invita">{evento.anfitriones ? "te invita a celebrar su graduación" : "Te invitamos a celebrar"}</p>
+        <p className="pt-invita">
+          {personas.familia
+            ? `${personas.familia} te invita a celebrar este logro`
+            : personas.esAnfitrion || evento.anfitriones ? "te invita a celebrar su graduación" : "Te invitamos a celebrar"}
+        </p>
         {(fecha || hora) && <p className="pt-fecha">{[fecha, hora].filter(Boolean).join("  ·  ")}</p>}
       </div>
 
@@ -2508,7 +2591,7 @@ async function generarEntradaPNG(invitado: Invitado, evento: Evento, mesaNombre:
   ctx.fillText("E N T R A D A   ·   G R A D U A C I Ó N", W / 2, 150);
   ctx.fillStyle = "#FFFFFF";
   ctx.font = `600 78px ${serif}`;
-  ctx.fillText(evento.anfitriones?.trim() || evento.nombre, W / 2, 285, W - 180);
+  ctx.fillText(personasDe(evento).protagonista, W / 2, 285, W - 180);
   if (evento.fecha) {
     ctx.fillStyle = GRAD.oroClaro;
     ctx.font = `600 28px ${label}`;
@@ -2594,7 +2677,7 @@ async function generarYoVoyCanvas(evento: Evento): Promise<Blob | null> {
   } else {
     ctx.fillStyle = GRAD.navy2; ctx.fillRect(pX - pR, pY - pR, pR * 2, pR * 2);
     ctx.fillStyle = GRAD.oroClaro; ctx.font = `600 150px ${serif}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(iniciales(evento.anfitriones || evento.nombre) || "★", pX, pY + 8);
+    ctx.fillText(iniciales(personasDe(evento).protagonista) || "★", pX, pY + 8);
     ctx.textBaseline = "alphabetic";
   }
   ctx.restore();
@@ -2607,10 +2690,10 @@ async function generarYoVoyCanvas(evento: Evento): Promise<Blob | null> {
   ctx.shadowBlur = 0;
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.font = `400 44px ${sans}`;
-  ctx.fillText(evento.anfitriones ? "a celebrar la graduación de" : "a celebrar", W / 2, 1110);
+  ctx.fillText("a celebrar la graduación de", W / 2, 1110);
   ctx.fillStyle = "#FFFFFF";
   ctx.font = `600 86px ${serif}`;
-  ctx.fillText(evento.anfitriones?.trim() || evento.nombre, W / 2, 1235, W - 180);
+  ctx.fillText(personasDe(evento).protagonista, W / 2, 1235, W - 180);
   const gl = ctx.createLinearGradient(W / 2 - 260, 0, W / 2 + 260, 0);
   gl.addColorStop(0, "rgba(201,165,76,0)"); gl.addColorStop(0.5, GRAD.oro); gl.addColorStop(1, "rgba(201,165,76,0)");
   ctx.fillStyle = gl; ctx.fillRect(W / 2 - 260, 1300, 520, 3);
@@ -2659,7 +2742,7 @@ function EntradaDigital({ invitado, evento, mesaNombre }: { invitado: Invitado; 
     <div className="entrada" data-guia="qr">
       <div className="entrada-top">
         <div className="entrada-kicker">Entrada · Graduación</div>
-        <div className="entrada-evento">{evento.anfitriones?.trim() || evento.nombre}</div>
+        <div className="entrada-evento">{personasDe(evento).protagonista}</div>
         {evento.fecha && <div className="entrada-promo">Promoción {parseFechaLocal(evento.fecha).getFullYear()}</div>}
       </div>
       <div className="entrada-corte" aria-hidden="true" />
@@ -2683,404 +2766,6 @@ function EntradaDigital({ invitado, evento, mesaNombre }: { invitado: Invitado; 
       <p className="entrada-hint">Mostrala al llegar: el organizador escanea el código para registrar tu entrada.</p>
     </div>
   );
-}
-
-// ─── Canvas generador de tarjeta ──────────────────────────────────────────────
-async function generarTarjetaCanvas(
-  invitado: Invitado,
-  evento: Evento,
-  origin: string,
-): Promise<Blob | null> {
-  const esGradTipo = evento.tipo === "graduacion";
-  // Foto del graduado (solo graduación): cargarla antes de dibujar
-  let fotoGrad: HTMLImageElement | null = null;
-  if (esGradTipo && evento.imagen_url) {
-    fotoGrad = await new Promise<HTMLImageElement | null>((res) => {
-      const img = new window.Image();
-      img.crossOrigin = "anonymous";
-      const to = setTimeout(() => res(null), 6000);
-      img.onload = () => { clearTimeout(to); res(img); };
-      img.onerror = () => { clearTimeout(to); res(null); };
-      img.src = evento.imagen_url as string;
-    });
-  }
-  return new Promise((resolve) => {
-    const W = 800,
-      H = esGradTipo ? (fotoGrad ? 1460 : 1320) : 1050;
-    const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      resolve(null);
-      return;
-    }
-    const esGrad = evento.tipo === "graduacion";
-    // Helper: estrella dorada
-    const drawStar = (x: number, y: number, rad: number, color: string, alpha = 1) => {
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.translate(x, y);
-      ctx.beginPath();
-      for (let i = 0; i < 10; i++) {
-        const a = (Math.PI / 5) * i - Math.PI / 2;
-        const rr = i % 2 === 0 ? rad : rad * 0.45;
-        if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
-        else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
-      }
-      ctx.closePath();
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.restore();
-    };
-    // Fondo exterior
-    if (esGrad) {
-      // Graduación: noche estrellada azul profundo con marco dorado
-      const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-      bgGrad.addColorStop(0, GRAD.noche);
-      bgGrad.addColorStop(0.5, GRAD.navy);
-      bgGrad.addColorStop(1, GRAD.noche);
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, W, H);
-      // Estrellas dispersas en el marco
-      const estrellas = [
-        [24, 40, 5], [W - 28, 60, 4], [30, H / 2, 4], [W - 24, H / 2 + 40, 5],
-        [26, H - 60, 4], [W - 30, H - 44, 5], [W / 2 - 300, 30, 3], [W / 2 + 310, H - 26, 3],
-        [W / 2, 24, 4], [W / 2 - 100, H - 22, 3], [W / 2 + 140, 26, 3],
-      ] as const;
-      estrellas.forEach(([x, y, s], i) => drawStar(x, y, s, GRAD.oroClaro, 0.55 + (i % 3) * 0.15));
-    } else {
-      const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-      bgGrad.addColorStop(0, "#F8FAFC");
-      bgGrad.addColorStop(0.5, "#EEF2FF");
-      bgGrad.addColorStop(1, "#F8FAFC");
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, W, H);
-    }
-    const cX = 50,
-      cY = 80,
-      cW = W - 100,
-      cH = H - 160,
-      r = 36;
-    // Sombra suave de la tarjeta
-    ctx.save();
-    ctx.shadowColor = esGrad ? "rgba(230,207,142,0.30)" : "rgba(15,23,42,0.18)";
-    ctx.shadowBlur = esGrad ? 50 : 40;
-    ctx.shadowOffsetY = 14;
-    rrFill(ctx, cX, cY, cW, cH, r, "#FFFFFF");
-    ctx.restore();
-    rrFill(ctx, cX, cY, cW, cH, r, "#FFFFFF");
-    if (esGrad) {
-      // Doble borde dorado alrededor de la tarjeta
-      ctx.strokeStyle = GRAD.oroMedio;
-      ctx.lineWidth = 3;
-      rrStroke(ctx, cX - 6, cY - 6, cW + 12, cH + 12, r + 6);
-      ctx.strokeStyle = "rgba(230,207,142,0.85)";
-      ctx.lineWidth = 1.5;
-      rrStroke(ctx, cX - 12, cY - 12, cW + 24, cH + 24, r + 10);
-    }
-    // Header
-    const hH = esGrad ? (fotoGrad ? 400 : 260) : 260;
-    ctx.save();
-    ctx.beginPath();
-    rrPath(ctx, cX, cY, cW, hH, { tl: r, tr: r, bl: 0, br: 0 });
-    ctx.clip();
-    if (esGrad) {
-      // Graduación: azul noche → índigo con destellos dorados
-      const hGrad = ctx.createLinearGradient(cX, cY, cX + cW, cY + hH);
-      hGrad.addColorStop(0, GRAD.navy);
-      hGrad.addColorStop(0.55, GRAD.navy2);
-      hGrad.addColorStop(1, GRAD.navy3);
-      ctx.fillStyle = hGrad;
-      ctx.fillRect(cX, cY, cW, hH);
-      // Resplandor dorado superior
-      const glow = ctx.createRadialGradient(cX + cW / 2, cY, 10, cX + cW / 2, cY, 240);
-      glow.addColorStop(0, "rgba(230,207,142,0.22)");
-      glow.addColorStop(1, "rgba(230,207,142,0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(cX, cY, cW, hH);
-      // Estrellas dentro del header
-      drawStar(cX + 60, cY + 46, 6, GRAD.oroClaro, 0.9);
-      drawStar(cX + cW - 60, cY + 46, 6, GRAD.oroClaro, 0.9);
-      drawStar(cX + 110, cY + 120, 4, GRAD.oroClaro, 0.6);
-      drawStar(cX + cW - 110, cY + 120, 4, GRAD.oroClaro, 0.6);
-      drawStar(cX + 42, cY + hH - 60, 4, GRAD.oroClaro, 0.5);
-      drawStar(cX + cW - 42, cY + hH - 60, 4, GRAD.oroClaro, 0.5);
-      if (fotoGrad) {
-        // Foto del graduado en círculo con doble anillo dorado
-        const pX = cX + cW / 2, pY = cY + 138, pR = 66;
-        const ring = ctx.createLinearGradient(pX - pR, pY - pR, pX + pR, pY + pR);
-        ring.addColorStop(0, GRAD.oroPalido);
-        ring.addColorStop(0.5, GRAD.oro);
-        ring.addColorStop(1, GRAD.oroOscuro);
-        ctx.beginPath(); ctx.arc(pX, pY, pR + 9, 0, Math.PI * 2);
-        ctx.fillStyle = ring; ctx.fill();
-        ctx.beginPath(); ctx.arc(pX, pY, pR + 3, 0, Math.PI * 2);
-        ctx.fillStyle = GRAD.navy; ctx.fill();
-        ctx.save();
-        ctx.beginPath(); ctx.arc(pX, pY, pR, 0, Math.PI * 2); ctx.clip();
-        const s = Math.max((pR * 2) / fotoGrad.width, (pR * 2) / fotoGrad.height);
-        const dw = fotoGrad.width * s, dh = fotoGrad.height * s;
-        ctx.drawImage(fotoGrad, pX - dw / 2, pY - dh / 2, dw, dh);
-        ctx.restore();
-        // Birrete coronando la foto
-        ctx.font = "36px serif";
-        ctx.textAlign = "center";
-        ctx.fillText("🎓", pX + pR - 8, pY - pR + 14);
-        // Birretes a los lados
-        ctx.font = "34px serif";
-        ctx.fillText("🎓", cX + 74, cY + 160);
-        ctx.fillText("🎓", cX + cW - 74, cY + 160);
-      } else {
-        // Birretes flanqueando el nombre
-        ctx.font = "42px serif";
-        ctx.textAlign = "center";
-        ctx.fillText("🎓", cX + 90, cY + 190);
-        ctx.fillText("🎓", cX + cW - 90, cY + 190);
-      }
-      // Línea dorada al pie del header
-      const goldLine = ctx.createLinearGradient(cX, 0, cX + cW, 0);
-      goldLine.addColorStop(0, "rgba(230,207,142,0)");
-      goldLine.addColorStop(0.5, GRAD.oroClaro);
-      goldLine.addColorStop(1, "rgba(230,207,142,0)");
-      ctx.fillStyle = goldLine;
-      ctx.fillRect(cX, cY + hH - 5, cW, 5);
-    } else {
-      const hGrad = ctx.createLinearGradient(cX, cY, cX + cW, cY + hH);
-      hGrad.addColorStop(0, "#3730A3");
-      hGrad.addColorStop(1, "#4F46E5");
-      ctx.fillStyle = hGrad;
-      ctx.fillRect(cX, cY, cW, hH);
-    }
-    const nombres = (() => {
-      if (invitado.nombres_personas) {
-        try {
-          const p = JSON.parse(invitado.nombres_personas);
-          if (Array.isArray(p) && p.length > 1) return p;
-        } catch {}
-      }
-      return [invitado.nombre];
-    })();
-    const saludo =
-      nombres.length > 1
-        ? `${nombres.slice(0, 2).join(" & ")}`
-        : `${invitado.nombre}`;
-    // Textos del header
-    if (esGrad) {
-      // Con foto, los textos bajan para dejar espacio al retrato
-      const tOff = fotoGrad ? 172 : 0;
-      ctx.font = "700 17px 'Arial'";
-      ctx.fillStyle = GRAD.oroClaro;
-      ctx.textAlign = "center";
-      ctx.fillText("G R A D U A C I Ó N", cX + cW / 2, cY + (fotoGrad ? 40 : 52));
-      ctx.font = "bold 54px 'Georgia',serif";
-      ctx.fillStyle = "#FFFFFF";
-      ctx.shadowColor = "rgba(230,207,142,0.45)";
-      ctx.shadowBlur = 18;
-      ctx.fillText(saludo, cX + cW / 2, cY + 120 + tOff, cW - 80);
-      ctx.shadowBlur = 0;
-      ctx.font = "300 22px 'Arial'";
-      ctx.fillStyle = "rgba(255,255,255,0.78)";
-      ctx.fillText(`Invitación de ${evento.anfitriones}`, cX + cW / 2, cY + 160 + tOff);
-      ctx.font = "italic bold 28px 'Georgia',serif";
-      ctx.fillStyle = GRAD.oroPalido;
-      ctx.fillText(evento.nombre, cX + cW / 2, cY + 207 + tOff, cW - 200);
-    } else {
-      ctx.font = "italic 20px 'Georgia',serif";
-      ctx.fillStyle = "rgba(255,255,255,0.80)";
-      ctx.textAlign = "center";
-      ctx.fillText(TIPO_LABEL[evento.tipo] || "Invitación", cX + cW / 2, cY + 50);
-      ctx.font = "bold 52px 'Georgia',serif";
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillText(saludo, cX + cW / 2, cY + 118, cW - 80);
-      ctx.font = "300 22px 'Arial'";
-      ctx.fillStyle = "rgba(255,255,255,0.75)";
-      ctx.fillText(`Invitación de ${evento.anfitriones}`, cX + cW / 2, cY + 158);
-      ctx.font = "bold 28px 'Georgia',serif";
-      ctx.fillStyle = "#E0E7FF";
-      ctx.fillText(evento.nombre, cX + cW / 2, cY + 205, cW - 80);
-    }
-    ctx.restore();
-    // Cuerpo (texto oscuro sobre blanco)
-    let dY = cY + hH + 32;
-    const dX = cX + 44,
-      colW = cW - 88;
-    if (evento.frase_evento) {
-      ctx.font = "italic 20px 'Georgia',serif";
-      ctx.fillStyle = "#334155";
-      ctx.textAlign = "center";
-      ctx.fillText(`❝ ${evento.frase_evento} ❞`, cX + cW / 2, dY, colW);
-      dY += 40;
-    }
-    const drawRow = (label: string, val: string) => {
-      ctx.font = "700 11px 'Arial'";
-      ctx.fillStyle = esGrad ? GRAD.oroOscuro : "#4F46E5";
-      ctx.textAlign = "left";
-      ctx.fillText(label.toUpperCase(), dX, dY - 4);
-      ctx.font = "500 22px 'Arial'";
-      ctx.fillStyle = "#0F172A";
-      ctx.fillText(val, dX, dY + 20, colW);
-      dY += 52;
-    };
-    if (evento.fecha) drawRow("Fecha", formatFechaCorta(evento.fecha));
-    if (evento.hora) drawRow("Hora", formatHora(evento.hora));
-    if (evento.lugar) drawRow("Lugar", evento.lugar);
-    if (evento.musica_nombre) drawRow("Canción", evento.musica_nombre);
-    if (evento.fecha_limite_confirmacion)
-      drawRow(
-        "Confirmar antes del",
-        formatFechaCorta(evento.fecha_limite_confirmacion),
-      );
-    dY += 6;
-    ctx.beginPath();
-    ctx.moveTo(cX + 44, dY);
-    ctx.lineTo(cX + cW - 44, dY);
-    ctx.strokeStyle = esGrad ? "rgba(168,132,58,0.40)" : "rgba(79,70,229,0.22)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    if (esGrad) drawStar(cX + cW / 2, dY, 6, GRAD.oroMedio, 0.9);
-    dY += 22;
-    if (evento.mensaje_invitacion) {
-      ctx.font = "italic 18px 'Georgia',serif";
-      ctx.fillStyle = "#475569";
-      ctx.textAlign = "center";
-      ctx.fillText(`"${evento.mensaje_invitacion}"`, cX + cW / 2, dY, colW);
-      dY += 36;
-    }
-    // CTA primario (índigo lleno, texto blanco)
-    const bW = colW,
-      bH = 60,
-      bR = 14,
-      bGap = 10;
-    const gBtn = ctx.createLinearGradient(dX, dY, dX + bW, dY + bH);
-    if (esGrad) {
-      gBtn.addColorStop(0, GRAD.oroMedio);
-      gBtn.addColorStop(0.5, GRAD.oroClaro);
-      gBtn.addColorStop(1, GRAD.oroMedio);
-    } else {
-      gBtn.addColorStop(0, "#3730A3");
-      gBtn.addColorStop(1, "#4F46E5");
-    }
-    rrFill(ctx, dX, dY, bW, bH, bR, gBtn);
-    ctx.font = "bold 24px 'Arial'";
-    ctx.fillStyle = esGrad ? GRAD.tinta : "#FFFFFF";
-    ctx.textAlign = "center";
-    ctx.fillText(esGrad ? "🎓  Confirmar asistencia" : "✅  Confirmar asistencia", dX + bW / 2, dY + 38);
-    dY += bH + bGap;
-    // CTA secundarios (outline sobre fondo pálido)
-    const secBg = esGrad ? GRAD.perla : "#EEF2FF";
-    const secBorder = esGrad ? "rgba(168,132,58,0.45)" : "rgba(79,70,229,0.45)";
-    const secTxt = esGrad ? GRAD.oroProfundo : "#3730A3";
-    rrFill(ctx, dX, dY, bW, bH, bR, secBg);
-    ctx.strokeStyle = secBorder;
-    ctx.lineWidth = 1.5;
-    rrStroke(ctx, dX, dY, bW, bH, bR);
-    ctx.font = "bold 22px 'Arial'";
-    ctx.fillStyle = secTxt;
-    ctx.textAlign = "center";
-    ctx.fillText("📸  Subir foto al muro", dX + bW / 2, dY + 38);
-    dY += bH + bGap;
-    rrFill(ctx, dX, dY, bW, bH, bR, secBg);
-    ctx.strokeStyle = secBorder;
-    ctx.lineWidth = 1.5;
-    rrStroke(ctx, dX, dY, bW, bH, bR);
-    ctx.font = "bold 22px 'Arial'";
-    ctx.fillStyle = secTxt;
-    ctx.textAlign = "center";
-    ctx.fillText(esGrad ? "💌  Dejar un deseo al graduado" : "💌  Dejar mi deseo", dX + bW / 2, dY + 38);
-    dY += bH + 14;
-    // Link + firma
-    ctx.font = "400 15px 'Arial'";
-    ctx.fillStyle = "#64748B";
-    ctx.textAlign = "center";
-    ctx.fillText(
-      `${origin}/confirmar/${invitado.token}`,
-      cX + cW / 2,
-      dY,
-      colW,
-    );
-    // ── Graduación: QR al muro + sello "Promoción" ──
-    if (esGrad) {
-      dY += 22;
-      try {
-        const qr = qrcode(0, "M");
-        qr.addData(`${origin}/muro/${evento.id}`);
-        qr.make();
-        const n = qr.getModuleCount();
-        const qSize = 128, cell = qSize / n;
-        const qX = cX + cW / 2 - qSize - 55, qY = dY + 6;
-        // Marco blanco con borde dorado
-        rrFill(ctx, qX - 12, qY - 12, qSize + 24, qSize + 24, 14, "#FFFFFF");
-        ctx.strokeStyle = GRAD.oroMedio;
-        ctx.lineWidth = 2.5;
-        rrStroke(ctx, qX - 12, qY - 12, qSize + 24, qSize + 24, 14);
-        ctx.fillStyle = GRAD.navy;
-        for (let rw = 0; rw < n; rw++)
-          for (let cl = 0; cl < n; cl++)
-            if (qr.isDark(rw, cl))
-              ctx.fillRect(qX + cl * cell, qY + rw * cell, Math.ceil(cell), Math.ceil(cell));
-        ctx.font = "600 14px 'Arial'";
-        ctx.fillStyle = GRAD.oroProfundo;
-        ctx.textAlign = "center";
-        ctx.fillText("Escaneá y mirá el muro", qX + qSize / 2, qY + qSize + 32);
-        ctx.fillText("de fotos del evento", qX + qSize / 2, qY + qSize + 50);
-      } catch { /* QR opcional */ }
-      // Sello medalla "Promoción YYYY"
-      const anio = evento.fecha
-        ? new Date(evento.fecha + "T12:00:00").getFullYear()
-        : new Date().getFullYear();
-      const sX = cX + cW / 2 + 130, sY = dY + 76;
-      // Cintas rojas
-      ctx.save();
-      ctx.fillStyle = GRAD.navy2;
-      ctx.beginPath();
-      ctx.moveTo(sX - 26, sY + 30); ctx.lineTo(sX - 40, sY + 88); ctx.lineTo(sX - 22, sY + 78); ctx.lineTo(sX - 10, sY + 92); ctx.lineTo(sX - 4, sY + 40);
-      ctx.closePath(); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(sX + 26, sY + 30); ctx.lineTo(sX + 40, sY + 88); ctx.lineTo(sX + 22, sY + 78); ctx.lineTo(sX + 10, sY + 92); ctx.lineTo(sX + 4, sY + 40);
-      ctx.closePath(); ctx.fill();
-      ctx.restore();
-      // Borde dentado dorado
-      ctx.save();
-      ctx.translate(sX, sY);
-      ctx.fillStyle = GRAD.oroOscuro;
-      for (let i = 0; i < 24; i++) {
-        const a = (Math.PI * 2 * i) / 24;
-        ctx.beginPath();
-        ctx.arc(Math.cos(a) * 54, Math.sin(a) * 54, 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-      // Medalla con gradiente dorado
-      const sg = ctx.createRadialGradient(sX - 14, sY - 14, 6, sX, sY, 58);
-      sg.addColorStop(0, GRAD.oroPalido);
-      sg.addColorStop(0.55, GRAD.oro);
-      sg.addColorStop(1, GRAD.oroOscuro);
-      ctx.beginPath(); ctx.arc(sX, sY, 54, 0, Math.PI * 2);
-      ctx.fillStyle = sg; ctx.fill();
-      ctx.strokeStyle = GRAD.oroProfundo; ctx.lineWidth = 2; ctx.stroke();
-      // Disco interior
-      ctx.beginPath(); ctx.arc(sX, sY, 42, 0, Math.PI * 2);
-      ctx.fillStyle = GRAD.perla; ctx.fill();
-      ctx.strokeStyle = "rgba(110,84,24,0.5)"; ctx.lineWidth = 1.2;
-      ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
-      // Contenido del sello
-      ctx.font = "22px serif";
-      ctx.textAlign = "center";
-      ctx.fillText("🎓", sX, sY - 12);
-      ctx.font = "700 11px 'Arial'";
-      ctx.fillStyle = GRAD.oroProfundo;
-      ctx.fillText("PROMOCIÓN", sX, sY + 8);
-      ctx.font = "bold 24px 'Georgia',serif";
-      ctx.fillStyle = GRAD.oroOscuro;
-      ctx.fillText(String(anio), sX, sY + 32);
-    }
-    ctx.font = "bold 17px 'Arial'";
-    ctx.fillStyle = esGrad ? GRAD.oroOscuro : "#4F46E5";
-    ctx.textAlign = "center";
-    ctx.fillText("Evorix · Invitaciones digitales", cX + cW / 2, cY + cH - 28);
-    canvas.toBlob((blob) => resolve(blob), "image/png", 0.95);
-  });
 }
 
 // ─── Tarjeta formato Instagram Stories 9:16 (graduación) ─────────────────────
@@ -4498,11 +4183,10 @@ export default function ConfirmarPage() {
     if (!invitado || !evento) return;
     setGenerandoTarjeta(true);
     setMostrarModalTarjeta(true);
-    const blob = await generarTarjetaCanvas(
-      invitado,
-      evento,
-      window.location.origin,
-    );
+    // La misma tarjeta que le mandó el organizador (lib/tarjetaCanvas.ts), con
+    // su nombre y los colores del evento: antes se descargaba otro diseño
+    const { generarTarjetaPNG } = await import("@/lib/tarjetaCanvas");
+    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, invitado.nombre, tratoDe(invitado.nombre, invitado.token)));
     if (blob) setTarjetaPreview(URL.createObjectURL(blob));
     setGenerandoTarjeta(false);
   }
@@ -4790,6 +4474,14 @@ export default function ConfirmarPage() {
     .inv-deadline{background:#fef8f0;border:1px solid rgba(180,83,9,0.2);border-radius:var(--r-sm);padding:12px 15px;display:flex;align-items:center;gap:10px}
     .deadline-text{font-size:14px;color:#92400e;font-weight:500;line-height:1.4}
     /* Cómo llegar */
+    .detalle-direccion{font-size:13.5px;color:var(--ink2);line-height:1.45;margin-top:3px;overflow-wrap:anywhere}
+    .detalle-referencia{font-size:13px;color:var(--ink2);line-height:1.45;margin-top:6px;padding:7px 10px;border-radius:10px;background:var(--cream);border:1px dashed var(--border-mid);overflow-wrap:anywhere}
+    .detalle-referencia span{display:block;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:1px}
+    .lugar-ref{margin:0;border-radius:16px;overflow:hidden;background:var(--surface);border:1px solid var(--border);box-shadow:0 4px 18px rgba(15,23,42,.08)}
+    .lugar-ref a{position:relative;display:block}
+    .lugar-ref img,.lugar-ref video{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:#0f172a}
+    .lugar-ref-zoom{position:absolute;right:10px;bottom:10px;font-size:11px;font-weight:700;color:#fff;background:rgba(15,23,42,.62);backdrop-filter:blur(6px);padding:5px 10px;border-radius:99px}
+    .lugar-ref figcaption{font-size:12px;color:var(--ink3);padding:9px 14px;font-weight:600;letter-spacing:.2px}
     .como-llegar-box{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px}
     .como-llegar-label{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
     .como-llegar-text{font-size:14px;color:var(--ink2);line-height:1.7}
@@ -5116,6 +4808,9 @@ export default function ConfirmarPage() {
     .grad-para{font-size:10.5px;font-weight:600;letter-spacing:2.6px;text-transform:uppercase;color:#6B7393;margin-bottom:4px}
     .grad-invitado{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:21px;font-style:italic;font-weight:500;color:${GRAD.navy2};line-height:1.25;margin-bottom:10px}
     .grad-protagonista{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:44px;font-weight:600;color:${GRAD.tinta};line-height:1.05;letter-spacing:-.4px;margin-top:4px}
+    .grad-honor{font-family:var(--f-label,'Cinzel'),Georgia,serif;font-size:10.5px;font-weight:600;letter-spacing:.26em;text-transform:uppercase;color:${GRAD.oroOscuro};margin-top:2px}
+    .grad-carrera{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:19px;font-style:italic;font-weight:500;color:${GRAD.navy2};line-height:1.3;margin-top:8px;text-wrap:balance;padding:0 6px}
+    .grad-institucion{font-size:10.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:${GRAD.oroOscuro};margin-top:5px;line-height:1.5;text-wrap:balance;padding:0 6px}
     .grad-te-invita{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:19px;font-style:italic;color:${GRAD.oroOscuro};margin-top:8px}
     .inv-anfitrion{color:#4A5275}
     .inv-evento-nombre{color:${GRAD.navy2}}
@@ -5129,6 +4824,8 @@ export default function ConfirmarPage() {
     .detalle-texto,.res-texto{text-transform:none}
     .detalle-texto::first-letter{text-transform:uppercase}
     .como-llegar-box{background:${GRAD.perla};border-color:rgba(15,23,51,0.06)}
+    .detalle-referencia{background:${GRAD.perla};border-color:rgba(168,132,58,0.35)}
+    .lugar-ref{border-color:rgba(168,132,58,0.35)}
     .music-player{background:${GRAD.perla};border-color:rgba(15,23,51,0.06)}
     .music-player:hover{background:${GRAD.perla2}}
     .music-icon-wrap{background:linear-gradient(135deg,${GRAD.navy2},${GRAD.navy});box-shadow:0 4px 12px rgba(10,15,36,0.30)}
@@ -5637,8 +5334,8 @@ export default function ConfirmarPage() {
 
                 {evento.tipo === "graduacion" ? (() => {
                   // El graduado es el protagonista; el invitado es a quien va dirigida
-                  const protagonista = evento.anfitriones?.trim() || evento.nombre;
-                  const nombreRepite = !!evento.anfitriones && evento.nombre.toLowerCase().includes(evento.anfitriones.trim().toLowerCase());
+                  const ps = personasDe(evento);
+                  const nombreRepite = evento.nombre.toLowerCase().includes(ps.protagonista.trim().toLowerCase());
                   return (
                     <>
                       <p className="grad-para">Con mucho cariño, para</p>
@@ -5646,11 +5343,16 @@ export default function ConfirmarPage() {
                         {nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
                       </p>
                       <DecoracionEvento tipo={evento.tipo} />
-                      <h1 className="grad-protagonista">{protagonista}</h1>
-                      {evento.anfitriones && (
-                        <p className="grad-te-invita">{nombreRepite ? "te invita a celebrar su graduación" : "te invita a celebrar"}</p>
-                      )}
-                      {(!evento.anfitriones || !nombreRepite) && evento.anfitriones && (
+                      {ps.honor && <p className="grad-honor">{ps.honor}</p>}
+                      <h1 className="grad-protagonista">{ps.protagonista}</h1>
+                      {ps.carrera && <p className="grad-carrera">{ps.carrera}</p>}
+                      {ps.institucion && <p className="grad-institucion">{ps.institucion}</p>}
+                      {ps.familia ? (
+                        <p className="grad-te-invita">{ps.familia} te invita a celebrar este logro</p>
+                      ) : evento.anfitriones ? (
+                        <p className="grad-te-invita">{ps.esAnfitrion || nombreRepite ? "te invita a celebrar su graduación" : "te invita a celebrar"}</p>
+                      ) : null}
+                      {!nombreRepite && !ps.carrera && (
                         <div className="inv-evento-nombre">{evento.nombre}</div>
                       )}
                     </>
@@ -5748,21 +5450,49 @@ export default function ConfirmarPage() {
                         </div>
                       </div>
                     )}
-                    {evento.lugar && (
-                      <div className="detalle-fila" data-guia="lugar">
-                        <div className="detalle-ico-wrap">
-                          {/* Sin ícono en la dirección — solo texto */}
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                            <path d="M4 10h16M4 14h10" stroke="#4F46E5" strokeWidth="1.8" strokeLinecap="round"/>
-                          </svg>
+                    {evento.lugar && (() => {
+                      const ps = personasDe(evento);
+                      return (
+                        <div className="detalle-fila" data-guia="lugar">
+                          <div className="detalle-ico-wrap">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                              <path d="M10 2a6 6 0 016 6c0 5-6 10-6 10S4 13 4 8a6 6 0 016-6z" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round"/>
+                              <circle cx="10" cy="8" r="2.2" fill="#4F46E5"/>
+                            </svg>
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div className="detalle-label">Lugar</div>
+                            <div className="detalle-texto">{evento.lugar}</div>
+                            {ps.direccion && <div className="detalle-direccion">{ps.direccion}</div>}
+                            {ps.referencia && (
+                              <div className="detalle-referencia">
+                                <span>Referencia</span>{ps.referencia}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <div className="detalle-label">Lugar</div>
-                          <div className="detalle-texto">{evento.lugar}</div>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
+                )}
+
+                {/* 🏛️ Foto de referencia del lugar: para reconocerlo al llegar */}
+                {evento.foto_lugar_url && (
+                  /\.(mp4|mov|webm|avi)(\?|$)/i.test(evento.foto_lugar_url) ? (
+                    <figure className="lugar-ref">
+                      <video src={evento.foto_lugar_url} controls playsInline preload="metadata" />
+                      <figcaption>Así se ve el lugar{evento.lugar ? ` · ${evento.lugar}` : ""}</figcaption>
+                    </figure>
+                  ) : (
+                    <figure className="lugar-ref">
+                      <a href={evento.foto_lugar_url} target="_blank" rel="noopener noreferrer" aria-label="Ver la foto del lugar en grande">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={evento.foto_lugar_url} alt={`Foto de referencia de ${evento.lugar || "el lugar"}`} loading="lazy" />
+                        <span className="lugar-ref-zoom">Ver en grande</span>
+                      </a>
+                      <figcaption>Foto de referencia{evento.lugar ? ` · ${evento.lugar}` : ""}</figcaption>
+                    </figure>
+                  )
                 )}
 
                 {/* ⏱ Cuenta regresiva genérica (graduación ya tiene la suya dorada) */}
@@ -5821,7 +5551,7 @@ export default function ConfirmarPage() {
                 {evento.tipo === "graduacion" && (evento.maps_url || evento.lugar) && (
                   <div data-guia="mapa" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <a
-                      href={evento.maps_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evento.lugar || "")}`}
+                      href={evento.maps_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(consultaMapa(evento))}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="grad-nav-btn"
@@ -5830,7 +5560,7 @@ export default function ConfirmarPage() {
                       Google Maps
                     </a>
                     <a
-                      href={`https://waze.com/ul?q=${encodeURIComponent(evento.lugar || "")}&navigate=yes`}
+                      href={`https://waze.com/ul?q=${encodeURIComponent(consultaMapa(evento))}&navigate=yes`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="grad-nav-btn"
@@ -5928,7 +5658,7 @@ export default function ConfirmarPage() {
                 )}
 
                 {/* ✍️ Firma del graduado — cierre emotivo */}
-                {evento.tipo === "graduacion" && evento.anfitriones && (
+                {evento.tipo === "graduacion" && (personasDe(evento).familia || evento.anfitriones) && (
                   <div style={{ textAlign: "center", padding: "16px 0 4px" }}>
                     <div style={{ fontSize: 14, fontStyle: "italic", color: "var(--ink2)", fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", marginBottom: 8 }}>
                       Será un honor contar con tu presencia,
@@ -5938,9 +5668,9 @@ export default function ConfirmarPage() {
                       lineHeight: 1.1, display: "inline-block", transform: "rotate(-3deg)",
                       backgroundImage: `linear-gradient(90deg,${GRAD.navy2},${GRAD.navy3} 50%,${GRAD.navy2})`,
                       WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
-                      padding: "0 10px",
+                      padding: "0 10px", maxWidth: "100%", overflowWrap: "anywhere",
                     }}>
-                      {evento.anfitriones}
+                      {personasDe(evento).familia || evento.anfitriones}
                     </div>
                     <div style={{ width: 140, height: 1, margin: "10px auto 0", background: `linear-gradient(90deg,transparent,${GRAD.oro},transparent)` }} />
                     {evento.fecha && (

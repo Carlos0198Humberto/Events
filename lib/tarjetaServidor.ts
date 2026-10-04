@@ -35,10 +35,14 @@ export async function datosPorToken(token: string): Promise<{ datos: DatosTarjet
   const inv = invitados?.[0];
   if (!inv) return { datos: generica, encontrado: false };
 
-  // Con el versículo (columnas de supabase-envios.sql); si todavía no existen,
-  // PostgREST responde error y se pide sin ellas
-  const base = `eventos?id=eq.${encodeURIComponent(inv.evento_id)}&limit=1&select=nombre,tipo,anfitriones,fecha,hora,lugar`;
-  const eventos = (await rest<EventoTarjeta[]>(`${base},versiculo_texto,versiculo_cita`)) ?? (await rest<EventoTarjeta[]>(base));
+  // Con el versículo (supabase-envios.sql) y los datos de la tarjeta
+  // (supabase-tarjeta.sql); si alguna columna todavía no existe, PostgREST
+  // responde error y se pide con menos
+  const base = `eventos?id=eq.${encodeURIComponent(inv.evento_id)}&limit=1&select=nombre,tipo,anfitriones,fecha,hora,lugar,imagen_url`;
+  const eventos =
+    (await rest<EventoTarjeta[]>(`${base},versiculo_texto,versiculo_cita,tarjeta`)) ??
+    (await rest<EventoTarjeta[]>(`${base},versiculo_texto,versiculo_cita`)) ??
+    (await rest<EventoTarjeta[]>(base));
   const ev = eventos?.[0];
   if (!ev) return { datos: generica, encontrado: false };
   return { datos: armarDatosTarjeta(ev, inv.nombre), encontrado: true };
