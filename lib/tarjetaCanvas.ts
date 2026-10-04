@@ -294,12 +294,13 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
 
   ctx.textBaseline = "alphabetic";
   const bloques: Bloque[] = [];
-  // Con versículo hay un bloque más: birrete, año y sello se achican un poco
-  const compacta = !!datos.versiculo;
+  // Con versículo, o con carrera, familia y dirección cargadas, la foto y el
+  // birrete se achican un poco para que todo respire
+  const compacta = !!datos.versiculo || [datos.carrera, datos.institucion, datos.familia, datos.direccion].filter(Boolean).length >= 3;
 
   // Arriba: la foto en un círculo dorado (con el birrete apoyado, en graduación)
   // o, sin foto, el birrete solo / un separador
-  const RF = compacta ? 118 : 132;
+  const RF = compacta ? 108 : 132;
   bloques.push(foto
     ? { alto: RF * 2 + 32, antes: 0, dibujar: (y) => {
       retrato(ctx, foto, cx, y + RF + 16, RF);
@@ -397,14 +398,6 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
           escribir(ctx, l, cx, y + 23 + i * 32, { fuente: (px) => `300 ${px}px ${SANS}`, px: 25, min: 18, max: 780, color: P.textoSuave }));
       } });
     }
-    if (datos.referencia) {
-      ctx.font = `italic 500 23px ${SERIF}`;
-      const lineasR = partirEnLineas(ctx, `Referencia: ${datos.referencia}`, 760).slice(0, 2);
-      bloques.push({ alto: lineasR.length * 30 - 4, antes: 6, dibujar: (y) => {
-        lineasR.forEach((l, i) =>
-          escribir(ctx, l, cx, y + 21 + i * 30, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 23, min: 18, max: 780, color: P.oroPlano }));
-      } });
-    }
   }
 
   // Para quién es (como el sobre de una invitación impresa), la frase que
@@ -413,14 +406,6 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
     bloques.push({ alto: 46, antes: 34, dibujar: (y) =>
       escribir(ctx, `Para ${datos.invitado}`, cx, y + 38, { fuente: (px) => `italic 600 ${px}px ${SERIF}`, px: 42, min: 28, max: 760, color: P.textoFuerte }) });
   }
-  ctx.font = `300 27px ${SANS}`;
-  const lineas = partirEnLineas(ctx, datos.frase, 720).slice(0, 2);
-  bloques.push({ alto: lineas.length * 38, antes: datos.invitado ? 10 : 30, dibujar: (y) => {
-    ctx.font = `300 27px ${SANS}`;
-    ctx.fillStyle = P.textoSuave;
-    ctx.textAlign = "center";
-    lineas.forEach((l, i) => ctx.fillText(l, cx, y + 28 + i * 38));
-  } });
   // El llamado a confirmar es para la tarjeta personal (va con el enlace); la
   // genérica (para estados) no lleva enlace al lado
   if (datos.invitado) {
@@ -430,20 +415,10 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
 
   // Quién invita, firmado en caligrafía como en una tarjeta impresa
   if (datos.familia) {
-    bloques.push({ alto: 18, antes: 26, dibujar: (y) =>
-      escribir(ctx, "CON CARIÑO", cx, y + 17, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 17, min: 13, max: 500, espacio: 6, color: P.oroPlano }) });
-    bloques.push({ alto: 64, antes: 2, dibujar: (y) =>
+    bloques.push({ alto: 64, antes: 26, dibujar: (y) =>
       escribir(ctx, datos.familia!, cx, y + 52, { fuente: (px) => `${px}px ${SCRIPT}`, px: 66, min: 40, max: 780, color: "oro" }) });
   }
 
-  if (datos.promocion) {
-    bloques.push({ alto: 22, antes: 34, dibujar: (y) =>
-      escribir(ctx, "PROMOCIÓN", cx, y + 20, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 21, min: 16, max: 500, espacio: 9, color: P.oroPlano }) });
-    const chico = compacta || !!foto;
-    const pxAnio = chico ? 96 : 124;
-    bloques.push({ alto: chico ? 78 : 100, antes: 6, dibujar: (y) =>
-      escribir(ctx, String(datos.promocion), cx, y + (chico ? 74 : 96), { fuente: (px) => `500 ${px}px ${SERIF}`, px: pxAnio, min: 72, max: 500, color: "oro" }) });
-  }
 
   const arriba = 112;
   const abajo = H - 88;

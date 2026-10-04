@@ -7,7 +7,7 @@
 //   • lib/mensajeInvitacion.ts → el texto del mensaje.
 // Por eso acá no hay nada de DOM ni de librerías de dibujo.
 
-import { saludo, type Trato } from "@/lib/tratoInvitado";
+import type { Trato } from "@/lib/tratoInvitado";
 import { versiculoDe, type Versiculo } from "@/lib/versiculos";
 
 export type EventoTarjeta = {
@@ -93,8 +93,6 @@ export type DatosTarjeta = {
   familia: string | null;     // "Familia Castillo Pérez" (quien invita)
   iniciales: string;          // "AC" (el sello)
   invitado: string;           // "María José Hernández"
-  parrafo: string;            // "Querida María José, con mucha alegría te invitamos…"
-  frase: string;              // "Con mucha alegría te invitamos a celebrar este logro."
   cta: string;                // "Confirmá tu asistencia en el enlace del mensaje"
   foto: string | null;        // URL de la foto de portada, si va en la tarjeta
   paleta: PaletaTarjeta;      // colores (azul noche y oro, marfil y oro…)
@@ -105,8 +103,6 @@ export type DatosTarjeta = {
   horaCorta: string | null;   // "6:00 p. m."
   lugar: string | null;       // "Salón Los Almendros"
   direccion: string | null;   // "Km 12 Carretera al Puerto, La Libertad"
-  referencia: string | null;  // "Frente a la gasolinera Puma"
-  promocion: number | null;   // 2026 (solo graduación)
   versiculo: Versiculo | null; // texto bíblico elegido por el organizador
 };
 
@@ -289,13 +285,11 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
   let fecha: string | null = null;
   let fechaCorta: string | null = null;
   let dia: string | null = null;
-  let anio: number | null = null;
   if (evento.fecha) {
     const d = fechaLocal(evento.fecha);
     fecha = fechaLarga(evento.fecha);
     fechaCorta = `${d.getDate()} · ${MESES[d.getMonth()]} · ${d.getFullYear()}`;
     dia = d.toLocaleDateString("es", { weekday: "long" }).toLocaleUpperCase("es");
-    anio = d.getFullYear();
   }
   const hCorta = evento.hora ? horaCorta(evento.hora) : null;
   const diaHora = [dia, hCorta?.toLocaleUpperCase("es")].filter(Boolean).join(" · ") || null;
@@ -311,13 +305,6 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
   }
 
   const plural = trato === "plural";
-  const frase = fraseInvitacion(evento, plural, true);
-  const confirmar = plural
-    ? "Confirmen su asistencia en el enlace de este mensaje."
-    : "Confirmá tu asistencia en el enlace de este mensaje.";
-  const parrafo = trato && invitado
-    ? `${trato === "neutro" ? invitado : saludo(invitado, trato)}, ${frase}. ${confirmar}`
-    : `${mayuscula(frase)}. ${confirmar}`;
 
   return {
     esGraduacion,
@@ -332,8 +319,6 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     familia: familiaDe(evento),
     iniciales: inicialesDe(protagonista.nombre),
     invitado,
-    parrafo,
-    frase: `${mayuscula(frase)}.`,
     cta: plural ? "Confirmen su asistencia en el enlace del mensaje" : "Confirmá tu asistencia en el enlace del mensaje",
     foto: extras.foto === false ? null : evento.imagen_url?.trim() || null,
     paleta: paletaDe(evento),
@@ -344,8 +329,6 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     horaCorta: hCorta,
     lugar,
     direccion,
-    referencia: extras.referencia ?? null,
-    promocion: esGraduacion ? anio : null,
     versiculo: versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
   };
 }

@@ -9,6 +9,7 @@ import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
 import { armarDatosTarjeta, extrasDe, familiaDe, protagonistaDe, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import { tratoDe } from "@/lib/tratoInvitado";
+import { versiculoDe } from "@/lib/versiculos";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -62,6 +63,8 @@ type Evento = {
   fotos_carrusel?: string[] | null;
   foto_lugar_url?: string | null;
   tarjeta?: ExtrasTarjeta | null; // supabase-tarjeta.sql
+  versiculo_texto?: string | null; // supabase-envios.sql
+  versiculo_cita?: string | null;
 };
 
 // Quién es quién en la invitación: el protagonista (graduando), lo que estudió,
@@ -931,6 +934,32 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
 // ─── Ref global de audio para control de volumen desde TTS ───────────────────
 const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
 
+// La música va de fondo: al 100% tapaba la voz del asistente. Mientras habla
+// baja casi a nada. iPhone y iPad ignoran audio.volume (suena siempre al
+// 100%): ahí la música se pausa mientras habla y sigue sola al terminar.
+const MUSICA_BASE = 0.35;
+const MUSICA_CON_VOZ = 0.06;
+let volumenControlable: boolean | null = null;
+let pausadaPorVoz = false;
+function puedeControlarVolumen() {
+  if (volumenControlable === null) {
+    try { const a = new Audio(); a.volume = 0.5; volumenControlable = Math.abs(a.volume - 0.5) < 0.01; }
+    catch { volumenControlable = true; }
+  }
+  return volumenControlable;
+}
+function musicaBajoVoz(hablando: boolean) {
+  const a = globalAudioRef.current;
+  if (!a) return;
+  if (puedeControlarVolumen()) { a.volume = hablando ? MUSICA_CON_VOZ : MUSICA_BASE; return; }
+  if (hablando) {
+    if (!a.paused) { a.pause(); pausadaPorVoz = true; }
+  } else if (pausadaPorVoz) {
+    pausadaPorVoz = false;
+    a.play().catch(() => {});
+  }
+}
+
 // ─── Frase con efecto máquina de escribir (graduación) ────────────────────────
 function TypewriterFrase({ texto }: { texto: string }) {
   const [visible, setVisible] = useState(0);
@@ -1220,16 +1249,6 @@ function fechaHablada(fecha: string, conAnio = true): string {
   });
 }
 
-// "Graduación de Andrea" → "la graduación de Andrea"; si ya trae artículo, se respeta
-function nombreEventoHablado(nombre: string): string {
-  const n = nombre.trim();
-  if (/^(el|la|los|las|mi|mis|nuestra|nuestro|su)\s/i.test(n)) return n;
-  const minus = n.charAt(0).toLowerCase() + n.slice(1);
-  if (/^(graduaci[oó]n|fiesta|celebraci[oó]n|cena|ceremonia|boda|misa|recepci[oó]n|promoci[oó]n)/i.test(n)) return `la ${minus}`;
-  if (/^(cumplea[nñ]os|baile|brindis|almuerzo|acto|festejo)/i.test(n)) return `el ${minus}`;
-  return n;
-}
-
 function cerrarFrase(t: string): string {
   const s = t.trim();
   return /[.!?…]$/.test(s) ? s : `${s}.`;
@@ -1383,21 +1402,16 @@ function FloatingMascot({
   useEffect(() => {
     if (fase !== "leyendo") return;
     const pasos: PasoGuia[] = [];
+    // Corto a propósito: la invitación ya está escrita en pantalla; la voz
+    // solo marca lo importante (cuándo, dónde, cómo confirmar).
     pasos.push({ t: `¡Hola, ${primerNombre}! Tenés una invitación muy especial.`, guia: "inicio" });
-    pasos.push({ t: `Te invitamos a ${nombreEventoHablado(evento.nombre)}.` });
-    if (evento.anfitriones) pasos.push({ t: `Te la envía con mucho cariño ${evento.anfitriones}.` });
-    if (evento.frase_evento) pasos.push({ t: cerrarFrase(evento.frase_evento) });
-    if (evento.mensaje_invitacion) pasos.push({ t: cerrarFrase(evento.mensaje_invitacion) });
 
     const hora = evento.hora ? horaHablada(evento.hora) : null;
     if (evento.fecha) pasos.push({ t: `La cita es el ${fechaHablada(evento.fecha)}${hora ? `, ${hora}` : ""}.`, guia: "fecha" });
     else if (hora) pasos.push({ t: `Comenzamos ${hora}.`, guia: "fecha" });
-    if (evento.lugar) pasos.push({ t: `El lugar es ${cerrarFrase(evento.lugar)}`, guia: "lugar" });
-    if (evento.como_llegar) pasos.push({ t: `Para llegar: ${cerrarFrase(evento.como_llegar)}`, guia: "llegar" });
-    if (esGrad && (evento.lugar || evento.maps_url)) {
-      pasos.push({ t: "Si necesitás indicaciones, tenés botones para abrir la ubicación en Google Maps o en Waze.", guia: "mapa" });
-    } else if (evento.maps_url) {
-      pasos.push({ t: "Si necesitás indicaciones, tocá el botón de Google Maps.", guia: "mapa" });
+    if (evento.lugar) {
+      const mapas = evento.maps_url || esGrad ? " Abajo tenés cómo llegar." : "";
+      pasos.push({ t: `El lugar es ${cerrarFrase(evento.lugar)}${mapas}`, guia: "lugar" });
     }
 
     if (evento.vestimenta_activo && evento.vestimenta_tipo) {
@@ -1412,15 +1426,9 @@ function FloatingMascot({
     } else if (!invitado.cupo_elije_invitado && (invitado.num_personas || 1) > 1) {
       pasos.push({ t: `Tu invitación es para ${invitado.num_personas} personas.` });
     }
-    if (evento.regalo_activo && (evento.regalo_banco || evento.regalo_cuenta)) {
-      pasos.push({ t: `Si querés hacerle un regalo a ${festejado}, acá tenés los datos para una transferencia.`, guia: "regalo" });
-    }
-    if (hayPrograma) pasos.push({ t: "Y acá está el programa, con la hora de cada momento de la celebración.", guia: "programa" });
-    if (evento.fecha_limite_confirmacion) {
-      pasos.push({ t: `Te pedimos confirmar antes del ${fechaHablada(evento.fecha_limite_confirmacion, false)}.` });
-    }
-    pasos.push({ t: "Para confirmar, tocá el botón dorado que dice Confirmar asistencia, abajo en la pantalla.", guia: "confirmar" });
-    pasos.push({ t: "Y si no vas a poder ir, tocá No podré, así nos avisás.", guia: "no-podre" });
+    const plazo = evento.fecha_limite_confirmacion && (!evento.fecha || evento.fecha_limite_confirmacion < evento.fecha)
+      ? ` antes del ${fechaHablada(evento.fecha_limite_confirmacion, false)}` : "";
+    pasos.push({ t: `Confirmá tu asistencia${plazo} con el botón dorado de abajo, o tocá No podré si no vas a poder ir.`, guia: "confirmar" });
     decir(pasos, "esperando_confirm");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
@@ -1453,13 +1461,9 @@ function FloatingMascot({
       const pasos: PasoGuia[] = [];
       pasos.push({ t: "¡Listo! Tu asistencia quedó confirmada.", guia: "numero" });
       if (inv.numero_confirmacion) pasos.push({ t: `Tu número de confirmación es el ${inv.numero_confirmacion}.` });
-      pasos.push({ t: "Esta es tu entrada, con tu código QR.", guia: "qr" });
-      pasos.push({ t: "Guardala con el botón Guardar mi entrada, o sacale una captura, porque la vas a mostrar al llegar.", guia: "guardar-entrada" });
-      if (mesas && !inv.mesa_id) pasos.push({ t: "También podés elegir tu mesa en la lista, tocando la que prefieras.", guia: "mesa" });
-      pasos.push({ t: "Si querés, subí hasta cinco fotos para el muro del evento.", guia: "fotos" });
-      pasos.push({ t: `Y escribile un deseo a ${festejado}.`, guia: "acciones" });
-      pasos.push({ t: "Con el botón del calendario guardás la fecha para que te llegue un recordatorio, y con Compartir le contás a tus amigos que vas.", guia: "acciones" });
-      pasos.push({ t: "Cuando termines, tocá Listo, cerrar esta ventana.", guia: "cerrar" });
+      pasos.push({ t: "Esta es tu entrada con código QR: guardala o sacale una captura para mostrarla al llegar.", guia: "qr" });
+      if (mesas && !inv.mesa_id) pasos.push({ t: "También podés elegir tu mesa en la lista.", guia: "mesa" });
+      pasos.push({ t: `Si querés, subí fotos al muro y dejale un deseo a ${festejado}.`, guia: "acciones" });
       pasos.push({ t: esCumple ? "¡Nos vemos en la fiesta!" : "¡Nos vemos en la graduación!" });
       decir(pasos, "reposo");
     }, 1900);
@@ -1820,8 +1824,7 @@ function useTTS() {
     try { ss.cancel(); } catch {}
     limpiarTimers();
     // Bajar música mientras habla (en silencio no hace falta)
-    const audio = globalAudioRef.current;
-    if (audio && !silencioRef.current) audio.volume = 0.12;
+    if (!silencioRef.current) musicaBajoVoz(true);
 
     // Estado OPTIMISTA: el avatar habla desde ya.
     // iOS Safari muchas veces NO dispara onstart, y sin esto la boca/burbuja no aparecían.
@@ -1848,7 +1851,7 @@ function useTTS() {
       setHablando(false);
       setTextoActual("");
       setCharIdx(0);
-      if (audio) audio.volume = 1;
+      musicaBajoVoz(false);
       onFin?.();
     };
 
@@ -1926,8 +1929,7 @@ function useTTS() {
     setTextoActual("");
     setCharIdx(0);
     limpiarTimers();
-    const audio = globalAudioRef.current;
-    if (audio) audio.volume = 1;
+    musicaBajoVoz(false);
   }
 
   return { hablando, listo, leer, detener, textoActual, charIdx, silencio, setSilencio };
@@ -2323,15 +2325,6 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   const mono = iniciales(protagonista);
   // El monograma está siempre debajo: mientras la foto carga (señal floja) o si
   // falla, la portada nunca queda vacía. La foto entra con un fundido.
-  const [fotoLista, setFotoLista] = useState(false);
-  // Una foto cuadrada u horizontal a pantalla completa en un teléfono se
-  // amplía hasta cortar la cara: esas van enteras arriba, con la misma foto
-  // desenfocada de fondo. Las verticales siguen a sangre.
-  const [fotoAncha, setFotoAncha] = useState(false);
-  const fotoCargada = (img: HTMLImageElement) => {
-    setFotoAncha(img.naturalHeight / Math.max(img.naturalWidth, 1) < 1.2);
-    setFotoLista(true);
-  };
 
   return (
     <div className={`portada${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`}>
@@ -2350,12 +2343,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
           padding:max(30px,env(safe-area-inset-top,30px)) 24px max(26px,env(safe-area-inset-bottom,26px))}
         .portada.saliendo{animation:ptTelon .8s .28s cubic-bezier(.7,0,.2,1) forwards}
         .pt-foto{position:absolute;inset:0;overflow:hidden}
-        .pt-foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%;display:block;
-          opacity:0;transition:opacity 1.2s ease;animation:ptKen 18s ease-in-out infinite alternate}
-        .pt-foto img.lista{opacity:1}
-        .pt-foto img.pt-borrosa{filter:blur(28px) saturate(1.1) brightness(.72);transform:scale(1.15);animation:none}
-        .pt-foto img.pt-entera{inset:auto;top:6%;left:0;right:0;margin:0 auto;width:auto;height:auto;max-width:100%;max-height:66%;
-          -webkit-mask-image:linear-gradient(to bottom,#000 70%,transparent);mask-image:linear-gradient(to bottom,#000 70%,transparent)}
+        .pt-emblema{display:flex;justify-content:center;margin-bottom:18px;animation:ptBaja .9s .3s ease both;filter:drop-shadow(0 6px 18px rgba(201,165,76,0.35))}
         .pt-mono{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;padding-top:16vh;
           font-family:'Playfair Display',Georgia,serif;font-size:min(62vw,300px);font-weight:600;line-height:1;color:rgba(201,165,76,0.10);
           background:radial-gradient(ellipse 80% 50% at 50% 25%,${GRAD.navy3} 0%,${GRAD.navy} 55%,${GRAD.noche} 100%)}
@@ -2369,13 +2357,14 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         .pt-kicker i{display:block;width:30px;height:1px;background:linear-gradient(90deg,transparent,${GRAD.oro})}
         .pt-kicker i:last-child{background:linear-gradient(90deg,${GRAD.oro},transparent)}
         .pt-promo{font-family:'Cinzel',Georgia,serif;font-size:10.5px;font-weight:500;letter-spacing:.32em;color:rgba(255,255,255,0.78);margin-top:8px;text-shadow:0 1px 8px rgba(0,0,0,0.5)}
-        .pt-centro{margin-top:auto}
+        .pt-centro{margin-top:auto;margin-bottom:auto}
         .pt-para{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:17px;color:${GRAD.oroClaro};animation:ptSube .7s .45s ease both}
         .pt-nombre{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:clamp(40px,12.5vw,58px);line-height:1.02;letter-spacing:-.01em;
           margin-top:8px;text-wrap:balance;text-shadow:0 4px 30px rgba(0,0,0,0.45);animation:ptSube .8s .6s ease both}
         .pt-honor{font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:${GRAD.oroClaro};margin-top:12px;text-shadow:0 1px 8px rgba(0,0,0,0.5);animation:ptSube .7s .55s ease both}
         .pt-carrera{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:clamp(16px,4.6vw,19px);line-height:1.3;color:#FFFFFF;opacity:.95;margin-top:10px;text-wrap:balance;text-shadow:0 2px 14px rgba(0,0,0,0.5);animation:ptSube .7s .7s ease both}
         .pt-institucion{font-family:'Cinzel',Georgia,serif;font-size:10.5px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:${GRAD.oroClaro};margin-top:6px;text-wrap:balance;animation:ptSube .7s .75s ease both}
+        .pt-nombre.largo{font-size:clamp(32px,9.6vw,46px);line-height:1.06}
         .pt-filete{display:flex;align-items:center;justify-content:center;gap:10px;margin:18px auto 14px;animation:ptFilete .9s .85s ease both}
         .pt-filete i{display:block;width:64px;height:1px;background:linear-gradient(90deg,transparent,${GRAD.oro})}
         .pt-filete i:last-child{background:linear-gradient(90deg,${GRAD.oro},transparent)}
@@ -2393,25 +2382,14 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         .pt-silencio:hover{color:#FFFFFF}
         .pt-birrete{position:absolute;bottom:22%;left:50%;z-index:3;pointer-events:none;animation:ptBirrete 1.15s cubic-bezier(.2,.7,.3,1) forwards}
         @media (prefers-reduced-motion: reduce){
-          .pt-foto img,.pt-cta::after,.pt-polvo{animation:none}
+          .pt-cta::after,.pt-polvo,.pt-emblema{animation:none}
           .pt-arriba,.pt-para,.pt-honor,.pt-nombre,.pt-carrera,.pt-institucion,.pt-filete,.pt-invita,.pt-fecha,.pt-abajo{animation:none}
         }
       `}</style>
 
       <div className="pt-foto">
         <div className="pt-mono" aria-hidden="true">{mono}</div>
-        {evento.imagen_url && fotoAncha && (
-          <img src={evento.imagen_url} alt="" aria-hidden="true" className="pt-borrosa lista" />
-        )}
-        {evento.imagen_url && (
-          <img
-            src={evento.imagen_url}
-            alt=""
-            className={[fotoLista && "lista", fotoAncha && "pt-entera"].filter(Boolean).join(" ") || undefined}
-            onLoad={(e) => fotoCargada(e.currentTarget)}
-            ref={(el) => { if (el?.complete && el.naturalWidth > 0 && !fotoLista) fotoCargada(el); }}
-          />
-        )}
+
       </div>
       <div className="pt-velo" />
       {[14, 28, 46, 63, 79, 88].map((l, i) => (
@@ -2424,9 +2402,10 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
       </div>
 
       <div className="pt-centro">
+        <div className="pt-emblema" aria-hidden="true"><BirreteSVG size={78} /></div>
         <p className="pt-para">Para {para}</p>
         {personas.honor && <p className="pt-honor">{personas.honor}</p>}
-        <h1 className="pt-nombre">{protagonista}</h1>
+        <h1 className={`pt-nombre${protagonista.length > 22 ? " largo" : ""}`}>{protagonista}</h1>
         {personas.carrera && <p className="pt-carrera">{personas.carrera}</p>}
         {personas.institucion && <p className="pt-institucion">{personas.institucion}</p>}
         <div className="pt-filete" aria-hidden="true"><i /><EstrellaSVG size={11} color={GRAD.oro} /><i /></div>
@@ -4474,6 +4453,9 @@ export default function ConfirmarPage() {
     .inv-deadline{background:#fef8f0;border:1px solid rgba(180,83,9,0.2);border-radius:var(--r-sm);padding:12px 15px;display:flex;align-items:center;gap:10px}
     .deadline-text{font-size:14px;color:#92400e;font-weight:500;line-height:1.4}
     /* Cómo llegar */
+    .inv-versiculo{margin:16px auto 2px;max-width:340px;padding:0 6px}
+    .inv-versiculo blockquote{margin:0;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-style:italic;font-size:16px;line-height:1.55;color:var(--ink2)}
+    .inv-versiculo figcaption{margin-top:6px;font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3)}
     .detalle-direccion{font-size:13.5px;color:var(--ink2);line-height:1.45;margin-top:3px;overflow-wrap:anywhere}
     .detalle-referencia{font-size:13px;color:var(--ink2);line-height:1.45;margin-top:6px;padding:7px 10px;border-radius:10px;background:var(--cream);border:1px dashed var(--border-mid);overflow-wrap:anywhere}
     .detalle-referencia span{display:block;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:1px}
@@ -5018,7 +5000,7 @@ export default function ConfirmarPage() {
           playsInline
           muted
           style={{ display: "none" }}
-          ref={(el) => { if (el) globalAudioRef.current = el; }}
+          ref={(el) => { if (el) { globalAudioRef.current = el; el.volume = MUSICA_BASE; } }}
         />
       )}
 
@@ -5267,15 +5249,7 @@ export default function ConfirmarPage() {
                   <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"55%", background:"linear-gradient(to top, rgba(10,10,30,0.82) 0%, transparent 100%)", pointerEvents:"none" }}/>
 
                   {/* Nombre del evento sobre la foto (graduación: solo la promoción; el nombre va abajo, grande) */}
-                  {evento.tipo === "graduacion" ? (
-                    evento.fecha && (
-                      <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 20px 26px", textAlign:"center", pointerEvents:"none" }}>
-                        <div style={{ fontFamily:"var(--f-label)", fontSize:12, fontWeight:600, letterSpacing:"0.3em", textTransform:"uppercase", color:GRAD.oroClaro, textShadow:"0 1px 8px rgba(0,0,0,0.6)" }}>
-                          Promoción {parseFechaLocal(evento.fecha).getFullYear()}
-                        </div>
-                      </div>
-                    )
-                  ) : (
+                  {evento.tipo === "graduacion" ? null : (
                     <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"18px 20px 20px", pointerEvents:"none" }}>
                       <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize:22, fontWeight:700, color:"white", lineHeight:1.2, textShadow:"0 2px 12px rgba(0,0,0,0.5)", marginBottom:4 }}>
                         {evento.nombre}
@@ -5334,27 +5308,16 @@ export default function ConfirmarPage() {
 
                 {evento.tipo === "graduacion" ? (() => {
                   // El graduado es el protagonista; el invitado es a quien va dirigida
+                  // La portada ya dijo para quién es, quién invita y cuándo: acá
+                  // solo el nombre y lo que estudió, sin repetir
                   const ps = personasDe(evento);
-                  const nombreRepite = evento.nombre.toLowerCase().includes(ps.protagonista.trim().toLowerCase());
                   return (
                     <>
-                      <p className="grad-para">Con mucho cariño, para</p>
-                      <p className="grad-invitado">
-                        {nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
-                      </p>
                       <DecoracionEvento tipo={evento.tipo} />
                       {ps.honor && <p className="grad-honor">{ps.honor}</p>}
                       <h1 className="grad-protagonista">{ps.protagonista}</h1>
                       {ps.carrera && <p className="grad-carrera">{ps.carrera}</p>}
                       {ps.institucion && <p className="grad-institucion">{ps.institucion}</p>}
-                      {ps.familia ? (
-                        <p className="grad-te-invita">{ps.familia} te invita a celebrar este logro</p>
-                      ) : evento.anfitriones ? (
-                        <p className="grad-te-invita">{ps.esAnfitrion || nombreRepite ? "te invita a celebrar su graduación" : "te invita a celebrar"}</p>
-                      ) : null}
-                      {!nombreRepite && !ps.carrera && (
-                        <div className="inv-evento-nombre">{evento.nombre}</div>
-                      )}
                     </>
                   );
                 })() : (
@@ -5391,6 +5354,18 @@ export default function ConfirmarPage() {
                     </div>
                   )
                 )}
+
+                {/* Versículo bíblico elegido por el organizador (antes solo iba en la tarjeta y el mensaje) */}
+                {(() => {
+                  const v = versiculoDe(evento.versiculo_texto, evento.versiculo_cita);
+                  if (!v) return null;
+                  return (
+                    <figure className="inv-versiculo">
+                      <blockquote>«{v.texto}»</blockquote>
+                      <figcaption>{v.cita}</figcaption>
+                    </figure>
+                  );
+                })()}
               </div>
 
               <div className="inv-body">
@@ -5658,7 +5633,7 @@ export default function ConfirmarPage() {
                 )}
 
                 {/* ✍️ Firma del graduado — cierre emotivo */}
-                {evento.tipo === "graduacion" && (personasDe(evento).familia || evento.anfitriones) && (
+                {evento.tipo === "graduacion" && personasDe(evento).familia && (
                   <div style={{ textAlign: "center", padding: "16px 0 4px" }}>
                     <div style={{ fontSize: 14, fontStyle: "italic", color: "var(--ink2)", fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", marginBottom: 8 }}>
                       Será un honor contar con tu presencia,
@@ -5670,14 +5645,9 @@ export default function ConfirmarPage() {
                       WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
                       padding: "0 10px", maxWidth: "100%", overflowWrap: "anywhere",
                     }}>
-                      {personasDe(evento).familia || evento.anfitriones}
+                      {personasDe(evento).familia}
                     </div>
                     <div style={{ width: 140, height: 1, margin: "10px auto 0", background: `linear-gradient(90deg,transparent,${GRAD.oro},transparent)` }} />
-                    {evento.fecha && (
-                      <div style={{ fontFamily: "var(--f-label)", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.26em", textTransform: "uppercase", color: GRAD.oroOscuro, marginTop: 8 }}>
-                        Promoción {parseFechaLocal(evento.fecha).getFullYear()}
-                      </div>
-                    )}
                   </div>
                 )}
 

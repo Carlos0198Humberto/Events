@@ -3,6 +3,7 @@ import {
   armarDatosTarjeta,
   extrasDe,
   familiaDe,
+  fraseInvitacion,
   paletaDe,
   protagonistaDe,
   type EventoTarjeta,
@@ -87,9 +88,9 @@ describe("armarDatosTarjeta", () => {
   });
 
   it("habla en primera persona si organiza el mismo graduado, y en plural si firma la familia", () => {
-    expect(armarDatosTarjeta(grad(), "X").frase).toBe("Con mucha alegría te invito a celebrar mi graduación.");
-    expect(armarDatosTarjeta(grad({ tarjeta: { familia: "Familia Chavarría" } }), "X").frase)
-      .toBe("Con mucha alegría te invitamos a celebrar este logro.");
+    expect(fraseInvitacion(grad(), false)).toBe("con mucha alegría te invito a celebrar mi graduación");
+    expect(fraseInvitacion(grad({ tarjeta: { familia: "Familia Chavarría" } }), false, true))
+      .toBe("con mucha alegría te invitamos a celebrar este logro");
   });
 
   it("el llamado a confirmar respeta el trato plural", () => {

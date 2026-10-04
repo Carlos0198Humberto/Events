@@ -161,19 +161,17 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
   const cita = datos.versiculo?.cita.toLocaleUpperCase("es") ?? "";
   const institucion = datos.institucion?.toLocaleUpperCase("es") ?? "";
   const carrera = datos.carrera ?? "";
-  const referencia = datos.referencia ? `Referencia: ${datos.referencia}` : "";
   const familia = datos.familia ? `Con cariño, ${datos.familia}` : "";
 
-  const [foto, script, caps6, caps5, sans3, sans4, anio, italica] = await Promise.all([
+  const [foto, script, caps6, caps5, sans3, sans4, italica] = await Promise.all([
     fotoComoDataUrl(datos.foto),
     fuenteGoogle("Great+Vibes", datos.tituloScript),
     fuenteGoogle("Cinzel:wght@600", nombre),
-    fuenteGoogle("Cinzel:wght@500", `${honor}${lugar}${cita}${institucion}PROMOCIÓN`),
+    fuenteGoogle("Cinzel:wght@500", `${honor}${lugar}${cita}${institucion}`),
     fuenteGoogle("Jost:wght@300", `${datos.fechaCorta ?? ""}${datos.direccion ?? ""}`),
     fuenteGoogle("Jost:wght@400", `${datos.diaHora ?? ""}${cta}`),
-    datos.promocion ? fuenteGoogle("Playfair+Display:wght@500", String(datos.promocion)) : null,
-    para || versiculo || carrera || referencia || familia
-      ? fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${versiculo}${carrera}${referencia}${familia}`)
+    para || versiculo || carrera || familia
+      ? fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${versiculo}${carrera}${familia}`)
       : null,
   ]);
   type Fuente = { name: string; data: ArrayBuffer; weight: 300 | 400 | 500 | 600; style: "normal" | "italic" };
@@ -183,7 +181,6 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
     caps5 && { name: "Caps", data: caps5, weight: 500, style: "normal" },
     sans3 && { name: "Sans", data: sans3, weight: 300, style: "normal" },
     sans4 && { name: "Sans", data: sans4, weight: 400, style: "normal" },
-    anio && { name: "Serif", data: anio, weight: 500, style: "normal" },
     italica && { name: "Serif", data: italica, weight: 500, style: "italic" },
   ] as (Fuente | null)[]).filter((x): x is Fuente => !!x);
 
@@ -230,12 +227,6 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
           {carrera && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: carrera.length > 48 ? 18 : 21, lineHeight: 1.3, color: P.textoFuerte, maxWidth: 520, marginTop: 6 }}>{carrera}</div>}
           {institucion && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Caps", fontWeight: 500, fontSize: pxInstitucion, letterSpacing: 2, color: P.oroPlano, maxWidth: 520, marginTop: 4 }}>{institucion}</div>}
           <Separador ancho={180} margen={16} P={P} />
-          {datos.promocion && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 18 }}>
-              <div style={{ display: "flex", fontFamily: "Caps", fontWeight: 500, fontSize: 14, letterSpacing: 7, color: P.oroPlano }}>PROMOCIÓN</div>
-              <div style={{ display: "flex", fontFamily: "Serif", fontWeight: 500, fontSize: 76, lineHeight: 1.1, ...TEXTO_ORO }}>{String(datos.promocion)}</div>
-            </div>
-          )}
         </div>
 
         {/* Derecha: cuándo, dónde y para quién */}
@@ -251,7 +242,6 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
           {datos.diaHora && <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 400, fontSize: 19, letterSpacing: 4, color: P.textoSuave, marginTop: 14 }}>{datos.diaHora}</div>}
           {lugar && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Caps", fontWeight: 500, fontSize: pxLugar, letterSpacing: 1, lineHeight: 1.25, maxWidth: 460, marginTop: 30, ...TEXTO_ORO }}>{lugar}</div>}
           {datos.direccion && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Sans", fontWeight: 300, fontSize: 18, lineHeight: 1.35, color: P.textoSuave, maxWidth: 430, marginTop: 6 }}>{datos.direccion}</div>}
-          {referencia && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 15, lineHeight: 1.3, color: P.oroPlano, maxWidth: 430, marginTop: 4 }}>{referencia}</div>}
           <Separador ancho={160} margen={24} P={P} />
           {versiculo && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 14, maxWidth: 430 }}>

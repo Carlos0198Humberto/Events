@@ -1,16 +1,19 @@
 // ─── Textos de la invitación y del recordatorio para WhatsApp ─────────────────
 //
+// Cortos a propósito: el mensaje viaja con la tarjeta (que ya tiene todo
+// escrito) y con la vista previa del enlace. Acá va lo mínimo: qué se celebra,
+// un saludo, cuándo y dónde en dos líneas, y el enlace para confirmar.
+//
 // Sin *negritas* ni _cursivas_: WhatsApp solo las dibuja cuando los asteriscos
 // quedan pegados a una palabra, y en la caja de texto antes de enviar, en la
 // leyenda de una imagen compartida o en otras apps se ven tal cual. Los
 // emojis hacen de títulos y no dependen de ningún formato.
 //
-// El enlace va solo en su línea: así WhatsApp lo reconoce entero, se puede
-// tocar y genera la vista previa con la tarjeta.
+// El enlace va solo en su línea y es el ÚNICO del mensaje: WhatsApp arma la
+// vista previa con el primero que encuentra.
 
 import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseInvitacion, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 import { saludo, type Trato } from "@/lib/tratoInvitado";
-import { versiculoDe } from "@/lib/versiculos";
 
 export type EventoMensaje = EventoTarjeta & { fecha_limite_confirmacion?: string | null };
 
@@ -39,52 +42,50 @@ export function diasHasta(fecha: string, hoy = new Date()): number {
 }
 
 const mayuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const normal = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
-const normal = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+// Nombres de evento que solo dicen el tipo: a esos se les suma "de Andrea"
+const SOLO_TIPO = /^(mi |la |el )?(graduacion|boda|cumpleanos|xv anos|quinceanera|fiesta|celebracion)$/;
 
-// "🎓 Graduación" y, debajo, de quién: el nombre del graduado (si el título
-// del evento no lo dice ya), sin adornos. Un tipo sin emoji propio va sin emoji.
-function encabezado(evento: EventoMensaje) {
+// "🎓 Graduación de Andrea Castillo": qué se celebra y de quién, en una línea.
+// `nombra` dice si el título ya nombra al protagonista (la frase no lo repite).
+function titulo(evento: EventoMensaje): { texto: string; nombra: boolean } {
   const emoji = EMOJI[evento.tipo];
-  const titulo = emoji ? `${emoji} ${evento.nombre.trim()}` : evento.nombre.trim();
+  const nombre = evento.nombre.trim();
   const p = protagonistaDe(evento);
-  const quien = p.esPersona && !normal(evento.nombre).includes(normal(p.nombre)) ? p.nombre : "";
-  return [titulo, quien].filter(Boolean).join("\n");
+  const yaLoDice = normal(nombre).includes(normal(p.nombre));
+  const texto = !p.esPersona || yaLoDice ? nombre
+    : SOLO_TIPO.test(normal(nombre)) ? `${nombre} de ${p.nombre}`
+    : `${nombre} · ${p.nombre}`;
+  return { texto: emoji ? `${emoji} ${texto}` : texto, nombra: p.esPersona };
 }
 
-// 🗓️ 🕰️ 🏛️ en vez de los de siempre (📅 ⏰ 📍). Los tres nacieron como
-// símbolos de texto: sin el selector U+FE0F algunos teléfonos los muestran
-// en blanco y negro, por eso va escrito explícito.
-function detalles(evento: EventoMensaje) {
+// "Sábado 31 de octubre" (con el año solo si no es el de hoy)
+function fechaCorta(fecha: string, hoy: Date) {
+  const dia = fechaLarga(fecha).split(" ")[0];
+  return `${dia} ${fechaDiaMes(fecha, hoy.getFullYear())}`;
+}
+
+// Cuándo y dónde, en dos líneas. Los tres íconos nacieron como símbolos de
+// texto: sin el selector U+FE0F algunos teléfonos los muestran en blanco y
+// negro, por eso va escrito explícito.
+function cuandoYDonde(evento: EventoMensaje, hoy: Date, conFecha = true) {
   const ex = extrasDe(evento);
+  const hora = evento.hora ? horaCorta(evento.hora) : null;
+  const cuando = [conFecha && evento.fecha ? fechaCorta(evento.fecha, hoy) : null, hora].filter(Boolean).join(" · ");
+  const donde = [evento.lugar?.trim(), ex.direccion].filter(Boolean).join(", ");
   return [
-    evento.fecha && `\u{1F5D3}️ ${fechaLarga(evento.fecha)}`,
-    evento.hora && horaCorta(evento.hora) && `\u{1F570}️ ${horaCorta(evento.hora)}`,
-    evento.lugar?.trim() && `\u{1F3DB}️ ${[evento.lugar.trim(), ex.direccion].filter(Boolean).join(", ")}`,
-    ex.referencia && `\u{1F4CD} Referencia: ${ex.referencia}`,
+    cuando && `\u{1F5D3}️ ${cuando}`,
+    donde && `\u{1F3DB}️ ${donde}`,
   ].filter(Boolean).join("\n");
 }
 
-// De qué se gradúa: "Licenciatura en Enfermería · Universidad de El Salvador"
-function logro(evento: EventoMensaje) {
-  if (evento.tipo !== "graduacion") return "";
-  const ex = extrasDe(evento);
-  return [ex.carrera, ex.institucion].filter(Boolean).join(" · ");
+function firma(evento: EventoMensaje) {
+  const quien = familiaDe(evento) || evento.anfitriones?.trim();
+  return quien ? `Con cariño, ${quien}` : "";
 }
 
-// "Te reservamos 2 lugares." — el invitado sabe desde el mensaje a cuántos invitaron
-function lugares(personas: number | null | undefined, plural: boolean) {
-  if (!personas || personas < 1) return plural ? "Esta es su invitación personal." : "Esta es tu invitación personal.";
-  if (personas === 1) return plural ? "Esta es su invitación personal." : "Te reservamos tu lugar.";
-  return `${plural ? "Les" : "Te"} reservamos ${personas} lugares.`;
-}
-
-function despedida(evento: EventoMensaje) {
-  const firma = familiaDe(evento) || evento.anfitriones?.trim();
-  return firma ? `Con cariño,\n${firma}` : "";
-}
-
-// " antes del 10 de noviembre", solo si ese día todavía no pasó
+// " antes del 10 de noviembre", solo si ese día todavía no pasó y es antes del evento
 function plazo(evento: EventoMensaje, hoy: Date) {
   const limite = evento.fecha_limite_confirmacion;
   if (!limite || diasHasta(limite, hoy) < 0) return "";
@@ -95,72 +96,56 @@ function plazo(evento: EventoMensaje, hoy: Date) {
   return ` antes del ${fechaDiaMes(limite, anio)}`;
 }
 
-/**
- * El mensaje que acompaña a la tarjeta. El enlace de confirmación es el ÚNICO
- * enlace del texto: WhatsApp arma la vista previa con el primero que encuentra,
- * y un link de Maps antes que él mostraría un mapa en lugar de la invitación.
- * La ubicación con Maps y Waze está dentro de la invitación.
- */
+/** El mensaje que acompaña a la tarjeta. */
 export function armarMensajeInvitacion(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato, hoy = new Date(), opciones: OpcionesMensaje = {}): string {
   const plural = trato === "plural";
-  const frase = fraseInvitacion(evento, plural);
-  const versiculo = versiculoDe(evento.versiculo_texto, evento.versiculo_cita);
-  const presencia = plural ? "Su presencia hará este día todavía más especial." : "Tu presencia hará este día todavía más especial.";
+  const t = titulo(evento);
+  // Si el título ya nombra al graduado, la frase no lo repite ("…celebrar este logro")
+  const frase = fraseInvitacion(evento, plural, t.nombra);
+  const lugares = opciones.personas && opciones.personas > 1 ? `\u{1F39F}️ ${opciones.personas} lugares reservados` : "";
   const confirmar = plural
-    ? `\u2705 Confirmen su asistencia${plazo(evento, hoy)} en este enlace:`
-    : `\u2705 Confirmá tu asistencia${plazo(evento, hoy)} en este enlace:`;
-  const enElEnlace = plural
-    ? "Ahí también encuentran la ubicación con Google Maps y Waze y todos los detalles."
-    : "Ahí también encontrás la ubicación con Google Maps y Waze y todos los detalles.";
-  const logroTexto = logro(evento);
+    ? `✅ Confirmen su asistencia${plazo(evento, hoy) || " aquí"}:`
+    : `✅ Confirmá tu asistencia${plazo(evento, hoy) || " aquí"}:`;
 
   return [
-    [encabezado(evento), logroTexto].filter(Boolean).join("\n"),
-    `${saludo(nombreInvitado, trato)}:\n${mayuscula(frase)}. ${presencia}`,
-    versiculo ? `«${versiculo.texto}»\n— ${versiculo.cita}` : "",
-    [detalles(evento), `\u{1F39F}️ ${lugares(opciones.personas, plural)}`].filter(Boolean).join("\n"),
-    `${confirmar}\n${link}\n${enElEnlace}`,
-    despedida(evento),
+    t.texto,
+    `${saludo(nombreInvitado, trato)}:\n${mayuscula(frase)}.`,
+    [cuandoYDonde(evento, hoy), lugares].filter(Boolean).join("\n"),
+    `${confirmar}\n${link}`,
+    firma(evento),
   ].filter(Boolean).join("\n\n");
 }
 
 /**
- * El día del evento (o la víspera), para quienes confirmaron: que no tengan
- * que buscar la invitación para saber la hora y cómo llegar.
+ * El día del evento (o la víspera), para quienes confirmaron: la hora, el
+ * lugar y cómo llegar, sin tener que buscar la invitación.
  */
 export function armarMensajeDia(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato, hoy = new Date()): string {
   const plural = trato === "plural";
   const ex = extrasDe(evento);
-  const motivo = motivoCelebracion(evento);
   const dias = evento.fecha ? diasHasta(evento.fecha, hoy) : null;
   const esperamos = plural ? "Los esperamos" : "Te esperamos";
-  const aviso =
-    dias === 0 ? `¡Hoy es el día! ${esperamos} para celebrar ${motivo}.`
-    : dias === 1 ? `¡Mañana es el día! ${esperamos} para celebrar ${motivo}.`
-    : `¡Ya casi es el día! ${esperamos} para celebrar ${motivo}.`;
-  const cuando = [
-    dias !== 0 && dias !== 1 && evento.fecha && `\u{1F5D3}️ ${fechaLarga(evento.fecha)}`,
-    evento.hora && horaCorta(evento.hora) && `\u{1F570}️ ${horaCorta(evento.hora)}`,
-    evento.lugar?.trim() && `\u{1F3DB}️ ${[evento.lugar.trim(), ex.direccion].filter(Boolean).join(", ")}`,
+  const aviso = dias === 0 ? `¡Hoy es el día! ${esperamos}.`
+    : dias === 1 ? `¡Mañana es el día! ${esperamos}.`
+    : `¡Ya casi es el día! ${esperamos}.`;
+  const datos = [
+    cuandoYDonde(evento, hoy, dias !== 0 && dias !== 1),
     ex.referencia && `\u{1F4CD} Referencia: ${ex.referencia}`,
   ].filter(Boolean).join("\n");
-  const enlace = plural
-    ? "En su invitación tienen la ubicación con Google Maps y Waze y todos los detalles:"
-    : "En tu invitación tenés la ubicación con Google Maps y Waze y todos los detalles:";
+  const enlace = plural ? "Cómo llegar (Google Maps y Waze), en su invitación:" : "Cómo llegar (Google Maps y Waze), en tu invitación:";
 
   return [
-    encabezado(evento),
+    titulo(evento).texto,
     `${saludo(nombreInvitado, trato)}:\n${aviso}`,
-    cuando,
+    datos,
     `${enlace}\n${link}`,
-    ["¡Nos vemos pronto!", despedida(evento)].filter(Boolean).join("\n\n"),
+    firma(evento),
   ].filter(Boolean).join("\n\n");
 }
 
 /**
- * Recordatorio para quien todavía no confirmó: cuánto falta, los datos y el
- * mismo enlace personal. Corto a propósito: es un empujoncito, no otra
- * invitación.
+ * Recordatorio para quien todavía no confirmó: cuánto falta, cuándo y dónde,
+ * y el mismo enlace personal. Un empujoncito, no otra invitación.
  */
 export function armarMensajeRecordatorio(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato, hoy = new Date()): string {
   const plural = trato === "plural";
@@ -176,15 +161,14 @@ export function armarMensajeRecordatorio(evento: EventoMensaje, nombreInvitado: 
     ? `Les recordamos con cariño que ${cuando}, y todavía no recibimos su confirmación.`
     : `Te recordamos con cariño que ${cuando}, y todavía no recibimos tu confirmación.`;
   const confirmar = plural
-    ? `¿Nos acompañan? Confirmen su asistencia${plazo(evento, hoy)} en este enlace:`
-    : `¿Nos acompañás? Confirmá tu asistencia${plazo(evento, hoy)} en este enlace:`;
+    ? `¿Nos acompañan? Confirmen${plazo(evento, hoy)} aquí:`
+    : `¿Nos acompañás? Confirmá${plazo(evento, hoy)} aquí:`;
 
   return [
-    encabezado(evento),
-    `${saludo(nombreInvitado, trato)}:`,
-    recordamos,
-    detalles(evento),
+    titulo(evento).texto,
+    `${saludo(nombreInvitado, trato)}:\n${recordamos}`,
+    cuandoYDonde(evento, hoy),
     `${confirmar}\n${link}`,
-    despedida(evento),
+    firma(evento),
   ].filter(Boolean).join("\n\n");
 }
