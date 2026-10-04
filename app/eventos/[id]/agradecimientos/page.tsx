@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
+import { detectarTrato, generoEnTexto } from "@/lib/tratoInvitado";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type Invitado = {
@@ -113,7 +114,7 @@ function TarjetaAgradecimiento({
   evento: Evento;
   mensaje: string;
 }) {
-  const msg = mensaje
+  const msg = generoEnTexto(mensaje, detectarTrato(invitado.nombre))
     .replace(/{nombre}/g, invitado.nombre)
     .replace(/{anfitriones}/g, evento.anfitriones || "Nosotros");
   const _soloFecha = (evento.fecha || "").split("T")[0];
@@ -336,7 +337,7 @@ export default function AgradecimientosPage() {
   }, [eventoId]);
 
   const generarMensaje = (inv: Invitado) =>
-    mensajePersonalizado
+    generoEnTexto(mensajePersonalizado, detectarTrato(inv.nombre))
       .replace(/{nombre}/g, inv.nombre)
       .replace(/{anfitriones}/g, evento?.anfitriones || "Nosotros");
 

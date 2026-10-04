@@ -3,6 +3,14 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { AppLogo } from "@/app/components/AppLogo";
+import { detectarTrato, type Trato } from "@/lib/tratoInvitado";
+
+const BIENVENIDA: Record<Trato, string> = {
+  f: "¡Bienvenida!",
+  m: "¡Bienvenido!",
+  plural: "¡Bienvenidos!",
+  neutro: "¡Te damos la bienvenida!",
+};
 
 type Evento = {
   id: string;
@@ -456,7 +464,7 @@ export default function WalkInPage() {
                 <div style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg,#3730A3,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 36, boxShadow: "0 10px 32px rgba(79,70,229,0.35)", animation: "wlPulse 2s ease infinite" }}>
                   🎉
                 </div>
-                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, color: "#1E1B4B", marginBottom: 6 }}>¡Bienvenido/a!</div>
+                <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 24, fontWeight: 600, color: "#1E1B4B", marginBottom: 6 }}>{BIENVENIDA[detectarTrato(nombre)]}</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#4F46E5", marginBottom: 10 }}>{nombre}</div>
                 <p style={{ fontSize: 13, color: "#6366F1", marginBottom: 24, lineHeight: 1.7, background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", borderRadius: 14, padding: "12px 16px", border: "1px solid rgba(79,70,229,0.12)" }}>
                   Ya sos parte del evento. Podés ver el muro de fotos y dejar tu deseo para los anfitriones.

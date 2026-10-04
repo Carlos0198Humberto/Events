@@ -2,19 +2,16 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import Image from "next/image";
 import Link from "next/link";
 import { AppLogo } from "@/app/components/AppLogo";
+import { subirFotoEvento, generarMiniatura } from "@/lib/fotos";
+import {
+  type FotoMuro, type TemaMuro, type ReaccionFila,
+  MiniaturaFoto, VisorFoto, EstilosGaleria, miniatura,
+} from "./GaleriaFotos";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
-type Foto = {
-  id: string;
-  url: string;
-  created_at: string;
-  invitado_id: string;
-  caption: string | null;
-  invitados: { nombre: string } | null;
-};
+type Foto = FotoMuro;
 type Evento = {
   id: string;
   nombre: string;
@@ -96,7 +93,7 @@ const T = {
     colorTarjeta: "Color de tarjeta",
     publicarDeseo: "Publicar deseo",
     publicando: "Publicando...",
-    deseosYDedicatorias: "Deseos & Dedicatorias",
+    deseosYDedicatorias: "Deseos y dedicatorias",
     mensajesAmor: "Mensajes de amor y buenos deseos",
     deseoEnviado: "Deseo enviado",
     subeFoto: "Sube tu foto primero",
@@ -486,410 +483,6 @@ function descargarDeseosTxt(deseos: Deseo[], nombreEvento: string) {
   a.click();
 }
 
-// Adornos decorativos que varían por foto
-const FOTO_ADORNOS = ["✨", "💫", "🌟", "🎊", "💖", "🌸", "🎉", "🌈"];
-const FOTO_TAPE_COLORS = [
-  "rgba(79,70,229,0.18)",
-  "rgba(99,102,241,0.16)",
-  "rgba(139,92,246,0.15)",
-  "rgba(16,185,129,0.14)",
-  "rgba(245,158,11,0.14)",
-  "rgba(236,72,153,0.14)",
-];
-
-// ─── Tiempo relativo ──────────────────────────────────────────────────────────
-function timeAgo(dateStr: string): string {
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return "Justo ahora";
-  if (diff < 3600) return `Hace ${Math.floor(diff/60)} min`;
-  if (diff < 86400) return `Hace ${Math.floor(diff/3600)}h`;
-  if (diff < 604800) return `Hace ${Math.floor(diff/86400)} días`;
-  return new Date(dateStr).toLocaleDateString("es-ES", { day:"numeric", month:"short" });
-}
-
-// ─── FotoCard con reacciones y comentarios ────────────────────────────────────
-const REACCIONES = [
-  {
-    key: "chivo", label: "¡Qué chivo!",
-    icon: (active: boolean) => (
-      <svg width="16" height="16" viewBox="0 0 20 20" fill={active?"#F59E0B":"none"} stroke={active?"#F59E0B":"currentColor"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10 2l1.8 5.5H18l-4.9 3.5 1.9 5.7L10 13.2l-5 3.5 1.9-5.7L2 7.5h6.2z"/>
-      </svg>
-    ),
-    activeColor: "#F59E0B",
-  },
-  {
-    key: "lujo", label: "Foto de lujo",
-    icon: (active: boolean) => (
-      <svg width="16" height="16" viewBox="0 0 20 20" fill={active?"#6366F1":"none"} stroke={active?"#6366F1":"currentColor"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10 2l2 4 4.5.5-3.3 3 .8 4.5L10 12l-4 2 .8-4.5L3.5 6.5 8 6z"/>
-      </svg>
-    ),
-    activeColor: "#6366F1",
-  },
-  {
-    key: "amor", label: "Me encanta",
-    icon: (active: boolean) => (
-      <svg width="16" height="16" viewBox="0 0 20 20" fill={active?"#EF4444":"none"} stroke={active?"#EF4444":"currentColor"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10 17s-7-4.5-7-9a4 4 0 018 0 4 4 0 018 0c0 4.5-7 9-7 9z"/>
-      </svg>
-    ),
-    activeColor: "#EF4444",
-  },
-];
-
-function FotoCard({
-  foto, acento, esOrg, onDelete, onClick, t, idx = 0, nombreInvitado = "",
-}: {
-  foto: Foto; acento: string; esOrg: boolean;
-  onDelete: (id: string) => void; onClick: () => void;
-  t: (typeof T)["es"]; idx?: number; nombreInvitado?: string;
-}) {
-  const nombre = foto.invitados?.nombre ?? "Invitado";
-  const [reacciones, setReacciones] = useState<Record<string, string[]>>({ chivo:[], lujo:[], amor:[] });
-  const [miReaccion, setMiReaccion] = useState<string|null>(null);
-  const [comentarios, setComentarios] = useState<{nombre:string;texto:string;ts:string}[]>([]);
-  const [showComentarios, setShowComentarios] = useState(false);
-  const [nuevoComentario, setNuevoComentario] = useState("");
-
-  function toggleReaccion(key: string) {
-    const nombreReactor = nombreInvitado || "Invitado";
-    setReacciones(prev => {
-      const nueva = { ...prev };
-      if (miReaccion === key) {
-        nueva[key] = nueva[key].filter(n => n !== nombreReactor);
-        setMiReaccion(null);
-      } else {
-        if (miReaccion) nueva[miReaccion] = nueva[miReaccion].filter(n => n !== nombreReactor);
-        nueva[key] = [...(nueva[key]||[]), nombreReactor];
-        setMiReaccion(key);
-      }
-      return nueva;
-    });
-  }
-
-  function enviarComentario() {
-    if (!nuevoComentario.trim()) return;
-    setComentarios(prev => [...prev, { nombre: nombreInvitado||"Invitado", texto: nuevoComentario.trim(), ts: new Date().toISOString() }]);
-    setNuevoComentario("");
-  }
-
-  const tapeColor = FOTO_TAPE_COLORS[idx % FOTO_TAPE_COLORS.length];
-  const tapeRot = (idx % 2 === 0 ? -1 : 1) * (6 + (idx % 3) * 3);
-
-  return (
-    <div style={{ background:"white", borderRadius:18, overflow:"hidden", boxShadow:"0 4px 24px rgba(0,0,0,0.10)", border:"1px solid rgba(0,0,0,0.06)", marginBottom:0 }}>
-
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px 10px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:9 }}>
-          <Avatar nombre={nombre} size={36} bg={acento}/>
-          <div>
-            <div style={{ fontWeight:700, fontSize:13, color:"#0F172A" }}>{nombre}</div>
-            <div style={{ fontSize:11, color:"#94A3B8", marginTop:1 }}>
-              {foto.created_at ? timeAgo(foto.created_at) : ""}
-            </div>
-          </div>
-        </div>
-        <div style={{ display:"flex", gap:4 }}>
-          <button onClick={(e)=>{ e.stopPropagation(); descargarImagen(foto.url,`foto_${foto.id}.jpg`); }}
-            style={{ background:"#F1F5F9", border:"none", borderRadius:99, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            {Ico.download(13, "#64748B")}
-          </button>
-          {esOrg && (
-            <button onClick={(e)=>{ e.stopPropagation(); onDelete(foto.id); }}
-              style={{ background:"#FEE2E2", border:"none", borderRadius:99, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              {Ico.trash(13,"#DC2626")}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Imagen dinámica */}
-      <div onClick={onClick} className="foto-img-wrap" style={{ cursor:"pointer", position:"relative", overflow:"hidden" }}>
-        <style>{`.foto-img-wrap:hover .foto-img-inner{transform:scale(1.04) rotate(0.4deg)} .foto-img-inner{transition:transform .4s cubic-bezier(.22,1,.36,1);display:block;width:100%}`}</style>
-        <div style={{ position:"absolute", top:8, left:"50%", transform:`translateX(-50%) rotate(${tapeRot}deg)`, width:50, height:16, background:tapeColor, borderRadius:3, zIndex:2, opacity:0.85 }}/>
-        <Image src={foto.url} alt="" width={600} height={600} className="foto-img-inner" style={{ width:"100%", height:"auto", display:"block" }} unoptimized/>
-        {/* Overlay sutil on hover */}
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 60%,rgba(0,0,0,0.18) 100%)", opacity:0, transition:"opacity .3s" }} className="foto-overlay"/>
-      </div>
-
-      {/* Caption */}
-      {foto.caption && (
-        <div style={{ padding:"10px 14px 6px", fontSize:13, color:"#374151", lineHeight:1.5 }}>{foto.caption}</div>
-      )}
-
-      {/* Reacciones */}
-      <div style={{ padding:"10px 14px 0", display:"flex", gap:6, flexWrap:"wrap" }}>
-        {REACCIONES.map(r => {
-          const count = reacciones[r.key]?.length ?? 0;
-          const activa = miReaccion === r.key;
-          return (
-            <button key={r.key} onClick={()=>toggleReaccion(r.key)}
-              title={reacciones[r.key]?.join(", ")||r.label}
-              style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 12px", borderRadius:20,
-                border: activa ? `1.5px solid ${r.activeColor}` : "1.5px solid #E2E8F0",
-                background: activa ? `${r.activeColor}14` : "#F8FAFC",
-                cursor:"pointer", fontSize:12, fontWeight:600,
-                color: activa ? r.activeColor : "#64748B",
-                transition:"all .18s", transform: activa?"scale(1.06)":"scale(1)" }}>
-              {r.icon(activa)}
-              <span>{r.label}</span>
-              {count > 0 && <span style={{ background: activa?r.activeColor:"#E2E8F0", color: activa?"white":"#64748B", borderRadius:99, padding:"1px 6px", fontSize:10, fontWeight:800 }}>{count}</span>}
-            </button>
-          );
-        })}
-        {/* Mostrar nombres de reacciones */}
-        {Object.entries(reacciones).some(([,v])=>v.length>0) && (
-          <div style={{ width:"100%", fontSize:10, color:"#94A3B8", marginTop:2 }}>
-            {REACCIONES.filter(r=>reacciones[r.key]?.length).map(r=>
-              `${r.emoji} ${reacciones[r.key].join(", ")}`
-            ).join(" · ")}
-          </div>
-        )}
-      </div>
-
-      {/* Botón comentarios */}
-      <div style={{ padding:"8px 14px 12px" }}>
-        <button onClick={()=>setShowComentarios(!showComentarios)}
-          style={{ background:"none", border:"none", fontSize:12, color:"#64748B", cursor:"pointer", fontWeight:600, padding:0 }}>
-          💬 {comentarios.length > 0 ? `${comentarios.length} comentario${comentarios.length>1?"s":""}` : "Comentar"}
-        </button>
-        {showComentarios && (
-          <div style={{ marginTop:10 }}>
-            {comentarios.map((c,i) => (
-              <div key={i} style={{ marginBottom:8, background:"#F8FAFC", borderRadius:10, padding:"8px 10px" }}>
-                <div style={{ fontWeight:700, fontSize:12, color:"#0F172A" }}>{c.nombre}</div>
-                <div style={{ fontSize:13, color:"#374151", marginTop:2 }}>{c.texto}</div>
-                <div style={{ fontSize:10, color:"#94A3B8", marginTop:3 }}>{timeAgo(c.ts)}</div>
-              </div>
-            ))}
-            <div style={{ display:"flex", gap:6, marginTop:8 }}>
-              <input
-                value={nuevoComentario}
-                onChange={e=>setNuevoComentario(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&enviarComentario()}
-                placeholder="Escribir comentario..."
-                style={{ flex:1, border:"1.5px solid #E2E8F0", borderRadius:10, padding:"8px 10px", fontSize:13, outline:"none", fontFamily:"'DM Sans',sans-serif" }}
-              />
-              <button onClick={enviarComentario}
-                style={{ background:acento, border:"none", borderRadius:10, padding:"8px 12px", color:"white", fontWeight:700, fontSize:12, cursor:"pointer" }}>
-                →
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Lightbox ──────────────────────────────────────────────────────────────────
-function Lightbox({
-  foto,
-  acento,
-  esOrg,
-  onClose,
-  onDelete,
-  onPrev,
-  onNext,
-  hasPrev,
-  hasNext,
-  t,
-}: {
-  foto: Foto;
-  acento: string;
-  esOrg: boolean;
-  onClose: () => void;
-  onDelete: () => void;
-  onPrev: () => void;
-  onNext: () => void;
-  hasPrev: boolean;
-  hasNext: boolean;
-  t: (typeof T)["es"];
-}) {
-  const nombre = foto.invitados?.nombre ?? "Invitado";
-  useEffect(() => {
-    const fn = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft" && hasPrev) onPrev();
-      if (e.key === "ArrowRight" && hasNext) onNext();
-    };
-    window.addEventListener("keydown", fn);
-    return () => window.removeEventListener("keydown", fn);
-  }, [hasPrev, hasNext]);
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        background: "rgba(0,0,0,0.90)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "white",
-          borderRadius: 22,
-          overflow: "hidden",
-          maxWidth: 440,
-          width: "100%",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.45)",
-        }}
-      >
-        <div style={{ position: "relative" }}>
-          <Image
-            src={foto.url}
-            alt=""
-            width={600}
-            height={600}
-            className="w-full h-auto object-cover"
-            unoptimized
-          />
-          {hasPrev && (
-            <button
-              onClick={onPrev}
-              style={{
-                position: "absolute",
-                left: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "rgba(255,255,255,0.94)",
-                border: "none",
-                borderRadius: "50%",
-                width: 36,
-                height: 36,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {Ico.chevL(18, "#4F46E5")}
-            </button>
-          )}
-          {hasNext && (
-            <button
-              onClick={onNext}
-              style={{
-                position: "absolute",
-                right: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "rgba(255,255,255,0.94)",
-                border: "none",
-                borderRadius: "50%",
-                width: 36,
-                height: 36,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {Ico.chevR(18, "#4F46E5")}
-            </button>
-          )}
-        </div>
-        <div style={{ padding: "14px 18px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 10,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <Avatar nombre={nombre} size={36} bg={acento} />
-              <div>
-                <p style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>
-                  {nombre}
-                </p>
-                <p style={{ fontSize: 11, color: "#9ca3af" }}>
-                  {new Date(foto.created_at).toLocaleDateString("es-ES", {
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 7 }}>
-              <button
-                onClick={() => descargarImagen(foto.url, `foto_${foto.id}.jpg`)}
-                title={t.descargar}
-                style={{
-                  background: "#E0E7FF",
-                  color: "#4F46E5",
-                  border: "none",
-                  borderRadius: 10,
-                  width: 34,
-                  height: 34,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {Ico.download(15, "#4F46E5")}
-              </button>
-              {esOrg && (
-                <button
-                  onClick={onDelete}
-                  style={{
-                    background: "#fee2e2",
-                    color: "#dc2626",
-                    border: "none",
-                    borderRadius: 10,
-                    width: 34,
-                    height: 34,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {Ico.trash(14, "#dc2626")}
-                </button>
-              )}
-              <button
-                onClick={onClose}
-                style={{
-                  background: "#f1f5f9",
-                  color: "#64748b",
-                  border: "none",
-                  borderRadius: 10,
-                  width: 34,
-                  height: 34,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {Ico.x(15, "#64748b")}
-              </button>
-            </div>
-          </div>
-          {foto.caption && (
-            <p style={{ fontSize: 13, color: "#4b5563", fontStyle: "italic" }}>
-              "{foto.caption}"
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Modal subir foto ──────────────────────────────────────────────────────────
 function ModalSubirFoto({
   eventoId,
@@ -930,28 +523,14 @@ function ModalSubirFoto({
   const subir = async () => {
     if (!archivo) return;
     setSubiendo(true);
-    const ext = archivo.name.split(".").pop();
-    const path = `${eventoId}/${invitadoId}_${Date.now()}.${ext}`;
-    const { error } = await supabase.storage
-      .from("fotos-eventos")
-      .upload(path, archivo, { upsert: false });
-    if (error) {
-      alert("Error al subir. Intenta de nuevo.");
+    try {
+      // Se achica en el celular antes de subir (lib/fotos): completa + miniatura
+      await subirFotoEvento({ archivo, eventoId, invitadoId, caption });
+    } catch (err) {
+      alert((err as Error).message);
       setSubiendo(false);
       return;
     }
-    const { data: urlData } = supabase.storage
-      .from("fotos-eventos")
-      .getPublicUrl(path);
-    await supabase
-      .from("fotos")
-      .insert({
-        evento_id: eventoId,
-        invitado_id: invitadoId,
-        url: urlData.publicUrl,
-        path,
-        caption: caption.trim() || null,
-      });
     setSubiendo(false);
     onSubida();
     onClose();
@@ -1018,7 +597,7 @@ function ModalSubirFoto({
           <button
             onClick={onClose}
             style={{
-              background: "#E0E7FF",
+              background: "var(--m-soft2,#E0E7FF)",
               border: "none",
               borderRadius: 99,
               width: 32,
@@ -1029,7 +608,7 @@ function ModalSubirFoto({
               justifyContent: "center",
             }}
           >
-            {Ico.x(15, "#4F46E5")}
+            {Ico.x(15, "var(--m-acc,#4F46E5)")}
           </button>
         </div>
         {yaSubio ? (
@@ -1039,20 +618,20 @@ function ModalSubirFoto({
                 width: 60,
                 height: 60,
                 borderRadius: "50%",
-                background: "#E0E7FF",
-                border: "2px solid #E0E7FF",
+                background: "var(--m-soft2,#E0E7FF)",
+                border: "2px solid var(--m-soft2,#E0E7FF)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 12px",
               }}
             >
-              {Ico.check(26, "#4F46E5")}
+              {Ico.check(26, "var(--m-acc,#4F46E5)")}
             </div>
             <p
               style={{
                 fontWeight: 700,
-                color: "#4F46E5",
+                color: "var(--m-acc,#4F46E5)",
                 fontSize: 15,
                 fontFamily: "'Playfair Display',serif",
               }}
@@ -1106,11 +685,11 @@ function ModalSubirFoto({
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 9,
-                  border: "2px dashed #E0E7FF",
+                  border: "2px dashed var(--m-soft2,#E0E7FF)",
                   borderRadius: 16,
                   padding: "28px 16px",
                   cursor: "pointer",
-                  background: "#FAFBFF",
+                  background: "var(--m-bg,#FAFBFF)",
                   marginBottom: 12,
                 }}
               >
@@ -1119,7 +698,7 @@ function ModalSubirFoto({
                     width: 50,
                     height: 50,
                     borderRadius: "50%",
-                    background: "#4F46E5",
+                    background: "var(--m-acc,#4F46E5)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1131,7 +710,7 @@ function ModalSubirFoto({
                   style={{
                     fontSize: 14,
                     fontWeight: 700,
-                    color: "#4F46E5",
+                    color: "var(--m-acc,#4F46E5)",
                     fontFamily: "'Playfair Display',serif",
                   }}
                 >
@@ -1157,14 +736,14 @@ function ModalSubirFoto({
                 maxLength={120}
                 style={{
                   width: "100%",
-                  border: "1.5px solid #E0E7FF",
+                  border: "1.5px solid var(--m-soft2,#E0E7FF)",
                   borderRadius: 12,
                   padding: "10px 13px",
                   fontSize: 13,
                   outline: "none",
                   fontFamily: "inherit",
                   boxSizing: "border-box",
-                  background: "#FAFBFF",
+                  background: "var(--m-bg,#FAFBFF)",
                   marginBottom: 12,
                   color: "#0f2422",
                 }}
@@ -1176,7 +755,7 @@ function ModalSubirFoto({
                 disabled={subiendo}
                 style={{
                   width: "100%",
-                  background: subiendo ? "#E0E7FF" : "#4F46E5",
+                  background: subiendo ? "var(--m-soft2,#E0E7FF)" : "var(--m-acc,#4F46E5)",
                   color: "white",
                   border: "none",
                   borderRadius: 14,
@@ -1297,7 +876,7 @@ function ModalDeseo({
           <button
             onClick={onClose}
             style={{
-              background: "#E0E7FF",
+              background: "var(--m-soft2,#E0E7FF)",
               border: "none",
               borderRadius: 99,
               width: 32,
@@ -1308,7 +887,7 @@ function ModalDeseo({
               justifyContent: "center",
             }}
           >
-            {Ico.x(15, "#4F46E5")}
+            {Ico.x(15, "var(--m-acc,#4F46E5)")}
           </button>
         </div>
 
@@ -1319,20 +898,20 @@ function ModalDeseo({
                 width: 60,
                 height: 60,
                 borderRadius: "50%",
-                background: "#E0E7FF",
-                border: "2px solid #E0E7FF",
+                background: "var(--m-soft2,#E0E7FF)",
+                border: "2px solid var(--m-soft2,#E0E7FF)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 12px",
               }}
             >
-              {Ico.heart(26, "#4F46E5")}
+              {Ico.heart(26, "var(--m-acc,#4F46E5)")}
             </div>
             <p
               style={{
                 fontWeight: 700,
-                color: "#4F46E5",
+                color: "var(--m-acc,#4F46E5)",
                 fontSize: 15,
                 fontFamily: "'Playfair Display',serif",
               }}
@@ -1351,14 +930,14 @@ function ModalDeseo({
                 width: 60,
                 height: 60,
                 borderRadius: "50%",
-                background: "#E0E7FF",
+                background: "var(--m-soft2,#E0E7FF)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 14px",
               }}
             >
-              {Ico.lock(26, "#4F46E5")}
+              {Ico.lock(26, "var(--m-acc,#4F46E5)")}
             </div>
             <p
               style={{
@@ -1382,7 +961,7 @@ function ModalDeseo({
               }}
               style={{
                 marginTop: 18,
-                background: "#4F46E5",
+                background: "var(--m-acc,#4F46E5)",
                 color: "white",
                 border: "none",
                 borderRadius: 14,
@@ -1441,7 +1020,7 @@ function ModalDeseo({
                   marginTop: 9,
                 }}
               >
-                <Avatar nombre={invitadoNombre} size={20} bg="#4F46E5" />
+                <Avatar nombre={invitadoNombre} size={20} bg="var(--m-acc,#4F46E5)" />
                 <span
                   style={{ fontSize: 11, fontWeight: 700, color: "#374151" }}
                 >
@@ -1455,7 +1034,7 @@ function ModalDeseo({
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#4F46E5",
+                  color: "var(--m-acc,#4F46E5)",
                   display: "block",
                   marginBottom: 5,
                   letterSpacing: "0.5px",
@@ -1472,14 +1051,14 @@ function ModalDeseo({
                 rows={3}
                 style={{
                   width: "100%",
-                  border: "1.5px solid #E0E7FF",
+                  border: "1.5px solid var(--m-soft2,#E0E7FF)",
                   borderRadius: 12,
                   padding: "11px 13px",
                   fontSize: 14,
                   outline: "none",
                   fontFamily: "'Playfair Display',serif",
                   boxSizing: "border-box",
-                  background: "#FAFBFF",
+                  background: "var(--m-bg,#FAFBFF)",
                   resize: "none",
                   lineHeight: 1.6,
                   color: "#0f2422",
@@ -1502,7 +1081,7 @@ function ModalDeseo({
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#4F46E5",
+                  color: "var(--m-acc,#4F46E5)",
                   display: "block",
                   marginBottom: 7,
                   letterSpacing: "0.5px",
@@ -1519,10 +1098,10 @@ function ModalDeseo({
                     style={{
                       fontSize: 20,
                       background:
-                        sticker === s ? "#E0E7FF" : "rgba(0,0,0,0.03)",
+                        sticker === s ? "var(--m-soft2,#E0E7FF)" : "rgba(0,0,0,0.03)",
                       border:
                         sticker === s
-                          ? "2px solid #E0E7FF"
+                          ? "2px solid var(--m-soft2,#E0E7FF)"
                           : "2px solid transparent",
                       borderRadius: 9,
                       padding: "3px 7px",
@@ -1540,7 +1119,7 @@ function ModalDeseo({
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#4F46E5",
+                  color: "var(--m-acc,#4F46E5)",
                   display: "block",
                   marginBottom: 7,
                   letterSpacing: "0.5px",
@@ -1561,7 +1140,7 @@ function ModalDeseo({
                       background: c,
                       border:
                         color === c
-                          ? "3px solid #4F46E5"
+                          ? "3px solid var(--m-acc,#4F46E5)"
                           : "3px solid transparent",
                       cursor: "pointer",
                       boxShadow: "0 1px 4px rgba(0,0,0,0.13)",
@@ -1577,7 +1156,7 @@ function ModalDeseo({
               disabled={enviando || !mensaje.trim()}
               style={{
                 width: "100%",
-                background: mensaje.trim() ? "#4F46E5" : "#e2e8f0",
+                background: mensaje.trim() ? "var(--m-acc,#4F46E5)" : "#e2e8f0",
                 color: mensaje.trim() ? "white" : "#9ca3af",
                 border: "none",
                 borderRadius: 14,
@@ -1614,116 +1193,35 @@ function DeseoCard({
   onDelete: (id: string) => void;
   onDescargar: (deseo: Deseo) => void;
 }) {
-  const fecha = new Date(deseo.created_at).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-  });
+  const fecha = new Date(deseo.created_at).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
   return (
-    <div
-      style={{
-        background: deseo.color_fondo,
-        borderRadius: 18,
-        padding: "17px 14px 13px",
-        boxShadow: "0 3px 14px rgba(0,0,0,0.06)",
-        position: "relative",
-        border: "1px solid rgba(255,255,255,0.9)",
-        animation: "popIn 0.3s ease",
-        display: "flex",
-        flexDirection: "column",
-        gap: 9,
-        breakInside: "avoid",
-        marginBottom: 12,
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: -11,
-          right: 13,
-          fontSize: 24,
-          filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.12))",
-        }}
-      >
-        {deseo.emoji_sticker}
-      </div>
-      <p
-        style={{
-          fontSize: 13,
-          color: "#2d3748",
-          lineHeight: 1.65,
-          fontStyle: "italic",
-          paddingRight: 22,
-          fontFamily: "'Playfair Display',serif",
-        }}
-      >
-        "{deseo.mensaje}"
-      </p>
-      {/* Dedicatoria con voz */}
+    // El color que eligió el invitado queda como filete arriba de la tarjeta
+    <article className="deseo" style={{ borderTopColor: deseo.color_fondo || "var(--m-soft2,#E0E7FF)" }}>
+      <span className="deseo-comilla" aria-hidden="true">“</span>
+      {deseo.emoji_sticker && <span className="deseo-sticker" aria-hidden="true">{deseo.emoji_sticker}</span>}
+      <p className="deseo-texto">{deseo.mensaje}</p>
       {deseo.audio_url && (
-        <div style={{ background: "rgba(255,255,255,0.65)", borderRadius: 12, padding: "6px 8px", border: "1px solid rgba(79,70,229,0.15)" }}>
-          <div style={{ fontSize: 9.5, fontWeight: 800, color: "#4F46E5", letterSpacing: 1, textTransform: "uppercase", marginBottom: 3 }}>
-            🎤 Dedicatoria de voz
-          </div>
-          <audio controls src={deseo.audio_url} preload="none" style={{ width: "100%", height: 32 }} />
+        <div className="deseo-audio">
+          <span>Dedicatoria de voz</span>
+          <audio controls src={deseo.audio_url} preload="none" />
         </div>
       )}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 3,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Avatar nombre={deseo.nombre_autor} size={24} bg="#4F46E5" />
-          <div>
-            <p style={{ fontWeight: 700, fontSize: 11, color: "#374151" }}>
-              {deseo.nombre_autor}
-            </p>
-            <p style={{ fontSize: 10, color: "#9ca3af" }}>{fecha}</p>
-          </div>
+      <footer className="deseo-pie">
+        <span className="deseo-av">{(deseo.nombre_autor || "?").trim().charAt(0).toUpperCase()}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="deseo-autor">{deseo.nombre_autor}</div>
+          <div className="deseo-fecha">{fecha}</div>
         </div>
-        <div style={{ display: "flex", gap: 5 }}>
-          <button
-            onClick={() => onDescargar(deseo)}
-            style={{
-              background: "rgba(79, 70, 229,0.12)",
-              color: "#4F46E5",
-              border: "none",
-              borderRadius: 8,
-              width: 28,
-              height: 28,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {Ico.download(13, "#4F46E5")}
+        <button className="deseo-btn" onClick={() => onDescargar(deseo)} aria-label="Descargar deseo">
+          {Ico.download(13, "currentColor")}
+        </button>
+        {esOrg && (
+          <button className="deseo-btn deseo-btn-peligro" onClick={() => onDelete(deseo.id)} aria-label="Eliminar deseo">
+            {Ico.trash(12, "currentColor")}
           </button>
-          {esOrg && (
-            <button
-              onClick={() => onDelete(deseo.id)}
-              style={{
-                background: "rgba(220,38,38,0.10)",
-                color: "#dc2626",
-                border: "none",
-                borderRadius: 8,
-                width: 28,
-                height: 28,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {Ico.trash(12, "#dc2626")}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+        )}
+      </footer>
+    </article>
   );
 }
 
@@ -1742,6 +1240,8 @@ export default function MuroPublico() {
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [deseos, setDeseos] = useState<Deseo[]>([]);
   const [fotoActiva, setFotoActiva] = useState<number | null>(null);
+  const [reacciones, setReacciones] = useState<ReaccionFila[]>([]);
+  const [optimizando, setOptimizando] = useState<{ hechas: number; total: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [esOrg, setEsOrg] = useState(false);
   const [vista, setVista] = useState<Vista>("fotos");
@@ -1896,21 +1396,31 @@ export default function MuroPublico() {
   }
 
   async function cargarFotos() {
-    const { data } = await supabase
-      .from("fotos")
-      .select("id,url,created_at,invitado_id,caption,invitados(nombre)")
-      .eq("evento_id", eventoId)
-      .eq("estado", "aprobada")
-      .order("created_at", { ascending: true });
-    if (data)
-      setFotos(
-        data.map((f) => ({
-          ...f,
-          invitados: Array.isArray(f.invitados)
-            ? (f.invitados[0] ?? null)
-            : f.invitados,
-        })) as Foto[],
-      );
+    // De la más completa a la mínima: miniaturas/medidas (supabase-muro.sql) y
+    // reacciones son mejoras; si la base todavía no las tiene, se piden sin ellas.
+    const base = "id,url,path,created_at,invitado_id,caption,invitados(nombre)";
+    const intentos = [
+      `${base},thumb_url,ancho,alto,reacciones(invitado_id,emoji)`,
+      `${base},reacciones(invitado_id,emoji)`,
+      base,
+    ];
+    for (const cols of intentos) {
+      const { data, error } = await supabase
+        .from("fotos")
+        .select(cols)
+        .eq("evento_id", eventoId)
+        .eq("estado", "aprobada")
+        .order("created_at", { ascending: true });
+      if (error) continue;
+      type Fila = Foto & { invitados: Foto["invitados"] | Foto["invitados"][]; reacciones?: { invitado_id: string; emoji: string }[] };
+      const filas = (data ?? []) as unknown as Fila[];
+      setFotos(filas.map(({ reacciones: _r, ...f }) => ({
+        ...f,
+        invitados: Array.isArray(f.invitados) ? (f.invitados[0] ?? null) : f.invitados,
+      })) as Foto[]);
+      setReacciones(filas.flatMap(f => (f.reacciones ?? []).map(r => ({ foto_id: f.id, invitado_id: r.invitado_id, emoji: r.emoji }))));
+      return;
+    }
   }
 
   async function cargarDeseos() {
@@ -2148,7 +1658,58 @@ export default function MuroPublico() {
     };
   }, [ramoData?.activa]);
 
-  const acento = "#4F46E5";
+  const acento = "var(--m-acc,#4F46E5)";
+
+  // Graduación usa la misma paleta de la invitación (azul noche + dorado)
+  const tema: TemaMuro = evento?.tipo === "graduacion"
+    ? { acento: "#1E2B5E", tinta: "#0F1733", suave: "#F6F7FB", borde: "rgba(168,132,58,0.30)", destaque: "#E6CF8E", esqueleto: "#E7EAF2" }
+    : { acento: "var(--m-acc,#4F46E5)", tinta: "var(--m-deep,#1E1B4B)", suave: "var(--m-soft,#EEF2FF)", borde: "rgb(var(--m-acc-rgb,79 70 229) / 0.18)", destaque: "#C7D2FE", esqueleto: "#E8EAF6" };
+
+  // El muro se mira de la foto más nueva a la más vieja; el visor sigue ese orden
+  const fotosOrden = [...fotos].reverse();
+  // thumb_url viene en las filas solo si la base ya tiene la columna (supabase-muro.sql)
+  const columnasNuevas = fotos.some(f => "thumb_url" in f);
+  const sinMiniatura = fotos.filter(f => !f.thumb_url);
+
+  // Una reacción por invitado y foto (UNIQUE en la tabla). Optimista: se ve al
+  // instante y vuelve atrás si la base no la acepta (con el parche de seguridad,
+  // el invitado puede agregar su reacción pero no cambiarla ni quitarla).
+  async function reaccionar(fotoId: string, emoji: string): Promise<string | null> {
+    if (!invId) return "Abrí el muro desde tu invitación para reaccionar.";
+    const antes = reacciones;
+    const previa = antes.find(r => r.foto_id === fotoId && r.invitado_id === invId);
+    const sinMia = antes.filter(r => !(r.foto_id === fotoId && r.invitado_id === invId));
+    const quitar = previa?.emoji === emoji;
+    setReacciones(quitar ? sinMia : [...sinMia, { foto_id: fotoId, invitado_id: invId, emoji }]);
+    let ok: boolean;
+    if (!previa) {
+      const { error } = await supabase.from("reacciones").insert({ foto_id: fotoId, invitado_id: invId, emoji });
+      ok = !error;
+    } else if (quitar) {
+      const { data, error } = await supabase.from("reacciones").delete().eq("foto_id", fotoId).eq("invitado_id", invId).select("foto_id");
+      ok = !error && !!data?.length;
+    } else {
+      const { data, error } = await supabase.from("reacciones").update({ emoji }).eq("foto_id", fotoId).eq("invitado_id", invId).select("foto_id");
+      ok = !error && !!data?.length;
+    }
+    if (ok) return null;
+    setReacciones(antes);
+    return previa ? "Tu reacción ya quedó guardada y no se puede cambiar." : "No se pudo guardar la reacción. Probá de nuevo.";
+  }
+
+  // Organizador: genera las miniaturas de las fotos subidas antes de este cambio
+  async function optimizarFotos() {
+    const pendientes = fotos.filter(f => !f.thumb_url);
+    if (!pendientes.length || optimizando) return;
+    setOptimizando({ hechas: 0, total: pendientes.length });
+    for (let i = 0; i < pendientes.length; i++) {
+      const thumb = await generarMiniatura(pendientes[i]);
+      if (thumb) setFotos(prev => prev.map(f => (f.id === pendientes[i].id ? { ...f, thumb_url: thumb } : f)));
+      setOptimizando({ hechas: i + 1, total: pendientes.length });
+    }
+    setOptimizando(null);
+    cargarFotos(); // trae ancho/alto guardados
+  }
 
   if (loading)
     return (
@@ -2158,7 +1719,7 @@ export default function MuroPublico() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#FAFBFF",
+          background: "var(--m-bg,#FAFBFF)",
         }}
       >
         <div style={{ textAlign: "center" }}>
@@ -2172,14 +1733,14 @@ export default function MuroPublico() {
               height: 28,
               borderRadius: "50%",
               border: "2.5px solid transparent",
-              borderTopColor: "#4F46E5",
+              borderTopColor: "var(--m-acc,#4F46E5)",
               animation: "spin 0.8s linear infinite",
               margin: "24px auto 0",
             }}
           />
           <p
             style={{
-              color: "rgba(79, 70, 229,0.7)",
+              color: "rgb(var(--m-acc-rgb,79 70 229) / 0.7)",
               fontWeight: 400,
               fontSize: 11,
               letterSpacing: 1.5,
@@ -2211,9 +1772,9 @@ export default function MuroPublico() {
   // Si el muro está cerrado y el visitante no es el organizador
   if (evento.muro_abierto === false && !esOrg)
     return (
-      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAFBFF", flexDirection: "column", gap: 16, padding: 24 }}>
+      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--m-bg,#FAFBFF)", flexDirection: "column", gap: 16, padding: 24 }}>
         <AppLogo size={52} />
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, color: "#3730A3", textAlign: "center" }}>El muro está cerrado</h2>
+        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, color: "var(--m-ink,#3730A3)", textAlign: "center" }}>El muro está cerrado</h2>
         <p style={{ color: "#4b5563", fontSize: 14, textAlign: "center", maxWidth: 320 }}>
           El organizador ha cerrado temporalmente el muro de fotos y deseos. Vuelve pronto.
         </p>
@@ -2231,8 +1792,13 @@ export default function MuroPublico() {
   return (
     <main
       style={{
+        // Graduación: la misma paleta de la invitación (las variables tienen el índigo de siempre como respaldo)
+        ...(evento.tipo === "graduacion" ? {
+          "--m-acc": "#1E2B5E", "--m-acc-rgb": "30 43 94", "--m-ink": "#141C42", "--m-deep": "#0F1733",
+          "--m-soft": "#F6F7FB", "--m-soft2": "#EDF0F7", "--m-bg": "#F6F7FB", "--m-gold": "#C9A54C",
+        } as React.CSSProperties : {}),
         minHeight: "100vh",
-        background: "#FAFBFF",
+        background: "var(--m-bg,#FAFBFF)",
         paddingBottom: esOrg ? "calc(72px + env(safe-area-inset-bottom, 0px))" : 100,
         fontFamily: "'DM Sans',sans-serif",
         opacity: mounted ? 1 : 0,
@@ -2243,7 +1809,7 @@ export default function MuroPublico() {
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         html,body{overflow-x:hidden;-webkit-text-size-adjust:100%;max-width:100vw}
-        body{font-family:'DM Sans',sans-serif;background:#FAFBFF}
+        body{font-family:'DM Sans',sans-serif;background:var(--m-bg,#FAFBFF)}
         @keyframes spin{to{transform:rotate(360deg)}}
 
         /* ── Borde festivo de colores (top + bottom) ── */
@@ -2261,6 +1827,10 @@ export default function MuroPublico() {
         }
         .confetti-top { top: 0; }
         .confetti-bottom { bottom: 0; }
+        .filete-oro { position: fixed; left: 0; right: 0; z-index: 9999; height: 3px; pointer-events: none;
+          background: linear-gradient(90deg, #A8843A, #E6CF8E 50%, #A8843A); }
+        .filete-top { top: 0; }
+        .filete-bottom { bottom: 0; }
         @keyframes popIn{from{opacity:0;transform:scale(0.93) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
         .foto-card{transition:transform 0.18s;} .foto-card:active{transform:scale(0.97)}
@@ -2270,13 +1840,13 @@ export default function MuroPublico() {
           position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
           background: rgba(255,255,255,0.97);
           backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-          border-top: 1px solid rgba(79, 70, 229,0.18);
+          border-top: 1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.18);
           box-shadow: 0 -4px 24px rgba(15,23,42,0.08);
           padding-bottom: env(safe-area-inset-bottom, 0px);
         }
         .nav-guest-row {
           display: flex; gap: 8px; padding: 8px 12px 0;
-          border-bottom: 1px solid rgba(79, 70, 229,0.10);
+          border-bottom: 1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.10);
         }
         .nav-guest-btn {
           flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -2301,17 +1871,17 @@ export default function MuroPublico() {
           text-decoration: none;
           position: relative;
         }
-        .nav-tab:active { background: rgba(79, 70, 229,0.08); }
+        .nav-tab:active { background: rgb(var(--m-acc-rgb,79 70 229) / 0.08); }
         .nav-tab-icon { line-height: 0; transition: transform .15s; }
         .nav-tab.active .nav-tab-icon { transform: scale(1.1); }
         .nav-tab-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2px; }
-        .nav-tab.active .nav-tab-label { color: #3730A3; }
+        .nav-tab.active .nav-tab-label { color: var(--m-ink,#3730A3); }
         .nav-tab:not(.active) .nav-tab-label { color: #94a3b8; }
         .nav-tab:not(.active) .nav-tab-icon { color: #94a3b8; }
-        .nav-tab.active .nav-tab-icon { color: #4F46E5; }
+        .nav-tab.active .nav-tab-icon { color: var(--m-acc,#4F46E5); }
         .nav-tab-badge {
           position: absolute; top: 4px; right: calc(50% - 14px);
-          background: #4F46E5; color: white;
+          background: var(--m-acc,#4F46E5); color: white;
           font-size: 8px; font-weight: 800; border-radius: 99px;
           padding: 1px 4px; min-width: 14px; text-align: center;
           border: 1.5px solid white;
@@ -2324,14 +1894,14 @@ export default function MuroPublico() {
           padding-bottom: env(safe-area-inset-bottom, 0px);
           background: rgba(255,255,255,0.94);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-          border-top: 1px solid rgba(79,70,229,0.16);
-          box-shadow: 0 -4px 20px rgba(79,70,229,0.07);
+          border-top: 1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.16);
+          box-shadow: 0 -4px 20px rgb(var(--m-acc-rgb,79 70 229) / 0.07);
           display: flex; align-items: center; padding-left: 16px;
         }
         .org-btn-back {
           display: inline-flex; align-items: center; gap: 8px;
           background: transparent; border: none;
-          color: #4F46E5; font-size: 14px; font-weight: 600;
+          color: var(--m-acc,#4F46E5); font-size: 14px; font-weight: 600;
           font-family: 'DM Sans',sans-serif; cursor: pointer; padding: 0;
           -webkit-tap-highlight-color: transparent;
         }
@@ -2341,7 +1911,7 @@ export default function MuroPublico() {
           position: sticky; top: env(safe-area-inset-top, 0px); z-index: 150;
           background: rgba(255,255,255,0.95);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-          border-bottom: 1px solid rgba(79, 70, 229,0.15);
+          border-bottom: 1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.15);
           box-shadow: 0 2px 12px rgba(15,23,42,0.06);
           display: flex; align-items: center; gap: 10px;
           padding: 10px 14px;
@@ -2349,11 +1919,11 @@ export default function MuroPublico() {
         }
         .muro-header-brand { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
         .muro-header-name { font-family: 'Playfair Display',serif; font-size: 15px; font-weight: 700; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .muro-header-sub { font-size: 10px; color: #3730A3; font-weight: 600; letter-spacing: 0.3px; display: block; }
+        .muro-header-sub { font-size: 10px; color: var(--m-ink,#3730A3); font-weight: 600; letter-spacing: 0.3px; display: block; }
         .muro-header-btn {
           display: flex; align-items: center; gap: 5px;
-          background: #FAFBFF; color: #3730A3;
-          border: 1.5px solid rgba(79, 70, 229,0.28);
+          background: var(--m-bg,#FAFBFF); color: var(--m-ink,#3730A3);
+          border: 1.5px solid rgb(var(--m-acc-rgb,79 70 229) / 0.28);
           border-radius: 10px; padding: 6px 10px;
           font-size: 11px; font-weight: 700;
           cursor: pointer; white-space: nowrap; flex-shrink: 0;
@@ -2363,10 +1933,10 @@ export default function MuroPublico() {
 
         /* ── Org banner ── */
         .org-banner {
-          background: rgba(79, 70, 229,0.10);
-          border-bottom: 1px solid rgba(79, 70, 229,0.18);
+          background: rgb(var(--m-acc-rgb,79 70 229) / 0.10);
+          border-bottom: 1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.18);
           padding: 8px 16px;
-          font-size: 11px; font-weight: 600; color: #3730A3;
+          font-size: 11px; font-weight: 600; color: var(--m-ink,#3730A3);
           display: flex; align-items: center; gap: 6px;
           flex-wrap: wrap;
         }
@@ -2376,7 +1946,7 @@ export default function MuroPublico() {
           position: sticky; top: calc(env(safe-area-inset-top, 0px) + 52px); z-index: 140;
           background: rgba(255,255,255,0.97);
           backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-          border-bottom: 1px solid rgba(79,70,229,0.12);
+          border-bottom: 1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.12);
           display: grid; grid-template-columns: repeat(3, 1fr);
           padding: 4px 0 2px;
         }
@@ -2389,16 +1959,16 @@ export default function MuroPublico() {
           transition: background .15s;
           position: relative;
         }
-        .org-tab:active { background: rgba(79,70,229,0.08); }
+        .org-tab:active { background: rgb(var(--m-acc-rgb,79 70 229) / 0.08); }
         .org-tab-icon { line-height: 0; transition: transform .15s; }
-        .org-tab.active .org-tab-icon { transform: scale(1.1); color: #4F46E5; }
+        .org-tab.active .org-tab-icon { transform: scale(1.1); color: var(--m-acc,#4F46E5); }
         .org-tab:not(.active) .org-tab-icon { color: #94a3b8; }
         .org-tab-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2px; }
-        .org-tab.active .org-tab-label { color: #3730A3; }
+        .org-tab.active .org-tab-label { color: var(--m-ink,#3730A3); }
         .org-tab:not(.active) .org-tab-label { color: #94a3b8; }
         .org-tab-badge {
           position: absolute; top: 4px; right: calc(50% - 14px);
-          background: #4F46E5; color: white;
+          background: var(--m-acc,#4F46E5); color: white;
           font-size: 8px; font-weight: 800; border-radius: 99px;
           padding: 1px 4px; min-width: 14px; text-align: center;
           border: 1.5px solid white;
@@ -2407,31 +1977,31 @@ export default function MuroPublico() {
         .boda-wrap { padding: 0 0 32px; }
         .boda-header { text-align: center; padding: 20px 16px 16px; }
         .boda-deco-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 12px; }
-        .boda-nombres { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 600; color: #1E1B4B; letter-spacing: -0.3px; margin-bottom: 2px; }
-        .boda-frame-outer { position: relative; border-radius: 16px; overflow: hidden; background: #000; margin: 0 0 4px; box-shadow: 0 4px 24px rgba(79,70,229,0.12); }
+        .boda-nombres { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 600; color: var(--m-deep,#1E1B4B); letter-spacing: -0.3px; margin-bottom: 2px; }
+        .boda-frame-outer { position: relative; border-radius: 16px; overflow: hidden; background: #000; margin: 0 0 4px; box-shadow: 0 4px 24px rgb(var(--m-acc-rgb,79 70 229) / 0.12); }
         .boda-iframe-wrap { position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: 16px; background: #000; }
         .boda-iframe-wrap iframe { position: absolute; top: -44px; left: 0; width: 100%; height: calc(100% + 44px); border: none; }
         .boda-nombres-bar { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(15,14,23,0.88) 0%, transparent 100%); padding: 32px 16px 14px; z-index: 3; text-align: center; pointer-events: none; }
         .boda-nombres-text { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-style: italic; color: #fff; letter-spacing: 0.3px; }
         .boda-video { width: 100%; display: block; max-height: 380px; background: #000; border-radius: 16px; }
-        .boda-sec-label { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 600; color: #1E1B4B; display: flex; align-items: center; gap: 8px; padding: 18px 16px 10px; }
+        .boda-sec-label { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 600; color: var(--m-deep,#1E1B4B); display: flex; align-items: center; gap: 8px; padding: 18px 16px 10px; }
         .boda-carousel { position: relative; overflow: hidden; background: #F8FAFF; }
         .boda-carousel-track { display: flex; transition: transform .4s cubic-bezier(.22,1,.36,1); }
         .boda-carousel-slide { flex-shrink: 0; width: 100%; }
         .boda-carousel-slide img { width: 100%; display: block; max-height: 420px; object-fit: contain; background: #F1F5FF; }
-        .boda-carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.92); border: 1.5px solid rgba(79,70,229,0.18); color: #4F46E5; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 4; box-shadow: 0 2px 10px rgba(79,70,229,0.14); transition: background .15s; }
-        .boda-carousel-btn:active { background: rgba(79,70,229,0.08); }
+        .boda-carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.92); border: 1.5px solid rgb(var(--m-acc-rgb,79 70 229) / 0.18); color: var(--m-acc,#4F46E5); border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 4; box-shadow: 0 2px 10px rgb(var(--m-acc-rgb,79 70 229) / 0.14); transition: background .15s; }
+        .boda-carousel-btn:active { background: rgb(var(--m-acc-rgb,79 70 229) / 0.08); }
         .boda-carousel-prev { left: 10px; }
         .boda-carousel-next { right: 10px; }
         .boda-carousel-dots { display: flex; justify-content: center; gap: 5px; padding: 10px 0 4px; }
-        .boda-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(79,70,229,0.2); cursor: pointer; transition: all .2s; border: none; padding: 0; }
-        .boda-dot.active { background: #4F46E5; transform: scale(1.35); }
-        .boda-reaction-area { margin: 16px 14px 0; background: #fff; border: 1.5px solid rgba(79,70,229,0.14); border-radius: 18px; padding: 16px; box-shadow: 0 2px 12px rgba(79,70,229,0.06); }
+        .boda-dot { width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--m-acc-rgb,79 70 229) / 0.2); cursor: pointer; transition: all .2s; border: none; padding: 0; }
+        .boda-dot.active { background: var(--m-acc,#4F46E5); transform: scale(1.35); }
+        .boda-reaction-area { margin: 16px 14px 0; background: #fff; border: 1.5px solid rgb(var(--m-acc-rgb,79 70 229) / 0.14); border-radius: 18px; padding: 16px; box-shadow: 0 2px 12px rgb(var(--m-acc-rgb,79 70 229) / 0.06); }
         .boda-reaction-btn { width: 100%; border: 1.5px solid rgba(236,72,153,0.35); background: rgba(236,72,153,0.06); border-radius: 14px; padding: 13px; font-size: 14px; font-weight: 700; color: #be185d; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'DM Sans', sans-serif; transition: all .15s; }
         .boda-reaction-btn:active { transform: scale(0.97); }
         .boda-reaction-btn.done { background: rgba(236,72,153,0.14); border-color: rgba(236,72,153,0.5); }
         .boda-reaction-list { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
-        .boda-reaction-chip { background: #F8FAFF; border: 1px solid rgba(79,70,229,0.14); border-radius: 99px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: #3730A3; display: flex; align-items: center; gap: 4px; }
+        .boda-reaction-chip { background: #F8FAFF; border: 1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.14); border-radius: 99px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--m-ink,#3730A3); display: flex; align-items: center; gap: 4px; }
         .boda-lightbox { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadeIn .18s ease; }
         .boda-lightbox img { max-width: 100%; max-height: 90dvh; object-fit: contain; border-radius: 12px; display: block; }
         .boda-lightbox-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.15); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -2463,9 +2033,9 @@ export default function MuroPublico() {
         .boda-ramo-piece { position: absolute; top: -70px; animation: ramoFall linear forwards; pointer-events: none; }
       `}</style>
 
-      {/* ── Bordes festivos ── */}
-      <div className="confetti-top" />
-      <div className="confetti-bottom" />
+      {/* ── Bordes festivos (graduación: filete dorado sobrio) ── */}
+      <div className={evento.tipo === "graduacion" ? "filete-oro filete-top" : "confetti-top"} />
+      <div className={evento.tipo === "graduacion" ? "filete-oro filete-bottom" : "confetti-bottom"} />
 
       {/* ══ HERO ══ */}
       <div
@@ -2474,7 +2044,7 @@ export default function MuroPublico() {
           overflow: "hidden",
           background: evento.imagen_url
             ? "transparent"
-            : "linear-gradient(135deg,#1E1B4B 0%,#3730A3 100%)",
+            : "linear-gradient(135deg,var(--m-deep,#1E1B4B) 0%,var(--m-ink,#3730A3) 100%)",
           color: "white",
           padding: "18px 16px 20px",
           textAlign: "center",
@@ -2580,7 +2150,7 @@ export default function MuroPublico() {
 
       {esOrg && (
         <div className="org-banner">
-          {Ico.check(12, "#3730A3")} {t.modoOrganizador}
+          {Ico.check(12, "var(--m-ink,#3730A3)")} {t.modoOrganizador}
           <button
             onClick={toggleMuro}
             style={{
@@ -2601,11 +2171,11 @@ export default function MuroPublico() {
       {esOrg && (
         <div className="org-tabs-strip">
           {([
-            { key: "fotos" as Vista, icon: Ico.grid(18, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
-            { key: "albumes" as Vista, icon: Ico.folder(18, vista === "albumes" ? "#4F46E5" : "#94a3b8"), label: t.albumes, count: albumes.length },
-            { key: "deseos" as Vista, icon: Ico.heart(18, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
+            { key: "fotos" as Vista, icon: Ico.grid(18, vista === "fotos" ? "var(--m-acc,#4F46E5)" : "#94a3b8"), label: t.fotos, count: fotos.length },
+            { key: "albumes" as Vista, icon: Ico.folder(18, vista === "albumes" ? "var(--m-acc,#4F46E5)" : "#94a3b8"), label: t.albumes, count: albumes.length },
+            { key: "deseos" as Vista, icon: Ico.heart(18, vista === "deseos" ? "var(--m-acc,#4F46E5)" : "#94a3b8"), label: t.deseos, count: deseos.length },
             ...(evento?.tipo === "boda" && bodaCivil
-              ? [{ key: "boda" as Vista, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={vista === "boda" ? "#4F46E5" : "#94a3b8"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>, label: "Boda Civil", count: 0 }]
+              ? [{ key: "boda" as Vista, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={vista === "boda" ? "var(--m-acc,#4F46E5)" : "#94a3b8"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>, label: "Boda Civil", count: 0 }]
               : []),
           ] as { key: Vista; icon: React.ReactNode; label: string; count: number }[]).map((tab) => (
             <button
@@ -2638,14 +2208,14 @@ export default function MuroPublico() {
                   width: 76,
                   height: 76,
                   borderRadius: "50%",
-                  background: "#E0E7FF",
+                  background: "var(--m-soft2,#E0E7FF)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   margin: "0 auto 16px",
                 }}
               >
-                {Ico.camera(34, "#E0E7FF")}
+                {Ico.camera(34, "var(--m-soft2,#E0E7FF)")}
               </div>
               <p
                 style={{
@@ -2663,76 +2233,36 @@ export default function MuroPublico() {
             </div>
           ) : (
             <>
-              <style>{`
-                /* ── Entrada dramática ── */
-                @keyframes fotoIn {
-                  0%   { opacity:0; transform:translateY(40px) scale(0.88) rotate(var(--rot,0deg)); }
-                  65%  { opacity:1; transform:translateY(-6px) scale(1.02) rotate(calc(var(--rot,0deg)*0.2)); }
-                  100% { opacity:1; transform:translateY(0) scale(1) rotate(0deg); }
-                }
-                /* Foto reciente — brilla al entrar */
-                @keyframes newGlow {
-                  0%   { box-shadow:0 0 0 0 rgba(79,70,229,0.5); }
-                  50%  { box-shadow:0 0 0 10px rgba(79,70,229,0); }
-                  100% { box-shadow:0 0 0 0 rgba(79,70,229,0); }
-                }
-                /* Flotación continua suave por card */
-                @keyframes floatA { 0%,100%{transform:translateY(0) rotate(-0.4deg)} 50%{transform:translateY(-5px) rotate(0.4deg)} }
-                @keyframes floatB { 0%,100%{transform:translateY(0) rotate(0.3deg)} 50%{transform:translateY(-4px) rotate(-0.3deg)} }
-                @keyframes floatC { 0%,100%{transform:translateY(0) rotate(-0.2deg)} 50%{transform:translateY(-6px) rotate(0.2deg)} }
-
-                .foto-fan { animation: fotoIn 0.58s cubic-bezier(0.22,1,0.36,1) both; }
-                .foto-fan:hover { z-index:3; filter:drop-shadow(0 12px 28px rgba(0,0,0,0.22)); }
-                .foto-float-a { animation: floatA 4.2s ease-in-out infinite; }
-                .foto-float-b { animation: floatB 5.1s 0.6s ease-in-out infinite; }
-                .foto-float-c { animation: floatC 3.8s 1.2s ease-in-out infinite; }
-                .foto-new     { animation: fotoIn 0.58s cubic-bezier(0.22,1,0.36,1) both, newGlow 1.8s 0.6s ease-out; }
-              `}</style>
-
-              {/* ── Badge "Nueva foto" para la más reciente ── */}
-              {fotos.length > 0 && (
-                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"6px 12px", background:"linear-gradient(135deg,#EEF2FF,#E0E7FF)", borderRadius:10, fontSize:11, fontWeight:700, color:"#3730A3", border:"1px solid rgba(79,70,229,0.18)" }}>
-                  <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="#4F46E5" strokeWidth="1.8" strokeLinecap="round"><path d="M2 7a2 2 0 012-2h1.2l1.6-2h6.4l1.6 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z"/><circle cx="10" cy="11" r="2.5"/></svg>
-                  {fotos.length} foto{fotos.length>1?"s":""} · La más reciente primero
+              <EstilosGaleria tema={tema} />
+              {/* Organizador: fotos subidas antes de las miniaturas → generarlas una vez */}
+              {esOrg && columnasNuevas && sinMiniatura.length > 0 && (
+                <div className="opt-banner" style={{ borderColor: tema.borde }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <b style={{ color: tema.tinta }}>
+                      {optimizando ? `Optimizando ${optimizando.hechas} de ${optimizando.total}…` : `${sinMiniatura.length} foto${sinMiniatura.length > 1 ? "s" : ""} sin optimizar`}
+                    </b>
+                    <span>Se crean versiones livianas para que el muro cargue rápido. Las originales no se tocan.</span>
+                  </div>
+                  <button onClick={optimizarFotos} disabled={!!optimizando} style={{ background: tema.acento }}>
+                    {optimizando ? "Trabajando…" : "Optimizar"}
+                  </button>
                 </div>
               )}
-
-              <div style={{ columns:"2 170px", gap:14 }}>
-                {[...fotos].reverse().map((foto, idx) => {
-                  const floatClass = ["foto-float-a","foto-float-b","foto-float-c"][idx % 3];
-                  const isNew = idx === 0;
-                  return (
-                    <div
-                      key={foto.id}
-                      className={`${isNew ? "foto-new" : "foto-fan"} ${floatClass}`}
-                      style={{
-                        "--rot": `${(idx % 2 === 0 ? -1 : 1) * (0.8 + (idx % 3) * 0.4)}deg`,
-                        animationDelay: `${Math.min(idx * 0.07, 0.7)}s`,
-                        breakInside:"avoid",
-                        marginBottom:14,
-                        borderRadius:18,
-                        position:"relative",
-                      } as React.CSSProperties}
-                    >
-                      {/* Badge "Nueva" en la foto más reciente */}
-                      {isNew && (
-                        <div style={{ position:"absolute", top:-8, left:10, zIndex:4, background:"linear-gradient(135deg,#4F46E5,#3730A3)", color:"white", fontSize:9, fontWeight:800, letterSpacing:"0.8px", textTransform:"uppercase", padding:"3px 8px", borderRadius:20, boxShadow:"0 2px 8px rgba(79,70,229,0.4)" }}>
-                          ✨ Nueva
-                        </div>
-                      )}
-                      <FotoCard
-                        foto={foto}
-                        acento={acento}
-                        esOrg={esOrg}
-                        onDelete={eliminarFoto}
-                        onClick={() => setFotoActiva(fotos.length - 1 - idx)}
-                        t={t}
-                        idx={idx}
-                        nombreInvitado={fotos.find(f=>f.invitado_id === invId)?.invitados?.nombre ?? ""}
-                      />
-                    </div>
-                  );
-                })}
+              <div className="galeria-cabecera" style={{ color: tema.tinta }}>
+                <span>{fotos.length} foto{fotos.length > 1 ? "s" : ""}</span>
+                <span className="galeria-orden">La más reciente primero</span>
+              </div>
+              <div className="galeria">
+                {fotosOrden.map((foto, i) => (
+                  <MiniaturaFoto
+                    key={foto.id}
+                    foto={foto}
+                    nueva={i === 0}
+                    tema={tema}
+                    totalReacciones={reacciones.reduce((n, r) => n + (r.foto_id === foto.id ? 1 : 0), 0)}
+                    onAbrir={() => setFotoActiva(i)}
+                  />
+                ))}
               </div>
             </>
           ))}
@@ -2764,14 +2294,14 @@ export default function MuroPublico() {
                   width: 76,
                   height: 76,
                   borderRadius: "50%",
-                  background: "#E0E7FF",
+                  background: "var(--m-soft2,#E0E7FF)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   margin: "0 auto 16px",
                 }}
               >
-                {Ico.folder(34, "#E0E7FF")}
+                {Ico.folder(34, "var(--m-soft2,#E0E7FF)")}
               </div>
               <p
                 style={{
@@ -2794,10 +2324,10 @@ export default function MuroPublico() {
                 onClick={descargarTodasFotosZip}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  background: "linear-gradient(135deg,#3730A3,#4F46E5)",
+                  background: "linear-gradient(135deg,var(--m-ink,#3730A3),var(--m-acc,#4F46E5))",
                   color: "white", border: "none", borderRadius: 14,
                   padding: "13px 20px", fontSize: 14, fontWeight: 700,
-                  cursor: "pointer", boxShadow: "0 6px 20px rgba(79,70,229,0.28)",
+                  cursor: "pointer", boxShadow: "0 6px 20px rgb(var(--m-acc-rgb,79 70 229) / 0.28)",
                   width: "100%",
                 }}
               >
@@ -2811,8 +2341,8 @@ export default function MuroPublico() {
                     background: "white",
                     borderRadius: 18,
                     padding: 14,
-                    border: "1px solid rgba(79, 70, 229,0.15)",
-                    boxShadow: "0 2px 10px rgba(79, 70, 229,0.07)",
+                    border: "1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.15)",
+                    boxShadow: "0 2px 10px rgb(var(--m-acc-rgb,79 70 229) / 0.07)",
                   }}
                 >
                   <div
@@ -2850,7 +2380,7 @@ export default function MuroPublico() {
                         display: "flex",
                         alignItems: "center",
                         gap: 5,
-                        background: "#E0E7FF",
+                        background: "var(--m-soft2,#E0E7FF)",
                         color: acento,
                         border: "none",
                         borderRadius: 10,
@@ -2871,7 +2401,7 @@ export default function MuroPublico() {
                     }}
                   >
                     {album.fotos.map((foto) => {
-                      const idx = fotos.findIndex((f) => f.id === foto.id);
+                      const idx = fotosOrden.findIndex((f) => f.id === foto.id);
                       return (
                         <div
                           key={foto.id}
@@ -2884,12 +2414,12 @@ export default function MuroPublico() {
                             boxShadow: "0 2px 7px rgba(0,0,0,0.09)",
                           }}
                         >
-                          <Image
-                            src={foto.url}
+                          <img
+                            src={miniatura(foto)}
                             alt=""
-                            fill
-                            className="object-cover"
-                            unoptimized
+                            loading="lazy"
+                            decoding="async"
+                            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
                             onClick={() => setFotoActiva(idx)}
                           />
                           <button
@@ -2952,115 +2482,62 @@ export default function MuroPublico() {
         {/* ── DESEOS ── */}
         {vista === "deseos" && (
           <div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 18,
-                flexWrap: "wrap",
-                gap: 8,
-              }}
-            >
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  background: "#E0E7FF",
-                  borderRadius: 99,
-                  padding: "8px 16px",
-                  border: "1px solid rgba(79, 70, 229,0.28)",
-                }}
-              >
-                {Ico.heart(14, acento)}
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: acento,
-                    fontFamily: "'Playfair Display',serif",
-                    letterSpacing: "0.3px",
-                  }}
-                >
+            <style>{`
+              @keyframes deseoEntra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+              .deseos-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:6px 2px 16px}
+              .deseos-titulo{font-family:'Playfair Display',serif;font-size:22px;font-weight:600;color:var(--m-deep,#1E1B4B);line-height:1.15}
+              .deseos-titulo small{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--m-acc,#4F46E5);margin-left:6px}
+              .deseos-sub{font-size:12.5px;color:#64748B;margin-top:3px}
+              .deseos-desc{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;background:#FFFFFF;color:var(--m-acc,#4F46E5);
+                border:1px solid rgb(var(--m-acc-rgb,79 70 229) / 0.22);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+              .deseos-lista{columns:1;column-gap:12px}
+              @media (min-width:560px){.deseos-lista{columns:2}}
+              .deseo{position:relative;break-inside:avoid;margin:0 0 12px;background:#FFFFFF;border-radius:16px;border-top:4px solid;
+                padding:18px 16px 12px;box-shadow:0 2px 14px rgba(15,23,42,0.07);animation:deseoEntra .4s ease both}
+              .deseo-comilla{position:absolute;top:2px;left:12px;font-family:'Playfair Display',serif;font-size:58px;line-height:1;color:var(--m-gold,var(--m-acc,#4F46E5));opacity:.28;pointer-events:none}
+              .deseo-sticker{position:absolute;top:10px;right:12px;font-size:20px}
+              .deseo-texto{position:relative;font-family:'Playfair Display',serif;font-style:italic;font-size:15.5px;line-height:1.6;color:#1F2937;padding:8px 22px 0 4px;white-space:pre-wrap;overflow-wrap:anywhere}
+              .deseo-audio{margin-top:10px;background:var(--m-soft,#EEF2FF);border-radius:12px;padding:8px 10px}
+              .deseo-audio span{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--m-acc,#4F46E5);margin-bottom:4px}
+              .deseo-audio audio{width:100%;height:34px}
+              .deseo-pie{display:flex;align-items:center;gap:9px;margin-top:12px;padding-top:10px;border-top:1px solid #F1F5F9}
+              .deseo-av{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--m-acc,#4F46E5);color:#FFFFFF;font-size:13px;font-weight:700}
+              .deseo-autor{font-size:13px;font-weight:700;color:var(--m-deep,#1E1B4B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+              .deseo-fecha{font-size:11px;color:#94A3B8}
+              .deseo-btn{width:30px;height:30px;border-radius:9px;border:none;background:#F1F5F9;color:#64748B;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+              .deseo-btn-peligro{background:#FEE2E2;color:#DC2626}
+              @media (prefers-reduced-motion: reduce){.deseo{animation:none}}
+            `}</style>
+            <div className="deseos-cab">
+              <div>
+                <h2 className="deseos-titulo">
                   {t.deseosYDedicatorias}
-                </span>
+                  {deseos.length > 0 && <small>{deseos.length}</small>}
+                </h2>
+                <p className="deseos-sub">{t.mensajesAmor}</p>
               </div>
               {deseos.length > 0 && (
-                <button
-                  onClick={() => descargarDeseosTxt(deseos, evento.nombre)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    background: "#E0E7FF",
-                    color: acento,
-                    border: "1px solid rgba(79, 70, 229,0.28)",
-                    borderRadius: 10,
-                    padding: "8px 14px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  {Ico.download(13, acento)} {t.descargarDeseos}
+                <button className="deseos-desc" onClick={() => descargarDeseosTxt(deseos, evento.nombre)}>
+                  {Ico.download(13, "currentColor")} {t.descargar}
                 </button>
               )}
             </div>
-            <p
-              style={{
-                fontSize: 13,
-                color: "#85B5B0",
-                marginBottom: 16,
-                marginTop: -8,
-              }}
-            >
-              {t.mensajesAmor}
-            </p>
 
             {deseos.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "44px 0",
-                  animation: "fadeUp 0.4s ease",
-                }}
-              >
-                <div
-                  style={{
-                    width: 76,
-                    height: 76,
-                    borderRadius: "50%",
-                    background: "#E0E7FF",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    margin: "0 auto 16px",
-                  }}
-                >
-                  {Ico.heart(34, "#E0E7FF")}
+              <div style={{ textAlign: "center", padding: "44px 12px", animation: "fadeUp 0.4s ease" }}>
+                <div style={{ width: 76, height: 76, borderRadius: "50%", background: "var(--m-soft2,#E0E7FF)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                  {Ico.heart(34, "var(--m-acc,#4F46E5)")}
                 </div>
-                <p
-                  style={{
-                    fontWeight: 700,
-                    color: "#0f2422",
-                    fontSize: 17,
-                    fontFamily: "'Playfair Display',serif",
-                  }}
-                >
+                <p style={{ fontWeight: 700, color: "var(--m-deep,#1E1B4B)", fontSize: 17, fontFamily: "'Playfair Display',serif" }}>
                   {t.sinDeseos}
                 </p>
-                <p style={{ color: "#85B5B0", fontSize: 13, marginTop: 5 }}>
-                  {invId
-                    ? yaFoto
-                      ? t.sinDeseosSub
-                      : t.sinDeseosSub2
-                    : t.sinDeseosSub3}
+                <p style={{ color: "#64748B", fontSize: 13, marginTop: 5 }}>
+                  {invId ? (yaFoto ? t.sinDeseosSub : t.sinDeseosSub2) : t.sinDeseosSub3}
                 </p>
               </div>
             ) : (
-              <div style={{ columns: "2 180px", gap: 12 }}>
-                {deseos.map((deseo) => (
+              <div className="deseos-lista">
+                {[...deseos].reverse().map((deseo) => (
                   <DeseoCard
                     key={deseo.id}
                     deseo={deseo}
@@ -3082,11 +2559,11 @@ export default function MuroPublico() {
             <div className="boda-header">
               <div className="boda-deco-row">
                 {/* Corazón outline — mismo estilo que iconos del dashboard */}
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--m-acc,#4F46E5)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                 {/* Anillo — igual al ícono del card "Mi Boda Civil" */}
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12c0-1.93 1.57-3.5 3.5-3.5s3.5 1.57 3.5 3.5"/><path d="M7 8.5l10 0" strokeWidth="1.2" opacity="0.5"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--m-acc,#4F46E5)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12c0-1.93 1.57-3.5 3.5-3.5s3.5 1.57 3.5 3.5"/><path d="M7 8.5l10 0" strokeWidth="1.2" opacity="0.5"/></svg>
                 {/* Corazón outline */}
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--m-acc,#4F46E5)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               </div>
               {bodaCivil.nombres && <div className="boda-nombres">{bodaCivil.nombres}</div>}
               <p style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>Boda Civil</p>
@@ -3096,7 +2573,7 @@ export default function MuroPublico() {
             {bodaCivil.video_url && (
               <>
                 <div className="boda-sec-label">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--m-acc,#4F46E5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
                   Video de la boda civil
                 </div>
                 <div className="boda-video-deco boda-video-deco-b">
@@ -3141,7 +2618,7 @@ export default function MuroPublico() {
                             rel="noopener noreferrer"
                             style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textDecoration: "none" }}
                           >
-                            <div style={{ width: 68, height: 68, borderRadius: "50%", background: "rgba(79,70,229,0.92)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 28px rgba(79,70,229,0.55)", backdropFilter: "blur(4px)" }}>
+                            <div style={{ width: 68, height: 68, borderRadius: "50%", background: "rgb(var(--m-acc-rgb,79 70 229) / 0.92)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 28px rgb(var(--m-acc-rgb,79 70 229) / 0.55)", backdropFilter: "blur(4px)" }}>
                               <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                             </div>
                             <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, background: "rgba(0,0,0,0.45)", borderRadius: 99, padding: "5px 14px", backdropFilter: "blur(4px)", letterSpacing: "0.3px" }}>
@@ -3188,7 +2665,7 @@ export default function MuroPublico() {
                               onClick={() => setBodaVideoActivo(true)}
                               style={{ position: "absolute", inset: 0, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "linear-gradient(to bottom, rgba(10,9,20,0.15) 0%, rgba(10,9,20,0.5) 100%)" }}
                             >
-                              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(79,70,229,0.90)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 32px rgba(79,70,229,0.6)", backdropFilter: "blur(4px)", transition: "transform .15s" }}>
+                              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgb(var(--m-acc-rgb,79 70 229) / 0.90)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 32px rgb(var(--m-acc-rgb,79 70 229) / 0.6)", backdropFilter: "blur(4px)", transition: "transform .15s" }}>
                                 <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                               </div>
                               <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, background: "rgba(0,0,0,0.40)", borderRadius: 99, padding: "5px 16px", backdropFilter: "blur(4px)", letterSpacing: "0.3px" }}>
@@ -3250,7 +2727,7 @@ export default function MuroPublico() {
             {bodaCivil.fotos.length >= 3 && (
               <>
                 <div className="boda-sec-label">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--m-acc,#4F46E5)" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                   Momentos de nuestra boda
                 </div>
                 <div className="boda-carousel">
@@ -3443,7 +2920,7 @@ export default function MuroPublico() {
                 }}
                 placeholder="Tu nombre"
                 autoFocus
-                style={{ width: "100%", border: "1.5px solid #fce7f3", borderRadius: 12, padding: "13px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff9fb", color: "#1E1B4B", outline: "none", marginBottom: 12, textAlign: "center" }}
+                style={{ width: "100%", border: "1.5px solid #fce7f3", borderRadius: 12, padding: "13px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff9fb", color: "var(--m-deep,#1E1B4B)", outline: "none", marginBottom: 12, textAlign: "center" }}
               />
               <button
                 disabled={!bodaRamoNombre.trim()}
@@ -3664,20 +3141,21 @@ export default function MuroPublico() {
 
 
       {/* Lightbox */}
-      {fotoActiva !== null && fotos[fotoActiva] && (
-        <Lightbox
-          foto={fotos[fotoActiva]}
-          acento={acento}
-          t={t}
-          onClose={() => setFotoActiva(null)}
-          /* El muro muestra las fotos de más nueva a más vieja (orden invertido):
-             las flechas siguen ese orden visual */
-          onPrev={() => setFotoActiva(i => Math.min(fotos.length - 1, (i ?? 0) + 1))}
-          onNext={() => setFotoActiva(i => Math.max(0, (i ?? 0) - 1))}
-          hasPrev={fotoActiva < fotos.length - 1}
-          hasNext={fotoActiva > 0}
+      {fotoActiva !== null && fotosOrden[fotoActiva] && (
+        <VisorFoto
+          fotos={fotosOrden}
+          indice={fotoActiva}
+          onCambiar={setFotoActiva}
+          onCerrar={() => setFotoActiva(null)}
           esOrg={esOrg}
-          onDelete={() => eliminarFoto(fotos[fotoActiva].id)}
+          onEliminar={eliminarFoto}
+          onDescargar={(f) => descargarImagen(f.url, `foto_${f.id}.jpg`)}
+          invitadoId={invId}
+          invitadoNombre={invNombre}
+          eventoId={eventoId}
+          reacciones={reacciones}
+          onReaccionar={reaccionar}
+          tema={tema}
         />
       )}
 
@@ -3685,7 +3163,7 @@ export default function MuroPublico() {
       {esOrg && (
         <div className="org-bottom-bar">
           <Link href="/dashboard" className="org-btn-back">
-            {Ico.dashboard(16,"#4F46E5")} Dashboard
+            {Ico.dashboard(16,"var(--m-acc,#4F46E5)")} Dashboard
           </Link>
         </div>
       )}
@@ -3698,10 +3176,10 @@ export default function MuroPublico() {
               className="nav-guest-btn"
               onClick={() => setModalSubir(true)}
               style={{
-                background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,#4F46E5,#3730A3)",
+                background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,var(--m-acc,#4F46E5),var(--m-ink,#3730A3))",
                 color: yaFoto ? "#16a34a" : "white",
                 border: yaFoto ? "1.5px solid rgba(22,163,74,0.28)" : "none",
-                boxShadow: !yaFoto ? "0 3px 14px rgba(79,70,229,0.38)" : "none",
+                boxShadow: !yaFoto ? "0 3px 14px rgb(var(--m-acc-rgb,79 70 229) / 0.38)" : "none",
               }}
             >
               {yaFoto ? Ico.check(15,"#16a34a") : Ico.camera(15,"white")}
@@ -3712,13 +3190,13 @@ export default function MuroPublico() {
               className="nav-guest-btn"
               onClick={() => setModalDeseo(true)}
               style={{
-                background: yaDeseo ? "rgba(22,163,74,0.10)" : yaFoto ? "linear-gradient(135deg,#4F46E5,#3730A3)" : "#F3EDE4",
-                color: yaDeseo ? "#16a34a" : yaFoto ? "white" : "#4F46E5",
-                border: yaDeseo ? "1.5px solid rgba(22,163,74,0.28)" : yaFoto ? "none" : "1.5px solid rgba(79,70,229,0.28)",
-                boxShadow: yaFoto && !yaDeseo ? "0 3px 14px rgba(79,70,229,0.38)" : "none",
+                background: yaDeseo ? "rgba(22,163,74,0.10)" : yaFoto ? "linear-gradient(135deg,var(--m-acc,#4F46E5),var(--m-ink,#3730A3))" : "#F3EDE4",
+                color: yaDeseo ? "#16a34a" : yaFoto ? "white" : "var(--m-acc,#4F46E5)",
+                border: yaDeseo ? "1.5px solid rgba(22,163,74,0.28)" : yaFoto ? "none" : "1.5px solid rgb(var(--m-acc-rgb,79 70 229) / 0.28)",
+                boxShadow: yaFoto && !yaDeseo ? "0 3px 14px rgb(var(--m-acc-rgb,79 70 229) / 0.38)" : "none",
               }}
             >
-              {yaDeseo ? Ico.check(15,"#16a34a") : Ico.heart(15, yaFoto ? "white" : "#4F46E5")}
+              {yaDeseo ? Ico.check(15,"#16a34a") : Ico.heart(15, yaFoto ? "white" : "var(--m-acc,#4F46E5)")}
               {t.miDeseo}
               {yaDeseo && <span style={{ fontSize:10, background:"#22c55e", color:"white", borderRadius:99, padding:"1px 5px", marginLeft:2 }}>{"\u2713"}</span>}
             </button>
@@ -3726,10 +3204,10 @@ export default function MuroPublico() {
 
           <div className="nav-tabs" style={{ gridTemplateColumns: evento?.tipo === "boda" && bodaCivil ? "repeat(3,1fr)" : "repeat(2,1fr)" }}>
             {([
-              { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "#4F46E5" : "#94a3b8"), label: t.fotos, count: fotos.length },
-              { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "#4F46E5" : "#94a3b8"), label: t.deseos, count: deseos.length },
+              { key: "fotos" as Vista, icon: Ico.grid(20, vista === "fotos" ? "var(--m-acc,#4F46E5)" : "#94a3b8"), label: t.fotos, count: fotos.length },
+              { key: "deseos" as Vista, icon: Ico.heart(20, vista === "deseos" ? "var(--m-acc,#4F46E5)" : "#94a3b8"), label: t.deseos, count: deseos.length },
               ...(evento?.tipo === "boda" && bodaCivil
-                ? [{ key: "boda" as Vista, icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={vista === "boda" ? "#4F46E5" : "#94a3b8"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>, label: "Boda Civil", count: 0 }]
+                ? [{ key: "boda" as Vista, icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={vista === "boda" ? "var(--m-acc,#4F46E5)" : "#94a3b8"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>, label: "Boda Civil", count: 0 }]
                 : []),
             ] as { key: Vista; icon: React.ReactNode; label: string; count: number }[]).map((tab) => (
               <button

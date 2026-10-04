@@ -5,6 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
+import { armarDatosTarjeta } from "@/lib/tarjetaInvitacion";
+import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
+import { armarMensajeInvitacion, armarMensajeRecordatorio, diasHasta } from "@/lib/mensajeInvitacion";
+import { versiculoDe, type Versiculo } from "@/lib/versiculos";
+import EnvioEnGrupo, { type MarcasEnvio, type TipoEnvio } from "./EnvioEnGrupo";
+import VersiculoEvento from "./VersiculoEvento";
+import { ETIQUETAS_TRATO, guardarTrato, saludo, tratoDe, type Trato } from "@/lib/tratoInvitado";
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { toast } from "@/app/components/Toast";
 
@@ -27,6 +34,8 @@ type Evento = {
   hora?: string | null;
   lugar?: string | null;
   fecha_limite_confirmacion?: string | null;
+  versiculo_texto?: string | null;
+  versiculo_cita?: string | null;
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -55,6 +64,8 @@ export default function AgregarInvitados() {
   }, []);
   const [agregados, setAgregados] = useState<Invitado[]>([]);
   const [todosInvitados, setTodosInvitados] = useState<Invitado[]>([]);
+  // Quiénes marcó cada invitado que van (columna de supabase-asistentes.sql)
+  const [asistentesPorId, setAsistentesPorId] = useState<Record<string, string[]>>({});
   const [loadingInvitados, setLoadingInvitados] = useState(true);
   const [eliminando, setEliminando] = useState<string | null>(null);
   const [confirmEliminar, setConfirmEliminar] = useState<string | null>(null);
@@ -63,17 +74,25 @@ export default function AgregarInvitados() {
   const [loading, setLoading] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [enviandoTodos, setEnviandoTodos] = useState(false);
   const [enviados, setEnviados] = useState<Set<string>>(new Set());
-  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  // Cuándo se le mandó invitación y recordatorio a cada uno (por token)
+  const [marcas, setMarcas] = useState<MarcasEnvio>({});
+  const [envioGrupo, setEnvioGrupo] = useState<{ tipo: TipoEnvio; preseleccion: string[] } | null>(null);
+  const [editandoVersiculo, setEditandoVersiculo] = useState(false);
   const [exportando, setExportando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
-  const bulkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tarjeta de invitación (imagen) del invitado que se está por enviar
+  const [tarjeta, setTarjeta] = useState<{ inv: Invitado; trato: Trato; blob: Blob | null; url: string | null } | null>(null);
+  // Cada generación lleva un número: si el trato cambia o se cierra a mitad de
+  // camino, la imagen vieja que termina después no pisa a la nueva
+  const generacionRef = useRef(0);
   const [lastAdded, setLastAdded] = useState<string | null>(null); // token del último agregado (para animaciones)
   const [btnSuccess, setBtnSuccess] = useState(false);
   const [userPlan, setUserPlan] = useState<"free" | "pro">("free");
 
   const PLAN_LIMIT_FREE = 10;
+
+  useEffect(() => { cargarFuentesTarjeta(); }, []);
 
   // Genera los dots del confetti en el DOM (CSS puro, sin canvas)
   type ConfettiDot = {
@@ -110,12 +129,18 @@ export default function AgregarInvitados() {
     document.title = "Evorix — Gestionar invitados";
     setMounted(true);
     if (id) {
-      supabase
-        .from("eventos")
-        .select("nombre, tipo, anfitriones, fecha, hora, lugar, fecha_limite_confirmacion")
-        .eq("id", id)
-        .single()
-        .then(({ data }) => { if (data) setEvento(data); });
+      (async () => {
+        const { data } = await supabase
+          .from("eventos")
+          .select("nombre, tipo, anfitriones, fecha, hora, lugar, fecha_limite_confirmacion")
+          .eq("id", id)
+          .single();
+        if (!data) return;
+        // El versículo vive en columnas de supabase-envios.sql: si todavía no
+        // existen, el evento carga igual, sin versículo
+        const extra = await supabase.from("eventos").select("versiculo_texto, versiculo_cita").eq("id", id).single();
+        setEvento({ ...data, ...(extra.error || !extra.data ? {} : extra.data) });
+      })();
       cargarTodosInvitados();
     }
     // Cargar plan del usuario
@@ -130,9 +155,6 @@ export default function AgregarInvitados() {
           if (data?.plan) setUserPlan(data.plan as "free" | "pro");
         });
     });
-    return () => {
-      if (bulkTimerRef.current) clearTimeout(bulkTimerRef.current);
-    };
   }, [id]);
 
   async function cargarTodosInvitados() {
@@ -144,6 +166,36 @@ export default function AgregarInvitados() {
       .order("created_at", { ascending: true });
     if (data) setTodosInvitados(data);
     setLoadingInvitados(false);
+    // Consulta aparte: si la columna todavía no existe, la lista de arriba no se rompe
+    const { data: asist, error } = await supabase
+      .from("invitados")
+      .select("id, asistentes_nombres")
+      .eq("evento_id", id)
+      .not("asistentes_nombres", "is", null);
+    if (!error && asist) {
+      const mapa: Record<string, string[]> = {};
+      asist.forEach((r: { id: string; asistentes_nombres: unknown }) => {
+        if (Array.isArray(r.asistentes_nombres)) mapa[r.id] = r.asistentes_nombres.filter((n): n is string => typeof n === "string");
+      });
+      setAsistentesPorId(mapa);
+    }
+    // Marcas de enviado / recordado: las de la base (si existen las columnas)
+    // y, de respaldo, las guardadas en este navegador
+    const locales = marcasLocales();
+    const { data: envios, error: errorEnvios } = await supabase
+      .from("invitados")
+      .select("token, enviado_at, recordatorio_at")
+      .eq("evento_id", id);
+    const unidas: MarcasEnvio = { ...locales };
+    if (!errorEnvios && envios) {
+      envios.forEach((r: { token: string; enviado_at: string | null; recordatorio_at: string | null }) => {
+        unidas[r.token] = {
+          enviado_at: r.enviado_at ?? locales[r.token]?.enviado_at ?? null,
+          recordatorio_at: r.recordatorio_at ?? locales[r.token]?.recordatorio_at ?? null,
+        };
+      });
+    }
+    setMarcas(unidas);
   }
 
   async function handleExportarExcel() {
@@ -187,73 +239,43 @@ export default function AgregarInvitados() {
     return `${window.location.origin}/confirmar/${token}`;
   }
 
-  function buildWhatsAppUrl(inv: Invitado) {
-    const link = buildLink(inv.token);
-    const tipo = evento?.tipo ?? "otro";
-    const tipoLabel = TIPO_LABEL[tipo] || "evento especial";
-    const anfitriones = evento?.anfitriones ?? "";
-    const nombreEvento = evento?.nombre ?? tipoLabel;
+  // Cómo saludar a cada invitado: lo que corrigió el organizador o lo deducido del nombre
+  function tratoInvitado(inv: Invitado): Trato {
+    return tratoDe(inv.nombre, inv.token);
+  }
 
-    // Saludo según tipo de evento
-    const saludoMap: Record<string, string> = {
-      boda:        "Tenemos el honor de hacerte llegar tu invitación personal para celebrar nuestra boda.",
-      quinceañera: "Con mucho cariño te hacemos llegar tu invitación personal para celebrar mis XV años.",
-      graduacion:  "Tenemos el agrado de hacerte llegar tu invitación personal para celebrar este logro.",
-      cumpleaños:  "Con mucha alegría te hacemos llegar tu invitación personal para celebrar juntos.",
-      otro:        "Tenemos el agrado de hacerte llegar tu invitación personal para este evento especial.",
-    };
-    const saludo = saludoMap[tipo] ?? saludoMap.otro;
+  // ── Marcas de envío ────────────────────────────────────────────────────────
+  // Se guardan en la base (supabase-envios.sql) y en este navegador: sin las
+  // columnas, la cola igual sabe a quién ya se le mandó desde esta compu.
+  const claveMarcas = `evorix_envios_${id}`;
+  function marcasLocales(): MarcasEnvio {
+    try { return JSON.parse(localStorage.getItem(claveMarcas) || "{}"); } catch { return {}; }
+  }
 
-    // Fecha y hora del evento
-    let fechaLinea = "";
-    if (evento?.fecha) {
-      const soloFecha = evento.fecha.split("T")[0];
-      const [yy, mm, dd] = soloFecha.split("-").map((n) => parseInt(n, 10));
-      const d = new Date(yy, (mm || 1) - 1, dd || 1);
-      const fechaStr = d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-      const fechaCap = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1);
-      fechaLinea = `*Fecha:* ${fechaCap}`;
-      if (evento.hora) {
-        const [h, m] = evento.hora.split(":");
-        const hour = parseInt(h);
-        const ampm = hour >= 12 ? "PM" : "AM";
-        const h12 = hour % 12 || 12;
-        fechaLinea += `\n*Hora:* ${h12}:${m} ${ampm}`;
-      }
-    }
+  function marcarEnvio(inv: Invitado, tipo: TipoEnvio) {
+    const campo = tipo === "invitacion" ? "enviado_at" : "recordatorio_at";
+    const ahora = new Date().toISOString();
+    if (tipo === "invitacion") setEnviados((prev) => new Set(prev).add(inv.token));
+    setMarcas((prev) => {
+      const nuevas = { ...prev, [inv.token]: { ...prev[inv.token], [campo]: ahora } };
+      try { localStorage.setItem(claveMarcas, JSON.stringify(nuevas)); } catch { /* sin almacenamiento */ }
+      return nuevas;
+    });
+    // Si la columna todavía no existe, falla en silencio: queda la marca local
+    if (inv.id) supabase.from("invitados").update({ [campo]: ahora }).eq("id", inv.id).then(() => {});
+  }
 
-    // Lugar
-    const lugarLinea = evento?.lugar ? `*Lugar:* ${evento.lugar}` : "";
+  const yaEnviado = (inv: Invitado): boolean => enviados.has(inv.token) || !!marcas[inv.token]?.enviado_at;
 
-    // Bloque de detalles (solo si hay datos)
-    const detalles = [fechaLinea, lugarLinea].filter(Boolean).join("\n");
-    const detallesBloque = detalles ? `\n${detalles}\n` : "";
+  function buildMensaje(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
+    return armarMensajeInvitacion(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
+  }
 
-    // Deadline
-    let deadlineLinea = "";
-    if (evento?.fecha_limite_confirmacion) {
-      const soloFecha = evento.fecha_limite_confirmacion.split("T")[0];
-      const [yy, mm, dd] = soloFecha.split("-").map((n) => parseInt(n, 10));
-      const d = new Date(yy, (mm || 1) - 1, dd || 1);
-      const fechaD = d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
-      deadlineLinea = `Confirmá tu asistencia antes del _${fechaD}_:\n`;
-    } else {
-      deadlineLinea = "Confirmá tu asistencia en el siguiente enlace:\n";
-    }
-
-    const mensajeBase =
-`*${nombreEvento}*
-
-Estimada/o ${inv.nombre},
-
-${saludo}
-${detallesBloque}
-${deadlineLinea}${link}
-
-Con cariño,
-*${anfitriones}*`;
-
-    const msg = encodeURIComponent(mensajeBase);
+  function buildWhatsAppUrl(inv: Invitado, tipo: TipoEnvio = "invitacion") {
+    const texto = tipo === "recordatorio"
+      ? armarMensajeRecordatorio(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), tratoInvitado(inv))
+      : buildMensaje(inv);
+    const msg = encodeURIComponent(texto);
     const rawPhone = inv.telefono ?? "";
     const phone = rawPhone.replace(/[^\d+]/g, "").replace(/(?!^\+)\+/g, "");
     return phone
@@ -326,28 +348,131 @@ Con cariño,
 
   function enviarWhatsApp(inv: Invitado) {
     openWhatsApp(buildWhatsAppUrl(inv));
-    setEnviados((prev) => new Set(prev).add(inv.token));
+    marcarEnvio(inv, "invitacion");
   }
 
-  function enviarATodos() {
-    setShowBulkConfirm(false);
-    const conTelefono = agregados.filter((inv) => inv.telefono);
-    if (conTelefono.length === 0) return;
-    setEnviandoTodos(true);
-    let i = 0;
-    const abrir = () => {
-      if (i >= conTelefono.length) { setEnviandoTodos(false); return; }
-      const inv = conTelefono[i];
-      openWhatsApp(buildWhatsAppUrl(inv));
-      setEnviados((prev) => new Set(prev).add(inv.token));
-      i++;
-      bulkTimerRef.current = setTimeout(abrir, 1400);
-    };
-    abrir();
+  // ── Invitación como tarjeta ──────────────────────────────────────────────
+  // Una imagen no puede tener un enlace adentro, y un enlace wa.me solo lleva
+  // texto. Por eso la tarjeta viaja con el mensaje, y en el mensaje va el
+  // enlace que se toca para confirmar. En el celular se comparte con la hoja
+  // nativa (imagen + mensaje); en la compu se copia la imagen y se abre el chat
+  // para pegarla. Primero se muestra la tarjeta: el organizador ve lo que
+  // manda, y el botón de enviar es un toque nuevo (compartir y copiar exigen un
+  // gesto reciente del usuario).
+  async function prepararTarjeta(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
+    if (!evento) return;
+    const n = ++generacionRef.current;
+    setTarjeta((previa) => {
+      if (previa?.url) URL.revokeObjectURL(previa.url);
+      return { inv, trato, blob: null, url: null };
+    });
+    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, trato));
+    if (n !== generacionRef.current) return;
+    if (!blob) {
+      toast.error("No se pudo generar la tarjeta. Probá de nuevo.");
+      setTarjeta(null);
+      return;
+    }
+    setTarjeta({ inv, trato, blob, url: URL.createObjectURL(blob) });
+  }
+
+  function cambiarTrato(trato: Trato) {
+    if (!tarjeta || trato === tarjeta.trato) return;
+    guardarTrato(tarjeta.inv.token, trato);
+    prepararTarjeta(tarjeta.inv, trato);
+  }
+
+  function cerrarTarjeta() {
+    generacionRef.current++;
+    if (tarjeta?.url) URL.revokeObjectURL(tarjeta.url);
+    setTarjeta(null);
+  }
+
+  function enviarSoloMensaje() {
+    if (!tarjeta) return;
+    enviarWhatsApp(tarjeta.inv);
+    cerrarTarjeta();
+  }
+
+  function archivoTarjeta(inv: Invitado, blob: Blob) {
+    const nombre = inv.nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]+/g, "_");
+    return new File([blob], `invitacion_${nombre || "invitado"}.png`, { type: "image/png" });
+  }
+
+  // Compartir con la hoja del sistema es lo natural en un celular; en la compu
+  // (mouse) esa hoja no suele ofrecer WhatsApp, ahí conviene copiar y pegar.
+  function compartirEsLoPrincipal() {
+    if (typeof navigator === "undefined" || !navigator.canShare) return false;
+    const tactil = window.matchMedia("(pointer: coarse)").matches;
+    return tactil && navigator.canShare({ files: [new File([""], "x.png", { type: "image/png" })] });
+  }
+
+  async function compartirTarjeta() {
+    if (!tarjeta?.blob) return;
+    const { inv, blob } = tarjeta;
+    try {
+      await navigator.share({ files: [archivoTarjeta(inv, blob)], text: buildMensaje(inv, tarjeta.trato) });
+      marcarEnvio(inv, "invitacion");
+      cerrarTarjeta();
+    } catch (e) {
+      if ((e as Error)?.name !== "AbortError") toast.error("No se pudo compartir. Probá descargarla.");
+    }
+  }
+
+  async function copiarYAbrirWhatsApp() {
+    if (!tarjeta?.blob) return;
+    const { inv, blob } = tarjeta;
+    let copiada = false;
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      copiada = true;
+    } catch { /* este navegador no copia imágenes: se descarga */ }
+    if (!copiada) descargarTarjeta();
+    openWhatsApp(buildWhatsAppUrl(inv));
+    marcarEnvio(inv, "invitacion");
+    toast.success(copiada ? "Tarjeta copiada: en el chat pegala con Ctrl+V" : "Tarjeta descargada: adjuntala en el chat");
+  }
+
+  function descargarTarjeta() {
+    if (!tarjeta?.blob) return;
+    const archivo = archivoTarjeta(tarjeta.inv, tarjeta.blob);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(archivo);
+    a.download = archivo.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  // Enviar a varios: la cola abre WhatsApp de a uno, siempre por un toque del
+  // organizador. El temporizador de antes solo lograba abrir el primero: los
+  // navegadores bloquean las ventanas que no salen de un toque.
+  function abrirEnvioGrupo(tipo: TipoEnvio, preseleccion: string[]) {
+    setEnvioGrupo({ tipo, preseleccion });
   }
 
   const conTelefono = agregados.filter((inv) => inv.telefono);
-  const sinTelefono = agregados.filter((inv) => !inv.telefono);
+
+  // Recordatorio: desde una semana antes del evento, para quien no confirmó
+  const diasFaltan = evento?.fecha ? diasHasta(evento.fecha) : null;
+  const sinConfirmar = todosInvitados.filter((i) => !i.estado || i.estado === "pendiente");
+  const sinRecordar = sinConfirmar.filter((i) => !marcas[i.token]?.recordatorio_at);
+  const mostrarRecordatorio = diasFaltan !== null && diasFaltan >= 0 && diasFaltan <= 7 && sinConfirmar.length > 0;
+
+  const versiculoActual = versiculoDe(evento?.versiculo_texto, evento?.versiculo_cita);
+
+  async function guardarVersiculo(v: Versiculo | null) {
+    const { error } = await supabase
+      .from("eventos")
+      .update({ versiculo_texto: v?.texto ?? null, versiculo_cita: v?.cita ?? null })
+      .eq("id", id);
+    if (error) {
+      toast.error("Para guardar el versículo falta correr supabase-envios.sql en Supabase.");
+      return false;
+    }
+    setEvento((prev) => (prev ? { ...prev, versiculo_texto: v?.texto ?? null, versiculo_cita: v?.cita ?? null } : prev));
+    toast.success(v ? "Versículo agregado a la invitación" : "Versículo quitado de la invitación");
+    return true;
+  }
 
   const invitadosFiltrados = busqueda.trim()
     ? todosInvitados.filter((inv) =>
@@ -562,6 +687,24 @@ Con cariño,
         .btn-copy-done    { color: #16a34a; background: #f0fdf4; border-color: #86efac; }
         .btn-wa           { color: white; background: var(--wa-green); border-color: var(--wa-dark); }
         .btn-wa-done      { color: white; background: #16a34a; border-color: #15803d; }
+        .btn-tarjeta      { color: #E2C46A; background: #2C3335; border-color: #1E2425; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-tarjeta:disabled { opacity: .55; cursor: wait; }
+        .btn-varios { display: flex; align-items: center; gap: 6px; background: rgba(37,211,102,0.10); border: 1px solid rgba(37,211,102,0.35); border-radius: 10px; padding: 6px 12px; font-size: 11px; font-weight: 700; color: #128C7E; cursor: pointer; font-family: inherit; }
+        .inv-envio { font-size: 10.5px; color: #16a34a; margin-top: 2px; font-weight: 600; }
+        .recordatorio-banner { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #1D1C20, #2A2620); border: 1px solid #B4873A; border-radius: 18px; padding: 14px 14px 14px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+        .recordatorio-icono { font-size: 24px; }
+        .recordatorio-cuerpo { flex: 1; min-width: 0; }
+        .recordatorio-titulo { font-family: 'Cormorant Garamond', serif; font-size: 19px; font-weight: 600; color: #E8CB82; }
+        .recordatorio-sub { font-size: 12px; color: #DCCBA2; margin-top: 1px; }
+        .recordatorio-btn { flex-shrink: 0; padding: 10px 14px; border-radius: 12px; border: none; background: linear-gradient(135deg, #E8CB82, #B4873A); color: #1D1C20; font-size: 13px; font-weight: 800; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        .versiculo-fila { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px; padding: 13px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: var(--shadow); }
+        .versiculo-icono { width: 36px; height: 36px; border-radius: 12px; background: #1D1C20; color: #E8CB82; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .versiculo-cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .versiculo-titulo { font-size: 13.5px; font-weight: 700; color: var(--text); }
+        .versiculo-sub { font-size: 11.5px; color: var(--text3); margin-top: 1px; }
+        .versiculo-texto { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15.5px; color: var(--text); line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .versiculo-cita { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #B4873A; margin-top: 3px; }
+        .versiculo-accion { font-size: 12px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
         .btn-eliminar     { color: #dc2626; background: #fef2f2; border-color: #fecaca; }
         .btn-eliminar:hover { background: #fee2e2; }
         .btn-eliminar:disabled { opacity: .5; cursor: wait; }
@@ -705,6 +848,30 @@ Con cariño,
         .btn-cancel { flex: 1; padding: 13px; border-radius: 12px; border: 1.5px solid var(--border-input); background: var(--surface); color: var(--text2); font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
         .btn-confirm { flex: 1; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--wa-green), var(--wa-dark)); color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 16px rgba(37,211,102,0.35); }
 
+        /* ── Tarjeta de invitación ── */
+        .tarjeta-card { background: var(--surface); border-radius: 24px; padding: 18px 18px 16px; max-width: 400px; width: 100%; max-height: calc(100dvh - 40px); overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.28); border: 1.5px solid var(--border); text-align: center; }
+        .tarjeta-titulo { font-family: 'Cormorant Garamond', serif; font-size: 21px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+        .tarjeta-marco { position: relative; width: min(100%, calc(46dvh * 1080 / 1350)); aspect-ratio: 1080 / 1350; margin: 0 auto 12px; border-radius: 12px; overflow: hidden; background: #0D0D0F; box-shadow: 0 6px 22px rgba(0,0,0,0.25); }
+        .tarjeta-marco img { display: block; width: 100%; height: 100%; object-fit: contain; }
+        .tarjeta-cargando { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #E2C46A; font-size: 13px; font-weight: 600; }
+        .tarjeta-giro { width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid rgba(226,196,106,0.25); border-top-color: #E2C46A; animation: tarjeta-gira .8s linear infinite; }
+        @keyframes tarjeta-gira { to { transform: rotate(360deg); } }
+        .tarjeta-ayuda { font-size: 12px; color: var(--text2); line-height: 1.5; margin-bottom: 14px; }
+        .trato-fila { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+        .trato-label { font-size: 10.5px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--text3); margin-right: 2px; }
+        .trato-chip { font-size: 12px; font-weight: 600; padding: 6px 11px; border-radius: 999px; border: 1.5px solid var(--border-input); background: var(--surface); color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .trato-chip.activo { background: #1D1C20; border-color: #B4873A; color: #E8CB82; }
+        .trato-chip:disabled { cursor: wait; }
+        .trato-saludo { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-style: italic; color: var(--text); margin-bottom: 8px; }
+        .tarjeta-mensaje { text-align: left; margin-bottom: 12px; }
+        .tarjeta-mensaje summary { cursor: pointer; text-align: center; font-size: 12px; font-weight: 700; color: var(--accent); }
+        .tarjeta-mensaje pre { white-space: pre-wrap; word-break: break-word; font-family: 'DM Sans', sans-serif; font-size: 12.5px; line-height: 1.5; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-top: 8px; color: var(--text); }
+        .tarjeta-principal { width: 100%; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--wa-green), var(--wa-dark)); color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 16px rgba(37,211,102,0.35); margin-bottom: 8px; }
+        .tarjeta-principal:disabled { opacity: .5; cursor: wait; box-shadow: none; }
+        .tarjeta-secundarias { display: flex; gap: 8px; }
+        .tarjeta-secundarias .btn-cancel { padding: 11px 6px; font-size: 13px; }
+        .tarjeta-secundarias .btn-cancel:disabled { opacity: .5; cursor: wait; }
+
         /* ── Animations ── */
         .anim-header { opacity: 0; transform: translateY(-10px); }
         .anim-card   { opacity: 0; transform: translateY(20px); }
@@ -729,6 +896,7 @@ Con cariño,
           .inv-avatar { width: 32px; height: 32px; font-size: 13px; }
           .inv-actions { flex-wrap: wrap; gap: 5px; justify-content: flex-end; }
           .btn-action { font-size: 11px; padding: 5px 8px; }
+          .btn-tarjeta-txt { display: none; }
           .qn-link { padding: 8px 11px; font-size: 10px; }
         }
         @media (max-width: 340px) {
@@ -737,23 +905,73 @@ Con cariño,
         }
       `}</style>
 
-      {/* Confirm bulk overlay */}
-      {showBulkConfirm && (
-        <div className="overlay">
-          <div className="confirm-card">
-            <div className="confirm-icon">📲</div>
-            <div className="confirm-title">Enviar a todos</div>
-            <div className="confirm-body">
-              Se abrirá WhatsApp para{" "}
-              <strong>{conTelefono.length} invitado{conTelefono.length !== 1 ? "s" : ""}</strong>{" "}
-              con número registrado.
-              {sinTelefono.length > 0 && (
-                <> Los otros <strong>{sinTelefono.length}</strong> sin número serán omitidos.</>
-              )}
+      {/* Envío en grupo: invitación o recordatorio */}
+      {envioGrupo && (
+        <EnvioEnGrupo
+          invitados={todosInvitados}
+          tipoInicial={envioGrupo.tipo}
+          preseleccion={envioGrupo.preseleccion}
+          marcas={marcas}
+          tratoDe={(inv) => tratoDe(inv.nombre, inv.token)}
+          urlWhatsApp={(inv, tipo) => buildWhatsAppUrl(inv as Invitado, tipo)}
+          onEnviado={(inv, tipo) => marcarEnvio(inv as Invitado, tipo)}
+          onCerrar={() => setEnvioGrupo(null)}
+        />
+      )}
+
+      {/* Versículo de la invitación */}
+      {editandoVersiculo && evento && (
+        <VersiculoEvento
+          tipo={evento.tipo}
+          actual={versiculoActual}
+          onGuardar={guardarVersiculo}
+          onCerrar={() => setEditandoVersiculo(false)}
+        />
+      )}
+
+      {/* Vista previa de la tarjeta antes de enviarla */}
+      {tarjeta && (
+        <div className="overlay" onClick={(e) => { if (e.target === e.currentTarget) cerrarTarjeta(); }}>
+          <div className="tarjeta-card" role="dialog" aria-modal="true" aria-label={`Tarjeta de invitación de ${tarjeta.inv.nombre}`}>
+            <div className="tarjeta-titulo">Tarjeta para {tarjeta.inv.nombre}</div>
+            <div className="tarjeta-marco">
+              {tarjeta.url
+                ? <img src={tarjeta.url} alt={`Tarjeta de invitación para ${tarjeta.inv.nombre}`} />
+                : <div className="tarjeta-cargando"><div className="tarjeta-giro" />Preparando la tarjeta…</div>}
             </div>
-            <div className="confirm-actions">
-              <button className="btn-cancel" onClick={() => setShowBulkConfirm(false)}>Cancelar</button>
-              <button className="btn-confirm" onClick={enviarATodos}>Enviar ahora</button>
+            <div className="trato-fila" role="radiogroup" aria-label="Cómo saludar">
+              <span className="trato-label">Saludo</span>
+              {(["f", "m", "plural", "neutro"] as Trato[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="radio"
+                  aria-checked={tarjeta.trato === t}
+                  className={`trato-chip${tarjeta.trato === t ? " activo" : ""}`}
+                  onClick={() => cambiarTrato(t)}
+                  disabled={!tarjeta.blob}
+                >
+                  {ETIQUETAS_TRATO[t]}
+                </button>
+              ))}
+            </div>
+            <div className="trato-saludo">{saludo(tarjeta.inv.nombre, tarjeta.trato)}:</div>
+            <details className="tarjeta-mensaje">
+              <summary>Ver el mensaje que la acompaña</summary>
+              <pre>{buildMensaje(tarjeta.inv, tarjeta.trato)}</pre>
+            </details>
+            <div className="tarjeta-ayuda">
+              {compartirEsLoPrincipal()
+                ? <>Elegí <strong>WhatsApp</strong> y el contacto: la tarjeta va con el mensaje, y el enlace para confirmar se puede tocar.</>
+                : <>Se copia la tarjeta y se abre el chat con el mensaje y el enlace para confirmar. En el chat pegala con <strong>Ctrl+V</strong> y enviá.</>}
+            </div>
+            {compartirEsLoPrincipal()
+              ? <button className="tarjeta-principal" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">Enviar tarjeta</button>
+              : <button className="tarjeta-principal" onClick={copiarYAbrirWhatsApp} disabled={!tarjeta.blob} type="button">Copiar y abrir WhatsApp</button>}
+            <div className="tarjeta-secundarias">
+              <button className="btn-cancel" onClick={enviarSoloMensaje} type="button">Solo el mensaje</button>
+              <button className="btn-cancel" onClick={descargarTarjeta} disabled={!tarjeta.blob} type="button">Descargar</button>
+              <button className="btn-cancel" onClick={cerrarTarjeta} type="button">Cerrar</button>
             </div>
           </div>
         </div>
@@ -814,6 +1032,52 @@ Con cariño,
                 </div>
               </div>
             </div>
+          )}
+
+          {/* ── Recordatorio: falta una semana o menos ── */}
+          {mostrarRecordatorio && (
+            <div className="recordatorio-banner anim-card">
+              <div className="recordatorio-icono" aria-hidden="true">⏳</div>
+              <div className="recordatorio-cuerpo">
+                <div className="recordatorio-titulo">
+                  {diasFaltan === 0 ? "¡El evento es hoy!" : diasFaltan === 1 ? "El evento es mañana" : diasFaltan === 7 ? "Falta una semana" : `Faltan ${diasFaltan} días`}
+                </div>
+                <div className="recordatorio-sub">
+                  {sinConfirmar.length} invitado{sinConfirmar.length !== 1 ? "s" : ""} todavía no confirm{sinConfirmar.length !== 1 ? "aron" : "ó"}
+                  {sinRecordar.length < sinConfirmar.length && ` · ya recordaste a ${sinConfirmar.length - sinRecordar.length}`}
+                </div>
+              </div>
+              <button
+                className="recordatorio-btn"
+                type="button"
+                onClick={() => abrirEnvioGrupo("recordatorio", (sinRecordar.length > 0 ? sinRecordar : sinConfirmar).map((i) => i.token))}
+              >
+                Recordar
+              </button>
+            </div>
+          )}
+
+          {/* ── Versículo de la invitación ── */}
+          {evento && (
+            <button type="button" className="versiculo-fila anim-card" onClick={() => setEditandoVersiculo(true)}>
+              <span className="versiculo-icono" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /><path d="M12 6v7M9.5 8.5h5" /></svg>
+              </span>
+              <span className="versiculo-cuerpo">
+                {versiculoActual ? (
+                  <>
+                    <span className="versiculo-texto">«{versiculoActual.texto}»</span>
+                    <span className="versiculo-cita">{versiculoActual.cita}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="versiculo-titulo">Agregar un versículo bíblico</span>
+                    <span className="versiculo-sub">Va en la tarjeta y en el mensaje de invitación</span>
+                  </>
+                )}
+              </span>
+              <span className="versiculo-accion">{versiculoActual ? "Cambiar" : "Elegir"}</span>
+            </button>
           )}
 
           {/* ── Banner de plan ── */}
@@ -947,14 +1211,13 @@ Con cariño,
 
               {conTelefono.length > 0 && (
                 <button
-                  className={`btn-bulk${enviandoTodos ? " pulsing" : ""}`}
-                  onClick={() => setShowBulkConfirm(true)}
-                  disabled={enviandoTodos}
+                  className="btn-bulk"
+                  onClick={() => abrirEnvioGrupo("invitacion", conTelefono.map((i) => i.token))}
                   type="button"
                 >
                   <span className="btn-bulk-shimmer" />
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.946 0C5.344 0 0 5.268 0 11.772c0 2.077.556 4.027 1.526 5.716L.057 24l6.727-1.712a11.98 11.98 0 005.162 1.168h.005C18.549 23.456 24 18.188 24 11.684 24 5.268 18.549 0 11.946 0z"/></svg>
-                  {enviandoTodos ? "Enviando..." : `Enviar WhatsApp a todos (${conTelefono.length})`}
+                  {`Enviar WhatsApp a todos (${conTelefono.length})`}
                 </button>
               )}
 
@@ -980,14 +1243,25 @@ Con cariño,
                       >
                         {copiado === inv.token ? "✓" : "🔗"}
                       </button>
+                      <button
+                        className="btn-action btn-tarjeta"
+                        onClick={() => prepararTarjeta(inv)}
+                        type="button"
+                        title="Enviar como tarjeta"
+                        aria-label={`Ver y enviar la tarjeta de invitación de ${inv.nombre}`}
+                        disabled={!!tarjeta}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                        <span className="btn-tarjeta-txt">Tarjeta</span>
+                      </button>
                       {inv.telefono && (
                         <button
-                          className={`btn-action ${enviados.has(inv.token) ? "btn-wa-done" : "btn-wa"}${lastAdded === inv.token && !enviados.has(inv.token) ? " btn-wa-new" : ""}`}
+                          className={`btn-action ${yaEnviado(inv) ? "btn-wa-done" : "btn-wa"}${lastAdded === inv.token && !yaEnviado(inv) ? " btn-wa-new" : ""}`}
                           onClick={() => enviarWhatsApp(inv)}
                           type="button"
                           aria-label={`Enviar WhatsApp a ${inv.nombre}`}
                         >
-                          {enviados.has(inv.token) ? "✓" : "WA"}
+                          {yaEnviado(inv) ? "✓" : "WA"}
                         </button>
                       )}
                     </div>
@@ -1006,6 +1280,15 @@ Con cariño,
                 <span className="list-badge">{todosInvitados.length}</span>
               </div>
               {todosInvitados.length > 0 && (
+                <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  type="button"
+                  className="btn-varios"
+                  onClick={() => abrirEnvioGrupo("invitacion", sinConfirmar.filter((i) => !yaEnviado(i)).map((i) => i.token))}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+                  Enviar a varios
+                </button>
                 <button
                   onClick={handleExportarExcel}
                   disabled={exportando}
@@ -1025,6 +1308,7 @@ Con cariño,
                   </svg>
                   {exportando ? "..." : "Excel"}
                 </button>
+                </div>
               )}
             </div>
 
@@ -1090,6 +1374,16 @@ Con cariño,
                           ? "👥 Elige cuántos van"
                           : `👥 ${inv.num_personas ?? 1} lugar${(inv.num_personas ?? 1) !== 1 ? "es" : ""}`}
                       </div>
+                      {inv.estado === "confirmado" && inv.id && asistentesPorId[inv.id]?.length > 0 && (
+                        <div style={{ fontSize: 10.5, color: "var(--text2)", marginTop: 2, fontWeight: 600 }}>
+                          ✓ Van: {asistentesPorId[inv.id].join(", ")}
+                        </div>
+                      )}
+                      {(marcas[inv.token]?.enviado_at || marcas[inv.token]?.recordatorio_at) && (
+                        <div className="inv-envio">
+                          {[marcas[inv.token]?.enviado_at && "Invitación enviada", marcas[inv.token]?.recordatorio_at && "Recordado"].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
                     </div>
                     <div className="inv-actions">
                       <button
@@ -1100,13 +1394,24 @@ Con cariño,
                       >
                         {copiado === inv.token ? "✓" : "🔗"}
                       </button>
+                      <button
+                        className="btn-action btn-tarjeta"
+                        onClick={() => prepararTarjeta(inv)}
+                        type="button"
+                        title="Enviar como tarjeta"
+                        aria-label={`Ver y enviar la tarjeta de invitación de ${inv.nombre}`}
+                        disabled={!!tarjeta}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                        <span className="btn-tarjeta-txt">Tarjeta</span>
+                      </button>
                       {inv.telefono && (
                         <button
-                          className={`btn-action ${enviados.has(inv.token) ? "btn-wa-done" : "btn-wa"}`}
+                          className={`btn-action ${yaEnviado(inv) ? "btn-wa-done" : "btn-wa"}`}
                           onClick={() => enviarWhatsApp(inv)}
                           type="button"
                         >
-                          {enviados.has(inv.token) ? "✓" : "WA"}
+                          {yaEnviado(inv) ? "✓" : "WA"}
                         </button>
                       )}
                       <button

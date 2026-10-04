@@ -24,6 +24,7 @@ type Evento = {
 type Foto = {
   id: string;
   url: string;
+  thumb_url?: string | null;
   caption: string | null;
   es_favorita: boolean;
   invitados: { nombre: string };
@@ -82,12 +83,12 @@ const TEMAS: Record<
     ornSvg: `<svg width="120" height="24" viewBox="0 0 120 24" fill="none"><circle cx="20" cy="12" r="4" fill="#fcd34d" opacity=".5"/><circle cx="60" cy="8" r="5" fill="#fcd34d" opacity=".7"/><circle cx="100" cy="12" r="4" fill="#fcd34d" opacity=".5"/><circle cx="40" cy="16" r="3" fill="#fb923c" opacity=".4"/><circle cx="80" cy="16" r="3" fill="#fb923c" opacity=".4"/></svg>`,
   },
   graduacion: {
-    portada: "linear-gradient(160deg,#eff6ff 0%,#dbeafe 50%,#bfdbfe 100%)",
-    titulo: "#1e3a8a",
-    subtitulo: "#1d4ed8",
-    acento: "#93c5fd",
-    fondo: "#eff6ff",
-    ornSvg: `<svg width="120" height="24" viewBox="0 0 120 24" fill="none"><path d="M50 8L60 4L70 8L60 12Z" fill="#93c5fd" opacity=".7"/><path d="M56 12L56 18L64 18L64 12" stroke="#93c5fd" strokeWidth="1.5" fill="none"/><circle cx="20" cy="14" r="2" fill="#93c5fd" opacity=".4"/><circle cx="100" cy="14" r="2" fill="#93c5fd" opacity=".4"/></svg>`,
+    portada: "linear-gradient(160deg,#FFFFFF 0%,#F6F7FB 55%,#EDF0F7 100%)",
+    titulo: "#0F1733",
+    subtitulo: "#3A4366",
+    acento: "#E6CF8E",
+    fondo: "#F6F7FB",
+    ornSvg: `<svg width="140" height="26" viewBox="0 0 140 26" fill="none"><path d="M0 13h52M88 13h52" stroke="#C9A54C" stroke-width="1"/><path d="M70 4L84 10L70 16L56 10Z" fill="#1E2B5E"/><path d="M62 12.5V17Q70 21 78 17V12.5" fill="#1E2B5E" opacity=".85"/><path d="M70 10L80.5 11.2V17" stroke="#C9A54C" stroke-width="1.3" fill="none" stroke-linecap="round"/><circle cx="80.5" cy="18" r="1.4" fill="#C9A54C"/><circle cx="46" cy="13" r="1.6" fill="#C9A54C"/><circle cx="94" cy="13" r="1.6" fill="#C9A54C"/></svg>`,
   },
   otro: {
     portada: "linear-gradient(160deg,#FAFBFF 0%,#E0E7FF 50%,#D4A96A 100%)",
@@ -176,7 +177,7 @@ function SeccionHeader({
           fontWeight: 800,
           color: tema.titulo,
           marginBottom: 5,
-          fontFamily: "'Cormorant Garamond',serif",
+          fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)",
         }}
       >
         {titulo}
@@ -302,14 +303,17 @@ export default function LibroRecuerdosPage() {
     async function cargar() {
       const [ev, ft, ds, inv] = await Promise.all([
         supabase.from("eventos").select("*").eq("id", eventoId).single(),
-        supabase
-          .from("fotos")
-          .select(
-            "id,url,caption,es_favorita,invitados(nombre),reacciones(emoji)",
-          )
-          .eq("evento_id", eventoId)
-          .eq("estado", "aprobada")
-          .order("es_favorita", { ascending: false }),
+        // Miniatura (supabase-muro.sql) si existe; si no, la consulta de siempre
+        (async () => {
+          const consulta = (cols: string) => supabase
+            .from("fotos")
+            .select(cols)
+            .eq("evento_id", eventoId)
+            .eq("estado", "aprobada")
+            .order("es_favorita", { ascending: false });
+          const r = await consulta("id,url,thumb_url,caption,es_favorita,invitados(nombre),reacciones(emoji)");
+          return r.error ? consulta("id,url,caption,es_favorita,invitados(nombre),reacciones(emoji)") : r;
+        })(),
         supabase
           .from("deseos")
           .select("id,nombre_autor,mensaje,emoji_sticker,color_fondo")
@@ -476,7 +480,7 @@ export default function LibroRecuerdosPage() {
   return (
     <div className={!tokenParam ? "ev-page-with-nav" : undefined}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700${evento.tipo === "graduacion" ? "&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,500" : ""}&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
@@ -498,6 +502,16 @@ export default function LibroRecuerdosPage() {
           --shadow-btn:   0 6px 28px rgba(79, 70, 229,0.25);
           --transition:   all 0.3s cubic-bezier(.4,0,.2,1);
         }
+        ${evento.tipo === "graduacion" ? `
+        /* Graduación: la paleta de la invitación y Playfair (Cormorant es más de boda) */
+        :root {
+          --bg: #F6F7FB; --surface2: #F1F3F9;
+          --border: rgba(168,132,58,0.26); --border-hover: rgba(168,132,58,0.50);
+          --accent: #1E2B5E; --accent2: #141C42; --accent-light: #C9A54C;
+          --accent-soft: rgba(30,43,94,0.07); --accent-soft2: rgba(30,43,94,0.13);
+          --text3: #8A6A22; --shadow-btn: 0 6px 24px rgba(30,43,94,0.22);
+          --f-display: 'Playfair Display'; --f-adjust: 0.43;
+        }` : ""}
 
         html, body {
           font-family: 'DM Sans', sans-serif;
@@ -534,7 +548,7 @@ export default function LibroRecuerdosPage() {
           padding: 0 14px; height: 54px;
         }
         .header-event-name {
-          font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 600;
+          font-family: var(--f-display,'Cormorant Garamond'), serif; font-size-adjust: var(--f-adjust,none); font-size: 20px; font-weight: 600;
           color: var(--text); letter-spacing: -0.3px;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
         }
@@ -624,9 +638,10 @@ export default function LibroRecuerdosPage() {
         .foto-caption { font-size: 10.5px; color: #9ca3af; font-style: italic; }
 
         /* ── Deseos ── */
-        .deseo-card { border-radius: 14px; padding: 13px; position: relative; border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden; }
-        .deseo-sticker { position: absolute; top: 8px; right: 8px; opacity: 0.45; width: 26px; height: 26px; }
-        .deseo-mensaje { font-size: 12px; color: #374151; line-height: 1.65; margin-bottom: 9px; padding-right: 28px; }
+        .deseo-card { border-radius: 14px; padding: 16px 13px 12px; position: relative; background: #FFFFFF; border: 1px solid #EEF0F4; border-top: 4px solid; box-shadow: 0 2px 10px rgba(15,23,42,0.06); overflow: hidden; break-inside: avoid; }
+        .deseo-card::before { content: "“"; position: absolute; top: -4px; left: 8px; font-family: var(--f-display,'Cormorant Garamond'), serif; font-size: 48px; line-height: 1; color: var(--accent-light); opacity: 0.35; }
+        .deseo-sticker { position: absolute; top: 8px; right: 8px; opacity: 0.8; width: 24px; height: 24px; }
+        .deseo-mensaje { position: relative; font-family: var(--f-display,'Cormorant Garamond'), serif; font-size-adjust: var(--f-adjust,none); font-style: italic; font-size: 14px; color: #1F2937; line-height: 1.55; margin-bottom: 10px; padding: 6px 26px 0 2px; overflow-wrap: anywhere; }
         .deseo-autor { display: flex; align-items: center; gap: 7px; }
         .deseo-nombre { font-size: 11px; font-weight: 700; color: #4b5563; }
 
@@ -826,7 +841,11 @@ export default function LibroRecuerdosPage() {
                     fontSize: 32,
                   }}
                 >
-                  🎊
+                  {evento.tipo === "graduacion"
+                    ? <span style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSize: 28, fontWeight: 600, color: tema.titulo }}>
+                        {(evento.anfitriones || evento.nombre).trim().split(/\s+/).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join("")}
+                      </span>
+                    : "🎊"}
                 </div>
               )}
               <h1
@@ -837,7 +856,7 @@ export default function LibroRecuerdosPage() {
                   marginBottom: 7,
                   lineHeight: 1.15,
                   letterSpacing: -0.5,
-                  fontFamily: "'Cormorant Garamond',serif",
+                  fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)",
                 }}
               >
                 {evento.nombre}
@@ -906,7 +925,7 @@ export default function LibroRecuerdosPage() {
                         fontWeight: 900,
                         color: tema.titulo,
                         lineHeight: 1,
-                        fontFamily: "'Cormorant Garamond',serif",
+                        fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)",
                       }}
                     >
                       {s.val}
@@ -964,8 +983,10 @@ export default function LibroRecuerdosPage() {
                         <div key={foto.id} className="foto-card">
                           <div className="foto-img-wrap">
                             <img
-                              src={foto.url}
+                              src={foto.thumb_url || foto.url}
                               alt=""
+                              decoding="async"
+                              onError={(e) => { const img = e.currentTarget; if (img.src !== foto.url) img.src = foto.url; }}
                               style={{
                                 width: "100%",
                                 height: "100%",
@@ -1059,7 +1080,7 @@ export default function LibroRecuerdosPage() {
                           <div
                             key={deseo.id}
                             className="deseo-card"
-                            style={{ background: deseo.color_fondo }}
+                            style={{ borderTopColor: deseo.color_fondo || "var(--accent-light)" }}
                           >
                             {esEmoji ? (
                               <div
@@ -1074,7 +1095,7 @@ export default function LibroRecuerdosPage() {
                                 dangerouslySetInnerHTML={{ __html: stickerSvg }}
                               />
                             )}
-                            <p className="deseo-mensaje">"{deseo.mensaje}"</p>
+                            <p className="deseo-mensaje">{deseo.mensaje}</p>
                             <div className="deseo-autor">
                               <Avatar
                                 inicial={deseo.nombre_autor.charAt(0)}
@@ -1167,7 +1188,7 @@ export default function LibroRecuerdosPage() {
                     fontWeight: 800,
                     color: tema.titulo,
                     marginBottom: 7,
-                    fontFamily: "'Cormorant Garamond',serif",
+                    fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)",
                   }}
                 >
                   Gracias por ser parte de este día

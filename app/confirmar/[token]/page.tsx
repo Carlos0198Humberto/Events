@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import { toast } from "@/app/components/Toast";
 import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
+import { subirFotoEvento } from "@/lib/fotos";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -22,6 +23,7 @@ type Invitado = {
   deseo?: string | null;
   evento_id: string;
   nombres_personas?: string | null;
+  asistentes_nombres?: string[] | null; // quiénes marcó que van (supabase-asistentes.sql)
   mesa_id?: string | null;
   mesa_nombre?: string | null; // populated by join
 };
@@ -58,6 +60,11 @@ type Evento = {
   fotos_carrusel?: string[] | null;
 };
 
+// Momento del recorrido guiado del avatar (qué pantalla está explicando)
+type FaseMascota =
+  | "leyendo" | "esperando_confirm" | "post_confirm" | "esperando_submit"
+  | "instrucciones" | "despedida" | "reposo" | "oculto";
+
 type ItemItinerario = {
   id: string;
   hora?: string | null;
@@ -82,6 +89,24 @@ const TIPO_ORNAMENTO: Record<string, string> = {
   cumpleaños: "",
   otro: "",
 };
+
+// ─── Paleta de graduación: azul noche + dorado champagne + blanco perla ───────
+// Un solo lugar para los colores de graduación (CSS, SVG y canvas).
+const GRAD = {
+  noche: "#0A0F24",      // fondo más profundo
+  navy: "#141C42",
+  navy2: "#1E2B5E",
+  navy3: "#2B3B7A",
+  oro: "#C9A54C",        // dorado champagne (decoración)
+  oroClaro: "#E6CF8E",   // dorado sobre fondo oscuro
+  oroPalido: "#F3E7C4",
+  oroMedio: "#A8843A",
+  oroOscuro: "#8A6A22",  // dorado legible sobre blanco (texto chico)
+  oroProfundo: "#6E5418",
+  perla: "#F6F7FB",
+  perla2: "#EDF0F7",
+  tinta: "#0F1733",
+} as const;
 
 const STICKERS_DESEO = ["🌸", "💖", "✨", "🌟", "🎊", "🦋", "🌹", "💫", "🎀", "🍀", "🥂", "🎶"];
 const COLORES_DESEO_FORM = [
@@ -259,6 +284,33 @@ function sonidoCelebracion() {
 }
 
 // ─── Confetti para pantalla de bienvenida (determinista, sin random) ─────────
+// Monograma del graduado: "Andrea Castillo" → "AC"
+function iniciales(nombre?: string | null): string {
+  const partes = (nombre || "").trim().split(/\s+/).filter(p => p.length > 1 || /[A-ZÁÉÍÓÚÑ]/.test(p));
+  return partes.slice(0, 2).map(p => p.charAt(0).toUpperCase()).join("");
+}
+
+// Birrete y estrella en SVG: los emojis se ven distintos en cada celular
+function BirreteSVG({ size = 24, color = GRAD.oroClaro, borla = GRAD.oro }: { size?: number; color?: string; borla?: string }) {
+  return (
+    <svg width={size} height={(size * 26) / 32} viewBox="0 0 32 26" fill="none" aria-hidden="true">
+      <path d="M16 2 L31 9 L16 16 L1 9 Z" fill={color} />
+      <path d="M8 12.5 V19 Q16 24 24 19 V12.5 L16 16 Z" fill={color} opacity="0.82" />
+      <path d="M16 9 L27.5 10.5 L27.5 18" stroke={borla} strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M26.2 18 L27.5 22.5 L28.8 18 Z" fill={borla} />
+      <circle cx="16" cy="9" r="1.4" fill={borla} />
+    </svg>
+  );
+}
+
+function EstrellaSVG({ size = 12, color = GRAD.oroClaro }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 0 L14.2 9.8 L24 12 L14.2 14.2 L12 24 L9.8 14.2 L0 12 L9.8 9.8 Z" fill={color} />
+    </svg>
+  );
+}
+
 const CONFETTI_PIECES = Array.from({ length: 42 }, (_, i) => ({
   id: i,
   left: ((i * 7.3 + (i % 5) * 11.7) % 100),
@@ -528,10 +580,12 @@ function FloatingDecor({ tipo }: { tipo: string }) {
         {caps.map((c, i) => (
           <div key={i} style={{
             position: "absolute", bottom: -24, left: c.left,
-            fontSize: c.sz, lineHeight: 1,
+            lineHeight: 1,
             animation: `capFloat ${c.dur} ${c.delay} linear infinite`,
             userSelect: "none",
-          }}>🎓</div>
+          }}>
+            {i % 3 === 1 ? <EstrellaSVG size={c.sz * 0.7} color={GRAD.oro} /> : <BirreteSVG size={c.sz} color={GRAD.navy2} borla={GRAD.oro} />}
+          </div>
         ))}
       </div>
     );
@@ -636,35 +690,35 @@ function DecoracionEvento({ tipo }: { tipo: string }) {
         <svg width="150" height="80" viewBox="0 0 150 80" fill="none">
           <defs>
             <linearGradient id="gradCapBoard" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#4338ca" />
-              <stop offset="45%" stopColor="#312e81" />
-              <stop offset="100%" stopColor="#1e1b4b" />
+              <stop offset="0%" stopColor={GRAD.navy3} />
+              <stop offset="45%" stopColor={GRAD.navy2} />
+              <stop offset="100%" stopColor={GRAD.tinta} />
             </linearGradient>
             <linearGradient id="gradCapBody" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#312e81" />
-              <stop offset="100%" stopColor="#1e1b4b" />
+              <stop offset="0%" stopColor={GRAD.navy2} />
+              <stop offset="100%" stopColor={GRAD.tinta} />
             </linearGradient>
             <linearGradient id="gradGold" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FDE68A" />
-              <stop offset="50%" stopColor="#F59E0B" />
-              <stop offset="100%" stopColor="#B45309" />
+              <stop offset="0%" stopColor={GRAD.oroPalido} />
+              <stop offset="50%" stopColor={GRAD.oro} />
+              <stop offset="100%" stopColor={GRAD.oroOscuro} />
             </linearGradient>
             <radialGradient id="gradGlow" cx="0.5" cy="0.35" r="0.7">
-              <stop offset="0%" stopColor="rgba(252,211,77,0.35)" />
-              <stop offset="100%" stopColor="rgba(252,211,77,0)" />
+              <stop offset="0%" stopColor="rgba(201,165,76,0.22)" />
+              <stop offset="100%" stopColor="rgba(201,165,76,0)" />
             </radialGradient>
           </defs>
           {/* Resplandor de fondo */}
           <ellipse cx="75" cy="38" rx="60" ry="34" fill="url(#gradGlow)" />
           {/* Laurel izquierdo */}
-          <g stroke="#B45309" strokeWidth="1.4" fill="rgba(245,158,11,0.30)">
+          <g stroke={GRAD.oroMedio} strokeWidth="1.2" fill="rgba(201,165,76,0.20)">
             <path d="M28 66 Q14 52 14 30 Q14 22 18 14" fill="none" strokeWidth="1.8"/>
             {[[16,18,-40],[14,28,-15],[15,38,5],[18,47,20],[23,56,38],[29,63,52]].map(([x,y,rot],i)=>(
               <ellipse key={i} cx={x} cy={y} rx="6.5" ry="3" transform={`rotate(${rot} ${x} ${y})`} />
             ))}
           </g>
           {/* Laurel derecho */}
-          <g stroke="#B45309" strokeWidth="1.4" fill="rgba(245,158,11,0.30)">
+          <g stroke={GRAD.oroMedio} strokeWidth="1.2" fill="rgba(201,165,76,0.20)">
             <path d="M122 66 Q136 52 136 30 Q136 22 132 14" fill="none" strokeWidth="1.8"/>
             {[[134,18,40],[136,28,15],[135,38,-5],[132,47,-20],[127,56,-38],[121,63,-52]].map(([x,y,rot],i)=>(
               <ellipse key={i} cx={x} cy={y} rx="6.5" ry="3" transform={`rotate(${rot} ${x} ${y})`} />
@@ -674,36 +728,36 @@ function DecoracionEvento({ tipo }: { tipo: string }) {
           <ellipse cx="75" cy="64" rx="30" ry="4.5" fill="rgba(15,23,42,0.12)" />
           {/* Cuerpo del birrete (casquete) */}
           <path d="M55 40 L55 54 Q75 63 95 54 L95 40 Z" fill="url(#gradCapBody)" />
-          <path d="M55 40 L55 54 Q75 63 95 54 L95 40" stroke="#1e1b4b" strokeWidth="1" fill="none" opacity="0.6"/>
+          <path d="M55 40 L55 54 Q75 63 95 54 L95 40" stroke={GRAD.tinta} strokeWidth="1" fill="none" opacity="0.6"/>
           {/* Tablero (mortarboard) con perspectiva */}
           <path d="M75 18 L118 36 L75 54 L32 36 Z" fill="url(#gradCapBoard)" />
           {/* Brillo del tablero */}
-          <path d="M75 18 L118 36 L75 41 L32 36 Z" fill="rgba(255,255,255,0.14)" />
-          <path d="M75 18 L118 36 L75 54 L32 36 Z" stroke="#1e1b4b" strokeWidth="1.4" strokeLinejoin="round" fill="none" opacity="0.55"/>
+          <path d="M75 18 L118 36 L75 41 L32 36 Z" fill="rgba(255,255,255,0.12)" />
+          <path d="M75 18 L118 36 L75 54 L32 36 Z" stroke={GRAD.tinta} strokeWidth="1.4" strokeLinejoin="round" fill="none" opacity="0.55"/>
           {/* Botón central dorado */}
-          <circle cx="75" cy="34" r="3.4" fill="url(#gradGold)" stroke="#92400E" strokeWidth="0.6"/>
+          <circle cx="75" cy="34" r="3.4" fill="url(#gradGold)" stroke={GRAD.oroProfundo} strokeWidth="0.6"/>
           {/* Cordón de la borla */}
           <path d="M75 34 Q96 36 103 52" stroke="url(#gradGold)" strokeWidth="2.4" fill="none" strokeLinecap="round"/>
           {/* Borla dorada con hilos */}
           <circle cx="103" cy="53" r="3.2" fill="url(#gradGold)" />
           <path d="M100.5 55 L99.5 66 M103 56 L103 67 M105.5 55 L106.5 66" stroke="url(#gradGold)" strokeWidth="2" strokeLinecap="round"/>
-          <rect x="99" y="54.5" width="8" height="2.6" rx="1.3" fill="#B45309" />
+          <rect x="99" y="54.5" width="8" height="2.6" rx="1.3" fill={GRAD.oroOscuro} />
           {/* Diploma con lazo */}
           <g transform="translate(38,52) rotate(-12)">
-            <rect x="0" y="0" width="24" height="9" rx="4.5" fill="#FEF3C7" stroke="#D97706" strokeWidth="1.2"/>
-            <rect x="9" y="-1.5" width="6" height="12" rx="2" fill="#DC2626" opacity="0.85"/>
+            <rect x="0" y="0" width="24" height="9" rx="4.5" fill="#FFFFFF" stroke={GRAD.oroMedio} strokeWidth="1.2"/>
+            <rect x="9" y="-1.5" width="6" height="12" rx="2" fill={GRAD.navy2}/>
           </g>
           {/* Destellos */}
-          <path d="M75 4 L76.5 9 L81 10.5 L76.5 12 L75 17 L73.5 12 L69 10.5 L73.5 9 Z" fill="#F59E0B" opacity="0.9"/>
-          <circle cx="46" cy="14" r="1.6" fill="#FCD34D" />
-          <circle cx="106" cy="12" r="1.6" fill="#FCD34D" />
+          <path d="M75 4 L76.5 9 L81 10.5 L76.5 12 L75 17 L73.5 12 L69 10.5 L73.5 9 Z" fill={GRAD.oro} opacity="0.9"/>
+          <circle cx="46" cy="14" r="1.6" fill={GRAD.oroClaro} />
+          <circle cx="106" cy="12" r="1.6" fill={GRAD.oroClaro} />
         </svg>
         {/* Guirnalda de estrellas doradas */}
         <svg width="200" height="28" viewBox="0 0 200 28" fill="none">
-          <path d="M0 14 Q50 5 100 14 Q150 23 200 14" stroke="#D97706" strokeWidth="0.8" fill="none" opacity="0.45" />
+          <path d="M0 14 Q50 5 100 14 Q150 23 200 14" stroke={GRAD.oroMedio} strokeWidth="0.8" fill="none" opacity="0.45" />
           {[20, 60, 100, 140, 180].map((x, i) => (
             <g key={x} transform={`translate(${x},14)`}>
-              <path d={`M0 -${i===2?7:5} L1.5 -2 L${i===2?7:5} 0 L1.5 2 L0 ${i===2?7:5} L-1.5 2 L-${i===2?7:5} 0 L-1.5 -2 Z`} fill="#F59E0B" opacity={i===2?0.95:0.65} />
+              <path d={`M0 -${i===2?7:5} L1.5 -2 L${i===2?7:5} 0 L1.5 2 L0 ${i===2?7:5} L-1.5 2 L-${i===2?7:5} 0 L-1.5 -2 Z`} fill={GRAD.oro} opacity={i===2?0.95:0.6} />
             </g>
           ))}
         </svg>
@@ -805,6 +859,19 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
       </div>
     );
   }
+  if (tipo === "graduacion") {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(168,132,58,0.55))" }} />
+        <svg width="34" height="10" viewBox="0 0 34 10" fill="none">
+          <circle cx="3" cy="5" r="1.4" fill={GRAD.oro} opacity="0.6" />
+          <path d="M17 0.5 L19.2 5 L17 9.5 L14.8 5 Z" fill={GRAD.oro} />
+          <circle cx="31" cy="5" r="1.4" fill={GRAD.oro} opacity="0.6" />
+        </svg>
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(168,132,58,0.55))" }} />
+      </div>
+    );
+  }
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div
@@ -857,18 +924,18 @@ function TypewriterFrase({ texto }: { texto: string }) {
   }, [arranca, visible, texto.length]);
   const terminado = visible >= texto.length;
   return (
-    <div ref={ref} style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px", minHeight: 26 }}>
+    <div ref={ref} style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 16, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px", minHeight: 26 }}>
       <style>{`@keyframes twBlink{0%,49%{opacity:1}50%,100%{opacity:0}}`}</style>
-      <span style={{ color: "#B45309", marginRight: 4 }}>❝</span>
+      <span style={{ color: GRAD.oroMedio, marginRight: 4 }}>❝</span>
       {texto.slice(0, visible)}
       <span style={{
         display: "inline-block", width: 2, height: 18, verticalAlign: "-3px",
-        background: "linear-gradient(180deg,#F59E0B,#B45309)", marginLeft: 2,
+        background: `linear-gradient(180deg,${GRAD.oro},${GRAD.oroOscuro})`, marginLeft: 2,
         animation: "twBlink 0.85s step-end infinite",
         opacity: terminado ? 0 : 1,
         transition: terminado ? "opacity .8s 1.2s" : "none",
       }} />
-      {terminado && <span style={{ color: "#B45309", marginLeft: 4 }}>❞</span>}
+      {terminado && <span style={{ color: GRAD.oroMedio, marginLeft: 4 }}>❞</span>}
     </div>
   );
 }
@@ -887,18 +954,18 @@ function CarruselGrad({ fotos }: { fotos: string[] }) {
   return (
     <div style={{ margin: "14px 0 4px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
-        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right,transparent,rgba(217,119,6,0.5))" }} />
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#B45309", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-          📸 Su historia
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right,transparent,rgba(168,132,58,0.5))" }} />
+        <span style={{ fontFamily: "var(--f-label)", fontSize: 11, fontWeight: 600, letterSpacing: "0.24em", color: GRAD.oroOscuro, textTransform: "uppercase", whiteSpace: "nowrap" }}>
+          Su historia
         </span>
-        <div style={{ flex: 1, height: 1, background: "linear-gradient(to left,transparent,rgba(217,119,6,0.5))" }} />
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to left,transparent,rgba(168,132,58,0.5))" }} />
       </div>
       <div
         style={{
           position: "relative", borderRadius: 18, overflow: "hidden",
-          aspectRatio: "4 / 3", background: "#1e1b4b",
-          border: "2px solid rgba(217,119,6,0.45)",
-          boxShadow: "0 10px 30px rgba(30,27,75,0.30)",
+          aspectRatio: "4 / 3", background: GRAD.navy,
+          border: "1px solid rgba(201,165,76,0.55)",
+          boxShadow: "0 0 0 4px #FFFFFF, 0 0 0 5px rgba(201,165,76,0.30), 0 14px 32px rgba(10,15,36,0.28)",
         }}
         onMouseEnter={() => setPausado(true)}
         onMouseLeave={() => setPausado(false)}
@@ -931,7 +998,7 @@ function CarruselGrad({ fotos }: { fotos: string[] }) {
         ))}
         {/* Degradado inferior + contador */}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "34%", background: "linear-gradient(to top,rgba(10,10,30,0.55),transparent)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", top: 10, right: 12, background: "rgba(15,23,42,0.55)", backdropFilter: "blur(6px)", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: "#FDE68A" }}>
+        <div style={{ position: "absolute", top: 10, right: 12, background: "rgba(10,15,36,0.60)", backdropFilter: "blur(6px)", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: GRAD.oroClaro, border: "1px solid rgba(230,207,142,0.25)" }}>
           {idx + 1} / {fotos.length}
         </div>
         {/* Flechas */}
@@ -940,12 +1007,12 @@ function CarruselGrad({ fotos }: { fotos: string[] }) {
             <button
               onClick={() => setIdx(i => (i + fotos.length - 1) % fotos.length)}
               aria-label="Anterior"
-              style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(255,255,255,0.85)", color: "#92400E", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}
+              style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(255,255,255,0.90)", color: GRAD.tinta, fontSize: 18, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(10,15,36,0.25)" }}
             >‹</button>
             <button
               onClick={() => setIdx(i => (i + 1) % fotos.length)}
               aria-label="Siguiente"
-              style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(255,255,255,0.85)", color: "#92400E", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}
+              style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(255,255,255,0.90)", color: GRAD.tinta, fontSize: 18, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(10,15,36,0.25)" }}
             >›</button>
           </>
         )}
@@ -961,7 +1028,7 @@ function CarruselGrad({ fotos }: { fotos: string[] }) {
               style={{
                 width: i === idx ? 22 : 8, height: 8, borderRadius: 8,
                 border: "none", cursor: "pointer", padding: 0,
-                background: i === idx ? "linear-gradient(90deg,#D97706,#F59E0B)" : "rgba(217,119,6,0.30)",
+                background: i === idx ? `linear-gradient(90deg,${GRAD.oroMedio},${GRAD.oro})` : "rgba(15,23,51,0.14)",
                 transition: "all .3s",
               }}
             />
@@ -998,9 +1065,9 @@ function CountdownGrad({ fecha, hora }: { fecha: string; hora?: string | null })
       margin: "14px 0 4px",
       borderRadius: 18,
       padding: "16px 12px 14px",
-      background: "linear-gradient(135deg,#1e1b4b 0%,#312e81 55%,#4338ca 100%)",
-      border: "1.5px solid rgba(245,158,11,0.45)",
-      boxShadow: "0 8px 26px rgba(30,27,75,0.35), inset 0 1px 0 rgba(252,211,77,0.18)",
+      background: `radial-gradient(ellipse 80% 70% at 50% 0%, rgba(201,165,76,0.16) 0%, transparent 70%), linear-gradient(160deg,${GRAD.navy2} 0%,${GRAD.navy} 55%,${GRAD.noche} 100%)`,
+      border: "1px solid rgba(201,165,76,0.45)",
+      boxShadow: "0 14px 34px rgba(10,15,36,0.30), inset 0 1px 0 rgba(230,207,142,0.18)",
       textAlign: "center",
       position: "relative",
       overflow: "hidden",
@@ -1009,34 +1076,33 @@ function CountdownGrad({ fecha, hora }: { fecha: string; hora?: string | null })
         @keyframes cdShine{0%{transform:translateX(-120%) skewX(-18deg)}100%{transform:translateX(320%) skewX(-18deg)}}
         @keyframes cdPulseSeg{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
       `}</style>
-      <div style={{ position:"absolute", top:0, bottom:0, width:"32%", background:"linear-gradient(105deg,transparent,rgba(252,211,77,0.10),transparent)", animation:"cdShine 4.5s ease-in-out infinite", pointerEvents:"none" }}/>
-      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 2.5, color: "#FCD34D", textTransform: "uppercase", marginBottom: 10 }}>
-        🎓 Falta poco para la graduación
+      <div style={{ position:"absolute", top:0, bottom:0, width:"32%", background:"linear-gradient(105deg,transparent,rgba(230,207,142,0.09),transparent)", animation:"cdShine 4.5s ease-in-out infinite", pointerEvents:"none" }}/>
+      <div style={{ fontFamily: "var(--f-label)", fontSize: 11, fontWeight: 600, letterSpacing: "0.22em", color: GRAD.oroClaro, textTransform: "uppercase", marginBottom: 12 }}>
+        Falta poco para la graduación
       </div>
       <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
         {restante === 0 ? (
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 700, color: "#FDE68A" }}>
-            ¡Es hoy! 🎉
+          <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 24, fontWeight: 600, fontStyle: "italic", color: GRAD.oroClaro }}>
+            ¡Es hoy!
           </div>
         ) : unidades.map((u, i) => (
           <div key={u.l} style={{
             minWidth: 62,
-            background: "rgba(255,255,255,0.07)",
-            border: "1px solid rgba(252,211,77,0.30)",
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(230,207,142,0.22)",
             borderRadius: 12,
-            padding: "8px 4px 7px",
-            backdropFilter: "blur(4px)",
+            padding: "9px 4px 7px",
           }}>
             <div style={{
-              fontFamily: "'Cormorant Garamond',serif",
-              fontSize: 27, fontWeight: 700, lineHeight: 1,
-              color: "#FDE68A",
-              textShadow: "0 2px 10px rgba(252,211,77,0.35)",
+              fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)",
+              fontSize: 28, fontWeight: 600, lineHeight: 1,
+              color: "#FFFFFF",
+              fontVariantNumeric: "tabular-nums",
               animation: i === 3 ? "cdPulseSeg 1s ease-in-out infinite" : "none",
             }}>
               {String(u.v).padStart(2, "0")}
             </div>
-            <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: 1.4, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", marginTop: 3 }}>
+            <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: 1.4, color: GRAD.oroClaro, opacity: 0.85, textTransform: "uppercase", marginTop: 4 }}>
               {u.l}
             </div>
           </div>
@@ -1047,7 +1113,7 @@ function CountdownGrad({ fecha, hora }: { fecha: string; hora?: string | null })
 }
 
 // ─── Burbuja karaoke: muestra la frase que se está leyendo con la palabra actual resaltada ─
-function KaraokeBubble({ texto, charIdx }: { texto: string; charIdx: number }) {
+function KaraokeBubble({ texto, charIdx, subtitulo = false }: { texto: string; charIdx: number; subtitulo?: boolean }) {
   if (!texto) return null;
   // Dividir en oraciones conservando offsets
   const oraciones: { start: number; text: string }[] = [];
@@ -1068,25 +1134,25 @@ function KaraokeBubble({ texto, charIdx }: { texto: string; charIdx: number }) {
   return (
     <div style={{
       pointerEvents: "none",
-      maxWidth: 250,
-      background: "rgba(15,23,42,0.92)",
+      maxWidth: subtitulo ? 340 : 250,
+      background: "rgba(10,15,36,0.90)",
       backdropFilter: "blur(10px)",
       borderRadius: "16px 16px 4px 16px",
-      border: "1px solid rgba(252,211,77,0.35)",
-      padding: "10px 14px",
-      marginBottom: 8,
+      border: "1px solid rgba(230,207,142,0.35)",
+      padding: subtitulo ? "10px 14px 11px" : "10px 14px",
+      marginBottom: subtitulo ? 0 : 8,
       boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
       animation: "mascIn .3s ease both",
     }}>
-      <div style={{ fontSize: 13.5, lineHeight: 1.55, fontFamily: "'DM Sans',sans-serif" }}>
+      <div style={{ fontSize: subtitulo ? 14.5 : 13.5, lineHeight: 1.5, fontFamily: "'Jost',sans-serif" }}>
         {palabras.map((p, i) => {
           const dicha = p.start <= charIdx;
           const esActual = dicha && (i === palabras.length - 1 || palabras[i + 1].start > charIdx);
           return (
             <span key={i} style={{
-              color: esActual ? "#FCD34D" : dicha ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.42)",
+              color: esActual ? GRAD.oroClaro : dicha ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.42)",
               fontWeight: esActual ? 800 : dicha ? 600 : 400,
-              textShadow: esActual ? "0 0 12px rgba(252,211,77,0.55)" : "none",
+              textShadow: esActual ? "0 0 12px rgba(230,207,142,0.55)" : "none",
               transition: "color .12s, font-weight .12s",
             }}>{p.w}{" "}</span>
           );
@@ -1096,79 +1162,290 @@ function KaraokeBubble({ texto, charIdx }: { texto: string; charIdx: number }) {
   );
 }
 
-// ─── Mascota flotante sobre la invitación ────────────────────────────────────
+// ─── Guion hablado del avatar ─────────────────────────────────────────────────
+// El texto se arma para el OÍDO, no para la pantalla: la hora como se dice
+// ("a las seis de la tarde", no "18:00:00"), artículos donde el nombre del
+// evento no los trae, y cada frase cerrada para que la voz haga su pausa.
+// Sin adivinar género: "te invitamos", "tu asistencia quedó confirmada".
+
+function horaHablada(hora: string): string | null {
+  const m = /^(\d{1,2}):(\d{2})/.exec(hora.trim());
+  if (!m) return null;
+  const h24 = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const h12 = h24 % 12 || 12;
+  const franja =
+    h24 === 12 ? "del mediodía"
+    : h24 === 0 || h24 >= 19 ? "de la noche"
+    : h24 < 6 ? "de la madrugada"
+    : h24 < 12 ? "de la mañana"
+    : "de la tarde";
+  const minutos = min === 0 ? "" : min === 15 ? " y cuarto" : min === 30 ? " y media" : ` y ${min}`;
+  return `${h12 === 1 ? "a la una" : `a las ${h12}`}${minutos} ${franja}`;
+}
+
+function fechaHablada(fecha: string, conAnio = true): string {
+  return parseFechaLocal(fecha).toLocaleDateString("es", {
+    weekday: "long", day: "numeric", month: "long", ...(conAnio ? { year: "numeric" } : {}),
+  });
+}
+
+// "Graduación de Andrea" → "la graduación de Andrea"; si ya trae artículo, se respeta
+function nombreEventoHablado(nombre: string): string {
+  const n = nombre.trim();
+  if (/^(el|la|los|las|mi|mis|nuestra|nuestro|su)\s/i.test(n)) return n;
+  const minus = n.charAt(0).toLowerCase() + n.slice(1);
+  if (/^(graduaci[oó]n|fiesta|celebraci[oó]n|cena|ceremonia|boda|misa|recepci[oó]n|promoci[oó]n)/i.test(n)) return `la ${minus}`;
+  if (/^(cumplea[nñ]os|baile|brindis|almuerzo|acto|festejo)/i.test(n)) return `el ${minus}`;
+  return n;
+}
+
+function cerrarFrase(t: string): string {
+  const s = t.trim();
+  return /[.!?…]$/.test(s) ? s : `${s}.`;
+}
+
+// Lo que el motor de voz deletrea o pronuncia raro: emojis ("birrete", "corazón
+// rojo") y barras ("traje / vestido de gala" → "traje, o vestido de gala").
+// Idempotente: el guion ya llega limpio a leer() y los índices no se corren.
+function limpiarParaVoz(t: string): string {
+  return t
+    .replace(new RegExp("\\p{Extended_Pictographic}|\\uFE0F|\\u200D", "gu"), "")
+    .replace(/\s*\/\s*/g, ", o ")
+    .replace(/\s+([.,;:!?…])/g, "$1")   // el emoji quitado deja "vos ." → "vos."
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+// Un paso del recorrido: lo que se dice y la sección (data-guia) que se muestra
+type PasoGuia = { t: string; guia?: string };
+
+const SILENCIO_KEY = "evorix-voz-silencio";
+
 function FloatingMascot({
   invitado, evento, token: _token, fase, setFase, hablando, leer, detener, textoActual, charIdx,
+  hayPrograma, hayMesas, silencio, setSilencio,
 }: {
-  invitado: { nombre: string };
-  evento: { nombre: string; tipo: string; anfitriones?: string; frase_evento?: string | null;
-             mensaje_invitacion?: string | null; fecha?: string | null; hora?: string | null;
-             lugar?: string | null; como_llegar?: string | null; };
-  token: string; fase: string;
-  setFase: (f: string) => void;
+  invitado: Invitado;
+  evento: Evento;
+  token: string;
+  fase: FaseMascota;
+  setFase: (f: FaseMascota) => void;
   hablando: boolean;
   leer: (t: string, cb?: () => void) => void;
   detener: () => void;
   textoActual: string;
   charIdx: number;
+  hayPrograma: boolean;
+  hayMesas: boolean;
+  silencio: boolean;
+  setSilencio: (v: boolean) => void;
 }) {
   const [minimizado, setMinimizado] = useState(false);
   const esCumple = evento.tipo === "cumpleaños";
+  const esGrad = evento.tipo === "graduacion";
+  const primerNombre = invitado.nombre.trim().split(" ")[0];
+  const festejado = evento.anfitriones?.trim() || (esCumple ? "el festejado" : "quien se gradúa");
+  // Las instrucciones finales se dicen unos segundos después de confirmar:
+  // leen el número y las mesas de este ref, que para entonces ya llegaron.
+  const ultimo = useRef({ invitado, hayMesas });
+  ultimo.current = { invitado, hayMesas };
 
-  // ── FASE 1: Lee la invitación y termina con "dale click a Confirmar" ──────
+  // ── Recorrido guiado ─────────────────────────────────────────────────────
+  // Cada paso del guion sabe qué sección mostrar (data-guia): mientras la voz
+  // lo dice, la pantalla baja hasta esa sección y la marca en dorado. Si el
+  // invitado scrollea por su cuenta, se deja de mover la pantalla (solo se marca).
+  const pasosRef = useRef<PasoGuia[]>([]);
+  const pasoIdx = useRef(0);
+  const guiaActual = useRef<string | null>(null);
+  const usuarioMovio = useRef(false);
+  const ultimoGuion = useRef<{ pasos: PasoGuia[]; alTerminar: FaseMascota } | null>(null);
+  const finRef = useRef<FaseMascota>("esperando_confirm");
+
+  function marcar(guia: string | null) {
+    document.querySelectorAll(".guia-activa").forEach(el => el.classList.remove("guia-activa"));
+    guiaActual.current = guia;
+    if (!guia) return;
+    const el = document.querySelector<HTMLElement>(`[data-guia="${guia}"]`);
+    if (!el) return;
+    el.classList.add("guia-activa");
+    // La barra de decisión es fija: se marca pero no hay nada que scrollear
+    if (el.closest(".decision-bar") || usuarioMovio.current) return;
+    // Centrar en el espacio que queda libre entre la barra de arriba y
+    // los subtítulos + barra de abajo (no en el centro de la pantalla)
+    const r = el.getBoundingClientRect();
+    const arriba = 64, abajo = 240;
+    const libre = window.innerHeight - arriba - abajo;
+    const destino = r.height >= libre
+      ? r.top + window.scrollY - arriba - 8
+      : r.top + window.scrollY - arriba - (libre - r.height) / 2;
+    window.scrollTo({ top: Math.max(0, destino), behavior: "smooth" });
+  }
+
+  function decir(pasos: PasoGuia[], alTerminar: FaseMascota, recordar = true) {
+    const limpios = pasos.map(p => ({ ...p, t: limpiarParaVoz(p.t) })).filter(p => p.t);
+    pasosRef.current = limpios;
+    pasoIdx.current = 0;
+    finRef.current = alTerminar;
+    if (recordar) ultimoGuion.current = { pasos: limpios, alTerminar };
+    usuarioMovio.current = false;
+    guiaActual.current = null;
+    leer(limpios.map(p => p.t).join(" "), () => { marcar(null); setFase(alTerminar); });
+  }
+
+  // El invitado toma el control del scroll → no pelear con él
+  useEffect(() => {
+    const tomar = () => { usuarioMovio.current = true; };
+    window.addEventListener("touchmove", tomar, { passive: true });
+    window.addEventListener("wheel", tomar, { passive: true });
+    return () => {
+      window.removeEventListener("touchmove", tomar);
+      window.removeEventListener("wheel", tomar);
+      document.querySelectorAll(".guia-activa").forEach(el => el.classList.remove("guia-activa"));
+    };
+  }, []);
+
+  // Qué paso se está diciendo ahora (por su posición en el texto leído)
+  useEffect(() => {
+    if (!hablando || !textoActual) return;
+    let desde = 0;
+    let guia: string | null = null;
+    pasosRef.current.forEach((p, i) => {
+      const at = textoActual.indexOf(p.t, desde);
+      if (at < 0 || at > charIdx) return;
+      pasoIdx.current = i;
+      guia = p.guia ?? guia; // un paso sin sección sigue mostrando la anterior
+      desde = at + p.t.length;
+    });
+    if (guia !== guiaActual.current) marcar(guia);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charIdx, textoActual, hablando]);
+
+  function saltar() {
+    detener();
+    marcar(null);
+    setFase(finRef.current);
+  }
+
+  function repetir() {
+    if (hablando || !ultimoGuion.current) return;
+    decir(ultimoGuion.current.pasos, ultimoGuion.current.alTerminar);
+  }
+
+  // Silencio al instante: se retoma la frase actual con el volumen nuevo
+  function alternarSilencio() {
+    const nuevo = !silencio;
+    setSilencio(nuevo);
+    if (hablando) {
+      const resto = pasosRef.current.slice(pasoIdx.current);
+      if (resto.length) decir(resto, finRef.current, false);
+    }
+  }
+
+  // ── FASE 1: La invitación completa y cómo responderla ─────────────────────
   useEffect(() => {
     if (fase !== "leyendo") return;
-    const primerNombre = invitado.nombre.trim().split(" ")[0];
-    const partes: string[] = [];
-    partes.push(`¡Hola, ${primerNombre}! Tenés una invitación especial.`);
-    partes.push(`Estás invitad${primerNombre.endsWith("a") ? "a" : "o"} a ${evento.nombre}.`);
-    if (evento.anfitriones) partes.push(`Organizado con cariño por ${evento.anfitriones}.`);
-    if (evento.frase_evento) partes.push(evento.frase_evento + ".");
-    if (evento.mensaje_invitacion) partes.push(evento.mensaje_invitacion);
-    if (evento.fecha) {
-      const f = new Date(evento.fecha + "T12:00:00").toLocaleDateString("es", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
-      partes.push(`La celebración será el ${f}.`);
+    const pasos: PasoGuia[] = [];
+    pasos.push({ t: `¡Hola, ${primerNombre}! Tenés una invitación muy especial.`, guia: "inicio" });
+    pasos.push({ t: `Te invitamos a ${nombreEventoHablado(evento.nombre)}.` });
+    if (evento.anfitriones) pasos.push({ t: `Te la envía con mucho cariño ${evento.anfitriones}.` });
+    if (evento.frase_evento) pasos.push({ t: cerrarFrase(evento.frase_evento) });
+    if (evento.mensaje_invitacion) pasos.push({ t: cerrarFrase(evento.mensaje_invitacion) });
+
+    const hora = evento.hora ? horaHablada(evento.hora) : null;
+    if (evento.fecha) pasos.push({ t: `La cita es el ${fechaHablada(evento.fecha)}${hora ? `, ${hora}` : ""}.`, guia: "fecha" });
+    else if (hora) pasos.push({ t: `Comenzamos ${hora}.`, guia: "fecha" });
+    if (evento.lugar) pasos.push({ t: `El lugar es ${cerrarFrase(evento.lugar)}`, guia: "lugar" });
+    if (evento.como_llegar) pasos.push({ t: `Para llegar: ${cerrarFrase(evento.como_llegar)}`, guia: "llegar" });
+    if (esGrad && (evento.lugar || evento.maps_url)) {
+      pasos.push({ t: "Si necesitás indicaciones, tenés botones para abrir la ubicación en Google Maps o en Waze.", guia: "mapa" });
+    } else if (evento.maps_url) {
+      pasos.push({ t: "Si necesitás indicaciones, tocá el botón de Google Maps.", guia: "mapa" });
     }
-    if (evento.hora) partes.push(`Comenzamos a las ${evento.hora} horas.`);
-    if (evento.lugar) partes.push(`El lugar es ${evento.lugar}.`);
-    if (evento.como_llegar) partes.push(`Para llegar: ${evento.como_llegar}.`);
-    partes.push(`Para confirmar tu asistencia, dale click al botón Confirmar asistencia que aparece más abajo.`);
-    leer(partes.join(" "), () => setFase("esperando_confirm"));
+
+    if (evento.vestimenta_activo && evento.vestimenta_tipo) {
+      const v = TIPOS_VESTIMENTA_MAP[evento.vestimenta_tipo];
+      if (v) pasos.push({ t: `El código de vestimenta es ${v.label}: ${cerrarFrase(v.desc.charAt(0).toLowerCase() + v.desc.slice(1))}`, guia: "vestimenta" });
+      if (evento.vestimenta_nota) pasos.push({ t: cerrarFrase(evento.vestimenta_nota) });
+    }
+    // Mismo orden que en la pantalla, para que el recorrido solo baje
+    const nombres = nombresDe(invitado);
+    if (nombres.length > 1) {
+      pasos.push({ t: `Esta invitación incluye a ${nombres.slice(1).map(n => n.trim().split(" ")[0]).join(" y ")}.`, guia: "acompanantes" });
+    } else if (!invitado.cupo_elije_invitado && (invitado.num_personas || 1) > 1) {
+      pasos.push({ t: `Tu invitación es para ${invitado.num_personas} personas.` });
+    }
+    if (evento.regalo_activo && (evento.regalo_banco || evento.regalo_cuenta)) {
+      pasos.push({ t: `Si querés hacerle un regalo a ${festejado}, acá tenés los datos para una transferencia.`, guia: "regalo" });
+    }
+    if (hayPrograma) pasos.push({ t: "Y acá está el programa, con la hora de cada momento de la celebración.", guia: "programa" });
+    if (evento.fecha_limite_confirmacion) {
+      pasos.push({ t: `Te pedimos confirmar antes del ${fechaHablada(evento.fecha_limite_confirmacion, false)}.` });
+    }
+    pasos.push({ t: "Para confirmar, tocá el botón dorado que dice Confirmar asistencia, abajo en la pantalla.", guia: "confirmar" });
+    pasos.push({ t: "Y si no vas a poder ir, tocá No podré, así nos avisás.", guia: "no-podre" });
+    decir(pasos, "esperando_confirm");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
 
   // Detección de step manejada en el componente padre
 
-  // ── FASE 2: Post confirmación — cuántos van ───────────────────────────────
+  // ── FASE 2: Formulario — cuántas personas van ─────────────────────────────
   useEffect(() => {
     if (fase !== "post_confirm") return;
-    leer(
-      `¡Perfecto! Ahora indicá cuántas personas irán contigo ${esCumple ? "al cumpleaños" : "a la graduación"}, incluyéndote a vos.`,
-      () => setFase("esperando_submit")
-    );
+    const pasos: PasoGuia[] = [{ t: "¡Qué alegría que vengas!" }];
+    if (nombresDe(invitado).length > 1) {
+      pasos.push({ t: "Ahora marcá quiénes van, tocando cada nombre.", guia: "personas" });
+    } else {
+      pasos.push({ t: "Ahora indicá cuántas personas van, contándote a vos. Usá los botones de más y de menos.", guia: "personas" });
+      if (!invitado.cupo_elije_invitado && (invitado.num_personas || 1) > 1) {
+        pasos.push({ t: `Tu invitación es para hasta ${invitado.num_personas} personas.` });
+      }
+    }
+    pasos.push({ t: "Cuando esté listo, tocá Confirmar asistencia.", guia: "confirmar-form" });
+    decir(pasos, "esperando_submit");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
 
-  // ── FASE 3: Instrucciones de acciones disponibles ────────────────────────
+  // ── FASE 3: Confirmado — QR, mesa y lo que puede hacer ahora ──────────────
   useEffect(() => {
     if (fase !== "instrucciones") return;
-    leer(
-      `¡Listo, ya quedaste registrado! Si querés compartir un momento especial, podés subir hasta cinco fotos del evento, las cuales se verán en el muro para que todos las disfruten. También podés escribirle un deseo ${esCumple ? "de cumpleaños al festejado" : "al graduado"}, agendar la fecha en tu calendario, o ver el muro. Si no deseás hacer nada más, usá el botón de salir. ¡Muchas gracias y que disfruten la celebración!`,
-      () => setFase("oculto")
-    );
+    // Deja sonar la fanfarria y los aplausos antes de hablar
+    const t = setTimeout(() => {
+      const { invitado: inv, hayMesas: mesas } = ultimo.current;
+      const pasos: PasoGuia[] = [];
+      pasos.push({ t: "¡Listo! Tu asistencia quedó confirmada.", guia: "numero" });
+      if (inv.numero_confirmacion) pasos.push({ t: `Tu número de confirmación es el ${inv.numero_confirmacion}.` });
+      pasos.push({ t: "Esta es tu entrada, con tu código QR.", guia: "qr" });
+      pasos.push({ t: "Guardala con el botón Guardar mi entrada, o sacale una captura, porque la vas a mostrar al llegar.", guia: "guardar-entrada" });
+      if (mesas && !inv.mesa_id) pasos.push({ t: "También podés elegir tu mesa en la lista, tocando la que prefieras.", guia: "mesa" });
+      pasos.push({ t: "Si querés, subí hasta cinco fotos para el muro del evento.", guia: "fotos" });
+      pasos.push({ t: `Y escribile un deseo a ${festejado}.`, guia: "acciones" });
+      pasos.push({ t: "Con el botón del calendario guardás la fecha para que te llegue un recordatorio, y con Compartir le contás a tus amigos que vas.", guia: "acciones" });
+      pasos.push({ t: "Cuando termines, tocá Listo, cerrar esta ventana.", guia: "cerrar" });
+      pasos.push({ t: esCumple ? "¡Nos vemos en la fiesta!" : "¡Nos vemos en la graduación!" });
+      decir(pasos, "reposo");
+    }, 1900);
+    return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
 
   // ── FASE 4: Despedida si no puede asistir ─────────────────────────────────
   useEffect(() => {
     if (fase !== "despedida") return;
-    const primerNombre = invitado.nombre.trim().split(" ")[0];
-    leer(
-      `Lamentamos mucho que no puedas acompañarnos, ${primerNombre}. Igual podés dejarle un deseo ${esCumple ? "al festejado" : "al graduado"} desde el muro. ¡Gracias por avisarnos y que estés muy bien!`,
-      () => setFase("oculto")
-    );
+    decir([
+      { t: `Qué pena que no puedas acompañarnos, ${primerNombre}. Gracias por avisar.` },
+      { t: `Igual podés dejarle un mensaje a ${festejado} desde el muro del evento. ¡Que estés muy bien!` },
+    ], "oculto");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
+
+  const icoVoz = silencio ? (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+  ) : (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+  );
+  const tintaBtn = esCumple ? "#4F46E5" : GRAD.tinta;
 
   if (minimizado) {
     return (
@@ -1177,7 +1454,7 @@ function FloatingMascot({
         style={{ position:"fixed", bottom:130, right:14, zIndex:8000, cursor:"pointer",
           width:56, height:56, borderRadius:"50%",
           overflow:"hidden",
-          boxShadow:"0 6px 20px rgba(79,70,229,0.45)",
+          boxShadow: esCumple ? "0 6px 20px rgba(79,70,229,0.45)" : "0 0 0 2px rgba(230,207,142,0.75), 0 8px 22px rgba(10,15,36,0.45)",
           animation: hablando ? "mascPulse 0.6s ease-in-out infinite alternate" : "none",
         }}
       >
@@ -1188,42 +1465,72 @@ function FloatingMascot({
   }
 
   return (
-    <div style={{
-      position:"fixed", bottom:130, right:14, zIndex:8000,
-      display:"flex", flexDirection:"column", alignItems:"flex-end", gap:0,
-      pointerEvents:"none",
-    }}>
+    <>
       <style>{`
         @keyframes mascFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
         @keyframes mascIn{from{opacity:0;transform:translateY(20px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
-        .masc-wrap{animation:mascIn .5s cubic-bezier(.22,1,.36,1) both, mascFloat 2.4s 0.5s ease-in-out infinite;pointer-events:auto}
-        .masc-ctrl{pointer-events:auto;display:flex;gap:6px;margin-bottom:4px;justify-content:flex-end}
-        .masc-btn{padding:4px 10px;border-radius:20px;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;backdrop-filter:blur(8px)}
+        @keyframes guiaLuz{0%,100%{outline-color:var(--gold);outline-offset:4px}50%{outline-color:rgba(201,165,76,0.15);outline-offset:9px}}
+        .masc-wrap{animation:mascIn .5s cubic-bezier(.22,1,.36,1) both, mascFloat 2.4s 0.5s ease-in-out infinite;pointer-events:auto;cursor:pointer}
+        .masc-ctrl{pointer-events:auto;display:flex;gap:6px;margin-bottom:6px;justify-content:flex-end}
+        .masc-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:'Jost',sans-serif;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.18)}
+        .masc-subs{position:fixed;bottom:130px;left:12px;right:90px;z-index:8000;display:flex;justify-content:flex-end;pointer-events:none}
+        /* Sección que el avatar está explicando */
+        .guia-activa{outline:2px solid var(--gold);outline-offset:4px;border-radius:14px;animation:guiaLuz 1.6s ease-in-out infinite}
+        .decision-bar .guia-activa{outline-offset:3px}
+        @media (prefers-reduced-motion: reduce){.guia-activa{animation:none}}
       `}</style>
 
-      {/* Controles */}
-      <div className="masc-ctrl">
-        {(fase === "leyendo") && (
-          <button className="masc-btn" style={{ background:"rgba(255,255,255,0.92)", color:"#4F46E5" }}
-            onClick={() => { detener(); setFase("instrucciones"); }}>
-            Saltar →
+      {/* Subtítulos: al lado del avatar, abajo, sin tapar el centro de la pantalla */}
+      {hablando && (
+        <div className="masc-subs">
+          <KaraokeBubble texto={textoActual} charIdx={charIdx} subtitulo />
+        </div>
+      )}
+
+      <div style={{
+        position:"fixed", bottom:130, right:14, zIndex:8001,
+        display:"flex", flexDirection:"column", alignItems:"flex-end", gap:0,
+        pointerEvents:"none",
+      }}>
+        {/* Controles */}
+        <div className="masc-ctrl">
+          {hablando ? (
+            <button className="masc-btn" style={{ background:"rgba(255,255,255,0.94)", color: tintaBtn }} onClick={saltar}>
+              Saltar →
+            </button>
+          ) : ultimoGuion.current && (
+            <button className="masc-btn" style={{ background:"rgba(255,255,255,0.94)", color: tintaBtn }} onClick={repetir} aria-label="Repetir la explicación">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              Repetir
+            </button>
+          )}
+          <button className="masc-btn" style={{ background: silencio ? (esCumple ? "#4F46E5" : GRAD.oro) : "rgba(0,0,0,0.55)", color: silencio && !esCumple ? GRAD.tinta : "white" }}
+            onClick={alternarSilencio} aria-label={silencio ? "Activar la voz" : "Silenciar la voz"} aria-pressed={silencio}>
+            {icoVoz}
           </button>
-        )}
-        <button className="masc-btn" style={{ background:"rgba(0,0,0,0.55)", color:"white" }}
-          onClick={() => { detener(); setMinimizado(true); }}>
-          —
-        </button>
-      </div>
+          <button className="masc-btn" style={{ background:"rgba(0,0,0,0.55)", color:"white" }}
+            onClick={() => { detener(); marcar(null); setMinimizado(true); }} aria-label="Minimizar">
+            —
+          </button>
+        </div>
 
-      {/* Burbuja con el texto leído en sincronía con la voz */}
-      {hablando && <KaraokeBubble texto={textoActual} charIdx={charIdx} />}
-
-      {/* Mascota */}
-      <div className="masc-wrap">
-        <GradMascot hablando={hablando} tipo={evento.tipo} />
+        {/* Mascota: tocarla repite la última explicación */}
+        <div className="masc-wrap" onClick={repetir} title="Tocame para repetir">
+          <GradMascot hablando={hablando} tipo={evento.tipo} />
+        </div>
       </div>
-    </div>
+    </>
   );
+}
+
+// Nombres de la tarjeta (lista que carga el organizador), sin vacíos
+function nombresDe(inv: { nombres_personas?: string | null }): string[] {
+  try {
+    const p = inv.nombres_personas ? JSON.parse(inv.nombres_personas) : null;
+    return Array.isArray(p) ? p.filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
+  } catch {
+    return [];
+  }
 }
 
 // ─── Avatar animado: graduado (birrete/borla) o cumpleañero (gorrito/globo) ───
@@ -1366,14 +1673,16 @@ function GradMascot({ hablando, tipo = "graduacion" }: { hablando: boolean; tipo
     <div style={{ width: 64, height: 64 }}>
       <style>{`
         @keyframes voicePulse{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,0.5)}70%{box-shadow:0 0 0 14px rgba(79,70,229,0)}}
+        @keyframes voicePulseOro{0%,100%{box-shadow:0 0 0 2px rgba(230,207,142,0.75),0 0 0 0 rgba(201,165,76,0.55)}70%{box-shadow:0 0 0 2px rgba(230,207,142,0.75),0 0 0 14px rgba(201,165,76,0)}}
         @keyframes voiceIdle{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
         .vbtn{width:64px;height:64px;border-radius:50%;border:none;cursor:pointer;padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;transition:transform .15s;-webkit-tap-highlight-color:transparent}
         .vbtn.talking{animation:voicePulse 1s ease-out infinite}
+        .vbtn.talking.oro{animation:voicePulseOro 1s ease-out infinite}
         .vbtn.idle{animation:voiceIdle 2.5s ease-in-out infinite}
       `}</style>
       <div
-        className={`vbtn ${hablando ? "talking" : "idle"}`}
-        style={{ boxShadow: tipo === "cumpleaños" ? "0 6px 20px rgba(219,39,119,0.45)" : "0 6px 20px rgba(79,70,229,0.40)" }}
+        className={`vbtn ${hablando ? "talking" : "idle"}${tipo === "graduacion" ? " oro" : ""}`}
+        style={{ boxShadow: tipo === "cumpleaños" ? "0 6px 20px rgba(219,39,119,0.45)" : "0 0 0 2px rgba(230,207,142,0.75), 0 8px 24px rgba(10,15,36,0.45)" }}
       >
         <GradAvatar size={64} hablando={hablando} tipo={tipo} />
       </div>
@@ -1390,26 +1699,48 @@ function useTTS() {
   const [charIdx, setCharIdx] = useState(0);
   const fallbackTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const boundaryFired = useRef(false);
+  // Modo silencio: el recorrido y los subtítulos siguen, sin sonido (quien abre
+  // la invitación en el trabajo). Se recuerda en este celular.
+  const [silencio, setSilencioState] = useState(false);
+  const silencioRef = useRef(false);
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(SILENCIO_KEY) === "1";
+      silencioRef.current = v;
+      setSilencioState(v);
+    } catch { /* sin almacenamiento: con voz */ }
+  }, []);
+  function setSilencio(v: boolean) {
+    silencioRef.current = v;
+    setSilencioState(v);
+    try { localStorage.setItem(SILENCIO_KEY, v ? "1" : "0"); } catch { /* opcional */ }
+  }
 
   function limpiarFallback() {
     if (fallbackTimer.current) { clearInterval(fallbackTimer.current); fallbackTimer.current = null; }
   }
 
-  // Elegir la voz en español más natural disponible (neural/online > Google > local)
+  // Elegir la voz en español más natural disponible, con acento latinoamericano.
+  // Orden: neurales de Edge ("Natural") > Google (Chrome/Android) > Siri/mejoradas
+  // de Apple > el resto. Las de escritorio de Windows (Helena, Sabina…) suenan
+  // robóticas, y macOS/iOS traen voces de juguete (Eddy, Grandma…) que nunca van.
   function mejorVozEs(): SpeechSynthesisVoice | null {
-    const voces = window.speechSynthesis.getVoices().filter(v => v.lang?.toLowerCase().startsWith("es"));
+    const voces = window.speechSynthesis.getVoices().filter(v => /^es([-_]|$)/i.test(v.lang || ""));
     if (!voces.length) return null;
     const score = (v: SpeechSynthesisVoice) => {
       const n = v.name.toLowerCase();
+      const lang = v.lang.toLowerCase().replace("_", "-");
       let p = 0;
-      if (n.includes("natural")) p += 6;      // Microsoft Edge voces neurales
-      if (n.includes("neural")) p += 6;
-      if (n.includes("online")) p += 3;
-      if (n.includes("google")) p += 4;       // Chrome: "Google español"
-      if (n.includes("premium") || n.includes("enhanced") || n.includes("mejorada")) p += 3;
-      if (n.includes("paulina") || n.includes("mónica") || n.includes("monica") || n.includes("sabina") || n.includes("helena") || n.includes("dalia")) p += 2;
-      if (v.lang.toLowerCase() === "es-es" || v.lang.toLowerCase() === "es-us" || v.lang.toLowerCase() === "es-mx") p += 1;
-      if (!v.localService) p += 2;            // voces en la nube suenan mejor
+      if (/natural|neural/.test(n)) p += 10;
+      if (n.includes("google")) p += 7;
+      if (/premium|enhanced|mejorada|siri/.test(n)) p += 6;
+      if (/paulina|m[oó]nica|dalia|lorena|rodrigo|jorge|marisol/.test(n)) p += 2;
+      if (lang !== "es-es") p += 3;                 // acento latinoamericano
+      if (/^es-(mx|us|419|sv)$/.test(lang)) p += 1;
+      if (!v.localService) p += 2;                  // las de la nube suenan mejor
+      if (/microsoft/.test(n) && !/natural|online/.test(n)) p -= 3;
+      if (/espeak|compact/.test(n)) p -= 8;
+      if (/eddy|flo\b|grandma|grandpa|reed|rocko|sandy|shelley|albert|bahh|bells|boing|bubbles|cellos|fred|jester|junior|kathy|organ|ralph|superstar|trinoids|whisper|wobble|zarvox/.test(n)) p -= 20;
       return p;
     };
     return voces.sort((a, b) => score(b) - score(a))[0];
@@ -1423,15 +1754,16 @@ function useTTS() {
     if (watchdog.current) { clearTimeout(watchdog.current); watchdog.current = null; }
   }
 
-  function leer(texto: string, onFin?: () => void) {
+  function leer(textoOriginal: string, onFin?: () => void) {
     if (typeof window === "undefined" || !window.speechSynthesis) { onFin?.(); return; }
     const ss = window.speechSynthesis;
+    const texto = limpiarParaVoz(textoOriginal);
     const sesion = ++sesionRef.current;
     try { ss.cancel(); } catch {}
     limpiarTimers();
-    // Bajar música mientras habla
+    // Bajar música mientras habla (en silencio no hace falta)
     const audio = globalAudioRef.current;
-    if (audio) audio.volume = 0.12;
+    if (audio && !silencioRef.current) audio.volume = 0.12;
 
     // Estado OPTIMISTA: el avatar habla desde ya.
     // iOS Safari muchas veces NO dispara onstart, y sin esto la boca/burbuja no aparecían.
@@ -1440,8 +1772,9 @@ function useTTS() {
     setCharIdx(0);
     boundaryFired.current = false;
 
-    // Karaoke por tiempo (iOS no dispara onboundary): estimación continua
-    const rate = 0.88;
+    // Karaoke por tiempo (iOS no dispara onboundary): estimación continua.
+    // Velocidad casi normal y tono sin tocar: estirar una voz neural la vuelve metálica.
+    const rate = 0.95;
     const charsPorSeg = 13.5 * rate;
     const t0 = Date.now();
     fallbackTimer.current = setInterval(() => {
@@ -1466,17 +1799,20 @@ function useTTS() {
     const chunks = (texto.match(/[^.!?…]+[.!?…]*\s*/g) ?? [texto]).filter(c => c.trim().length > 0);
     let idx = 0;
     let offset = 0;
+    // Una sola voz por lectura: si las voces llegan tarde se toma la primera
+    // buena que aparezca, pero nunca se cambia de voz a mitad de la invitación.
+    let voz: SpeechSynthesisVoice | null = null;
     const hablarSiguiente = () => {
       if (sesion !== sesionRef.current) return;
       if (idx >= chunks.length) { fin(); return; }
       const parte = chunks[idx];
       const chunkOffset = texto.indexOf(parte, offset) >= 0 ? texto.indexOf(parte, offset) : offset;
       const u = new SpeechSynthesisUtterance(parte);
-      u.lang = "es-ES";
+      u.lang = "es-MX"; // sin lista de voces (iOS al arrancar): pedir acento latino
       u.rate = rate;
-      u.pitch = 1.05;
-      u.volume = 1;
-      const voz = mejorVozEs();
+      u.pitch = 1;
+      u.volume = silencioRef.current ? 0 : 1;
+      if (!voz) voz = mejorVozEs();
       if (voz) { u.voice = voz; u.lang = voz.lang; }
       u.onboundary = (e: SpeechSynthesisEvent) => {
         if (sesion !== sesionRef.current) return;
@@ -1536,7 +1872,7 @@ function useTTS() {
     if (audio) audio.volume = 1;
   }
 
-  return { hablando, listo, leer, detener, textoActual, charIdx };
+  return { hablando, listo, leer, detener, textoActual, charIdx, silencio, setSilencio };
 }
 
 // ─── Desbloqueo de TTS en iOS: debe llamarse DENTRO de un gesto del usuario ────
@@ -1573,7 +1909,8 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
     syncState();
 
     // Si el audio no está reproduciendo todavía, intentar arrancar
-    if (a.paused) {
+    // (salvo que el invitado haya entrado sin sonido: ahí arranca solo si toca el reproductor)
+    if (a.paused && !preferenciaAudio.sinSonido) {
       a.muted = false;
       a.play().then(() => setPlaying(true)).catch(() => {
         // Fallback: esperar próximo gesto
@@ -1599,6 +1936,9 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
       a.pause();
       setPlaying(false);
     } else {
+      // Tocar el reproductor es pedir música explícitamente, aunque haya entrado sin sonido
+      preferenciaAudio.sinSonido = false;
+      a.muted = false;
       a.play().then(() => setPlaying(true)).catch(() => {});
     }
   }
@@ -1746,12 +2086,16 @@ function SubirFotosInvitado({
   }, []);
 
   async function cargarFotos() {
-    const { data } = await supabase
+    // Miniaturas si existen (supabase-muro.sql); si la columna no está, solo url
+    const consulta = (cols: string) => supabase
       .from("fotos")
-      .select("url")
+      .select(cols)
       .eq("invitado_id", invitadoId)
       .order("created_at", { ascending: true });
-    if (data) setFotos(data.map((f) => f.url).filter(Boolean));
+    let res = await consulta("url,thumb_url");
+    if (res.error) res = await consulta("url");
+    const filas = (res.data ?? []) as unknown as { url: string; thumb_url?: string | null }[];
+    setFotos(filas.map((f) => f.thumb_url || f.url).filter(Boolean));
     setCargado(true);
   }
 
@@ -1762,27 +2106,14 @@ function SubirFotosInvitado({
     const seleccionadas = files.slice(0, disponibles);
     setSubiendo(true);
     const nuevas: string[] = [];
+    // Cada foto se achica en el celular antes de subir (lib/fotos): completa
+    // ~400 KB + miniatura para el muro, en vez de los 3–8 MB originales
     for (const file of seleccionadas) {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${eventoId}/${invitadoId}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { data: up, error } = await supabase.storage
-        .from("fotos-eventos")
-        .upload(path, file, { upsert: false });
-      if (!error && up) {
-        const { data: urlData } = supabase.storage
-          .from("fotos-eventos")
-          .getPublicUrl(up.path);
-        const url = urlData?.publicUrl;
-        if (url) {
-          await supabase.from("fotos").insert({
-            evento_id: eventoId,
-            invitado_id: invitadoId,
-            url,
-            path: up.path,
-            estado: "aprobada",
-          });
-          nuevas.push(url);
-        }
+      try {
+        const { url, thumbUrl } = await subirFotoEvento({ archivo: file, eventoId, invitadoId });
+        nuevas.push(thumbUrl || url);
+      } catch (err) {
+        toast.error((err as Error).message);
       }
     }
     setSubiendo(false);
@@ -1868,16 +2199,16 @@ function SubirFotosInvitado({
 
       {/* Prompt contextual: publicar deseo después de foto 1 o foto 5 */}
       {promptDeseo && (
-        <div style={{ marginTop: 12, background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", border: "1.5px solid rgba(79,70,229,0.20)", borderRadius: 16, padding: "18px 16px", animation: "fadeUp 0.3s ease" }}>
+        <div style={{ marginTop: 12, background: "var(--acc-soft-grad, linear-gradient(135deg,#EEF2FF,#E0E7FF))", border: "1.5px solid var(--acc-line, rgba(79,70,229,0.20))", borderRadius: 16, padding: "18px 16px", animation: "fadeUp 0.3s ease" }}>
           <div style={{ fontSize: 22, textAlign: "center", marginBottom: 8 }}>
             {promptDeseo === "maxima" ? "🎉" : "📸"}
           </div>
-          <p style={{ fontSize: 13, color: "#3730A3", fontWeight: 600, textAlign: "center", marginBottom: 4 }}>
+          <p style={{ fontSize: 13, color: "var(--acc-ink, #3730A3)", fontWeight: 600, textAlign: "center", marginBottom: 4 }}>
             {promptDeseo === "maxima"
               ? "¡Llegaste al máximo de fotos!"
               : "¡Primera foto subida!"}
           </p>
-          <p style={{ fontSize: 12, color: "#6366F1", textAlign: "center", marginBottom: 14, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: "var(--acc-sub, #6366F1)", textAlign: "center", marginBottom: 14, lineHeight: 1.5 }}>
             {promptDeseo === "maxima"
               ? "¿Querés dejar tu deseo para los anfitriones antes de ir al muro?"
               : "¿Es tu única foto? Podés publicar tu deseo ahora o subir más fotos primero."}
@@ -1885,19 +2216,471 @@ function SubirFotosInvitado({
           <div style={{ display: "flex", gap: 8 }}>
             <button
               onClick={() => { setPromptDeseo(null); if (onMostrarDeseo) onMostrarDeseo(); }}
-              style={{ flex: 1, background: "linear-gradient(135deg,#3730A3,#4F46E5)", color: "#fff", border: "none", borderRadius: 12, padding: "12px 8px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 14px rgba(79,70,229,0.28)" }}
+              style={{ flex: 1, background: "var(--acc-primary, linear-gradient(135deg,#3730A3,#4F46E5))", color: "var(--acc-primary-ink, #fff)", border: "none", borderRadius: 12, padding: "12px 8px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "var(--acc-primary-shadow, 0 4px 14px rgba(79,70,229,0.28))" }}
             >
               💌 Publicar deseo
             </button>
             <button
               onClick={() => setPromptDeseo(null)}
-              style={{ flex: 1, background: "white", color: "#6366F1", border: "1.5px solid rgba(99,102,241,0.30)", borderRadius: 12, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              style={{ flex: 1, background: "white", color: "var(--acc-sub, #6366F1)", border: "1.5px solid var(--acc-line, rgba(99,102,241,0.30))", borderRadius: 12, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               {promptDeseo === "maxima" ? "Ir al muro" : "Subir más fotos"}
             </button>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Preferencia de audio del invitado ────────────────────────────────────────
+// "Entrar sin sonido" la marca: ni la música ni el desbloqueo automático la
+// encienden después (el invitado puede igual tocar el reproductor).
+const preferenciaAudio = { sinSonido: false };
+
+// ─── Portada de graduación ────────────────────────────────────────────────────
+// Una sola pantalla antes de la invitación, como la tapa de una revista: la foto
+// del graduado a sangre, su nombre como protagonista, para quién es, la fecha y
+// un único botón. Al tocarlo se lanzan los birretes y la portada sube como un
+// telón. "Entrar sin sonido" para quien la abre en el trabajo o en el bus.
+function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonidoPrevio }: {
+  invitado: Invitado;
+  evento: Evento;
+  nombres: string[];
+  saliendo: boolean;
+  onEntrar: (conSonido: boolean) => void;
+  onSinSonidoPrevio: () => void;
+}) {
+  const protagonista = evento.anfitriones?.trim() || evento.nombre;
+  const anio = evento.fecha ? parseFechaLocal(evento.fecha).getFullYear() : null;
+  const fecha = evento.fecha
+    ? (() => { const f = parseFechaLocal(evento.fecha!).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" }); return f.charAt(0).toUpperCase() + f.slice(1); })()
+    : null;
+  const hora = evento.hora ? formatHora(evento.hora) : null;
+  const primeros = (n: string) => n.trim().split(/\s+/).slice(0, 2).join(" ");
+  const para = nombres.length > 1
+    ? nombres.slice(0, 2).map(n => n.trim().split(/\s+/)[0]).join(" y ")
+    : primeros(invitado.nombre);
+  const mono = iniciales(protagonista);
+  // El monograma está siempre debajo: mientras la foto carga (señal floja) o si
+  // falla, la portada nunca queda vacía. La foto entra con un fundido.
+  const [fotoLista, setFotoLista] = useState(false);
+
+  return (
+    <div className={`portada${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`}>
+      <style>{`
+        @keyframes ptKen{0%{transform:scale(1.04)}100%{transform:scale(1.14) translateY(-10px)}}
+        @keyframes ptSube{0%{opacity:0;transform:translateY(18px)}100%{opacity:1;transform:none}}
+        @keyframes ptBaja{0%{opacity:0;transform:translateY(-12px)}100%{opacity:1;transform:none}}
+        @keyframes ptFilete{0%{transform:scaleX(0);opacity:0}100%{transform:scaleX(1);opacity:1}}
+        @keyframes ptBrillo{0%,60%{transform:translateX(-140%) skewX(-18deg)}100%{transform:translateX(260%) skewX(-18deg)}}
+        @keyframes ptPolvo{0%{transform:translateY(0);opacity:0}20%{opacity:.8}100%{transform:translateY(-140px);opacity:0}}
+        @keyframes ptTelon{0%{transform:translateY(0)}100%{transform:translateY(-104%)}}
+        @keyframes ptBirrete{0%{transform:translate(0,0) rotate(0deg) scale(.6);opacity:0}12%{opacity:1}
+          100%{transform:translate(var(--dx),-92vh) rotate(var(--rot)) scale(1);opacity:0}}
+        .portada{position:fixed;inset:0;z-index:9990;overflow:hidden;background:${GRAD.noche};color:#FFFFFF;
+          display:flex;flex-direction:column;align-items:center;text-align:center;
+          padding:max(30px,env(safe-area-inset-top,30px)) 24px max(26px,env(safe-area-inset-bottom,26px))}
+        .portada.saliendo{animation:ptTelon .8s .28s cubic-bezier(.7,0,.2,1) forwards}
+        .pt-foto{position:absolute;inset:0;overflow:hidden}
+        .pt-foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%;display:block;
+          opacity:0;transition:opacity 1.2s ease;animation:ptKen 18s ease-in-out infinite alternate}
+        .pt-foto img.lista{opacity:1}
+        .pt-mono{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;padding-top:16vh;
+          font-family:'Playfair Display',Georgia,serif;font-size:min(62vw,300px);font-weight:600;line-height:1;color:rgba(201,165,76,0.10);
+          background:radial-gradient(ellipse 80% 50% at 50% 25%,${GRAD.navy3} 0%,${GRAD.navy} 55%,${GRAD.noche} 100%)}
+        .pt-velo{position:absolute;inset:0;pointer-events:none;background:
+          linear-gradient(180deg,rgba(10,15,36,0.70) 0%,rgba(10,15,36,0.08) 24%,rgba(10,15,36,0.18) 42%,rgba(10,15,36,0.86) 64%,${GRAD.noche} 84%),
+          radial-gradient(ellipse 120% 55% at 50% 100%,rgba(201,165,76,0.16) 0%,transparent 60%)}
+        .pt-polvo{position:absolute;bottom:18%;width:3px;height:3px;border-radius:50%;background:${GRAD.oroClaro};pointer-events:none;animation:ptPolvo 5s ease-out infinite}
+        .pt-arriba,.pt-centro,.pt-abajo{position:relative;z-index:2;width:100%;max-width:420px}
+        .pt-arriba{animation:ptBaja .8s .15s ease both}
+        .pt-kicker{display:flex;align-items:center;justify-content:center;gap:12px;font-family:'Cinzel',Georgia,serif;font-size:12.5px;font-weight:600;letter-spacing:.34em;color:${GRAD.oroClaro};text-shadow:0 1px 10px rgba(0,0,0,0.5)}
+        .pt-kicker i{display:block;width:30px;height:1px;background:linear-gradient(90deg,transparent,${GRAD.oro})}
+        .pt-kicker i:last-child{background:linear-gradient(90deg,${GRAD.oro},transparent)}
+        .pt-promo{font-family:'Cinzel',Georgia,serif;font-size:10.5px;font-weight:500;letter-spacing:.32em;color:rgba(255,255,255,0.78);margin-top:8px;text-shadow:0 1px 8px rgba(0,0,0,0.5)}
+        .pt-centro{margin-top:auto}
+        .pt-para{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:17px;color:${GRAD.oroClaro};animation:ptSube .7s .45s ease both}
+        .pt-nombre{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:clamp(40px,12.5vw,58px);line-height:1.02;letter-spacing:-.01em;
+          margin-top:8px;text-wrap:balance;text-shadow:0 4px 30px rgba(0,0,0,0.45);animation:ptSube .8s .6s ease both}
+        .pt-filete{display:flex;align-items:center;justify-content:center;gap:10px;margin:18px auto 14px;animation:ptFilete .9s .85s ease both}
+        .pt-filete i{display:block;width:64px;height:1px;background:linear-gradient(90deg,transparent,${GRAD.oro})}
+        .pt-filete i:last-child{background:linear-gradient(90deg,${GRAD.oro},transparent)}
+        .pt-invita{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:19px;color:#FFFFFF;opacity:.92;animation:ptSube .7s 1s ease both}
+        .pt-fecha{font-family:'Jost',sans-serif;font-size:13.5px;font-weight:500;letter-spacing:.03em;color:rgba(255,255,255,0.74);margin-top:10px;animation:ptSube .7s 1.1s ease both}
+        .pt-abajo{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:30px;animation:ptSube .7s 1.25s ease both}
+        .pt-cta{position:relative;overflow:hidden;width:100%;max-width:340px;display:flex;align-items:center;justify-content:center;gap:10px;
+          border:none;border-radius:16px;padding:17px 20px;cursor:pointer;font-family:'Jost',sans-serif;font-size:15.5px;font-weight:600;letter-spacing:.02em;color:${GRAD.tinta};
+          background:linear-gradient(135deg,${GRAD.oroClaro} 0%,${GRAD.oro} 52%,${GRAD.oroMedio} 100%);
+          box-shadow:0 14px 34px -8px rgba(201,165,76,0.60),inset 0 1px 0 rgba(255,255,255,0.5);transition:transform .15s}
+        .pt-cta:active{transform:scale(.98)}
+        .pt-cta::after{content:"";position:absolute;top:0;bottom:0;width:40%;background:linear-gradient(105deg,transparent,rgba(255,255,255,0.45),transparent);animation:ptBrillo 3.2s 2s ease-in-out infinite}
+        .pt-silencio{display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:10px 12px;
+          font-family:'Jost',sans-serif;font-size:13px;font-weight:500;color:rgba(255,255,255,0.68)}
+        .pt-silencio:hover{color:#FFFFFF}
+        .pt-birrete{position:absolute;bottom:22%;left:50%;z-index:3;pointer-events:none;animation:ptBirrete 1.15s cubic-bezier(.2,.7,.3,1) forwards}
+        @media (prefers-reduced-motion: reduce){
+          .pt-foto img,.pt-cta::after,.pt-polvo{animation:none}
+          .pt-arriba,.pt-para,.pt-nombre,.pt-filete,.pt-invita,.pt-fecha,.pt-abajo{animation:none}
+        }
+      `}</style>
+
+      <div className="pt-foto">
+        <div className="pt-mono" aria-hidden="true">{mono}</div>
+        {evento.imagen_url && (
+          <img
+            src={evento.imagen_url}
+            alt=""
+            className={fotoLista ? "lista" : undefined}
+            onLoad={() => setFotoLista(true)}
+            ref={(el) => { if (el?.complete && el.naturalWidth > 0 && !fotoLista) setFotoLista(true); }}
+          />
+        )}
+      </div>
+      <div className="pt-velo" />
+      {[14, 28, 46, 63, 79, 88].map((l, i) => (
+        <span key={i} className="pt-polvo" style={{ left: `${l}%`, animationDelay: `${i * 0.8}s` }} />
+      ))}
+
+      <div className="pt-arriba">
+        <div className="pt-kicker"><i />Graduación<i /></div>
+        {anio && <div className="pt-promo">Promoción {anio}</div>}
+      </div>
+
+      <div className="pt-centro">
+        <p className="pt-para">Para {para}</p>
+        <h1 className="pt-nombre">{protagonista}</h1>
+        <div className="pt-filete" aria-hidden="true"><i /><EstrellaSVG size={11} color={GRAD.oro} /><i /></div>
+        <p className="pt-invita">{evento.anfitriones ? "te invita a celebrar su graduación" : "Te invitamos a celebrar"}</p>
+        {(fecha || hora) && <p className="pt-fecha">{[fecha, hora].filter(Boolean).join("  ·  ")}</p>}
+      </div>
+
+      <div className="pt-abajo">
+        <button
+          className="pt-cta"
+          onTouchStart={() => {
+            // iOS: desbloquear audio en el touchstart (antes del click)
+            const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
+            if (typeof fn === "function") (fn as () => void)();
+          }}
+          onClick={() => onEntrar(true)}
+        >
+          Abrir invitación
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button className="pt-silencio" onPointerDown={onSinSonidoPrevio} onClick={() => onEntrar(false)}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+          Entrar sin sonido
+        </button>
+      </div>
+
+      {/* Al entrar: los birretes vuelan, como al final de la ceremonia */}
+      {saliendo && [-120, -70, -30, 10, 50, 95, 135].map((dx, i) => (
+        <span key={i} className="pt-birrete" style={{ ["--dx" as string]: `${dx}px`, ["--rot" as string]: `${(i % 2 ? 1 : -1) * (180 + i * 40)}deg`, animationDelay: `${i * 0.045}s`, marginLeft: -16 } as React.CSSProperties}>
+          <BirreteSVG size={i % 3 === 0 ? 40 : 30} color={i % 2 ? GRAD.oroClaro : GRAD.oro} borla={GRAD.oroPalido} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ─── Entrada digital (graduación) ─────────────────────────────────────────────
+// El QR se dibuja acá mismo con qrcode-generator: sin servicios externos, así el
+// enlace personal del invitado no viaja a terceros y la entrada se ve sin señal.
+// Lo que codifica es el mismo enlace de siempre: es lo que escanea la puerta.
+function qrMatriz(texto: string): boolean[][] {
+  const qr = qrcode(0, "M");
+  qr.addData(texto);
+  qr.make();
+  const n = qr.getModuleCount();
+  return Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => qr.isDark(r, c)));
+}
+
+function QrSVG({ texto, size = 168 }: { texto: string; size?: number }) {
+  const { d, n } = useMemo(() => {
+    const m = qrMatriz(texto);
+    let path = "";
+    m.forEach((fila, r) => fila.forEach((osc, c) => { if (osc) path += `M${c} ${r}h1v1h-1z`; }));
+    return { d: path, n: m.length };
+  }, [texto]);
+  return (
+    <svg width={size} height={size} viewBox={`-2 -2 ${n + 4} ${n + 4}`} shapeRendering="crispEdges" role="img" aria-label="Código QR de entrada">
+      <rect x="-2" y="-2" width={n + 4} height={n + 4} fill="#FFFFFF" />
+      <path d={d} fill={GRAD.tinta} />
+    </svg>
+  );
+}
+
+// Compartir una imagen desde el celular (hoja nativa) o descargarla en la compu
+async function compartirImagen(blob: Blob, archivo: string, titulo: string) {
+  const file = new File([blob], archivo, { type: "image/png" });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: titulo }); return; }
+    catch (e) { if ((e as Error)?.name === "AbortError") return; }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = archivo;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function cargarFuentesCanvas() {
+  try {
+    await Promise.all([
+      document.fonts.load("600 80px 'Playfair Display'"),
+      document.fonts.load("italic 600 80px 'Playfair Display'"),
+      document.fonts.load("600 30px 'Cinzel'"),
+      document.fonts.load("600 30px 'Jost'"),
+    ]);
+  } catch { /* se usa la fuente de respaldo */ }
+}
+
+function cargarImagenCors(url?: string | null): Promise<HTMLImageElement | null> {
+  if (!url) return Promise.resolve(null);
+  return new Promise((res) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    const to = setTimeout(() => res(null), 6000);
+    img.onload = () => { clearTimeout(to); res(img); };
+    img.onerror = () => { clearTimeout(to); res(null); };
+    img.src = url;
+  });
+}
+
+function estrella4(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha = 1) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.18, y - r * 0.18); ctx.lineTo(x + r, y);
+  ctx.lineTo(x + r * 0.18, y + r * 0.18); ctx.lineTo(x, y + r); ctx.lineTo(x - r * 0.18, y + r * 0.18);
+  ctx.lineTo(x - r, y); ctx.lineTo(x - r * 0.18, y - r * 0.18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// Imagen de la entrada (para guardar en el celular y mostrar en la puerta)
+async function generarEntradaPNG(invitado: Invitado, evento: Evento, mesaNombre: string | null, qrUrl: string): Promise<Blob | null> {
+  await cargarFuentesCanvas();
+  // Datos: se arman primero porque el alto de la imagen depende de cuántas filas haya
+  const filas: [string, string][] = [["INVITADO", invitado.nombre]];
+  filas.push(["PERSONAS", String(invitado.num_personas || 1)]);
+  if (evento.fecha) filas.push(["FECHA", parseFechaLocal(evento.fecha).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })]);
+  if (evento.hora) filas.push(["HORA", formatHora(evento.hora)]);
+  if (mesaNombre) filas.push(["MESA", mesaNombre]);
+  if (invitado.numero_confirmacion) filas.push(["N° DE CONFIRMACIÓN", String(invitado.numero_confirmacion).padStart(3, "0")]);
+  if (evento.lugar) filas.push(["LUGAR", evento.lugar]);
+  const esAncha = (k: string) => k === "INVITADO" || k === "LUGAR";
+  let lineas = 0;
+  let mitad = false;
+  filas.forEach(([k]) => {
+    if (esAncha(k)) { lineas += mitad ? 2 : 1; mitad = false; }
+    else if (mitad) { lineas++; mitad = false; }
+    else mitad = true;
+  });
+  if (mitad) lineas++;
+  const W = 1080, qY = 510, qSize = 460;
+  const H = qY + qSize + 120 + lineas * 100 + 130;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const serif = "'Playfair Display', Georgia, serif";
+  const label = "'Cinzel', Georgia, serif";
+  const sans = "'Jost', Arial, sans-serif";
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, GRAD.navy2); bg.addColorStop(0.5, GRAD.navy); bg.addColorStop(1, GRAD.noche);
+  rrFill(ctx, 0, 0, W, H, 56, bg);
+  const glow = ctx.createRadialGradient(W / 2, 0, 20, W / 2, 0, 620);
+  glow.addColorStop(0, "rgba(201,165,76,0.22)"); glow.addColorStop(1, "rgba(201,165,76,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, 700);
+  ctx.strokeStyle = GRAD.oro; ctx.lineWidth = 3; rrStroke(ctx, 30, 30, W - 60, H - 60, 40);
+  ctx.strokeStyle = "rgba(201,165,76,0.45)"; ctx.lineWidth = 1.5; rrStroke(ctx, 44, 44, W - 88, H - 88, 30);
+  [[150, 150, 10], [W - 150, 170, 8], [120, 470, 6], [W - 120, 440, 7]].forEach(([x, y, r]) => estrella4(ctx, x, y, r, GRAD.oroClaro, 0.7));
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = GRAD.oroClaro;
+  ctx.font = `600 30px ${label}`;
+  ctx.fillText("E N T R A D A   ·   G R A D U A C I Ó N", W / 2, 150);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `600 78px ${serif}`;
+  ctx.fillText(evento.anfitriones?.trim() || evento.nombre, W / 2, 285, W - 180);
+  if (evento.fecha) {
+    ctx.fillStyle = GRAD.oroClaro;
+    ctx.font = `600 28px ${label}`;
+    ctx.fillText(`P R O M O C I Ó N   ${parseFechaLocal(evento.fecha).getFullYear()}`, W / 2, 360);
+  }
+
+  // Corte de la entrada: línea punteada con muescas
+  const yCorte = 440;
+  ctx.save();
+  ctx.setLineDash([14, 12]); ctx.strokeStyle = "rgba(230,207,142,0.55)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(90, yCorte); ctx.lineTo(W - 90, yCorte); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = "#05081A";
+  ctx.beginPath(); ctx.arc(30, yCorte, 34, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(W - 30, yCorte, 34, 0, Math.PI * 2); ctx.fill();
+
+  // QR sobre blanco
+  const m = qrMatriz(qrUrl);
+  const n = m.length;
+  const cell = qSize / n, qX = (W - qSize) / 2;
+  rrFill(ctx, qX - 34, qY - 34, qSize + 68, qSize + 68, 34, "#FFFFFF");
+  ctx.fillStyle = GRAD.tinta;
+  m.forEach((fila, r) => fila.forEach((osc, c) => { if (osc) ctx.fillRect(qX + c * cell, qY + r * cell, Math.ceil(cell), Math.ceil(cell)); }));
+
+  // Filas: las anchas (invitado, lugar) ocupan todo; el resto va de a dos
+  let y = qY + qSize + 120;
+  let enSegunda = false;
+  ctx.textAlign = "left";
+  const col = [110, W / 2 + 20];
+  filas.forEach(([k, v]) => {
+    const ancho = esAncha(k);
+    if (ancho && enSegunda) { y += 100; enSegunda = false; }
+    const x = ancho || !enSegunda ? col[0] : col[1];
+    ctx.fillStyle = GRAD.oroClaro;
+    ctx.font = `600 21px ${label}`;
+    ctx.fillText(k, x, y);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = `600 34px ${serif}`;
+    ctx.fillText(v, x, y + 46, ancho ? W - 220 : W / 2 - 140);
+    if (ancho || enSegunda) { y += 100; enSegunda = false; } else enSegunda = true;
+  });
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.font = `400 28px ${sans}`;
+  ctx.fillText("Mostrá esta entrada al llegar", W / 2, H - 80);
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
+}
+
+// "¡Yo voy!" para Stories/WhatsApp. A propósito SIN el enlace personal ni QR:
+// quien lo vea en redes no puede abrir ni responder la invitación de otro.
+async function generarYoVoyCanvas(evento: Evento): Promise<Blob | null> {
+  await cargarFuentesCanvas();
+  const foto = await cargarImagenCors(evento.imagen_url);
+  const W = 1080, H = 1920;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const serif = "'Playfair Display', Georgia, serif";
+  const label = "'Cinzel', Georgia, serif";
+  const sans = "'Jost', Arial, sans-serif";
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, GRAD.navy2); bg.addColorStop(0.5, GRAD.navy); bg.addColorStop(1, GRAD.noche);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W / 2, 640, 40, W / 2, 640, 640);
+  glow.addColorStop(0, "rgba(201,165,76,0.22)"); glow.addColorStop(1, "rgba(201,165,76,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  ([[120, 220, 14], [940, 300, 10], [180, 1180, 9], [900, 1100, 12], [140, 1620, 8], [960, 1700, 10], [540, 140, 9]] as const)
+    .forEach(([x, y, r], i) => estrella4(ctx, x, y, r, GRAD.oroClaro, 0.5 + (i % 3) * 0.18));
+  ctx.strokeStyle = GRAD.oro; ctx.lineWidth = 4; rrStroke(ctx, 46, 46, W - 92, H - 92, 44);
+  ctx.strokeStyle = "rgba(201,165,76,0.45)"; ctx.lineWidth = 2; rrStroke(ctx, 64, 64, W - 128, H - 128, 34);
+
+  // Foto (o monograma) en círculo con anillo dorado
+  const pX = W / 2, pY = 560, pR = 210;
+  ctx.beginPath(); ctx.arc(pX, pY, pR + 16, 0, Math.PI * 2); ctx.fillStyle = GRAD.oro; ctx.fill();
+  ctx.beginPath(); ctx.arc(pX, pY, pR + 6, 0, Math.PI * 2); ctx.fillStyle = GRAD.navy; ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(pX, pY, pR, 0, Math.PI * 2); ctx.clip();
+  if (foto) {
+    const s = Math.max((pR * 2) / foto.width, (pR * 2) / foto.height);
+    ctx.drawImage(foto, pX - (foto.width * s) / 2, pY - (foto.height * s) / 2, foto.width * s, foto.height * s);
+  } else {
+    ctx.fillStyle = GRAD.navy2; ctx.fillRect(pX - pR, pY - pR, pR * 2, pR * 2);
+    ctx.fillStyle = GRAD.oroClaro; ctx.font = `600 150px ${serif}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(iniciales(evento.anfitriones || evento.nombre) || "★", pX, pY + 8);
+    ctx.textBaseline = "alphabetic";
+  }
+  ctx.restore();
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = GRAD.oroClaro;
+  ctx.font = `italic 600 140px ${serif}`;
+  ctx.shadowColor = "rgba(201,165,76,0.45)"; ctx.shadowBlur = 30;
+  ctx.fillText("¡Yo voy!", W / 2, 1010);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.font = `400 44px ${sans}`;
+  ctx.fillText(evento.anfitriones ? "a celebrar la graduación de" : "a celebrar", W / 2, 1110);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `600 86px ${serif}`;
+  ctx.fillText(evento.anfitriones?.trim() || evento.nombre, W / 2, 1235, W - 180);
+  const gl = ctx.createLinearGradient(W / 2 - 260, 0, W / 2 + 260, 0);
+  gl.addColorStop(0, "rgba(201,165,76,0)"); gl.addColorStop(0.5, GRAD.oro); gl.addColorStop(1, "rgba(201,165,76,0)");
+  ctx.fillStyle = gl; ctx.fillRect(W / 2 - 260, 1300, 520, 3);
+  if (evento.fecha) {
+    ctx.fillStyle = GRAD.oroClaro;
+    ctx.font = `500 46px ${sans}`;
+    const f = parseFechaLocal(evento.fecha).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
+    ctx.fillText(f.charAt(0).toUpperCase() + f.slice(1), W / 2, 1400, W - 200);
+    ctx.font = `600 30px ${label}`;
+    ctx.fillText(`P R O M O C I Ó N   ${parseFechaLocal(evento.fecha).getFullYear()}`, W / 2, 1480);
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.font = `500 26px ${sans}`;
+  ctx.fillText("Invitación digital · Evorix", W / 2, H - 110);
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
+}
+
+function EntradaDigital({ invitado, evento, mesaNombre }: { invitado: Invitado; evento: Evento; mesaNombre: string | null }) {
+  const [guardando, setGuardando] = useState(false);
+  const qrUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/confirmar/${invitado.token}`
+    : `/confirmar/${invitado.token}`;
+  const fecha = evento.fecha
+    ? parseFechaLocal(evento.fecha).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" })
+    : null;
+  const datos: { k: string; v: string; ancho?: boolean }[] = [{ k: "Invitado", v: invitado.nombre, ancho: true }];
+  datos.push({ k: "Personas", v: String(invitado.num_personas || 1) });
+  if (invitado.numero_confirmacion) datos.push({ k: "N°", v: String(invitado.numero_confirmacion).padStart(3, "0") });
+  if (fecha) datos.push({ k: "Fecha", v: fecha });
+  if (evento.hora) datos.push({ k: "Hora", v: formatHora(evento.hora) });
+  if (mesaNombre) datos.push({ k: "Mesa", v: mesaNombre, ancho: true });
+  if (evento.lugar) datos.push({ k: "Lugar", v: evento.lugar, ancho: true });
+
+  async function guardar() {
+    if (guardando) return;
+    setGuardando(true);
+    try {
+      const blob = await generarEntradaPNG(invitado, evento, mesaNombre, qrUrl);
+      if (blob) await compartirImagen(blob, `entrada_${invitado.nombre.replace(/\s+/g, "_")}.png`, "Mi entrada");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="entrada" data-guia="qr">
+      <div className="entrada-top">
+        <div className="entrada-kicker">Entrada · Graduación</div>
+        <div className="entrada-evento">{evento.anfitriones?.trim() || evento.nombre}</div>
+        {evento.fecha && <div className="entrada-promo">Promoción {parseFechaLocal(evento.fecha).getFullYear()}</div>}
+      </div>
+      <div className="entrada-corte" aria-hidden="true" />
+      <div className="entrada-qr"><QrSVG texto={qrUrl} size={176} /></div>
+      <div className="entrada-datos">
+        {datos.map(d => (
+          <div key={d.k} className={d.ancho ? "ancho" : undefined}>
+            <span>{d.k}</span>
+            <strong>{d.v}</strong>
+          </div>
+        ))}
+      </div>
+      <button className="btn-guardar-entrada" data-guia="guardar-entrada" onClick={guardar} disabled={guardando}>
+        {guardando ? <><div className="spinner" style={{ width: 16, height: 16 }} /> Preparando…</> : (
+          <>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Guardar mi entrada
+          </>
+        )}
+      </button>
+      <p className="entrada-hint">Mostrala al llegar: el organizador escanea el código para registrar tu entrada.</p>
     </div>
   );
 }
@@ -1954,9 +2737,9 @@ async function generarTarjetaCanvas(
     if (esGrad) {
       // Graduación: noche estrellada azul profundo con marco dorado
       const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-      bgGrad.addColorStop(0, "#0f172a");
-      bgGrad.addColorStop(0.5, "#1e1b4b");
-      bgGrad.addColorStop(1, "#0f172a");
+      bgGrad.addColorStop(0, GRAD.noche);
+      bgGrad.addColorStop(0.5, GRAD.navy);
+      bgGrad.addColorStop(1, GRAD.noche);
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
       // Estrellas dispersas en el marco
@@ -1965,7 +2748,7 @@ async function generarTarjetaCanvas(
         [26, H - 60, 4], [W - 30, H - 44, 5], [W / 2 - 300, 30, 3], [W / 2 + 310, H - 26, 3],
         [W / 2, 24, 4], [W / 2 - 100, H - 22, 3], [W / 2 + 140, 26, 3],
       ] as const;
-      estrellas.forEach(([x, y, s], i) => drawStar(x, y, s, "#FCD34D", 0.55 + (i % 3) * 0.15));
+      estrellas.forEach(([x, y, s], i) => drawStar(x, y, s, GRAD.oroClaro, 0.55 + (i % 3) * 0.15));
     } else {
       const bgGrad = ctx.createLinearGradient(0, 0, W, H);
       bgGrad.addColorStop(0, "#F8FAFC");
@@ -1981,7 +2764,7 @@ async function generarTarjetaCanvas(
       r = 36;
     // Sombra suave de la tarjeta
     ctx.save();
-    ctx.shadowColor = esGrad ? "rgba(252,211,77,0.30)" : "rgba(15,23,42,0.18)";
+    ctx.shadowColor = esGrad ? "rgba(230,207,142,0.30)" : "rgba(15,23,42,0.18)";
     ctx.shadowBlur = esGrad ? 50 : 40;
     ctx.shadowOffsetY = 14;
     rrFill(ctx, cX, cY, cW, cH, r, "#FFFFFF");
@@ -1989,10 +2772,10 @@ async function generarTarjetaCanvas(
     rrFill(ctx, cX, cY, cW, cH, r, "#FFFFFF");
     if (esGrad) {
       // Doble borde dorado alrededor de la tarjeta
-      ctx.strokeStyle = "#D97706";
+      ctx.strokeStyle = GRAD.oroMedio;
       ctx.lineWidth = 3;
       rrStroke(ctx, cX - 6, cY - 6, cW + 12, cH + 12, r + 6);
-      ctx.strokeStyle = "rgba(252,211,77,0.85)";
+      ctx.strokeStyle = "rgba(230,207,142,0.85)";
       ctx.lineWidth = 1.5;
       rrStroke(ctx, cX - 12, cY - 12, cW + 24, cH + 24, r + 10);
     }
@@ -2005,35 +2788,35 @@ async function generarTarjetaCanvas(
     if (esGrad) {
       // Graduación: azul noche → índigo con destellos dorados
       const hGrad = ctx.createLinearGradient(cX, cY, cX + cW, cY + hH);
-      hGrad.addColorStop(0, "#1e1b4b");
-      hGrad.addColorStop(0.55, "#312e81");
-      hGrad.addColorStop(1, "#4338ca");
+      hGrad.addColorStop(0, GRAD.navy);
+      hGrad.addColorStop(0.55, GRAD.navy2);
+      hGrad.addColorStop(1, GRAD.navy3);
       ctx.fillStyle = hGrad;
       ctx.fillRect(cX, cY, cW, hH);
       // Resplandor dorado superior
       const glow = ctx.createRadialGradient(cX + cW / 2, cY, 10, cX + cW / 2, cY, 240);
-      glow.addColorStop(0, "rgba(252,211,77,0.22)");
-      glow.addColorStop(1, "rgba(252,211,77,0)");
+      glow.addColorStop(0, "rgba(230,207,142,0.22)");
+      glow.addColorStop(1, "rgba(230,207,142,0)");
       ctx.fillStyle = glow;
       ctx.fillRect(cX, cY, cW, hH);
       // Estrellas dentro del header
-      drawStar(cX + 60, cY + 46, 6, "#FCD34D", 0.9);
-      drawStar(cX + cW - 60, cY + 46, 6, "#FCD34D", 0.9);
-      drawStar(cX + 110, cY + 120, 4, "#FCD34D", 0.6);
-      drawStar(cX + cW - 110, cY + 120, 4, "#FCD34D", 0.6);
-      drawStar(cX + 42, cY + hH - 60, 4, "#FCD34D", 0.5);
-      drawStar(cX + cW - 42, cY + hH - 60, 4, "#FCD34D", 0.5);
+      drawStar(cX + 60, cY + 46, 6, GRAD.oroClaro, 0.9);
+      drawStar(cX + cW - 60, cY + 46, 6, GRAD.oroClaro, 0.9);
+      drawStar(cX + 110, cY + 120, 4, GRAD.oroClaro, 0.6);
+      drawStar(cX + cW - 110, cY + 120, 4, GRAD.oroClaro, 0.6);
+      drawStar(cX + 42, cY + hH - 60, 4, GRAD.oroClaro, 0.5);
+      drawStar(cX + cW - 42, cY + hH - 60, 4, GRAD.oroClaro, 0.5);
       if (fotoGrad) {
         // Foto del graduado en círculo con doble anillo dorado
         const pX = cX + cW / 2, pY = cY + 138, pR = 66;
         const ring = ctx.createLinearGradient(pX - pR, pY - pR, pX + pR, pY + pR);
-        ring.addColorStop(0, "#FDE68A");
-        ring.addColorStop(0.5, "#F59E0B");
-        ring.addColorStop(1, "#B45309");
+        ring.addColorStop(0, GRAD.oroPalido);
+        ring.addColorStop(0.5, GRAD.oro);
+        ring.addColorStop(1, GRAD.oroOscuro);
         ctx.beginPath(); ctx.arc(pX, pY, pR + 9, 0, Math.PI * 2);
         ctx.fillStyle = ring; ctx.fill();
         ctx.beginPath(); ctx.arc(pX, pY, pR + 3, 0, Math.PI * 2);
-        ctx.fillStyle = "#1e1b4b"; ctx.fill();
+        ctx.fillStyle = GRAD.navy; ctx.fill();
         ctx.save();
         ctx.beginPath(); ctx.arc(pX, pY, pR, 0, Math.PI * 2); ctx.clip();
         const s = Math.max((pR * 2) / fotoGrad.width, (pR * 2) / fotoGrad.height);
@@ -2057,9 +2840,9 @@ async function generarTarjetaCanvas(
       }
       // Línea dorada al pie del header
       const goldLine = ctx.createLinearGradient(cX, 0, cX + cW, 0);
-      goldLine.addColorStop(0, "rgba(252,211,77,0)");
-      goldLine.addColorStop(0.5, "#FCD34D");
-      goldLine.addColorStop(1, "rgba(252,211,77,0)");
+      goldLine.addColorStop(0, "rgba(230,207,142,0)");
+      goldLine.addColorStop(0.5, GRAD.oroClaro);
+      goldLine.addColorStop(1, "rgba(230,207,142,0)");
       ctx.fillStyle = goldLine;
       ctx.fillRect(cX, cY + hH - 5, cW, 5);
     } else {
@@ -2087,12 +2870,12 @@ async function generarTarjetaCanvas(
       // Con foto, los textos bajan para dejar espacio al retrato
       const tOff = fotoGrad ? 172 : 0;
       ctx.font = "700 17px 'Arial'";
-      ctx.fillStyle = "#FCD34D";
+      ctx.fillStyle = GRAD.oroClaro;
       ctx.textAlign = "center";
       ctx.fillText("G R A D U A C I Ó N", cX + cW / 2, cY + (fotoGrad ? 40 : 52));
       ctx.font = "bold 54px 'Georgia',serif";
       ctx.fillStyle = "#FFFFFF";
-      ctx.shadowColor = "rgba(252,211,77,0.45)";
+      ctx.shadowColor = "rgba(230,207,142,0.45)";
       ctx.shadowBlur = 18;
       ctx.fillText(saludo, cX + cW / 2, cY + 120 + tOff, cW - 80);
       ctx.shadowBlur = 0;
@@ -2100,7 +2883,7 @@ async function generarTarjetaCanvas(
       ctx.fillStyle = "rgba(255,255,255,0.78)";
       ctx.fillText(`Invitación de ${evento.anfitriones}`, cX + cW / 2, cY + 160 + tOff);
       ctx.font = "italic bold 28px 'Georgia',serif";
-      ctx.fillStyle = "#FDE68A";
+      ctx.fillStyle = GRAD.oroPalido;
       ctx.fillText(evento.nombre, cX + cW / 2, cY + 207 + tOff, cW - 200);
     } else {
       ctx.font = "italic 20px 'Georgia',serif";
@@ -2131,7 +2914,7 @@ async function generarTarjetaCanvas(
     }
     const drawRow = (label: string, val: string) => {
       ctx.font = "700 11px 'Arial'";
-      ctx.fillStyle = esGrad ? "#B45309" : "#4F46E5";
+      ctx.fillStyle = esGrad ? GRAD.oroOscuro : "#4F46E5";
       ctx.textAlign = "left";
       ctx.fillText(label.toUpperCase(), dX, dY - 4);
       ctx.font = "500 22px 'Arial'";
@@ -2152,10 +2935,10 @@ async function generarTarjetaCanvas(
     ctx.beginPath();
     ctx.moveTo(cX + 44, dY);
     ctx.lineTo(cX + cW - 44, dY);
-    ctx.strokeStyle = esGrad ? "rgba(217,119,6,0.40)" : "rgba(79,70,229,0.22)";
+    ctx.strokeStyle = esGrad ? "rgba(168,132,58,0.40)" : "rgba(79,70,229,0.22)";
     ctx.lineWidth = 1;
     ctx.stroke();
-    if (esGrad) drawStar(cX + cW / 2, dY, 6, "#D97706", 0.9);
+    if (esGrad) drawStar(cX + cW / 2, dY, 6, GRAD.oroMedio, 0.9);
     dY += 22;
     if (evento.mensaje_invitacion) {
       ctx.font = "italic 18px 'Georgia',serif";
@@ -2171,23 +2954,23 @@ async function generarTarjetaCanvas(
       bGap = 10;
     const gBtn = ctx.createLinearGradient(dX, dY, dX + bW, dY + bH);
     if (esGrad) {
-      gBtn.addColorStop(0, "#B45309");
-      gBtn.addColorStop(0.5, "#F59E0B");
-      gBtn.addColorStop(1, "#B45309");
+      gBtn.addColorStop(0, GRAD.oroMedio);
+      gBtn.addColorStop(0.5, GRAD.oroClaro);
+      gBtn.addColorStop(1, GRAD.oroMedio);
     } else {
       gBtn.addColorStop(0, "#3730A3");
       gBtn.addColorStop(1, "#4F46E5");
     }
     rrFill(ctx, dX, dY, bW, bH, bR, gBtn);
     ctx.font = "bold 24px 'Arial'";
-    ctx.fillStyle = "#FFFFFF";
+    ctx.fillStyle = esGrad ? GRAD.tinta : "#FFFFFF";
     ctx.textAlign = "center";
     ctx.fillText(esGrad ? "🎓  Confirmar asistencia" : "✅  Confirmar asistencia", dX + bW / 2, dY + 38);
     dY += bH + bGap;
     // CTA secundarios (outline sobre fondo pálido)
-    const secBg = esGrad ? "#FFFBEB" : "#EEF2FF";
-    const secBorder = esGrad ? "rgba(217,119,6,0.45)" : "rgba(79,70,229,0.45)";
-    const secTxt = esGrad ? "#92400E" : "#3730A3";
+    const secBg = esGrad ? GRAD.perla : "#EEF2FF";
+    const secBorder = esGrad ? "rgba(168,132,58,0.45)" : "rgba(79,70,229,0.45)";
+    const secTxt = esGrad ? GRAD.oroProfundo : "#3730A3";
     rrFill(ctx, dX, dY, bW, bH, bR, secBg);
     ctx.strokeStyle = secBorder;
     ctx.lineWidth = 1.5;
@@ -2228,16 +3011,16 @@ async function generarTarjetaCanvas(
         const qX = cX + cW / 2 - qSize - 55, qY = dY + 6;
         // Marco blanco con borde dorado
         rrFill(ctx, qX - 12, qY - 12, qSize + 24, qSize + 24, 14, "#FFFFFF");
-        ctx.strokeStyle = "#D97706";
+        ctx.strokeStyle = GRAD.oroMedio;
         ctx.lineWidth = 2.5;
         rrStroke(ctx, qX - 12, qY - 12, qSize + 24, qSize + 24, 14);
-        ctx.fillStyle = "#1e1b4b";
+        ctx.fillStyle = GRAD.navy;
         for (let rw = 0; rw < n; rw++)
           for (let cl = 0; cl < n; cl++)
             if (qr.isDark(rw, cl))
               ctx.fillRect(qX + cl * cell, qY + rw * cell, Math.ceil(cell), Math.ceil(cell));
         ctx.font = "600 14px 'Arial'";
-        ctx.fillStyle = "#92400E";
+        ctx.fillStyle = GRAD.oroProfundo;
         ctx.textAlign = "center";
         ctx.fillText("Escaneá y mirá el muro", qX + qSize / 2, qY + qSize + 32);
         ctx.fillText("de fotos del evento", qX + qSize / 2, qY + qSize + 50);
@@ -2249,7 +3032,7 @@ async function generarTarjetaCanvas(
       const sX = cX + cW / 2 + 130, sY = dY + 76;
       // Cintas rojas
       ctx.save();
-      ctx.fillStyle = "#DC2626";
+      ctx.fillStyle = GRAD.navy2;
       ctx.beginPath();
       ctx.moveTo(sX - 26, sY + 30); ctx.lineTo(sX - 40, sY + 88); ctx.lineTo(sX - 22, sY + 78); ctx.lineTo(sX - 10, sY + 92); ctx.lineTo(sX - 4, sY + 40);
       ctx.closePath(); ctx.fill();
@@ -2260,7 +3043,7 @@ async function generarTarjetaCanvas(
       // Borde dentado dorado
       ctx.save();
       ctx.translate(sX, sY);
-      ctx.fillStyle = "#B45309";
+      ctx.fillStyle = GRAD.oroOscuro;
       for (let i = 0; i < 24; i++) {
         const a = (Math.PI * 2 * i) / 24;
         ctx.beginPath();
@@ -2270,30 +3053,30 @@ async function generarTarjetaCanvas(
       ctx.restore();
       // Medalla con gradiente dorado
       const sg = ctx.createRadialGradient(sX - 14, sY - 14, 6, sX, sY, 58);
-      sg.addColorStop(0, "#FDE68A");
-      sg.addColorStop(0.55, "#F59E0B");
-      sg.addColorStop(1, "#B45309");
+      sg.addColorStop(0, GRAD.oroPalido);
+      sg.addColorStop(0.55, GRAD.oro);
+      sg.addColorStop(1, GRAD.oroOscuro);
       ctx.beginPath(); ctx.arc(sX, sY, 54, 0, Math.PI * 2);
       ctx.fillStyle = sg; ctx.fill();
-      ctx.strokeStyle = "#92400E"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = GRAD.oroProfundo; ctx.lineWidth = 2; ctx.stroke();
       // Disco interior
       ctx.beginPath(); ctx.arc(sX, sY, 42, 0, Math.PI * 2);
-      ctx.fillStyle = "#FFFBEB"; ctx.fill();
-      ctx.strokeStyle = "rgba(146,64,14,0.5)"; ctx.lineWidth = 1.2;
+      ctx.fillStyle = GRAD.perla; ctx.fill();
+      ctx.strokeStyle = "rgba(110,84,24,0.5)"; ctx.lineWidth = 1.2;
       ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
       // Contenido del sello
       ctx.font = "22px serif";
       ctx.textAlign = "center";
       ctx.fillText("🎓", sX, sY - 12);
       ctx.font = "700 11px 'Arial'";
-      ctx.fillStyle = "#92400E";
+      ctx.fillStyle = GRAD.oroProfundo;
       ctx.fillText("PROMOCIÓN", sX, sY + 8);
       ctx.font = "bold 24px 'Georgia',serif";
-      ctx.fillStyle = "#B45309";
+      ctx.fillStyle = GRAD.oroOscuro;
       ctx.fillText(String(anio), sX, sY + 32);
     }
     ctx.font = "bold 17px 'Arial'";
-    ctx.fillStyle = esGrad ? "#B45309" : "#4F46E5";
+    ctx.fillStyle = esGrad ? GRAD.oroOscuro : "#4F46E5";
     ctx.textAlign = "center";
     ctx.fillText("Evorix · Invitaciones digitales", cX + cW / 2, cY + cH - 28);
     canvas.toBlob((blob) => resolve(blob), "image/png", 0.95);
@@ -2332,19 +3115,19 @@ async function generarStoryCanvas(
         if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
         else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
       }
-      ctx.closePath(); ctx.fillStyle = "#FCD34D"; ctx.fill(); ctx.restore();
+      ctx.closePath(); ctx.fillStyle = GRAD.oroClaro; ctx.fill(); ctx.restore();
     };
     // Fondo noche estrellada
     const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, "#312e81");
-    bg.addColorStop(0.45, "#1e1b4b");
-    bg.addColorStop(1, "#0f172a");
+    bg.addColorStop(0, GRAD.navy2);
+    bg.addColorStop(0.45, GRAD.navy);
+    bg.addColorStop(1, GRAD.noche);
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
     // Resplandor central
     const glow = ctx.createRadialGradient(W / 2, 520, 40, W / 2, 520, 560);
-    glow.addColorStop(0, "rgba(252,211,77,0.20)");
-    glow.addColorStop(1, "rgba(252,211,77,0)");
+    glow.addColorStop(0, "rgba(230,207,142,0.20)");
+    glow.addColorStop(1, "rgba(230,207,142,0)");
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, W, H);
     // Estrellas dispersas
@@ -2352,16 +3135,16 @@ async function generarStoryCanvas(
       [120,1300,6],[970,1350,7],[200,1650,5],[880,1700,6],[540,110,5],[420,1800,4]] as const)
       .forEach(([x, y, s], i) => star(x, y, s, 0.5 + (i % 3) * 0.18));
     // Doble marco dorado
-    ctx.strokeStyle = "#D97706"; ctx.lineWidth = 6;
+    ctx.strokeStyle = GRAD.oroMedio; ctx.lineWidth = 6;
     rrStroke(ctx, 42, 42, W - 84, H - 84, 44);
-    ctx.strokeStyle = "rgba(252,211,77,0.8)"; ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "rgba(230,207,142,0.8)"; ctx.lineWidth = 2.5;
     rrStroke(ctx, 60, 60, W - 120, H - 120, 34);
     ctx.textAlign = "center";
     // Encabezado
     ctx.font = "110px serif";
     ctx.fillText("🎓", W / 2, 240);
     ctx.font = "700 34px 'Arial'";
-    ctx.fillStyle = "#FCD34D";
+    ctx.fillStyle = GRAD.oroClaro;
     ctx.fillText("G R A D U A C I Ó N", W / 2, 320);
     star(W / 2 - 230, 308, 9); star(W / 2 + 230, 308, 9);
     // Foto circular
@@ -2369,9 +3152,9 @@ async function generarStoryCanvas(
     if (foto) {
       const pX = W / 2, pY = 580, pR = 170;
       const ring = ctx.createLinearGradient(pX - pR, pY - pR, pX + pR, pY + pR);
-      ring.addColorStop(0, "#FDE68A"); ring.addColorStop(0.5, "#F59E0B"); ring.addColorStop(1, "#B45309");
+      ring.addColorStop(0, GRAD.oroPalido); ring.addColorStop(0.5, GRAD.oro); ring.addColorStop(1, GRAD.oroOscuro);
       ctx.beginPath(); ctx.arc(pX, pY, pR + 16, 0, Math.PI * 2); ctx.fillStyle = ring; ctx.fill();
-      ctx.beginPath(); ctx.arc(pX, pY, pR + 6, 0, Math.PI * 2); ctx.fillStyle = "#1e1b4b"; ctx.fill();
+      ctx.beginPath(); ctx.arc(pX, pY, pR + 6, 0, Math.PI * 2); ctx.fillStyle = GRAD.navy; ctx.fill();
       ctx.save();
       ctx.beginPath(); ctx.arc(pX, pY, pR, 0, Math.PI * 2); ctx.clip();
       const s = Math.max((pR * 2) / foto.width, (pR * 2) / foto.height);
@@ -2381,8 +3164,8 @@ async function generarStoryCanvas(
     }
     // Nombre del evento
     ctx.font = "italic bold 64px 'Georgia',serif";
-    ctx.fillStyle = "#FDE68A";
-    ctx.shadowColor = "rgba(252,211,77,0.4)"; ctx.shadowBlur = 24;
+    ctx.fillStyle = GRAD.oroPalido;
+    ctx.shadowColor = "rgba(230,207,142,0.4)"; ctx.shadowBlur = 24;
     ctx.fillText(evento.nombre, W / 2, yCursor + 60, W - 220);
     ctx.shadowBlur = 0;
     // Anfitriones
@@ -2391,7 +3174,7 @@ async function generarStoryCanvas(
     ctx.fillText(`de ${evento.anfitriones}`, W / 2, yCursor + 130, W - 240);
     // Línea dorada
     const gl = ctx.createLinearGradient(W / 2 - 260, 0, W / 2 + 260, 0);
-    gl.addColorStop(0, "rgba(252,211,77,0)"); gl.addColorStop(0.5, "#FCD34D"); gl.addColorStop(1, "rgba(252,211,77,0)");
+    gl.addColorStop(0, "rgba(230,207,142,0)"); gl.addColorStop(0.5, GRAD.oroClaro); gl.addColorStop(1, "rgba(230,207,142,0)");
     ctx.fillStyle = gl;
     ctx.fillRect(W / 2 - 260, yCursor + 170, 520, 4);
     // Detalles
@@ -2416,14 +3199,14 @@ async function generarStoryCanvas(
       const qSize = 300, cell = qSize / n;
       const qX = W / 2 - qSize / 2, qY = H - 560;
       rrFill(ctx, qX - 26, qY - 26, qSize + 52, qSize + 52, 30, "#FFFFFF");
-      ctx.strokeStyle = "#D97706"; ctx.lineWidth = 5;
+      ctx.strokeStyle = GRAD.oroMedio; ctx.lineWidth = 5;
       rrStroke(ctx, qX - 26, qY - 26, qSize + 52, qSize + 52, 30);
-      ctx.fillStyle = "#1e1b4b";
+      ctx.fillStyle = GRAD.navy;
       for (let rw = 0; rw < n; rw++)
         for (let cl = 0; cl < n; cl++)
           if (qr.isDark(rw, cl)) ctx.fillRect(qX + cl * cell, qY + rw * cell, Math.ceil(cell), Math.ceil(cell));
       ctx.font = "700 34px 'Arial'";
-      ctx.fillStyle = "#FCD34D";
+      ctx.fillStyle = GRAD.oroClaro;
       ctx.fillText("Escaneá y confirmá tu asistencia", W / 2, qY + qSize + 90);
     } catch { /* QR opcional */ }
     // Footer
@@ -2569,15 +3352,15 @@ function VestimentaCard({ evento }: { evento: { vestimenta_tipo?: string | null;
 
   return (
     <div style={{
-      background: "linear-gradient(135deg,rgba(79,70,229,0.06) 0%,rgba(79,70,229,0.10) 100%)",
-      border: "1.5px solid rgba(79,70,229,0.28)",
+      background: "var(--acc-card-bg, linear-gradient(135deg,rgba(79,70,229,0.06) 0%,rgba(79,70,229,0.10) 100%))",
+      border: "1.5px solid var(--acc-card-border, rgba(79,70,229,0.28))",
       borderRadius: 18,
       padding: "16px 18px",
       margin: "4px 0 8px",
     }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-        <div style={{ width:36, height:36, borderRadius:10, background:"rgba(79,70,229,0.10)", border:"1px solid rgba(79,70,229,0.22)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        <div style={{ width:36, height:36, borderRadius:10, background:"var(--acc-tile-bg, rgba(79,70,229,0.10))", border:"1px solid var(--acc-tile-border, rgba(79,70,229,0.22))", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20.5 18H3.5a1 1 0 0 1-.78-1.63L12 6.5"/>
             <path d="M12 6.5V4.5"/>
@@ -2595,13 +3378,13 @@ function VestimentaCard({ evento }: { evento: { vestimenta_tipo?: string | null;
       {tipo && (
         <div style={{
           display:"flex", alignItems:"center", gap:12,
-          background:"rgba(238,242,255,0.7)", borderRadius:12,
-          border:"1px solid rgba(79,70,229,0.15)",
+          background:"var(--acc-inner-bg, rgba(238,242,255,0.7))", borderRadius:12,
+          border:"1px solid var(--acc-inner-border, rgba(79,70,229,0.15))",
           padding:"12px 14px", marginBottom: colores.length > 0 || evento.vestimenta_nota ? 10 : 0,
         }}>
           <div style={{ width:8, height:8, borderRadius:"50%", background:"var(--gold-dark)", flexShrink:0, opacity:0.7 }}/>
           <div>
-            <div style={{ fontSize:15, fontWeight:600, color:"var(--ink)", fontFamily:"'Cormorant Garamond',serif" }}>{tipo.label}</div>
+            <div style={{ fontSize:15, fontWeight:600, color:"var(--ink)", fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)" }}>{tipo.label}</div>
             <div style={{ fontSize:11, color:"var(--ink3)", marginTop:2, lineHeight:1.4 }}>{tipo.desc}</div>
           </div>
         </div>
@@ -2630,7 +3413,7 @@ function VestimentaCard({ evento }: { evento: { vestimenta_tipo?: string | null;
       {evento.vestimenta_nota && (
         <p style={{
           fontSize:12, fontStyle:"italic", color:"var(--ink2)", lineHeight:1.6,
-          borderTop:"1px solid rgba(79,70,229,0.2)", paddingTop:10, marginTop:4,
+          borderTop:"1px solid var(--acc-line, rgba(79,70,229,0.2))", paddingTop:10, marginTop:4,
         }}>
           {evento.vestimenta_nota}
         </p>
@@ -2663,14 +3446,14 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
 
   return (
     <div style={{
-      background: "linear-gradient(135deg,rgba(79,70,229,0.08) 0%,rgba(79,70,229,0.12) 100%)",
-      border: "1.5px solid rgba(79,70,229,0.3)",
+      background: "var(--acc-card-bg, linear-gradient(135deg,rgba(79,70,229,0.08) 0%,rgba(79,70,229,0.12) 100%))",
+      border: "1.5px solid var(--acc-card-border, rgba(79,70,229,0.3))",
       borderRadius: 18,
       padding: "18px 18px 16px",
       margin: "4px 0 8px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <div style={{ width:36, height:36, borderRadius:10, background:"rgba(79,70,229,0.10)", border:"1px solid rgba(79,70,229,0.22)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        <div style={{ width:36, height:36, borderRadius:10, background:"var(--acc-tile-bg, rgba(79,70,229,0.10))", border:"1px solid var(--acc-tile-border, rgba(79,70,229,0.22))", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="7" width="20" height="14" rx="2"/>
             <line x1="2" y1="12" x2="22" y2="12"/>
@@ -2685,7 +3468,7 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
       </div>
 
       {evento.regalo_mensaje && (
-        <p style={{ fontSize: 12, fontStyle: "italic", color: "var(--ink2)", lineHeight: 1.6, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(79,70,229,0.2)" }}>
+        <p style={{ fontSize: 12, fontStyle: "italic", color: "var(--ink2)", lineHeight: 1.6, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--acc-line, rgba(79,70,229,0.2))" }}>
           {evento.regalo_mensaje}
         </p>
       )}
@@ -2704,7 +3487,7 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
           </div>
         )}
         {evento.regalo_cuenta && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 4, background: "rgba(238,242,255,0.7)", border: "1px solid rgba(79,70,229,0.25)", borderRadius: 10, padding: "10px 12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 4, background: "var(--acc-inner-bg, rgba(238,242,255,0.7))", border: "1px solid var(--acc-inner-border, rgba(79,70,229,0.25))", borderRadius: 10, padding: "10px 12px" }}>
             <div>
               <div style={{ fontSize: 10, fontWeight: 600, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 3 }}>Cuenta / CLABE</div>
               <div style={{ fontFamily: "'Courier New',monospace", fontSize: 13, fontWeight: 600, color: "var(--ink)", letterSpacing: ".5px", wordBreak: "break-all" }}>
@@ -2714,8 +3497,8 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
             <button
               onClick={copiarCuenta}
               style={{
-                background: copiado ? "linear-gradient(135deg,#2d7d46,#38a85c)" : "linear-gradient(135deg,#4F46E5,#E0E7FF)",
-                color: copiado ? "#fff" : "#3730A3",
+                background: copiado ? "linear-gradient(135deg,#2d7d46,#38a85c)" : "var(--acc-btn, linear-gradient(135deg,#4F46E5,#E0E7FF))",
+                color: copiado ? "#fff" : "var(--acc-btn-ink, #3730A3)",
                 border: "none", borderRadius: 10, padding: "8px 13px",
                 fontSize: 12, fontWeight: 700, cursor: "pointer",
                 fontFamily: "'Jost',sans-serif", whiteSpace: "nowrap",
@@ -2731,8 +3514,30 @@ function RegaloCard({ evento }: { evento: { regalo_banco?: string | null; regalo
   );
 }
 
+// ─── Ícono de línea para cada momento del programa (graduación) ───────────────
+// El organizador elige un emoji (o deja ✨); acá se traduce a un ícono dorado
+// coherente, mirando el emoji y si no, las palabras del título.
+const ICONOS_PROGRAMA: { re: RegExp; d: string }[] = [
+  { re: /🥂|🍾|🍷|brindis|recepci|bienvenida|c[oó]ctel/i, d: "M7 3h4l-.5 6a1.5 1.5 0 0 1-3 0L7 3z M9 10.5V19 M6.5 19h5 M13 5h4l-.5 6a1.5 1.5 0 0 1-3 0L13 5z M15 12.5V20 M12.5 20h5" },
+  { re: /🎓|📜|ceremonia|acto|entrega|diploma|graduaci|investidura/i, d: "M12 4 L22 9 L12 14 L2 9 Z M6 11 V16 Q12 19.5 18 16 V11 M21 9.5 V15" },
+  { re: /🍽|🍴|🥘|cena|comida|almuerzo|banquete|buffet/i, d: "M7 3v6a2 2 0 0 0 4 0V3 M9 11v10 M17 21V3c-2 1.5-3 4-3 8h3" },
+  { re: /🎶|🎵|💃|🕺|🎉|🪩|baile|fiesta|m[uú]sica|\bdj\b|vals/i, d: "M9 18V6l10-2v12 M9 18a2 2 0 1 1-4 0a2 2 0 0 1 4 0z M19 16a2 2 0 1 1-4 0a2 2 0 0 1 4 0z" },
+  { re: /📸|📷|foto|sesi[oó]n/i, d: "M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z M15.5 13a3.5 3.5 0 1 1-7 0a3.5 3.5 0 0 1 7 0z" },
+  { re: /⛪|🙏|misa|iglesia|culto|acci[oó]n de gracias|oraci[oó]n/i, d: "M12 2v4 M10 4h4 M6 21V11l6-4 6 4v10 M4 21h16 M10 21v-4a2 2 0 0 1 4 0v4" },
+  { re: /🎂|🍰|🧁|pastel|torta|postre/i, d: "M4 21h16 M5 21v-7h14v7 M5 16c2 1.5 4 1.5 6 0s4-1.5 6 0 M12 14v-3 M12 8.5c.6 0 1-.4 1-1 0-1-1-2.5-1-2.5s-1 1.5-1 2.5c0 .6.4 1 1 1z" },
+];
+function IconoPrograma({ item }: { item: ItemItinerario }) {
+  const clave = `${item.icono || ""} ${item.titulo} ${item.descripcion || ""}`;
+  const d = ICONOS_PROGRAMA.find(i => i.re.test(clave))?.d ?? "M12 3l4 9-4 9-4-9z";
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GRAD.oroMedio} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
+
 // ─── ProgramaCard ─────────────────────────────────────────────────────────────
-function ProgramaCard({ items }: { items: ItemItinerario[] }) {
+function ProgramaCard({ items, tipo }: { items: ItemItinerario[]; tipo?: string }) {
   return (
     <div style={{
       background: "var(--surface)", border: "1px solid var(--border-mid)",
@@ -2746,7 +3551,7 @@ function ProgramaCard({ items }: { items: ItemItinerario[] }) {
       }}>
         <div style={{
           width: 34, height: 34, borderRadius: 10,
-          background: "rgba(79,70,229,0.10)", border: "1px solid rgba(79,70,229,0.22)",
+          background: "var(--acc-tile-bg, rgba(79,70,229,0.10))", border: "1px solid var(--acc-tile-border, rgba(79,70,229,0.22))",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
         }}>
@@ -2759,7 +3564,7 @@ function ProgramaCard({ items }: { items: ItemItinerario[] }) {
         </div>
         <div>
           <div style={{ fontSize: 9, fontWeight: 700, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: 2 }}>Programa del evento</div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 600, color: "var(--ink)" }}>Itinerario</div>
+          <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 17, fontWeight: 600, color: "var(--ink)" }}>Itinerario</div>
         </div>
       </div>
       {/* Items */}
@@ -2774,27 +3579,27 @@ function ProgramaCard({ items }: { items: ItemItinerario[] }) {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: 32 }}>
               <div style={{
                 width: 32, height: 32, borderRadius: "50%",
-                background: "rgba(79,70,229,0.12)",
-                border: "1.5px solid rgba(79,70,229,0.35)",
+                background: "var(--acc-tile-bg, rgba(79,70,229,0.12))",
+                border: "1.5px solid var(--acc-dot-border, rgba(79,70,229,0.35))",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 14, lineHeight: 1,
               }}>
-                {item.icono ? item.icono : (
+                {tipo === "graduacion" ? <IconoPrograma item={item} /> : item.icono ? item.icono : (
                   <div style={{ width:8, height:8, borderRadius:"50%", background:"var(--gold-dark)", opacity:0.8 }}/>
                 )}
               </div>
               {idx < items.length - 1 && (
-                <div style={{ width: 1, flex: 1, minHeight: 12, background: "linear-gradient(180deg,rgba(79,70,229,0.3),transparent)", marginTop: 4 }} />
+                <div style={{ width: 1, flex: 1, minHeight: 12, background: "linear-gradient(180deg,var(--acc-dot-border, rgba(79,70,229,0.3)),transparent)", marginTop: 4 }} />
               )}
             </div>
             {/* Contenido */}
             <div style={{ flex: 1, paddingTop: 4 }}>
               {item.hora && (
-                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 3 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--prog-hora, var(--gold))", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 3 }}>
                   {item.hora}
                 </div>
               )}
-              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 600, color: "var(--ink)", lineHeight: 1.2, marginBottom: item.descripcion ? 4 : 0 }}>
+              <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 17, fontWeight: 600, color: "var(--ink)", lineHeight: 1.2, marginBottom: item.descripcion ? 4 : 0 }}>
                 {item.titulo}
               </div>
               {item.descripcion && (
@@ -2843,7 +3648,7 @@ function DeseoModal({ eventoId, token, onClose }: { eventoId: string; token: str
         <div style={{ width: 36, height: 4, borderRadius: 2, background: "#CBD5E1", margin: "14px auto 0" }} />
         <div style={{ padding: "22px 24px 20px", textAlign: "center" }}>
           <div style={{ fontSize: 42, marginBottom: 12 }}>💌</div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26, fontStyle: "italic", color: "var(--ink)", marginBottom: 8 }}>
+          <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 26, fontStyle: "italic", color: "var(--ink)", marginBottom: 8 }}>
             ¿Querés dejar tu deseo?
           </div>
           <p style={{ fontSize: 13, color: "var(--ink3)", lineHeight: 1.6, marginBottom: 24 }}>
@@ -2851,7 +3656,7 @@ function DeseoModal({ eventoId, token, onClose }: { eventoId: string; token: str
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <button
-              style={{ width: "100%", background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontStyle: "italic", fontWeight: 600, cursor: "pointer", boxShadow: "0 8px 22px -6px rgba(79,70,229,0.40)" }}
+              style={{ width: "100%", background: "linear-gradient(135deg,var(--gold-dark),var(--gold))", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 18, fontStyle: "italic", fontWeight: 600, cursor: "pointer", boxShadow: "0 8px 22px -6px rgba(79,70,229,0.40)" }}
               onClick={() => { window.location.href = `/muro/${eventoId}?token=${token}&tab=deseos`; }}
             >
               Sí, quiero dejar mi deseo 💌
@@ -2980,31 +3785,31 @@ function DeseoFormInline({
 
   if (enviado) {
     return (
-      <div style={{ background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", border: "1.5px solid rgba(79,70,229,0.22)", borderRadius: 18, padding: "24px 20px", textAlign: "center" }}>
+      <div style={{ background: "var(--acc-soft-grad, linear-gradient(135deg,#EEF2FF,#E0E7FF))", border: "1.5px solid var(--acc-line, rgba(79,70,229,0.22))", borderRadius: 18, padding: "24px 20px", textAlign: "center" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>💌</div>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontStyle: "italic", color: "#3730A3", marginBottom: 8 }}>¡Tu deseo fue enviado!</div>
-        <p style={{ fontSize: 13, color: "#6366F1" }}>Tu mensaje aparecerá en el muro del evento.</p>
+        <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 22, fontStyle: "italic", color: "var(--acc-ink, #3730A3)", marginBottom: 8 }}>¡Tu deseo fue enviado!</div>
+        <p style={{ fontSize: 13, color: "var(--acc-sub, #6366F1)" }}>Tu mensaje aparecerá en el muro del evento.</p>
       </div>
     );
   }
 
   return (
-    <div style={{ background: "white", border: "1.5px solid rgba(79,70,229,0.18)", borderRadius: 18, padding: "20px", display: "flex", flexDirection: "column", gap: 14, boxShadow: "0 4px 20px rgba(79,70,229,0.08)" }}>
+    <div style={{ background: "white", border: "1.5px solid var(--acc-line, rgba(79,70,229,0.18))", borderRadius: 18, padding: "20px", display: "flex", flexDirection: "column", gap: 14, boxShadow: "var(--acc-card-shadow, 0 4px 20px rgba(79,70,229,0.08))" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ fontSize: 28 }}>💌</div>
         <div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontStyle: "italic", color: "#1E1B4B", fontWeight: 600 }}>Dejá tu deseo</div>
+          <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 18, fontStyle: "italic", color: "#1E1B4B", fontWeight: 600 }}>Dejá tu deseo</div>
           <div style={{ fontSize: 11, color: "#6B7280", marginTop: 1 }}>Un mensaje especial para los anfitriones</div>
         </div>
       </div>
 
       {/* Stickers */}
       <div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.8px" }}>Elige un sticker</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--acc, #4F46E5)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.8px" }}>Elige un sticker</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {STICKERS_DESEO.map((s) => (
             <button key={s} onClick={() => setSticker(s)}
-              style={{ width: 36, height: 36, borderRadius: 10, border: sticker === s ? "2.5px solid #4F46E5" : "1.5px solid #E5E7EB", background: sticker === s ? "#EEF2FF" : "white", fontSize: 18, cursor: "pointer", transition: "all .14s" }}>
+              style={{ width: 36, height: 36, borderRadius: 10, border: sticker === s ? "2.5px solid var(--acc, #4F46E5)" : "1.5px solid #E5E7EB", background: sticker === s ? "var(--acc-soft, #EEF2FF)" : "white", fontSize: 18, cursor: "pointer", transition: "all .14s" }}>
               {s}
             </button>
           ))}
@@ -3013,11 +3818,11 @@ function DeseoFormInline({
 
       {/* Color de tarjeta */}
       <div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.8px" }}>Color de tarjeta</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--acc, #4F46E5)", marginBottom: 7, textTransform: "uppercase", letterSpacing: "0.8px" }}>Color de tarjeta</div>
         <div style={{ display: "flex", gap: 6 }}>
           {COLORES_DESEO_FORM.map((c) => (
             <button key={c} onClick={() => setColor(c)}
-              style={{ width: 28, height: 28, borderRadius: 8, background: c, border: color === c ? "2.5px solid #4F46E5" : "1.5px solid #D1D5DB", cursor: "pointer", transition: "all .14s" }} />
+              style={{ width: 28, height: 28, borderRadius: 8, background: c, border: color === c ? "2.5px solid var(--acc, #4F46E5)" : "1.5px solid #D1D5DB", cursor: "pointer", transition: "all .14s" }} />
           ))}
         </div>
       </div>
@@ -3029,19 +3834,19 @@ function DeseoFormInline({
         placeholder="Escribe tu deseo, dedicatoria o mensaje especial..."
         maxLength={300}
         rows={4}
-        style={{ width: "100%", border: "1.5px solid #E0E7FF", borderRadius: 12, padding: "12px 14px", fontSize: 14, outline: "none", fontFamily: "inherit", resize: "none", background: color, color: "#1E1B4B", boxSizing: "border-box", lineHeight: 1.6 }}
+        style={{ width: "100%", border: "1.5px solid var(--acc-line, #E0E7FF)", borderRadius: 12, padding: "12px 14px", fontSize: 14, outline: "none", fontFamily: "inherit", resize: "none", background: color, color: "#1E1B4B", boxSizing: "border-box", lineHeight: 1.6 }}
       />
       <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: -10, textAlign: "right" }}>{mensaje.length}/300</div>
 
       {/* ── Dedicatoria con voz ── */}
-      <div style={{ border: "1.5px dashed rgba(79,70,229,0.35)", borderRadius: 14, padding: "12px 14px", background: "rgba(79,70,229,0.04)" }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#4F46E5", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
+      <div style={{ border: "1.5px dashed var(--acc-dash, rgba(79,70,229,0.35))", borderRadius: 14, padding: "12px 14px", background: "var(--acc-wash, rgba(79,70,229,0.04))" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--acc, #4F46E5)", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
           🎤 Dedicatoria de voz (opcional)
         </div>
         {!audioPreview && !grabando && (
           <button
             onClick={iniciarGrabacion}
-            style={{ width: "100%", border: "none", borderRadius: 12, padding: "12px", background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", color: "#3730A3", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            style={{ width: "100%", border: "none", borderRadius: 12, padding: "12px", background: "var(--acc-soft-grad, linear-gradient(135deg,#EEF2FF,#E0E7FF))", color: "var(--acc-ink, #3730A3)", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="9" y="2" width="6" height="12" rx="3"/>
@@ -3084,7 +3889,7 @@ function DeseoFormInline({
       <button
         onClick={publicar}
         disabled={enviando || (!mensaje.trim() && !audioBlob)}
-        style={{ width: "100%", background: (mensaje.trim() || audioBlob) ? "linear-gradient(135deg,#3730A3,#4F46E5)" : "#E5E7EB", color: (mensaje.trim() || audioBlob) ? "white" : "#9CA3AF", border: "none", borderRadius: 14, padding: "15px", fontFamily: "inherit", fontSize: 15, fontWeight: 700, cursor: (mensaje.trim() || audioBlob) ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all .2s", boxShadow: (mensaje.trim() || audioBlob) ? "0 6px 20px rgba(79,70,229,0.30)" : "none" }}
+        style={{ width: "100%", background: (mensaje.trim() || audioBlob) ? "var(--acc-primary, linear-gradient(135deg,#3730A3,#4F46E5))" : "#E5E7EB", color: (mensaje.trim() || audioBlob) ? "var(--acc-primary-ink, white)" : "#9CA3AF", border: "none", borderRadius: 14, padding: "15px", fontFamily: "inherit", fontSize: 15, fontWeight: 700, cursor: (mensaje.trim() || audioBlob) ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all .2s", boxShadow: (mensaje.trim() || audioBlob) ? "var(--acc-primary-shadow, 0 6px 20px rgba(79,70,229,0.30))" : "none" }}
       >
         <span style={{ fontSize: 18 }}>{sticker}</span>
         {enviando ? "Publicando..." : "Publicar mi deseo"}
@@ -3107,7 +3912,7 @@ function RecordatorioDeseoFinal({ eventoId, invitadoId, token }: { eventoId: str
   return (
     <div style={{ background: "linear-gradient(135deg,#FDF4FF,#EEF2FF)", border: "1.5px solid rgba(139,92,246,0.25)", borderRadius: 18, padding: "20px 18px", display: "flex", flexDirection: "column", gap: 12, textAlign: "center" }}>
       <div style={{ fontSize: 28 }}>💌</div>
-      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontStyle: "italic", color: "var(--ink)", lineHeight: 1.3 }}>
+      <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 20, fontStyle: "italic", color: "var(--ink)", lineHeight: 1.3 }}>
         ¿Querés dejar un mensaje?
       </div>
       <p style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.6, margin: 0 }}>
@@ -3231,9 +4036,10 @@ export default function ConfirmarPage() {
   const [tarjetaPreview, setTarjetaPreview] = useState<string | null>(null);
   const [mostrarModalTarjeta, setMostrarModalTarjeta] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [saliendoPortada, setSaliendoPortada] = useState(false);
   const [showEvorixPromo, setShowEvorixPromo] = useState(false);
   // showMascota eliminado — reemplazado por FloatingMascot
-  const [mascotaFase, setMascotaFase] = useState<"leyendo"|"esperando_confirm"|"post_confirm"|"esperando_submit"|"instrucciones"|"despedida"|"oculto">("oculto");
+  const [mascotaFase, setMascotaFase] = useState<FaseMascota>("oculto");
   // Cuando cambia de pantalla → el birrete lee la nueva pantalla
   const prevStepRef = useRef(step);
   useEffect(() => {
@@ -3289,14 +4095,18 @@ export default function ConfirmarPage() {
   useEffect(() => {
     if (!invitado?.evento_id || evento?.tipo !== "graduacion") return;
     (async () => {
-      const { data, count } = await supabase
+      // Círculos de 42 px: con la miniatura alcanza (si la columna no existe, la original)
+      const consulta = (cols: string) => supabase
         .from("fotos")
-        .select("url", { count: "exact" })
+        .select(cols, { count: "exact" })
         .eq("evento_id", invitado.evento_id)
         .order("created_at", { ascending: false })
         .limit(3);
-      if (data && data.length) {
-        setMuroPreview({ urls: data.map((f: { url: string }) => f.url), total: count ?? data.length });
+      let { data, count, error } = await consulta("url,thumb_url");
+      if (error) ({ data, count } = await consulta("url"));
+      const filas = (data ?? []) as unknown as { url: string; thumb_url?: string | null }[];
+      if (filas.length) {
+        setMuroPreview({ urls: filas.map((f) => f.thumb_url || f.url), total: count ?? filas.length });
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3322,7 +4132,40 @@ export default function ConfirmarPage() {
     return () => io.disconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, step, evento?.id]);
-  const { hablando, leer, detener, textoActual, charIdx } = useTTS();
+  const { hablando, leer, detener, textoActual, charIdx, silencio, setSilencio } = useTTS();
+
+  // "Entrar sin sonido": se marca en el pointerdown, antes que el desbloqueo
+  // global de audio (que escucha el primer toque) llegue a encender la música.
+  function marcarSinSonido() {
+    preferenciaAudio.sinSonido = true;
+    const a = globalAudioRef.current;
+    if (a) { a.muted = true; a.pause(); }
+  }
+
+  // Salir de la portada/bienvenida hacia la invitación. Corre dentro del gesto
+  // del invitado: es el momento de desbloquear música y voz en iPhone.
+  function entrarInvitacion(conSonido: boolean) {
+    if (!evento || saliendoPortada) return;
+    const guiado = evento.tipo === "graduacion" || evento.tipo === "cumpleaños";
+    if (conSonido) {
+      preferenciaAudio.sinSonido = false;
+      if (silencio) setSilencio(false);
+      const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
+      if (typeof fn === "function") (fn as () => void)();
+    } else {
+      // Sin música ni voz; los subtítulos y el recorrido guiado siguen
+      marcarSinSonido();
+      setSilencio(true);
+    }
+    if (guiado) desbloquearTTS();
+    if (evento.tipo === "graduacion") setSaliendoPortada(true);
+    else document.getElementById("welcome-overlay")?.classList.add("leaving");
+    setTimeout(() => {
+      setShowWelcome(false);
+      // Solo hablar si todavía no respondió la invitación
+      if (guiado) setMascotaFase(step === "confirmado" || step === "rechazado" ? "oculto" : "leyendo");
+    }, evento.tipo === "graduacion" ? 1050 : 420);
+  }
   const [itinerario, setItinerario] = useState<ItemItinerario[]>([]);
   // Mesa self-selection
   type MesaConOcupacion = { id: string; nombre: string; capacidad: number; ocupados: number };
@@ -3354,7 +4197,8 @@ export default function ConfirmarPage() {
       (document.getElementById("inv-audio-hidden") as HTMLAudioElement | null);
 
     const unlock = () => {
-      if (desbloqueado) return;
+      // "Entrar sin sonido" ya se marcó (pointerdown llega antes que este toque)
+      if (desbloqueado || preferenciaAudio.sinSonido) return;
       desbloqueado = true;
       document.removeEventListener("touchstart", unlock, true);
       document.removeEventListener("mousedown", unlock, true);
@@ -3363,8 +4207,9 @@ export default function ConfirmarPage() {
       // Truco iOS: play en muted (permitido) → unmute inmediatamente
       audio.muted = true;
       audio.play()
-        .then(() => { audio.muted = false; })
+        .then(() => { if (preferenciaAudio.sinSonido) { audio.pause(); return; } audio.muted = false; })
         .catch(() => {
+          if (preferenciaAudio.sinSonido) return;
           audio.muted = false;
           audio.play().catch(() => {});
         });
@@ -3379,7 +4224,10 @@ export default function ConfirmarPage() {
       // Intentar muted autoplay (Chrome lo permite; iOS lo bloqueará)
       audio.muted = true;
       audio.play()
-        .then(() => { audio.muted = false; desbloqueado = true; })
+        .then(() => {
+          if (preferenciaAudio.sinSonido) { audio.pause(); return; }
+          audio.muted = false; desbloqueado = true;
+        })
         .catch(() => {
           // Bloqueado — esperar primer gesto
           document.addEventListener("touchstart", unlock, { capture: true, once: true });
@@ -3508,16 +4356,23 @@ export default function ConfirmarPage() {
 
     let siguiente = (lastConf?.[0]?.numero_confirmacion ?? 0) + 1;
 
+    // Quiénes van (chips de nombres). Si la columna todavía no existe en la base
+    // (falta correr supabase-asistentes.sql), se reintenta sin ella.
+    let conNombres = usarChips;
+    const asistentes = nombresEnTarjeta.filter((_, i) => quienesVan[i]);
+
     // Reintentos para manejar race condition en numero_confirmacion (unique constraint)
     let updated = null;
-    for (let intento = 0; intento < 5; intento++) {
+    for (let intento = 0; intento < 6; intento++) {
+      const cambios: Record<string, unknown> = {
+        estado: "confirmado",
+        num_personas: numPersonas,
+        numero_confirmacion: siguiente,
+      };
+      if (conNombres) cambios.asistentes_nombres = asistentes;
       const { data, error } = await supabase
         .from("invitados")
-        .update({
-          estado: "confirmado",
-          num_personas: numPersonas,
-          numero_confirmacion: siguiente,
-        })
+        .update(cambios)
         .eq("id", invitado.id)
         .select()
         .single();
@@ -3525,6 +4380,11 @@ export default function ConfirmarPage() {
       if (data && !error) {
         updated = data;
         break;
+      }
+
+      if (conNombres && /asistentes_nombres/i.test(error?.message || "")) {
+        conNombres = false;
+        continue;
       }
 
       // Si el error es unique constraint en numero_confirmacion, reintentamos con el siguiente
@@ -3684,7 +4544,7 @@ export default function ConfirmarPage() {
         a.download = `invitacion_${invitado.nombre.replace(/\s/g, "_")}.png`;
         a.click();
         const texto = encodeURIComponent(
-          `🎉 *${evento.nombre}*\n\nHola *${invitado.nombre}*, aquí están tus accesos:\n\n✅ Confirmar:\n${link1}\n\n📸 Foto:\n${link2}\n\n💌 Deseo:\n${link2}`,
+          `🎉 ${evento.nombre}\n\nHola, ${invitado.nombre}, aquí están tus accesos:\n\n✅ Confirmar:\n${link1}\n\n📸 Foto:\n${link2}\n\n💌 Deseo:\n${link2}`,
         );
         setTimeout(() => openWhatsApp(`https://wa.me/?text=${texto}`), 800);
       }
@@ -3702,6 +4562,22 @@ export default function ConfirmarPage() {
   }
 
   // ── Versión Instagram Stories 9:16 (graduación) ──
+  // ── "¡Yo voy!" (graduación): imagen para Stories/WhatsApp sin el enlace personal ──
+  const [compartiendo, setCompartiendo] = useState(false);
+  async function compartirYoVoy() {
+    if (!evento || compartiendo) return;
+    setCompartiendo(true);
+    try {
+      const blob = await generarYoVoyCanvas(evento);
+      if (blob) await compartirImagen(blob, `yo-voy_${evento.nombre.replace(/\s+/g, "_")}.png`, `¡Voy a ${evento.nombre}!`);
+    } catch (err) {
+      console.error("Error al generar la imagen:", err);
+      toast.error("No se pudo preparar la imagen. Probá de nuevo.");
+    } finally {
+      setCompartiendo(false);
+    }
+  }
+
   const [generandoStory, setGenerandoStory] = useState(false);
   async function compartirStory() {
     if (!invitado || !evento || generandoStory) return;
@@ -3737,6 +4613,29 @@ export default function ConfirmarPage() {
     return invitado ? [invitado.nombre] : [];
   })();
 
+  // ── Formulario por nombres: si la tarjeta trae la lista de personas, se marca
+  // quién va en vez de contar con + y −. Solo ajusta la cantidad (num_personas);
+  // la lista del organizador no se toca.
+  const topeNombres = invitado?.cupo_elije_invitado
+    ? nombresEnTarjeta.length
+    : Math.min(nombresEnTarjeta.length, invitado?.num_personas || nombresEnTarjeta.length);
+  const usarChips = nombresEnTarjeta.length > 1;
+  const [quienesVan, setQuienesVan] = useState<boolean[]>([]);
+  useEffect(() => {
+    if (step !== "form" || !usarChips) return;
+    setQuienesVan(nombresEnTarjeta.map((_, i) => i < topeNombres));
+    setNumPersonas(topeNombres);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, usarChips]);
+  function alternarAsistente(i: number) {
+    const next = quienesVan.map((v, j) => (j === i ? !v : v));
+    const n = next.filter(Boolean).length;
+    if (n === 0) { toast.info("Tiene que ir al menos una persona"); return; }
+    if (n > topeNombres) { toast.info(`Tu invitación es para hasta ${topeNombres} personas`); return; }
+    setQuienesVan(next);
+    setNumPersonas(n);
+  }
+
 
   // ─── TEMAS (rediseño UX/UI profesional, paleta clara) ──────────────────────
   const TEMAS: Record<string, string> = {
@@ -3764,14 +4663,31 @@ export default function ConfirmarPage() {
       --border:rgba(5,150,105,0.14);--border-mid:rgba(5,150,105,0.28);
       --shadow:0 8px 28px rgba(6,78,59,0.06);--shadow-lg:0 20px 48px rgba(6,78,59,0.10);
     `,
-    // Tema exclusivo de graduación: dorado + azul noche
+    // Tema exclusivo de graduación: azul noche + dorado champagne + blanco perla.
+    // --cream es el fondo de los bloques internos: perla fría, nunca crema amarilla.
     graduacion: `
-      --gold:#D97706;--gold-dark:#92400E;--gold-light:#FDE68A;--gold-pale:#FFFBEB;
-      --dark:#FFFBEB;--dark2:#FEF3C7;--ink:#1E1B4B;--ink2:#44406B;--ink3:#92400E;
-      --cream:#FFFBEB;--cream2:#FEF3C7;--surface:#FFFFFF;
-      --on-dark:#78350F;--on-dark-sub:#B45309;
-      --border:rgba(217,119,6,0.18);--border-mid:rgba(217,119,6,0.34);
-      --shadow:0 8px 28px rgba(120,53,15,0.07);--shadow-lg:0 20px 48px rgba(120,53,15,0.12);
+      --gold:${GRAD.oro};--gold-dark:${GRAD.oroOscuro};--gold-light:${GRAD.oroClaro};--gold-pale:${GRAD.perla};
+      --dark:${GRAD.navy};--dark2:${GRAD.navy2};--ink:${GRAD.tinta};--ink2:#3A4366;--ink3:${GRAD.oroOscuro};
+      --cream:${GRAD.perla};--cream2:${GRAD.perla2};--surface:#FFFFFF;
+      --on-dark:#FFFFFF;--on-dark-sub:${GRAD.oroClaro};
+      --border:rgba(15,23,51,0.08);--border-mid:rgba(168,132,58,0.32);
+      --shadow:0 8px 28px rgba(10,15,36,0.08);--shadow-lg:0 20px 48px rgba(10,15,36,0.14);
+      --inv-head-bg:#FFFFFF;
+      --acc:${GRAD.oroMedio};--acc-ink:${GRAD.tinta};--acc-sub:#4A5275;
+      --acc-soft:${GRAD.perla};--acc-soft-grad:${GRAD.perla};
+      --acc-line:rgba(168,132,58,0.30);--acc-dash:rgba(168,132,58,0.45);--acc-wash:${GRAD.perla};
+      --acc-card-bg:#FFFFFF;--acc-card-border:rgba(168,132,58,0.30);--acc-card-shadow:0 6px 22px rgba(10,15,36,0.06);
+      --acc-tile-bg:${GRAD.perla};--acc-tile-border:rgba(168,132,58,0.30);--acc-dot-border:rgba(168,132,58,0.45);
+      --acc-inner-bg:${GRAD.perla};--acc-inner-border:rgba(15,23,51,0.07);
+      --acc-btn:${GRAD.tinta};--acc-btn-ink:${GRAD.oroClaro};
+      --acc-primary:linear-gradient(135deg,${GRAD.oroClaro} 0%,${GRAD.oro} 52%,${GRAD.oroMedio} 100%);
+      --acc-primary-ink:${GRAD.tinta};--acc-primary-shadow:0 8px 22px -6px rgba(168,132,58,0.55);
+      --conf-strong:${GRAD.oroClaro};--prog-hora:${GRAD.oroOscuro};
+      /* Tipografía académica: Playfair para nombres y títulos (se lee mejor en el
+         celular que Cormorant, que es más de boda), Cinzel para etiquetas tipo
+         diploma. font-size-adjust la dibuja a la altura de minúscula del diseño. */
+      --f-display:'Playfair Display';--f-adjust:0.43;
+      --f-label:'Cinzel',Georgia,serif;
     `,
   };
   const temaVars = evento?.tipo === "graduacion"
@@ -3780,7 +4696,7 @@ export default function ConfirmarPage() {
 
   // ─── ESTILOS ───────────────────────────────────────────────────────────────
   const styles = `
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Jost:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Jost:wght@300;400;500;600;700${evento?.tipo === "graduacion" ? "&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Cinzel:wght@500;600;700" : ""}&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A}
     :root{
@@ -3799,7 +4715,7 @@ export default function ConfirmarPage() {
 
     .topbar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:rgba(255,255,255,0.90);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:env(safe-area-inset-top,0px);z-index:20;justify-content:space-between;box-sizing:border-box;width:100%;}
     .topbar-left{display:flex;align-items:center;gap:10px}
-    .topbar-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;line-height:1}
+    .topbar-name{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;line-height:1}
     .topbar-sub{font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-top:1px}
 
     .wrap{max-width:430px;margin:0 auto;padding:22px 16px max(32px,env(safe-area-inset-bottom,32px));display:flex;flex-direction:column;gap:20px}
@@ -3812,16 +4728,16 @@ export default function ConfirmarPage() {
     /* Sección debajo del hero */
     .inv-tipo-badge{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid rgba(79,70,229,0.35);border-radius:99px;padding:5px 14px 5px 10px;font-family:'Jost',sans-serif;font-size:12px;font-weight:600;color:var(--ink3);letter-spacing:1.2px;text-transform:uppercase;}
     .inv-tipo-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--gold-dark);opacity:.7;display:inline-block}
-    .inv-saludo{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:500;font-style:italic;color:var(--ink);letter-spacing:-.3px;line-height:1.2;margin-top:8px}
+    .inv-saludo{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:36px;font-weight:500;font-style:italic;color:var(--ink);letter-spacing:-.3px;line-height:1.2;margin-top:8px}
     .inv-anfitrion{font-size:14px;color:var(--ink3);font-weight:400;letter-spacing:.3px;margin-top:4px}
-    .inv-evento-nombre{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;margin-top:6px}
+    .inv-evento-nombre{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:20px;font-weight:600;color:var(--ink);letter-spacing:.3px;margin-top:6px}
     .inv-body{padding:24px 20px;display:flex;flex-direction:column;gap:18px}
-    .inv-frase{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;font-weight:400;color:var(--ink2);text-align:center;line-height:1.6;padding:2px 8px}
+    .inv-frase{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:17px;font-style:italic;font-weight:400;color:var(--ink2);text-align:center;line-height:1.6;padding:2px 8px}
     .inv-nombres{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px 18px}
     .inv-nombres-title{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:12px}
-    .inv-nombre-item{display:flex;align-items:center;gap:11px;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--ink);font-weight:500;margin-bottom:8px}
+    .inv-nombre-item{display:flex;align-items:center;gap:11px;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:17px;color:var(--ink);font-weight:500;margin-bottom:8px}
     .inv-nombre-item:last-child{margin-bottom:0}
-    .inv-nombre-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#FFFFFF;font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:none;box-shadow:0 2px 6px rgba(79,70,229,0.25)}
+    .inv-nombre-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#FFFFFF;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:none;box-shadow:0 2px 6px rgba(79,70,229,0.25)}
     .detalles{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:18px 18px;display:flex;flex-direction:column;gap:16px}
     .detalle-fila{display:flex;align-items:flex-start;gap:14px}
     .detalle-ico-wrap{width:38px;height:38px;border-radius:11px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(15,23,42,.05)}
@@ -3836,7 +4752,7 @@ export default function ConfirmarPage() {
     .galeria-thumb{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer;border:1.5px solid var(--border-mid);transition:transform .15s}
     .galeria-thumb:hover{transform:scale(1.02)}
     .galeria-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-    .galeria-thumb-more{position:absolute;inset:0;background:rgba(15,23,42,0.60);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--gold-light)}
+    .galeria-thumb-more{position:absolute;inset:0;background:rgba(15,23,42,0.60);display:flex;align-items:center;justify-content:center;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:22px;font-weight:600;color:var(--gold-light)}
     .btn-ver-fotos{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--cream);border:1.5px solid var(--border-mid);border-radius:12px;padding:11px 16px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .15s;font-family:'Jost',sans-serif;}
     .btn-ver-fotos:hover{background:var(--gold-pale);border-color:var(--gold);color:var(--gold-dark)}
 
@@ -3862,14 +4778,14 @@ export default function ConfirmarPage() {
     .music-icon-wrap{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(79,70,229,0.28)}
     .music-info{flex:1;min-width:0}
     .music-label{display:block;font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
-    .music-name{display:block;font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .music-name{display:block;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:17px;font-style:italic;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .music-waves{display:flex;align-items:center;gap:2px;flex-shrink:0}
     .mw{width:3px;border-radius:99px;background:var(--gold);animation:mwave .8s ease-in-out infinite}
     .mw-1{height:8px;animation-delay:0s}.mw-2{height:14px;animation-delay:.1s}.mw-3{height:10px;animation-delay:.2s}.mw-4{height:16px;animation-delay:.15s}.mw-5{height:8px;animation-delay:.05s}
     @keyframes mwave{0%,100%{transform:scaleY(0.5)}50%{transform:scaleY(1)}}
 
     /* Mensaje */
-    .inv-mensaje{background:var(--cream);border-left:3px solid var(--gold);border-radius:0 12px 12px 0;padding:14px 18px;font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--ink2);line-height:1.7}
+    .inv-mensaje{background:var(--cream);border-left:3px solid var(--gold);border-radius:0 12px 12px 0;padding:14px 18px;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:17px;font-style:italic;color:var(--ink2);line-height:1.7}
     /* Deadline */
     .inv-deadline{background:#fef8f0;border:1px solid rgba(180,83,9,0.2);border-radius:var(--r-sm);padding:12px 15px;display:flex;align-items:center;gap:10px}
     .deadline-text{font-size:14px;color:#92400e;font-weight:500;line-height:1.4}
@@ -3890,7 +4806,7 @@ export default function ConfirmarPage() {
       box-shadow:0 -8px 32px rgba(79,70,229,0.12);
     }
     .decision-bar-inner{max-width:430px;margin:0 auto}
-    .decision-bar-label{font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:var(--ink3);text-align:center;margin-bottom:10px;font-weight:400}
+    .decision-bar-label{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:15px;font-style:italic;color:var(--ink3);text-align:center;margin-bottom:10px;font-weight:400}
     .decision-bar-btns{display:grid;grid-template-columns:1fr 2fr;gap:10px}
     /* Espacio extra en el .wrap para que el contenido no quede tapado por la barra fija */
     .wrap-has-bar{padding-bottom:110px!important}
@@ -3902,14 +4818,27 @@ export default function ConfirmarPage() {
 
     /* Form */
     .form-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow);padding:30px 24px;animation:riseUp .45s cubic-bezier(.22,1,.36,1) both}
-    .form-titulo{font-family:'Cormorant Garamond',serif;font-size:32px;font-style:italic;font-weight:400;color:var(--ink)}
+    .form-titulo{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:32px;font-style:italic;font-weight:400;color:var(--ink)}
     .form-sub{font-size:12px;color:var(--ink3);font-weight:600;margin:4px 0 24px;text-transform:uppercase;letter-spacing:.8px}
     .campo-label{font-size:12px;font-weight:700;color:var(--gold-dark);text-transform:uppercase;letter-spacing:1px;margin:18px 0 12px;display:block}
     .counter-row{display:flex;align-items:center;gap:20px;padding:2px 0}
-    .cnt-btn{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--border-mid);background:var(--cream);color:var(--ink3);font-size:22px;font-weight:400;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;user-select:none;font-family:'Cormorant Garamond',serif;line-height:1}
+    .cnt-btn{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--border-mid);background:var(--cream);color:var(--ink3);font-size:22px;font-weight:400;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;user-select:none;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);line-height:1}
     .cnt-btn:hover{background:var(--gold-pale);border-color:var(--gold);color:var(--gold-dark)}
-    .cnt-val{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:400;color:var(--ink);min-width:50px;text-align:center;font-variant-numeric:tabular-nums}
-    .btn-confirmar-final{width:100%;margin-top:20px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:var(--r-sm);padding:16px;font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.5px;box-shadow:0 8px 22px -6px rgba(79,70,229,0.42), 0 2px 6px rgba(79,70,229,0.16);transition:transform .18s,box-shadow .18s;display:flex;align-items:center;justify-content:center;gap:9px}
+    .cnt-val{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:44px;font-weight:400;color:var(--ink);min-width:50px;text-align:center;font-variant-numeric:tabular-nums}
+    .chips-asist{display:flex;flex-direction:column;gap:9px}
+    .chip-asist{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;border-radius:14px;cursor:pointer;
+      background:var(--surface);border:1.5px solid var(--border-mid);text-align:left;font-family:'Jost',sans-serif;
+      transition:background .18s,border-color .18s,box-shadow .18s;-webkit-tap-highlight-color:transparent}
+    .chip-asist.va{background:var(--cream);border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,165,76,0.12)}
+    .chip-asist-av{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+      font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:15px;font-weight:600;color:#FFFFFF;background:linear-gradient(135deg,var(--gold-dark),var(--gold));opacity:.45;transition:opacity .18s}
+    .chip-asist.va .chip-asist-av{opacity:1}
+    .chip-asist-nombre{flex:1;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:18px;font-weight:500;color:var(--ink2)}
+    .chip-asist.va .chip-asist-nombre{color:var(--ink)}
+    .chip-asist-check{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+      border:1.5px solid var(--border-mid);color:#FFFFFF;transition:all .18s}
+    .chip-asist.va .chip-asist-check{background:var(--gold-dark);border-color:var(--gold-dark)}
+    .btn-confirmar-final{width:100%;margin-top:20px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:var(--r-sm);padding:16px;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:18px;font-style:italic;font-weight:600;cursor:pointer;letter-spacing:.5px;box-shadow:0 8px 22px -6px rgba(79,70,229,0.42), 0 2px 6px rgba(79,70,229,0.16);transition:transform .18s,box-shadow .18s;display:flex;align-items:center;justify-content:center;gap:9px}
     .btn-confirmar-final:hover{transform:translateY(-1px)}
     .btn-confirmar-final:disabled{opacity:.65;cursor:wait}
     .spinner{width:18px;height:18px;border-radius:50%;border:2px solid rgba(79,70,229,0.3);border-top-color:var(--gold);animation:spin .7s linear infinite}
@@ -3920,13 +4849,13 @@ export default function ConfirmarPage() {
     .conf-hero::before{content:'';position:absolute;inset:0;opacity:.025;background-image:radial-gradient(circle,#4F46E5 1px,transparent 1px);background-size:32px 32px}
     .conf-check{position:relative;z-index:1;width:68px;height:68px;border-radius:50%;background:rgba(79,70,229,0.10);border:1px solid rgba(79,70,229,0.35);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;animation:popIn .55s .1s cubic-bezier(.22,1,.36,1) both}
     @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
-    .conf-titulo{position:relative;z-index:1;font-family:'Cormorant Garamond',serif;font-size:40px;font-style:italic;font-weight:400;color:var(--ink);letter-spacing:-.5px;margin-bottom:8px}
+    .conf-titulo{position:relative;z-index:1;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:40px;font-style:italic;font-weight:400;color:var(--ink);letter-spacing:-.5px;margin-bottom:8px}
     .conf-sub{position:relative;z-index:1;font-size:14px;color:var(--ink3);font-weight:500;letter-spacing:.3px}
     .conf-body{padding:22px;display:flex;flex-direction:column;gap:16px}
     .num-badge{background:var(--cream);border-radius:var(--r-sm);border:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;gap:16px}
     .num-icono{width:46px;height:46px;border-radius:12px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold-dark)}
     .num-label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
-    .num-val{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:500;color:var(--ink);letter-spacing:-1px;line-height:1}
+    .num-val{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:34px;font-weight:500;color:var(--ink);letter-spacing:-1px;line-height:1}
     .resumen{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px 18px;display:flex;flex-direction:column;gap:13px}
     .res-fila{display:flex;align-items:center;gap:12px}
     .res-ico{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(15,23,42,.05)}
@@ -3973,7 +4902,7 @@ export default function ConfirmarPage() {
     @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
     .modal-drag{width:36px;height:4px;border-radius:2px;background:#CBD5E1;margin:14px auto 0}
     .modal-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between}
-    .modal-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-style:italic;color:var(--ink)}
+    .modal-title{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:20px;font-style:italic;color:var(--ink)}
     .modal-close{width:32px;height:32px;border-radius:50%;background:var(--cream);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:18px;line-height:1}
     .tarjeta-img-wrap{margin:0 16px 14px;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,0.10);background:var(--cream);border:1px solid var(--border);min-height:200px;display:flex;align-items:center;justify-content:center}
     .tarjeta-img-wrap img{width:100%;display:block;border-radius:18px}
@@ -3994,7 +4923,7 @@ export default function ConfirmarPage() {
     .countdown-label{font-size:11px;font-weight:700;color:rgba(79,70,229,0.55);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
     .countdown-grid{display:flex;justify-content:center;gap:8px}
     .countdown-block{display:flex;flex-direction:column;align-items:center;background:#FFFFFF;border:1px solid rgba(79,70,229,0.14);border-radius:14px;padding:12px 10px 9px;min-width:60px;box-shadow:0 2px 6px rgba(15,23,42,0.04)}
-    .countdown-num{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:500;color:var(--gold-dark);line-height:1;letter-spacing:-1px;animation:cdPulse 2s ease infinite}
+    .countdown-num{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:32px;font-weight:500;color:var(--gold-dark);line-height:1;letter-spacing:-1px;animation:cdPulse 2s ease infinite}
     .countdown-unit{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-top:5px}
 
     /* Tu Mesa */
@@ -4008,11 +4937,11 @@ export default function ConfirmarPage() {
     .tu-mesa-icon{width:42px;height:42px;border-radius:12px;background:rgba(79,70,229,0.10);border:1px solid rgba(79,70,229,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold-dark)}
     .tu-mesa-info{flex:1}
     .tu-mesa-label{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
-    .tu-mesa-nombre{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);letter-spacing:.3px}
+    .tu-mesa-nombre{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:22px;font-weight:600;color:var(--ink);letter-spacing:.3px}
 
     /* Rechazado */
     .rech-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:var(--shadow);padding:40px 26px;text-align:center;animation:riseUp .5s cubic-bezier(.22,1,.36,1) both}
-    .rech-titulo{font-family:'Cormorant Garamond',serif;font-size:32px;font-style:italic;color:var(--ink);margin-bottom:12px}
+    .rech-titulo{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:32px;font-style:italic;color:var(--ink);margin-bottom:12px}
     .rech-sub{font-size:14px;color:var(--ink2);line-height:1.8}
 
     /* Loading */
@@ -4027,8 +4956,8 @@ export default function ConfirmarPage() {
     .qr-img-wrap{width:164px;height:164px;margin:0 auto 14px;border-radius:14px;overflow:hidden;background:#fff;padding:8px;box-shadow:0 4px 18px rgba(0,0,0,.10);border:1.5px solid rgba(79,70,229,0.2)}
     .qr-img-wrap img{width:100%;height:100%;display:block;border-radius:6px}
     .qr-nombre-badge{display:inline-flex;align-items:center;gap:8px;background:var(--cream2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:10px}
-    .qr-nombre-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .qr-nombre-text{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--ink)}
+    .qr-nombre-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .qr-nombre-text{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:16px;font-weight:600;color:var(--ink)}
     .qr-hint{font-size:11px;color:var(--ink3);line-height:1.6}
 
     /* ─── Mesa self-selection ─── */
@@ -4043,7 +4972,7 @@ export default function ConfirmarPage() {
     .mesa-row:hover:not(.mesa-row--full):not(.mesa-row--loading){background:var(--gold-pale)}
     .mesa-row--full{opacity:.45;cursor:not-allowed}
     .mesa-row--loading{cursor:wait;opacity:.7}
-    .mesa-row-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--ink);line-height:1}
+    .mesa-row-name{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:17px;font-weight:600;color:var(--ink);line-height:1}
     .mesa-row-slots{display:flex;align-items:center;gap:6px}
     .mesa-row-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
     .mesa-row-badge--free{background:rgba(79,70,229,0.12);color:var(--gold-dark);border:1px solid rgba(79,70,229,0.25)}
@@ -4097,7 +5026,7 @@ export default function ConfirmarPage() {
     }
     .welcome-nombre{
       position:relative;z-index:1;
-      font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:600;font-style:italic;
+      font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:44px;font-weight:600;font-style:italic;
       color:var(--ink);letter-spacing:-.5px;line-height:1.1;text-align:center;
       margin-bottom:16px;
       animation:welcomeSlideUp .6s .35s cubic-bezier(.22,1,.36,1) both;
@@ -4110,7 +5039,7 @@ export default function ConfirmarPage() {
     }
     .welcome-evento-nombre{
       position:relative;z-index:1;
-      font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;
+      font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:22px;font-weight:500;
       color:var(--ink);text-align:center;line-height:1.3;letter-spacing:.3px;
       margin-bottom:6px;
       animation:welcomeSlideUp .6s .5s cubic-bezier(.22,1,.36,1) both;
@@ -4161,29 +5090,139 @@ export default function ConfirmarPage() {
       transform:translateX(-180%) skewX(-18deg);animation:badgeShine 4.5s 1.2s ease-in-out infinite;pointer-events:none}
     @keyframes badgeShine{0%{transform:translateX(-180%) skewX(-18deg)}45%,100%{transform:translateX(340%) skewX(-18deg)}}
     ${evento?.tipo === "graduacion" ? `
-    /* ── Overrides dorados de graduación (bienvenida noche estrellada + detalles ámbar) ── */
-    .page{background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(245,158,11,0.10) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 100%,rgba(217,119,6,0.06) 0%,transparent 60%)}
-    .welcome-overlay{background:radial-gradient(ellipse 70% 55% at 50% 28%,#312e81 0%,#1e1b4b 52%,#0f172a 100%)}
-    .welcome-dots{background-image:radial-gradient(circle,rgba(252,211,77,0.12) 1px,transparent 1px)}
-    .welcome-glow{background:radial-gradient(circle,rgba(252,211,77,0.16) 0%,transparent 70%)}
-    .welcome-logo-ring{background:rgba(255,255,255,0.07);border:1px solid rgba(252,211,77,0.38);box-shadow:0 10px 36px -6px rgba(0,0,0,0.55)}
-    .welcome-hola{color:#FCD34D}
-    .welcome-nombre{color:#FFFFFF;text-shadow:0 2px 22px rgba(252,211,77,0.30)}
-    .welcome-divider{background:linear-gradient(90deg,transparent,rgba(252,211,77,0.75),transparent)}
-    .welcome-evento-nombre{color:#FDE68A}
-    .welcome-anfitrion{color:rgba(255,255,255,0.68)}
-    .welcome-btn{background:linear-gradient(135deg,#B45309,#F59E0B);box-shadow:0 10px 28px -6px rgba(245,158,11,0.50), 0 2px 6px rgba(0,0,0,0.35)}
-    .welcome-btn:hover{box-shadow:0 14px 36px -6px rgba(245,158,11,0.62)}
-    .conf-hero{background:linear-gradient(155deg,#FFFBEB 0%,#FEF3C7 100%)}
-    .conf-hero::before{background-image:radial-gradient(circle,#D97706 1px,transparent 1px)}
-    .conf-check{background:rgba(217,119,6,0.12);border-color:rgba(217,119,6,0.40)}
-    .decision-bar{border-top:1px solid rgba(217,119,6,0.20);box-shadow:0 -8px 32px rgba(120,53,15,0.14)}
-    .btn-si{box-shadow:0 6px 20px -4px rgba(217,119,6,0.45)}
-    .btn-si:hover{box-shadow:0 10px 28px -4px rgba(217,119,6,0.55)}
-    .music-icon-wrap{box-shadow:0 4px 12px rgba(217,119,6,0.35)}
-    .btn-confirmar-final{box-shadow:0 8px 22px -6px rgba(217,119,6,0.45), 0 2px 6px rgba(217,119,6,0.18)}
-    .spinner{border:2px solid rgba(217,119,6,0.30);border-top-color:var(--gold)}
-    .lightbox-caption{color:rgba(146,64,14,0.75)}
+    /* ══ Graduación: gala académica — azul noche + dorado champagne + blanco perla ══ */
+    html,body{background:${GRAD.noche}}
+    /* Página: cielo nocturno con estrellas finas y un halo dorado arriba */
+    .page{background-color:${GRAD.noche};
+      background-image:
+        radial-gradient(ellipse 90% 38% at 50% 0%,rgba(201,165,76,0.16) 0%,transparent 70%),
+        radial-gradient(ellipse 70% 45% at 100% 100%,rgba(43,59,122,0.55) 0%,transparent 70%),
+        radial-gradient(ellipse 60% 40% at 0% 55%,rgba(30,43,94,0.55) 0%,transparent 70%),
+        radial-gradient(1px 1px at 22px 34px,rgba(255,255,255,0.55),transparent 1.5px),
+        radial-gradient(1px 1px at 128px 92px,rgba(230,207,142,0.65),transparent 1.5px),
+        radial-gradient(1.2px 1.2px at 206px 168px,rgba(255,255,255,0.40),transparent 1.8px),
+        radial-gradient(1px 1px at 74px 206px,rgba(255,255,255,0.30),transparent 1.5px);
+      background-size:auto,auto,auto,240px 240px,240px 240px,240px 240px,240px 240px}
+    .topbar{background:rgba(10,15,36,0.78);border-bottom:1px solid rgba(201,165,76,0.22)}
+    .topbar-name{color:#FFFFFF}
+    .topbar-sub{color:${GRAD.oroClaro};opacity:.85}
+
+    /* Tarjeta principal */
+    .inv-card{border:1px solid rgba(201,165,76,0.40);box-shadow:0 30px 70px rgba(0,0,0,0.45),0 0 0 6px rgba(201,165,76,0.06)}
+    .inv-tipo-badge{border-color:rgba(168,132,58,0.50);color:${GRAD.oroOscuro};letter-spacing:2.4px}
+    .inv-tipo-badge-dot{background:${GRAD.oro};opacity:1}
+    .inv-saludo{color:${GRAD.tinta}}
+    /* Jerarquía: el graduado grande; el invitado como dedicatoria */
+    .grad-para{font-size:10.5px;font-weight:600;letter-spacing:2.6px;text-transform:uppercase;color:#6B7393;margin-bottom:4px}
+    .grad-invitado{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:21px;font-style:italic;font-weight:500;color:${GRAD.navy2};line-height:1.25;margin-bottom:10px}
+    .grad-protagonista{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:44px;font-weight:600;color:${GRAD.tinta};line-height:1.05;letter-spacing:-.4px;margin-top:4px}
+    .grad-te-invita{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:19px;font-style:italic;color:${GRAD.oroOscuro};margin-top:8px}
+    .inv-anfitrion{color:#4A5275}
+    .inv-evento-nombre{color:${GRAD.navy2}}
+    .inv-nombres{background:#FFFFFF;border-color:rgba(15,23,51,0.08)}
+    .inv-nombre-av,.qr-nombre-av{background:linear-gradient(135deg,${GRAD.navy2},${GRAD.navy});color:${GRAD.oroClaro};box-shadow:0 2px 6px rgba(10,15,36,0.25)}
+    .detalles,.resumen{background:${GRAD.perla};border-color:rgba(15,23,51,0.06)}
+    .detalle-ico-wrap,.res-ico{background:#FFFFFF;border-color:rgba(168,132,58,0.30);box-shadow:0 1px 3px rgba(10,15,36,0.06)}
+    .detalle-ico-wrap svg [stroke="#4F46E5"],.res-ico svg [stroke="#4F46E5"]{stroke:${GRAD.oroMedio}}
+    .detalle-ico-wrap svg [fill="#4F46E5"],.res-ico svg [fill="#4F46E5"]{fill:${GRAD.oroMedio}}
+    .detalle-texto,.res-texto{color:${GRAD.tinta}}
+    .detalle-texto,.res-texto{text-transform:none}
+    .detalle-texto::first-letter{text-transform:uppercase}
+    .como-llegar-box{background:${GRAD.perla};border-color:rgba(15,23,51,0.06)}
+    .music-player{background:${GRAD.perla};border-color:rgba(15,23,51,0.06)}
+    .music-player:hover{background:${GRAD.perla2}}
+    .music-icon-wrap{background:linear-gradient(135deg,${GRAD.navy2},${GRAD.navy});box-shadow:0 4px 12px rgba(10,15,36,0.30)}
+    .music-icon-wrap svg{fill:${GRAD.oroClaro}}
+    .tu-mesa-card{background:${GRAD.perla};border-color:rgba(168,132,58,0.30)}
+    .tu-mesa-icon,.mesa-picker-ico,.mesa-confirmed-ico{background:#FFFFFF;border-color:rgba(168,132,58,0.32);color:${GRAD.oroMedio}}
+    .grad-nav-btn{display:flex;align-items:center;justify-content:center;gap:7px;background:#FFFFFF;
+      border:1px solid rgba(15,23,51,0.12);border-radius:13px;padding:12px 8px;text-decoration:none;
+      font-size:12.5px;font-weight:600;color:${GRAD.tinta};box-shadow:0 1px 3px rgba(10,15,36,0.05);transition:all .18s}
+    .grad-nav-btn:hover{border-color:${GRAD.oro};background:${GRAD.perla}}
+
+    /* Barra de decisión: vidrio azul noche, botón principal dorado */
+    .decision-bar{background:rgba(10,15,36,0.92);border-top:1px solid rgba(201,165,76,0.30);box-shadow:0 -10px 34px rgba(0,0,0,0.40)}
+    .decision-bar-label{color:${GRAD.oroClaro}}
+    .btn-si,.btn-confirmar-final,.btn-subir-foto,.welcome-btn{
+      background:linear-gradient(135deg,${GRAD.oroClaro} 0%,${GRAD.oro} 52%,${GRAD.oroMedio} 100%);
+      color:${GRAD.tinta};box-shadow:0 8px 22px -6px rgba(201,165,76,0.55), inset 0 1px 0 rgba(255,255,255,0.45)}
+    .btn-si:hover,.btn-confirmar-final:hover,.btn-subir-foto:hover{box-shadow:0 12px 28px -6px rgba(201,165,76,0.65), inset 0 1px 0 rgba(255,255,255,0.45)}
+    .btn-no{background:transparent;color:rgba(255,255,255,0.82);border:1px solid rgba(255,255,255,0.22)}
+    .btn-no:hover{background:rgba(255,255,255,0.06);color:#FFFFFF;border-color:rgba(255,255,255,0.40)}
+    .spinner{border:2px solid rgba(15,23,51,0.20);border-top-color:${GRAD.tinta}}
+
+    /* Formulario */
+    .form-card{border-color:rgba(201,165,76,0.40);box-shadow:0 30px 70px rgba(0,0,0,0.45)}
+    .cnt-btn{background:${GRAD.perla};border-color:rgba(168,132,58,0.40);color:${GRAD.tinta}}
+    .cnt-btn:hover{background:#FFFFFF;border-color:${GRAD.oro};color:${GRAD.oroOscuro}}
+
+    /* Confirmado: cabecera de gala */
+    .conf-card{border-color:rgba(201,165,76,0.40);box-shadow:0 30px 70px rgba(0,0,0,0.45)}
+    .conf-hero{background:radial-gradient(ellipse 80% 70% at 50% 0%,rgba(201,165,76,0.20) 0%,transparent 70%),linear-gradient(160deg,${GRAD.navy2} 0%,${GRAD.navy} 55%,${GRAD.noche} 100%)}
+    .conf-hero::before{opacity:.10;background-image:radial-gradient(circle,${GRAD.oroClaro} 1px,transparent 1px)}
+    .conf-check{background:rgba(201,165,76,0.12);border-color:rgba(230,207,142,0.55)}
+    .conf-check svg path{stroke:${GRAD.oroClaro}}
+    .conf-titulo{color:#FFFFFF}
+    .conf-sub{color:rgba(255,255,255,0.72)}
+    /* Entrada digital: un ticket de gala con QR */
+    .entrada{position:relative;border-radius:22px;overflow:hidden;color:#FFFFFF;text-align:center;
+      background:radial-gradient(ellipse 90% 50% at 50% 0%,rgba(201,165,76,0.20) 0%,transparent 70%),linear-gradient(170deg,${GRAD.navy2} 0%,${GRAD.navy} 55%,${GRAD.noche} 100%);
+      border:1px solid rgba(201,165,76,0.55);box-shadow:0 18px 40px rgba(10,15,36,0.30),inset 0 0 0 6px rgba(201,165,76,0.06);padding:22px 18px 18px}
+    .entrada-kicker{font-size:10.5px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${GRAD.oroClaro}}
+    .entrada-evento{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:30px;font-weight:600;line-height:1.1;margin-top:6px}
+    .entrada-promo{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${GRAD.oro};margin-top:6px}
+    .entrada-corte{position:relative;height:1px;margin:18px -18px 18px;border-top:2px dashed rgba(230,207,142,0.45)}
+    .entrada-corte::before,.entrada-corte::after{content:"";position:absolute;top:-13px;width:24px;height:24px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(201,165,76,0.55)}
+    .entrada-corte::before{left:-12px}
+    .entrada-corte::after{right:-12px}
+    .entrada-qr{display:inline-flex;padding:12px;border-radius:18px;background:#FFFFFF;box-shadow:0 8px 24px rgba(0,0,0,0.30)}
+    .entrada-qr svg{display:block}
+    .entrada-datos{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;text-align:left;margin:18px 4px 4px}
+    .entrada-datos div{min-width:0}
+    .entrada-datos .ancho{grid-column:1 / -1}
+    .entrada-datos span{display:block;font-size:9.5px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:${GRAD.oroClaro};margin-bottom:2px}
+    .entrada-datos strong{display:block;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:19px;font-weight:600;line-height:1.2;color:#FFFFFF;overflow-wrap:anywhere}
+    .btn-guardar-entrada{width:100%;margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:14px;padding:14px;cursor:pointer;
+      font-family:'Jost',sans-serif;font-size:14px;font-weight:700;color:${GRAD.tinta};
+      background:linear-gradient(135deg,${GRAD.oroClaro} 0%,${GRAD.oro} 52%,${GRAD.oroMedio} 100%);box-shadow:0 8px 22px -6px rgba(201,165,76,0.55),inset 0 1px 0 rgba(255,255,255,0.45)}
+    .btn-guardar-entrada:disabled{opacity:.7;cursor:wait}
+    .entrada-hint{font-size:11px;color:rgba(255,255,255,0.62);line-height:1.5;margin-top:10px}
+
+    /* Acciones en cuadrícula */
+    .acciones-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .accion-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:96px;padding:14px 8px;border-radius:16px;cursor:pointer;
+      background:#FFFFFF;border:1px solid rgba(15,23,51,0.10);font-family:'Jost',sans-serif;font-size:12.5px;font-weight:600;color:${GRAD.tinta};
+      transition:background .18s,border-color .18s,transform .12s;-webkit-tap-highlight-color:transparent}
+    .accion-tile:hover{background:${GRAD.perla};border-color:rgba(168,132,58,0.45)}
+    .accion-tile:active{transform:scale(0.97)}
+    .accion-tile:disabled{opacity:.55;cursor:default}
+    .accion-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:${GRAD.perla};color:${GRAD.oroMedio};border:1px solid rgba(168,132,58,0.25)}
+
+    /* Chips de asistentes */
+    .chip-asist-av{background:linear-gradient(135deg,${GRAD.navy2},${GRAD.navy});color:${GRAD.oroClaro}}
+    .chip-asist.va .chip-asist-check{background:${GRAD.navy2};border-color:${GRAD.navy2};color:${GRAD.oroClaro}}
+
+    .qr-entry-card{border-color:rgba(168,132,58,0.40)}
+    .qr-img-wrap{border-color:rgba(168,132,58,0.35)}
+    .qr-nombre-badge{background:${GRAD.perla}}
+    .mesa-row-badge--free{background:rgba(201,165,76,0.12);color:${GRAD.oroOscuro};border-color:rgba(168,132,58,0.35)}
+    .mesa-row-arrow{color:${GRAD.oroMedio}}
+    .fotos-inv-wrap{background:#FFFFFF;border-color:rgba(15,23,51,0.10)}
+    .fotos-inv-header:hover{background:${GRAD.perla}}
+    .btn-accion-full,.btn-wa,.btn-cerrar{background:#FFFFFF;border-color:rgba(15,23,51,0.10)}
+    .btn-accion-full:hover,.btn-wa:hover,.btn-cerrar:hover{background:${GRAD.perla};border-color:rgba(168,132,58,0.45)}
+    .btn-accion-full:active,.btn-wa:active,.btn-cerrar:active{background:${GRAD.navy};border-color:${GRAD.navy};color:#FFFFFF}
+    .btn-accion-ico{background:${GRAD.perla};border-color:rgba(15,23,51,0.06);color:${GRAD.oroMedio}}
+    .btn-accion-ico svg [stroke="#4F46E5"]{stroke:currentColor}
+    .tarjeta-spinner{border-color:rgba(15,23,51,0.12);border-top-color:${GRAD.oro}}
+    .tarjeta-skeleton{color:#4A5275}
+    .lightbox-caption{color:rgba(230,207,142,0.80)}
+
+    /* Etiquetas tipo diploma en Cinzel (mayúsculas romanas) */
+    .inv-tipo-badge,.grad-para,.entrada-kicker,.entrada-promo{font-family:var(--f-label)}
+    .inv-tipo-badge{font-size:11px;letter-spacing:.26em;font-weight:600}
+    .grad-para{font-size:10.5px;letter-spacing:.24em;font-weight:600}
+    .entrada-kicker{letter-spacing:.26em;font-weight:600}
     ` : ""}
   `;
 
@@ -4241,7 +5280,7 @@ export default function ConfirmarPage() {
             </div>
             <p
               style={{
-                fontFamily: "'Cormorant Garamond',serif",
+                fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)",
                 fontSize: 26,
                 fontStyle: "italic",
                 color: "var(--ink)",
@@ -4286,172 +5325,47 @@ export default function ConfirmarPage() {
         />
       )}
 
-      {/* ─── Pantalla de bienvenida con confeti ─── */}
-      {showWelcome && (
+      {/* ─── Graduación: portada editorial, una sola pantalla antes de la invitación ─── */}
+      {showWelcome && evento.tipo === "graduacion" && (
+        <PortadaGrad
+          invitado={invitado}
+          evento={evento}
+          nombres={nombresEnTarjeta}
+          saliendo={saliendoPortada}
+          onEntrar={entrarInvitacion}
+          onSinSonidoPrevio={marcarSinSonido}
+        />
+      )}
+
+      {/* ─── Pantalla de bienvenida con confeti (otros tipos de evento) ─── */}
+      {showWelcome && evento.tipo !== "graduacion" && (
         <div
           className="welcome-overlay"
           id="welcome-overlay"
         >
-          {/* ── Apertura tipo diploma (solo graduación): pergamino centrado que se desenrolla ── */}
-          {evento.tipo === "graduacion" && (
-            <div
-              className="gd-back"
-              onClick={(e) => { (e.currentTarget as HTMLDivElement).style.display = "none"; }}
-            >
-              <style>{`
-                @keyframes gdBackOut{0%{opacity:1}100%{opacity:0;visibility:hidden}}
-                @keyframes gdDrop{0%{opacity:0;transform:translateY(-52px) scale(.9)}62%{opacity:1;transform:translateY(7px) scale(1.015)}82%{transform:translateY(-3px) scale(.998)}100%{opacity:1;transform:translateY(0) scale(1)}}
-                @keyframes gdSealBreak{
-                  0%,52%{transform:scale(1) rotate(0deg);opacity:1}
-                  58%{transform:scale(1.06) rotate(-4deg)}
-                  64%{transform:scale(1.03) rotate(3deg)}
-                  70%{transform:scale(1.09) rotate(-3deg)}
-                  80%{transform:scale(1.22) rotate(-8deg);opacity:1}
-                  100%{transform:scale(.25) rotate(32deg) translateY(60px);opacity:0}}
-                @keyframes gdUnroll{0%{height:0}100%{height:400px}}
-                @keyframes gdTxt{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
-                @keyframes gdSparkle{0%{transform:translateY(14px) scale(.5);opacity:0}30%{opacity:.85}100%{transform:translateY(-80px) scale(1.15);opacity:0}}
-                @keyframes gdRingPulse{0%,100%{box-shadow:0 0 0 0 rgba(252,211,77,.45)}70%{box-shadow:0 0 0 16px rgba(252,211,77,0)}}
-                @keyframes gdHint{0%,20%{opacity:0}35%,80%{opacity:.65}100%{opacity:0}}
-                .gd-back{position:absolute;inset:0;z-index:60;overflow:hidden;cursor:pointer;
-                  display:flex;align-items:center;justify-content:center;
-                  background:radial-gradient(ellipse at 50% 32%,#312e81 0%,#1e1b4b 48%,#0f172a 100%);
-                  animation:gdBackOut .9s 6.6s ease both}
-                .gd-glow{position:absolute;width:420px;height:420px;border-radius:50%;pointer-events:none;
-                  background:radial-gradient(circle,rgba(252,211,77,.16) 0%,transparent 65%)}
-                .gd-sparkle{position:absolute;border-radius:50%;background:#FCD34D;pointer-events:none;
-                  animation:gdSparkle 2.6s ease-out infinite}
-                .gd-wrap{position:relative;display:flex;flex-direction:column;align-items:center;
-                  animation:gdDrop 1s .2s cubic-bezier(.34,1.4,.5,1) both}
-                .gd-roller{width:min(88vw,362px);height:24px;border-radius:12px;position:relative;z-index:2;flex-shrink:0;
-                  background:linear-gradient(180deg,#b45309 0%,#7c2d12 55%,#5b1f0a 100%);
-                  box-shadow:0 5px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22)}
-                .gd-roller::before,.gd-roller::after{content:"";position:absolute;top:3px;width:18px;height:18px;border-radius:50%;
-                  background:radial-gradient(circle at 34% 32%,#fde68a,#d97706 55%,#92400e);box-shadow:0 2px 5px rgba(0,0,0,.45)}
-                .gd-roller::before{left:-9px}
-                .gd-roller::after{right:-9px}
-                .gd-body{width:min(80vw,330px);height:0;max-height:62vh;overflow:hidden;position:relative;z-index:1;
-                  display:flex;align-items:center;justify-content:center;
-                  background:
-                    repeating-linear-gradient(90deg, rgba(180,83,9,.045) 0 2px, transparent 2px 30px),
-                    linear-gradient(180deg,#f6e6bf 0%,#fdf6e3 14%,#fdf6e3 86%,#f3ddab 100%);
-                  box-shadow:inset 0 16px 20px -14px rgba(120,53,15,.55), inset 0 -16px 20px -14px rgba(120,53,15,.55),
-                    inset 8px 0 14px -10px rgba(120,53,15,.35), inset -8px 0 14px -10px rgba(120,53,15,.35),
-                    0 14px 44px rgba(0,0,0,.45);
-                  animation:gdUnroll 1.8s 2.7s cubic-bezier(.7,0,.22,1) both}
-                .gd-inner{flex-shrink:0;width:100%;padding:26px 22px;text-align:center;
-                  font-family:'Cormorant Garamond',Georgia,serif;color:#78350f}
-                .gd-t{animation:gdTxt .65s ease both}
-                .gd-t1{animation-delay:3.3s}
-                .gd-t2{animation-delay:3.6s}
-                .gd-t3{animation-delay:3.9s}
-                .gd-t4{animation-delay:4.25s}
-                .gd-ring{width:58px;height:58px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;
-                  background:radial-gradient(circle at 34% 30%,#fde68a,#f59e0b 60%,#b45309);border:2.5px solid #92400e;
-                  font-size:28px;animation:gdTxt .65s 3.3s ease both, gdRingPulse 2.2s 4s ease-out infinite}
-                .gd-tit{font-size:15px;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:#92400e}
-                .gd-div{display:flex;align-items:center;gap:8px;margin:12px 0 14px}
-                .gd-div::before,.gd-div::after{content:"";flex:1;height:1.5px;background:linear-gradient(90deg,transparent,#b45309)}
-                .gd-div::after{background:linear-gradient(90deg,#b45309,transparent)}
-                .gd-div span{color:#b45309;font-size:13px}
-                .gd-oto{font-size:11.5px;font-weight:600;letter-spacing:2.6px;text-transform:uppercase;opacity:.75;margin-bottom:6px}
-                .gd-nombre{font-size:32px;font-weight:700;font-style:italic;line-height:1.15;padding:0 6px;
-                  background:linear-gradient(90deg,#92400e,#d97706 50%,#92400e);-webkit-background-clip:text;background-clip:text;color:transparent}
-                .gd-evento{font-size:14px;font-style:italic;color:#92400e;opacity:.85;margin-top:14px;line-height:1.4}
-                .gd-seal{position:absolute;top:50%;left:50%;margin:-47px 0 0 -47px;width:94px;height:94px;border-radius:50%;z-index:5;
-                  display:flex;align-items:center;justify-content:center;flex-direction:column;
-                  background:radial-gradient(circle at 32% 30%,#fde68a,#f59e0b 55%,#b45309);
-                  border:3px solid #92400e;box-shadow:0 12px 34px rgba(69,26,3,.55), inset 0 2px 7px rgba(255,255,255,.45);
-                  animation:gdSealBreak 2.6s .3s cubic-bezier(.5,0,.6,1) both}
-                .gd-hint{position:absolute;bottom:26px;left:0;right:0;text-align:center;font-size:11px;font-weight:600;
-                  letter-spacing:1.6px;text-transform:uppercase;color:#FDE68A;animation:gdHint 6.6s ease both;pointer-events:none}
-              `}</style>
-
-              {/* Resplandor y destellos dorados */}
-              <div className="gd-glow" />
-              {[
-                { l: "16%", t: "26%", s: 5, d: "0s" }, { l: "78%", t: "22%", s: 4, d: ".7s" },
-                { l: "10%", t: "62%", s: 4, d: "1.3s" }, { l: "86%", t: "58%", s: 5, d: ".4s" },
-                { l: "26%", t: "78%", s: 3, d: "1.8s" }, { l: "68%", t: "80%", s: 4, d: "1s" },
-                { l: "50%", t: "14%", s: 3, d: "1.5s" }, { l: "38%", t: "20%", s: 3, d: "2.1s" },
-              ].map((p, i) => (
-                <span key={i} className="gd-sparkle" style={{ left: p.l, top: p.t, width: p.s, height: p.s, animationDelay: p.d }} />
-              ))}
-
-              {/* Pergamino: rodillo — cuerpo que se desenrolla — rodillo */}
-              <div className="gd-wrap">
-                <div className="gd-roller" />
-                <div className="gd-body">
-                  <div className="gd-inner">
-                    <div className="gd-ring">🎓</div>
-                    <div className="gd-t gd-t2">
-                      <div className="gd-tit">Diploma de Invitación</div>
-                      <div className="gd-div"><span>✦</span></div>
-                    </div>
-                    <div className="gd-t gd-t3">
-                      <div className="gd-oto">Otorgado a</div>
-                      <div className="gd-nombre">{invitado.nombre.split(" ").slice(0, 3).join(" ")}</div>
-                    </div>
-                    <div className="gd-t gd-t4">
-                      <div className="gd-evento">{evento.nombre}</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="gd-roller" />
-                {/* Sello de lacre que se rompe */}
-                <div className="gd-seal">
-                  <span style={{ fontSize: 32, lineHeight: 1 }}>🎓</span>
-                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.2, color: "#78350f", marginTop: 2 }}>INVITACIÓN</span>
-                </div>
-              </div>
-
-              <div className="gd-hint">Tocá la pantalla para saltar</div>
-            </div>
-          )}
-
           {/* Fondo de puntos */}
           <div className="welcome-dots" />
           <div className="welcome-glow" />
 
-          {/* Confeti — birretes y estrellas doradas en graduación */}
+          {/* Confeti */}
           <div className="welcome-confetti-layer">
             {CONFETTI_PIECES.map((p) => (
-              evento.tipo === "graduacion" ? (
-                <div
-                  key={p.id}
-                  className="confetti-piece"
-                  style={{
-                    left: `${p.left}%`,
-                    fontSize: 10 + p.size * 1.6,
-                    lineHeight: 1,
-                    animationDuration: `${p.dur * 1.4}s, ${p.dur * 1.1}s`,
-                    animationDelay: `${p.delay}s, ${p.delay}s`,
-                    animationIterationCount: "infinite, infinite",
-                    transform: `rotate(${p.rot}deg)`,
-                    opacity: 0.85,
-                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.35))",
-                  }}
-                >
-                  {p.id % 4 === 0 ? "⭐" : p.id % 7 === 0 ? "✨" : "🎓"}
-                </div>
-              ) : (
-                <div
-                  key={p.id}
-                  className="confetti-piece"
-                  style={{
-                    left: `${p.left}%`,
-                    width: p.wide ? p.size * 2 : p.size,
-                    height: p.wide ? p.size * 0.5 : p.size,
-                    borderRadius: p.wide ? 2 : p.size / 2,
-                    background: p.color,
-                    animationDuration: `${p.dur}s, ${p.dur * 0.8}s`,
-                    animationDelay: `${p.delay}s, ${p.delay}s`,
-                    animationIterationCount: "infinite, infinite",
-                    transform: `rotate(${p.rot}deg)`,
-                    opacity: 0.85,
-                  }}
-                />
-              )
+              <div
+                key={p.id}
+                className="confetti-piece"
+                style={{
+                  left: `${p.left}%`,
+                  width: p.wide ? p.size * 2 : p.size,
+                  height: p.wide ? p.size * 0.5 : p.size,
+                  borderRadius: p.wide ? 2 : p.size / 2,
+                  background: p.color,
+                  animationDuration: `${p.dur}s, ${p.dur * 0.8}s`,
+                  animationDelay: `${p.delay}s, ${p.delay}s`,
+                  animationIterationCount: "infinite, infinite",
+                  transform: `rotate(${p.rot}deg)`,
+                  opacity: 0.85,
+                }}
+              />
             ))}
           </div>
 
@@ -4481,40 +5395,13 @@ export default function ConfirmarPage() {
               const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
               if (typeof fn === "function") (fn as () => void)();
               // iOS: desbloquear también la voz (speechSynthesis) dentro del gesto
-              if (evento.tipo === "graduacion" || evento.tipo === "cumpleaños") desbloquearTTS();
+              if (evento.tipo === "cumpleaños") desbloquearTTS();
             }}
-            onClick={() => {
-              // El click también cuenta como gesto (Android/desktop no disparan touchstart con mouse)
-              if (evento.tipo === "graduacion" || evento.tipo === "cumpleaños") desbloquearTTS();
-              const el = document.getElementById("welcome-overlay");
-              if (el) { el.classList.add("leaving"); }
-              setTimeout(() => {
-                setShowWelcome(false);
-                // Graduación y cumpleaños: solo hablar si NO ha confirmado ya
-                if (evento.tipo === "graduacion" || evento.tipo === "cumpleaños") {
-                  if (step === "confirmado" || step === "rechazado") {
-                    // Ya completó el flujo — no repetir la invitación
-                    setMascotaFase("oculto");
-                  } else {
-                    setMascotaFase("leyendo");
-                  }
-                }
-              }, 420);
-            }}
+            onClick={() => entrarInvitacion(true)}
           >
-            {evento.tipo === "graduacion" ? (
-              <>
-                ¡A celebrar!
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{marginLeft:2}}>
-                  <path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/>
-                  <path d="M6 12v5c3.33 1.67 8.67 1.67 12 0v-5"/>
-                </svg>
-              </>
-            ) : evento.tipo === "cumpleaños" ? (
-              <>¡A festejar! 🎈</>
-            ) : "Ver mi invitación"}
+            {evento.tipo === "cumpleaños" ? <>¡A festejar! 🎈</> : "Ver mi invitación"}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M5 12h14M13 6l6 6-6 6" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
         </div>
@@ -4533,6 +5420,10 @@ export default function ConfirmarPage() {
           detener={detener}
           textoActual={textoActual}
           charIdx={charIdx}
+          hayPrograma={itinerario.length > 0}
+          hayMesas={mesasDisponibles.length > 0}
+          silencio={silencio}
+          setSilencio={setSilencio}
         />
       )}
 
@@ -4552,16 +5443,18 @@ export default function ConfirmarPage() {
             const dur = 2.6 + (i % 5) * 0.45;
             const delay = (i % 8) * 0.22;
             const size = 22 + (i % 4) * 8;
-            const emoji = evento?.tipo === "cumpleaños"
+            const pieza = evento?.tipo === "cumpleaños"
               ? ["🎈", "🎉", "🎂", "✨", "🎁"][i % 5]
-              : (i % 5 === 4 ? "⭐" : "🎓");
+              : i % 5 === 4
+                ? <EstrellaSVG size={size * 0.6} color={GRAD.oro} />
+                : <BirreteSVG size={size} color={i % 2 ? GRAD.navy2 : GRAD.tinta} borla={GRAD.oro} />;
             return (
               <span key={i} style={{
                 position: "absolute", top: -50, left: `${left}%`,
                 fontSize: size, lineHeight: 1,
                 animation: `gradCapFall ${dur}s ${delay}s cubic-bezier(.3,.4,.6,1) forwards, gradCapSway ${1.4 + (i % 3) * 0.4}s ease-in-out infinite`,
-                filter: "drop-shadow(0 3px 6px rgba(30,27,75,0.35))",
-              }}>{emoji}</span>
+                filter: "drop-shadow(0 3px 6px rgba(10,15,36,0.35))",
+              }}>{pieza}</span>
             );
           })}
         </div>
@@ -4676,50 +5569,49 @@ export default function ConfirmarPage() {
                   {/* Degradado inferior para texto */}
                   <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"55%", background:"linear-gradient(to top, rgba(10,10,30,0.82) 0%, transparent 100%)", pointerEvents:"none" }}/>
 
-                  {/* Nombre del evento sobre la foto */}
-                  <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"18px 20px 20px", pointerEvents:"none" }}>
-                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, fontWeight:700, color:"white", lineHeight:1.2, textShadow:"0 2px 12px rgba(0,0,0,0.5)", marginBottom:4 }}>
-                      {evento.nombre}
-                    </div>
-                    {evento.anfitriones && (
-                      <div style={{ fontSize:12, color:"rgba(255,255,255,0.82)", fontWeight:500, textShadow:"0 1px 6px rgba(0,0,0,0.4)" }}>
-                        {evento.anfitriones}
+                  {/* Nombre del evento sobre la foto (graduación: solo la promoción; el nombre va abajo, grande) */}
+                  {evento.tipo === "graduacion" ? (
+                    evento.fecha && (
+                      <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 20px 26px", textAlign:"center", pointerEvents:"none" }}>
+                        <div style={{ fontFamily:"var(--f-label)", fontSize:12, fontWeight:600, letterSpacing:"0.3em", textTransform:"uppercase", color:GRAD.oroClaro, textShadow:"0 1px 8px rgba(0,0,0,0.6)" }}>
+                          Promoción {parseFechaLocal(evento.fecha).getFullYear()}
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    )
+                  ) : (
+                    <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"18px 20px 20px", pointerEvents:"none" }}>
+                      <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize:22, fontWeight:700, color:"white", lineHeight:1.2, textShadow:"0 2px 12px rgba(0,0,0,0.5)", marginBottom:4 }}>
+                        {evento.nombre}
+                      </div>
+                      {evento.anfitriones && (
+                        <div style={{ fontSize:12, color:"rgba(255,255,255,0.82)", fontWeight:500, textShadow:"0 1px 6px rgba(0,0,0,0.4)" }}>
+                          {evento.anfitriones}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Marco decorativo tipo según evento */}
                   {evento.tipo === "graduacion" && (
                     <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
-                      {/* Borde dorado top */}
-                      <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:"linear-gradient(90deg,transparent,#F59E0B,#FCD34D,#F59E0B,transparent)" }}/>
-                      {/* Birretes animados izquierda */}
-                      {[{t:"8%",s:26,o:0.7,r:-18},{t:"42%",s:20,o:0.55,r:-12},{t:"72%",s:24,o:0.65,r:-20}].map((c,i)=>(
-                        <div key={i} style={{position:"absolute",left:8,top:c.t,opacity:c.o,transform:`rotate(${c.r}deg)`}}>
-                          <svg width={c.s} height={c.s} viewBox="0 0 32 28" fill="none">
-                            <path d="M2 16 L16 8 L30 14 L16 20 Z" fill="#F59E0B"/>
-                            <rect x="11" y="18" width="10" height="8" rx="3" fill="#D97706"/>
-                            <line x1="24" y1="13" x2="28" y2="20" stroke="#FCD34D" strokeWidth="2" strokeLinecap="round"/>
-                            <circle cx="28" cy="21" r="2.5" fill="#FCD34D"/>
-                          </svg>
-                        </div>
-                      ))}
-                      {/* Birretes derecha */}
-                      {[{t:"5%",s:24,o:0.65,r:18},{t:"38%",s:20,o:0.55,r:14},{t:"68%",s:26,o:0.7,r:20}].map((c,i)=>(
-                        <div key={i} style={{position:"absolute",right:8,top:c.t,opacity:c.o,transform:`rotate(${c.r}deg)`}}>
-                          <svg width={c.s} height={c.s} viewBox="0 0 32 28" fill="none">
-                            <path d="M2 16 L16 8 L30 14 L16 20 Z" fill="#F59E0B"/>
-                            <rect x="11" y="18" width="10" height="8" rx="3" fill="#D97706"/>
-                            <line x1="24" y1="13" x2="28" y2="20" stroke="#FCD34D" strokeWidth="2" strokeLinecap="round"/>
-                            <circle cx="28" cy="21" r="2.5" fill="#FCD34D"/>
-                          </svg>
-                        </div>
-                      ))}
-                      {/* Estrellas esquinas */}
-                      {[{l:"18%",t:"10%"},{r:"16%",t:"12%"},{l:"10%",b:"30%"},{r:"10%",b:"32%"}].map((pos,i)=>(
-                        <div key={i} style={{position:"absolute",...pos as React.CSSProperties,opacity:0.75}}>
-                          <svg width="12" height="12" viewBox="0 0 20 20"><path d="M10 1l2.4 6.6H20l-5.7 4.1 2.2 6.7L10 14.5l-6.5 3.9 2.2-6.7L0 7.6h7.6z" fill="#FCD34D"/></svg>
-                        </div>
+                      {/* Filete dorado superior */}
+                      <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg,transparent,${GRAD.oro},${GRAD.oroClaro},${GRAD.oro},transparent)` }}/>
+                      {/* Marco interior fino, como el de un diploma */}
+                      <div style={{ position:"absolute", inset:12, border:"1px solid rgba(230,207,142,0.55)", borderRadius:"6px 6px 18px 18px" }}/>
+                      {/* Esquinas ornamentales */}
+                      {([
+                        { top: 6, left: 6, rot: 0 },
+                        { top: 6, right: 6, rot: 90 },
+                        { bottom: 6, right: 6, rot: 180 },
+                        { bottom: 6, left: 6, rot: 270 },
+                      ] as const).map(({ rot, ...pos }, i) => (
+                        <svg key={i} width="26" height="26" viewBox="0 0 26 26" fill="none"
+                          style={{ position:"absolute", ...pos, transform:`rotate(${rot}deg)` }}>
+                          <path d="M2 14 V5 Q2 2 5 2 H14" stroke={GRAD.oroClaro} strokeWidth="1.6" strokeLinecap="round"/>
+                          <path d="M6 9 L9 6" stroke={GRAD.oroClaro} strokeWidth="1.2" strokeLinecap="round" opacity="0.8"/>
+                          <circle cx="2" cy="17.5" r="1.2" fill={GRAD.oroClaro}/>
+                          <circle cx="17.5" cy="2" r="1.2" fill={GRAD.oroClaro}/>
+                        </svg>
                       ))}
                     </div>
                   )}
@@ -4734,7 +5626,7 @@ export default function ConfirmarPage() {
               )}
 
               {/* ── Tipo, decoración, nombre invitado, anfitriones — TODO DEBAJO de la foto ── */}
-              <div style={{ textAlign: "center", padding: "24px 22px 10px", background: "var(--cream)", borderBottom: "1px solid var(--border)", position: "relative" }}>
+              <div data-guia="inicio" style={{ textAlign: "center", padding: "24px 22px 10px", background: "var(--inv-head-bg, var(--cream))", borderBottom: "1px solid var(--border)", position: "relative" }}>
                 {/* Badge de tipo */}
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
                   <span className="inv-tipo-badge">
@@ -4743,32 +5635,56 @@ export default function ConfirmarPage() {
                   </span>
                 </div>
 
-                {/* Decoraciones del tipo de evento */}
-                <DecoracionEvento tipo={evento.tipo} />
+                {evento.tipo === "graduacion" ? (() => {
+                  // El graduado es el protagonista; el invitado es a quien va dirigida
+                  const protagonista = evento.anfitriones?.trim() || evento.nombre;
+                  const nombreRepite = !!evento.anfitriones && evento.nombre.toLowerCase().includes(evento.anfitriones.trim().toLowerCase());
+                  return (
+                    <>
+                      <p className="grad-para">Con mucho cariño, para</p>
+                      <p className="grad-invitado">
+                        {nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
+                      </p>
+                      <DecoracionEvento tipo={evento.tipo} />
+                      <h1 className="grad-protagonista">{protagonista}</h1>
+                      {evento.anfitriones && (
+                        <p className="grad-te-invita">{nombreRepite ? "te invita a celebrar su graduación" : "te invita a celebrar"}</p>
+                      )}
+                      {(!evento.anfitriones || !nombreRepite) && evento.anfitriones && (
+                        <div className="inv-evento-nombre">{evento.nombre}</div>
+                      )}
+                    </>
+                  );
+                })() : (
+                  <>
+                    {/* Decoraciones del tipo de evento */}
+                    <DecoracionEvento tipo={evento.tipo} />
 
-                {/* Nombre del invitado */}
-                <h1 className="inv-saludo">
-                  {nombresEnTarjeta.length > 1
-                    ? nombresEnTarjeta.slice(0, 2).join(" & ")
-                    : invitado.nombre}
-                </h1>
+                    {/* Nombre del invitado */}
+                    <h1 className="inv-saludo">
+                      {nombresEnTarjeta.length > 1
+                        ? nombresEnTarjeta.slice(0, 2).join(" & ")
+                        : invitado.nombre}
+                    </h1>
 
-                {/* Anfitriones */}
-                {evento.anfitriones && (
-                  <p className="inv-anfitrion">
-                    Con cariño de <strong style={{ color: "var(--ink2)" }}>{evento.anfitriones}</strong>
-                  </p>
+                    {/* Anfitriones */}
+                    {evento.anfitriones && (
+                      <p className="inv-anfitrion">
+                        Con cariño de <strong style={{ color: "var(--ink2)" }}>{evento.anfitriones}</strong>
+                      </p>
+                    )}
+
+                    {/* Nombre del evento */}
+                    <div className="inv-evento-nombre">{evento.nombre}</div>
+                  </>
                 )}
-
-                {/* Nombre del evento */}
-                <div className="inv-evento-nombre">{evento.nombre}</div>
 
                 {/* Frase opcional — con efecto máquina de escribir en graduación */}
                 {evento.frase_evento && (
                   evento.tipo === "graduacion" ? (
                     <TypewriterFrase texto={evento.frase_evento} />
                   ) : (
-                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px" }}>
+                    <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 15, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px" }}>
                       ❝ {evento.frase_evento} ❞
                     </div>
                   )
@@ -4783,28 +5699,28 @@ export default function ConfirmarPage() {
 
                 {/* Carrusel de fotos del graduado — solo graduación */}
                 {evento.tipo === "graduacion" && Array.isArray(evento.fotos_carrusel) && evento.fotos_carrusel.length > 0 && (
-                  <CarruselGrad fotos={evento.fotos_carrusel} />
+                  <div data-guia="historia"><CarruselGrad fotos={evento.fotos_carrusel} /></div>
                 )}
 
                 {/* Cuenta regresiva — solo graduación */}
                 {evento.tipo === "graduacion" && evento.fecha && (
-                  <CountdownGrad fecha={evento.fecha} hora={evento.hora} />
+                  <div data-guia="cuenta"><CountdownGrad fecha={evento.fecha} hora={evento.hora} /></div>
                 )}
 
                 {/* Contador de confirmados en vivo — solo graduación */}
                 {evento.tipo === "graduacion" && (totalConfirmados ?? 0) >= 2 && (
                   <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    margin: "10px 0 2px", padding: "10px 14px",
-                    background: "linear-gradient(135deg,#FFFBEB,#FEF3C7)",
-                    border: "1.5px solid rgba(217,119,6,0.35)",
-                    borderRadius: 14,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+                    margin: "10px auto 2px", padding: "9px 16px",
+                    background: GRAD.perla,
+                    border: "1px solid rgba(15,23,51,0.08)",
+                    borderRadius: 99,
                   }}>
-                    <span style={{ position: "relative", display: "inline-flex", width: 9, height: 9 }}>
-                      <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#16a34a", animation: "cdPulseSeg 1.6s ease-in-out infinite" }} />
+                    <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8, flexShrink: 0 }}>
+                      <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#16a34a", boxShadow: "0 0 0 3px rgba(22,163,74,0.15)", animation: "cdPulseSeg 1.6s ease-in-out infinite" }} />
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#92400E" }}>
-                      🎓 {totalConfirmados} personas ya confirmaron su asistencia
+                    <span style={{ fontSize: 12.5, fontWeight: 500, color: GRAD.tinta }}>
+                      <strong style={{ fontWeight: 700 }}>{totalConfirmados} personas</strong> ya confirmaron su asistencia
                     </span>
                   </div>
                 )}
@@ -4813,7 +5729,7 @@ export default function ConfirmarPage() {
 
                 {/* 3️⃣ Detalles del evento — SIN botón de mapa */}
                 {(fechaFmt || evento.hora || evento.lugar) && (
-                  <div className="detalles">
+                  <div className="detalles" data-guia="fecha">
                     {fechaFmt && (
                       <div className="detalle-fila">
                         <div className="detalle-ico-wrap"><IcoFecha /></div>
@@ -4833,7 +5749,7 @@ export default function ConfirmarPage() {
                       </div>
                     )}
                     {evento.lugar && (
-                      <div className="detalle-fila">
+                      <div className="detalle-fila" data-guia="lugar">
                         <div className="detalle-ico-wrap">
                           {/* Sin ícono en la dirección — solo texto */}
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -4852,9 +5768,10 @@ export default function ConfirmarPage() {
                 {/* ⏱ Cuenta regresiva genérica (graduación ya tiene la suya dorada) */}
                 {evento.fecha && evento.tipo !== "graduacion" && <CountdownTimer fecha={evento.fecha} hora={evento.hora} />}
 
-                {/* 📍 Google Maps — botón principal */}
-                {evento.maps_url && (
+                {/* 📍 Google Maps — botón principal (graduación usa el par Maps + Waze de abajo) */}
+                {evento.maps_url && evento.tipo !== "graduacion" && (
                   <a
+                    data-guia="mapa"
                     href={evento.maps_url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -4892,9 +5809,9 @@ export default function ConfirmarPage() {
                   </a>
                 )}
 
-                {/* 📍 Solo instrucciones si no hay maps_url */}
-                {!evento.maps_url && evento.como_llegar && (
-                  <div className="como-llegar-box">
+                {/* 📍 Instrucciones aparte (si no hay maps_url, o en graduación que no usa el botón grande) */}
+                {(!evento.maps_url || evento.tipo === "graduacion") && evento.como_llegar && (
+                  <div className="como-llegar-box" data-guia="llegar">
                     <div className="como-llegar-label">Instrucciones para llegar</div>
                     <p className="como-llegar-text">{evento.como_llegar}</p>
                   </div>
@@ -4902,23 +5819,23 @@ export default function ConfirmarPage() {
 
                 {/* 🗺️ Cómo llegar rápido (graduación): Google Maps + Waze aunque no haya maps_url */}
                 {evento.tipo === "graduacion" && (evento.maps_url || evento.lugar) && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div data-guia="mapa" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <a
                       href={evento.maps_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(evento.lugar || "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "linear-gradient(135deg,#FFFBEB,#FEF3C7)", border: "1.5px solid rgba(217,119,6,0.35)", borderRadius: 13, padding: "12px 8px", textDecoration: "none", fontSize: 12.5, fontWeight: 700, color: "#92400E" }}
+                      className="grad-nav-btn"
                     >
-                      <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2a6 6 0 016 6c0 5-6 10-6 10S4 13 4 8a6 6 0 016-6z" stroke="#92400E" strokeWidth="1.6" fill="rgba(217,119,6,0.18)"/><circle cx="10" cy="8" r="2.2" fill="#92400E"/></svg>
+                      <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2a6 6 0 016 6c0 5-6 10-6 10S4 13 4 8a6 6 0 016-6z" stroke={GRAD.oroMedio} strokeWidth="1.6" fill="rgba(201,165,76,0.16)"/><circle cx="10" cy="8" r="2.2" fill={GRAD.oroMedio}/></svg>
                       Google Maps
                     </a>
                     <a
                       href={`https://waze.com/ul?q=${encodeURIComponent(evento.lugar || "")}&navigate=yes`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "linear-gradient(135deg,#FFFBEB,#FEF3C7)", border: "1.5px solid rgba(217,119,6,0.35)", borderRadius: 13, padding: "12px 8px", textDecoration: "none", fontSize: 12.5, fontWeight: 700, color: "#92400E" }}
+                      className="grad-nav-btn"
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3c5 0 9 3.6 9 8 0 3.2-2.1 5.9-5.2 7.2.1.4.2.9.2 1.3 0 .8-.7 1.5-1.5 1.5s-1.5-.7-1.5-1.5c0-.2 0-.4.1-.6h-1.4c0 .2.1.4.1.6 0 .8-.7 1.5-1.5 1.5S8 20.3 8 19.5c0-.5.1-.9.3-1.3C5.2 16.9 3 14.3 3 11c0-4.4 4-8 9-8z"/><circle cx="9.5" cy="10" r=".8" fill="#92400E"/><circle cx="14.5" cy="10" r=".8" fill="#92400E"/><path d="M9.5 13.5c.7.7 1.6 1 2.5 1s1.8-.3 2.5-1"/></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GRAD.oroMedio} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3c5 0 9 3.6 9 8 0 3.2-2.1 5.9-5.2 7.2.1.4.2.9.2 1.3 0 .8-.7 1.5-1.5 1.5s-1.5-.7-1.5-1.5c0-.2 0-.4.1-.6h-1.4c0 .2.1.4.1.6 0 .8-.7 1.5-1.5 1.5S8 20.3 8 19.5c0-.5.1-.9.3-1.3C5.2 16.9 3 14.3 3 11c0-4.4 4-8 9-8z"/><circle cx="9.5" cy="10" r=".8" fill={GRAD.oroMedio}/><circle cx="14.5" cy="10" r=".8" fill={GRAD.oroMedio}/><path d="M9.5 13.5c.7.7 1.6 1 2.5 1s1.8-.3 2.5-1"/></svg>
                       Waze
                     </a>
                   </div>
@@ -4926,12 +5843,12 @@ export default function ConfirmarPage() {
 
                 {/* 5b️⃣ Código de vestimenta */}
                 {evento.vestimenta_activo && evento.vestimenta_tipo && (
-                  <VestimentaCard evento={evento} />
+                  <div data-guia="vestimenta"><VestimentaCard evento={evento} /></div>
                 )}
 
                 {/* Invitados en la tarjeta */}
                 {nombresEnTarjeta.length > 1 && (
-                  <div className="inv-nombres">
+                  <div className="inv-nombres" data-guia="acompanantes">
                     <div className="inv-nombres-title">Invitados en esta tarjeta</div>
                     {nombresEnTarjeta.map((n, i) => (
                       <div key={i} className="inv-nombre-item">
@@ -4957,12 +5874,12 @@ export default function ConfirmarPage() {
 
                 {/* 7️⃣ Regalo / Transferencia */}
                 {evento.regalo_activo && (evento.regalo_banco || evento.regalo_titular || evento.regalo_cuenta) && (
-                  <RegaloCard evento={evento} />
+                  <div data-guia="regalo"><RegaloCard evento={evento} /></div>
                 )}
 
                 {/* 8️⃣ Programa del evento */}
                 {itinerario.length > 0 && (
-                  <ProgramaCard items={itinerario} />
+                  <div data-guia="programa"><ProgramaCard items={itinerario} tipo={evento.tipo} /></div>
                 )}
 
                 {/* 📸 Vista previa del muro en vivo — solo graduación */}
@@ -4971,10 +5888,10 @@ export default function ConfirmarPage() {
                     onClick={() => window.open(`/muro/${invitado.evento_id}?token=${invitado.token}`, "_blank")}
                     style={{
                       display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
-                      background: "linear-gradient(135deg,#1e1b4b,#312e81)",
-                      border: "1.5px solid rgba(252,211,77,0.40)",
+                      background: `linear-gradient(135deg,${GRAD.navy2},${GRAD.navy} 60%,${GRAD.noche})`,
+                      border: "1px solid rgba(201,165,76,0.45)",
                       borderRadius: 16, padding: "14px 16px",
-                      boxShadow: "0 8px 24px rgba(30,27,75,0.30)",
+                      boxShadow: "0 10px 26px rgba(10,15,36,0.28)",
                     }}
                   >
                     {/* Miniaturas superpuestas */}
@@ -4987,23 +5904,23 @@ export default function ConfirmarPage() {
                           alt=""
                           style={{
                             width: 42, height: 42, borderRadius: "50%", objectFit: "cover",
-                            border: "2px solid #FCD34D",
+                            border: `2px solid ${GRAD.oroClaro}`,
                             marginLeft: i > 0 ? -14 : 0,
                             boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
                           }}
                         />
                       ))}
                       {muroPreview.total > 3 && (
-                        <div style={{ width: 42, height: 42, borderRadius: "50%", marginLeft: -14, background: "rgba(252,211,77,0.9)", border: "2px solid #FCD34D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#78350F" }}>
+                        <div style={{ width: 42, height: 42, borderRadius: "50%", marginLeft: -14, background: GRAD.oroClaro, border: `2px solid ${GRAD.oroClaro}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: GRAD.tinta }}>
                           +{muroPreview.total - 3}
                         </div>
                       )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>
-                        Ya hay {muroPreview.total} foto{muroPreview.total !== 1 ? "s" : ""} en el muro 📸
+                        Ya hay {muroPreview.total} foto{muroPreview.total !== 1 ? "s" : ""} en el muro
                       </div>
-                      <div style={{ fontSize: 11, color: "#FDE68A", marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: GRAD.oroClaro, marginTop: 2 }}>
                         Mirá los momentos que ya compartieron →
                       </div>
                     </div>
@@ -5013,20 +5930,24 @@ export default function ConfirmarPage() {
                 {/* ✍️ Firma del graduado — cierre emotivo */}
                 {evento.tipo === "graduacion" && evento.anfitriones && (
                   <div style={{ textAlign: "center", padding: "16px 0 4px" }}>
-                    <div style={{ fontSize: 14, fontStyle: "italic", color: "var(--ink2)", fontFamily: "'Cormorant Garamond',serif", marginBottom: 8 }}>
+                    <div style={{ fontSize: 14, fontStyle: "italic", color: "var(--ink2)", fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", marginBottom: 8 }}>
                       Será un honor contar con tu presencia,
                     </div>
                     <div style={{
-                      fontFamily: "'Cormorant Garamond',serif", fontSize: 36, fontStyle: "italic", fontWeight: 600,
+                      fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 36, fontStyle: "italic", fontWeight: 600,
                       lineHeight: 1.1, display: "inline-block", transform: "rotate(-3deg)",
-                      background: "linear-gradient(90deg,#92400E,#D97706 50%,#92400E)",
+                      backgroundImage: `linear-gradient(90deg,${GRAD.navy2},${GRAD.navy3} 50%,${GRAD.navy2})`,
                       WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
                       padding: "0 10px",
                     }}>
                       {evento.anfitriones}
                     </div>
-                    <div style={{ width: 130, height: 1.5, margin: "10px auto 0", background: "linear-gradient(90deg,transparent,#D97706,transparent)" }} />
-                    <div style={{ fontSize: 17, marginTop: 8 }}>🎓</div>
+                    <div style={{ width: 140, height: 1, margin: "10px auto 0", background: `linear-gradient(90deg,transparent,${GRAD.oro},transparent)` }} />
+                    {evento.fecha && (
+                      <div style={{ fontFamily: "var(--f-label)", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.26em", textTransform: "uppercase", color: GRAD.oroOscuro, marginTop: 8 }}>
+                        Promoción {parseFechaLocal(evento.fecha).getFullYear()}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -5039,11 +5960,12 @@ export default function ConfirmarPage() {
               <div className="decision-bar-inner">
                 <p className="decision-bar-label">¿Podrás asistir?</p>
                 <div className="decision-bar-btns">
-                  <button className="btn-no" onClick={rechazarAsistencia}>
+                  <button className="btn-no" data-guia="no-podre" onClick={rechazarAsistencia}>
                     No podré
                   </button>
                   <button
                     className="btn-si"
+                    data-guia="confirmar"
                     onClick={handleConfirmarClick}
                     disabled={confirmando}
                   >
@@ -5061,43 +5983,77 @@ export default function ConfirmarPage() {
             <div className="form-card">
               <div className="form-titulo">¡Qué alegría!</div>
               <div className="form-sub">Un detalle más</div>
-              <span className="campo-label">
-                {invitado.cupo_elije_invitado
-                  ? "¿Cuántas personas irán incluyéndote a ti?"
-                  : "¿Cuántas personas asistirán?"}
-              </span>
-              <div className="counter-row">
-                <button
-                  className="cnt-btn"
-                  onClick={() => setNumPersonas(Math.max(1, numPersonas - 1))}
-                >
-                  −
-                </button>
-                <span className="cnt-val">{numPersonas}</span>
-                <button
-                  className="cnt-btn"
-                  onClick={() =>
-                    setNumPersonas(
-                      Math.min(invitado.cupo_elije_invitado ? 20 : (invitado.num_personas || 20), numPersonas + 1),
-                    )
-                  }
-                >
-                  +
-                </button>
-              </div>
-              <p
-                style={{
-                  fontSize: 11,
-                  color: "var(--ink3)",
-                  marginTop: 10,
-                  letterSpacing: ".3px",
-                }}
-              >
-                {invitado.cupo_elije_invitado
-                  ? "Incluye tu lugar y el de los acompañantes"
-                  : `Tu invitación es para hasta ${invitado.num_personas} ${invitado.num_personas === 1 ? "persona" : "personas"}`}
-              </p>
+              {usarChips ? (
+                <>
+                  <span className="campo-label">¿Quiénes van?</span>
+                  <div className="chips-asist" data-guia="personas">
+                    {nombresEnTarjeta.map((n, i) => {
+                      const va = !!quienesVan[i];
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          className={`chip-asist${va ? " va" : ""}`}
+                          onClick={() => alternarAsistente(i)}
+                          aria-pressed={va}
+                        >
+                          <span className="chip-asist-av">{n.trim().charAt(0).toUpperCase()}</span>
+                          <span className="chip-asist-nombre">{n}</span>
+                          <span className="chip-asist-check" aria-hidden="true">
+                            {va ? (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                            ) : null}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p style={{ fontSize: 11.5, color: "var(--ink3)", marginTop: 12, letterSpacing: ".3px" }}>
+                    {numPersonas === 1 ? "Va 1 persona" : `Van ${numPersonas} personas`} · tocá un nombre para marcarlo o desmarcarlo
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="campo-label">
+                    {invitado.cupo_elije_invitado
+                      ? "¿Cuántas personas irán incluyéndote a ti?"
+                      : "¿Cuántas personas asistirán?"}
+                  </span>
+                  <div className="counter-row" data-guia="personas">
+                    <button
+                      className="cnt-btn"
+                      onClick={() => setNumPersonas(Math.max(1, numPersonas - 1))}
+                    >
+                      −
+                    </button>
+                    <span className="cnt-val">{numPersonas}</span>
+                    <button
+                      className="cnt-btn"
+                      onClick={() =>
+                        setNumPersonas(
+                          Math.min(invitado.cupo_elije_invitado ? 20 : (invitado.num_personas || 20), numPersonas + 1),
+                        )
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--ink3)",
+                      marginTop: 10,
+                      letterSpacing: ".3px",
+                    }}
+                  >
+                    {invitado.cupo_elije_invitado
+                      ? "Incluye tu lugar y el de los acompañantes"
+                      : `Tu invitación es para hasta ${invitado.num_personas} ${invitado.num_personas === 1 ? "persona" : "personas"}`}
+                  </p>
+                </>
+              )}
               <button
+                data-guia="confirmar-form"
                 className="btn-confirmar-final"
                 onClick={confirmarAsistencia}
                 disabled={confirmando}
@@ -5134,7 +6090,7 @@ export default function ConfirmarPage() {
                 <p className="conf-sub">
                   Nos vemos en{" "}
                   <strong
-                    style={{ color: "rgba(79,70,229,0.95)", fontWeight: 500 }}
+                    style={{ color: "var(--conf-strong, rgba(79,70,229,0.95))", fontWeight: 500 }}
                   >
                     {evento.nombre}
                   </strong>
@@ -5143,7 +6099,7 @@ export default function ConfirmarPage() {
               <div className="conf-body">
                 {invitado.numero_confirmacion && evento.tipo === "graduacion" ? (
                   /* ── Medalla dorada con el número de confirmado (graduación) ── */
-                  <div style={{ textAlign: "center", padding: "6px 0 2px" }}>
+                  <div data-guia="numero" style={{ textAlign: "center", padding: "6px 0 2px" }}>
                     <style>{`
                       @keyframes medalDrop{0%{opacity:0;transform:translateY(-26px) scale(.7)}60%{opacity:1;transform:translateY(4px) scale(1.05)}100%{opacity:1;transform:translateY(0) scale(1)}}
                       @keyframes medalShine{0%{transform:translateX(-150%) rotate(20deg)}100%{transform:translateX(250%) rotate(20deg)}}
@@ -5151,32 +6107,32 @@ export default function ConfirmarPage() {
                     <div style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", animation: "medalDrop .7s .2s cubic-bezier(.34,1.4,.5,1) both" }}>
                       {/* Cinta */}
                       <div style={{ display: "flex", gap: 2, marginBottom: -8, zIndex: 0 }}>
-                        <div style={{ width: 16, height: 34, background: "linear-gradient(180deg,#1e1b4b,#312e81)", transform: "skewX(12deg)", borderRadius: "3px 3px 0 0" }} />
-                        <div style={{ width: 16, height: 34, background: "linear-gradient(180deg,#B45309,#F59E0B)", transform: "skewX(-12deg)", borderRadius: "3px 3px 0 0" }} />
+                        <div style={{ width: 16, height: 34, background: `linear-gradient(180deg,${GRAD.navy},${GRAD.navy3})`, transform: "skewX(12deg)", borderRadius: "3px 3px 0 0" }} />
+                        <div style={{ width: 16, height: 34, background: `linear-gradient(180deg,${GRAD.oroOscuro},${GRAD.oro})`, transform: "skewX(-12deg)", borderRadius: "3px 3px 0 0" }} />
                       </div>
                       {/* Medalla */}
                       <div style={{
                         position: "relative", zIndex: 1, width: 108, height: 108, borderRadius: "50%",
-                        background: "radial-gradient(circle at 32% 28%,#FDE68A,#F59E0B 55%,#B45309)",
-                        border: "3px solid #92400E",
-                        boxShadow: "0 12px 30px rgba(146,64,14,0.40), inset 0 2px 8px rgba(255,255,255,0.45)",
+                        background: `radial-gradient(circle at 32% 28%,${GRAD.oroPalido},${GRAD.oro} 55%,${GRAD.oroOscuro})`,
+                        border: `3px solid ${GRAD.oroProfundo}`,
+                        boxShadow: "0 12px 30px rgba(10,15,36,0.30), inset 0 0 0 4px rgba(255,255,255,0.18), inset 0 2px 8px rgba(255,255,255,0.45)",
                         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                         overflow: "hidden",
                       }}>
                         <div style={{ position: "absolute", top: 0, bottom: 0, width: "36%", background: "linear-gradient(105deg,transparent,rgba(255,255,255,0.5),transparent)", animation: "medalShine 3.2s 1s ease-in-out infinite" }} />
-                        <span style={{ fontSize: 20, lineHeight: 1 }}>🎓</span>
-                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.4, color: "#78350F", margin: "3px 0 1px" }}>INVITADO N°</span>
-                        <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 30, fontWeight: 700, lineHeight: 1, color: "#78350F" }}>
+                        <BirreteSVG size={24} color={GRAD.tinta} borla={GRAD.oroProfundo} />
+                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.4, color: GRAD.tinta, margin: "3px 0 1px" }}>INVITADO N°</span>
+                        <span style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 30, fontWeight: 700, lineHeight: 1, color: GRAD.tinta }}>
                           {String(invitado.numero_confirmacion).padStart(3, "0")}
                         </span>
                       </div>
                     </div>
                     <div style={{ fontSize: 11.5, color: "var(--ink3)", fontWeight: 600, marginTop: 10, letterSpacing: 0.4 }}>
-                      Sos el invitado confirmado N° {invitado.numero_confirmacion} 🎉
+                      Tu número de confirmación es el {invitado.numero_confirmacion}
                     </div>
                   </div>
                 ) : invitado.numero_confirmacion ? (
-                  <div className="num-badge">
+                  <div className="num-badge" data-guia="numero">
                     <div className="num-icono">
                       <svg
                         width="22"
@@ -5202,6 +6158,7 @@ export default function ConfirmarPage() {
                   </div>
                 ) : null}
 
+                {evento.tipo !== "graduacion" && (
                 <div className="resumen">
                   {fechaCorta && (
                     <div className="res-fila">
@@ -5237,15 +6194,22 @@ export default function ConfirmarPage() {
                     </span>
                   </div>
                 </div>
+                )}
 
-                {/* ─── QR de entrada ─── */}
-                {(() => {
+                {/* ─── QR de entrada (graduación: entrada digital con QR propio) ─── */}
+                {evento.tipo === "graduacion" ? (
+                  <EntradaDigital
+                    invitado={invitado}
+                    evento={evento}
+                    mesaNombre={mesasDisponibles.find(m => m.id === invitado.mesa_id)?.nombre || invitado.mesa_nombre || null}
+                  />
+                ) : (() => {
                   const qrUrl = typeof window !== "undefined"
                     ? `${window.location.origin}/confirmar/${invitado.token}`
                     : `/confirmar/${invitado.token}`;
                   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}&format=png&color=140d04&bgcolor=FFFFFF&margin=4`;
                   return (
-                    <div className="qr-entry-card">
+                    <div className="qr-entry-card" data-guia="qr">
                       <div className="qr-entry-label">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                           <rect x="2" y="2" width="9" height="9" rx="2" stroke="currentColor" strokeWidth="2"/>
@@ -5274,13 +6238,13 @@ export default function ConfirmarPage() {
                   const mesaSelInfo = mesasDisponibles.find(m => m.id === mesaActual);
                   if (mesaActual) {
                     return (
-                      <div className="mesa-confirmed-card">
+                      <div className="mesa-confirmed-card" data-guia="mesa">
                         <div className="mesa-confirmed-ico">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="20" height="4" rx="2"/><path d="M5 10v8M19 10v8M8 10v8M16 10v8"/></svg>
                         </div>
                         <div style={{ flex:1 }}>
                           <div style={{ fontSize:9, fontWeight:700, color:"var(--ink3)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:3 }}>Tu mesa</div>
-                          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:20, fontWeight:600, color:"var(--ink)" }}>
+                          <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize:20, fontWeight:600, color:"var(--ink)" }}>
                             {mesaSelInfo?.nombre || invitado.mesa_nombre}
                           </div>
                         </div>
@@ -5289,7 +6253,7 @@ export default function ConfirmarPage() {
                     );
                   }
                   return (
-                    <div className="mesa-picker-wrap">
+                    <div className="mesa-picker-wrap" data-guia="mesa">
                       <div className="mesa-picker-header">
                         <div className="mesa-picker-ico">
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="20" height="4" rx="2"/><path d="M5 10v8M19 10v8"/></svg>
@@ -5345,12 +6309,14 @@ export default function ConfirmarPage() {
                 })()}
 
                 {/* ── Subir fotos inline ── */}
-                <SubirFotosInvitado
-                  invitadoId={invitado.id}
-                  eventoId={invitado.evento_id}
-                  token={token}
-                  onMostrarDeseo={() => setShowDeseoForm(true)}
-                />
+                <div data-guia="fotos">
+                  <SubirFotosInvitado
+                    invitadoId={invitado.id}
+                    eventoId={invitado.evento_id}
+                    token={token}
+                    onMostrarDeseo={() => setShowDeseoForm(true)}
+                  />
+                </div>
 
                 {/* ── Escribir deseo ── */}
                 {showDeseoForm && !deseoPublicado && (
@@ -5364,12 +6330,54 @@ export default function ConfirmarPage() {
                   />
                 )}
                 {deseoPublicado && (
-                  <div style={{ background: "linear-gradient(135deg,#EEF2FF,#E0E7FF)", border: "1.5px solid rgba(79,70,229,0.22)", borderRadius: 18, padding: "18px 20px", textAlign: "center" }}>
+                  <div style={{ background: "var(--acc-soft-grad, linear-gradient(135deg,#EEF2FF,#E0E7FF))", border: "1.5px solid var(--acc-line, rgba(79,70,229,0.22))", borderRadius: 18, padding: "18px 20px", textAlign: "center" }}>
                     <div style={{ fontSize: 28, marginBottom: 8 }}>💌</div>
-                    <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontStyle: "italic", color: "#3730A3", marginBottom: 6 }}>¡Tu deseo fue publicado!</div>
-                    <div style={{ fontSize: 12, color: "#6366F1" }}>Ya aparece en el muro del evento para que todos lo vean.</div>
+                    <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 18, fontStyle: "italic", color: "var(--acc-ink, #3730A3)", marginBottom: 6 }}>¡Tu deseo fue publicado!</div>
+                    <div style={{ fontSize: 12, color: "var(--acc-sub, #6366F1)" }}>Ya aparece en el muro del evento para que todos lo vean.</div>
                   </div>
                 )}
+                {evento.tipo === "graduacion" ? (
+                  <>
+                    {/* Graduación: acciones en cuadrícula de íconos */}
+                    <div className="acciones-grid" data-guia="acciones">
+                      <button className="accion-tile" onClick={() => setShowDeseoForm(true)} disabled={deseoPublicado || showDeseoForm}>
+                        <span className="accion-ico">
+                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4h14a1 1 0 011 1v8a1 1 0 01-1 1H6l-4 3V5a1 1 0 011-1z"/></svg>
+                        </span>
+                        <span>{deseoPublicado ? "Deseo enviado" : "Escribir un deseo"}</span>
+                      </button>
+                      {evento.fecha && (
+                        <button className="accion-tile" onClick={() => descargarICS(evento)}>
+                          <span className="accion-ico">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 15l2 2 4-4"/></svg>
+                          </span>
+                          <span>Agendar</span>
+                        </button>
+                      )}
+                      <button className="accion-tile" onClick={() => window.open(`/muro/${invitado.evento_id}?token=${invitado.token}`, "_blank")}>
+                        <span className="accion-ico">
+                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg>
+                        </span>
+                        <span>Ver el muro</span>
+                      </button>
+                      <button className="accion-tile" onClick={compartirYoVoy} disabled={compartiendo}>
+                        <span className="accion-ico">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                        </span>
+                        <span>{compartiendo ? "Preparando…" : "Compartir que voy"}</span>
+                      </button>
+                    </div>
+                    {evento.fecha && (
+                      <button
+                        onClick={() => abrirGoogleCalendar(evento)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 600, color: "var(--acc, #4F46E5)", textDecoration: "underline", padding: "0 0 4px", fontFamily: "inherit", marginTop: -4 }}
+                      >
+                        o abrir directo en Google Calendar
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
                 {!showDeseoForm && !deseoPublicado && (
                   <button
                     className="btn-accion-full"
@@ -5451,10 +6459,13 @@ export default function ConfirmarPage() {
                     </button>
                     <button
                       onClick={() => abrirGoogleCalendar(evento)}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 600, color: "#4F46E5", textDecoration: "underline", padding: "0 0 4px", fontFamily: "inherit", marginTop: -6 }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 600, color: "var(--acc, #4F46E5)", textDecoration: "underline", padding: "0 0 4px", fontFamily: "inherit", marginTop: -6 }}
                     >
                       o abrir directo en Google Calendar
                     </button>
+                  </>
+                )}
+
                   </>
                 )}
 
@@ -5481,7 +6492,7 @@ export default function ConfirmarPage() {
                 )}
 
                 {/* ── Listo, cerrar ── */}
-                <button className="btn-cerrar" onClick={confirmarYCerrar}>
+                <button className="btn-cerrar" data-guia="cerrar" onClick={confirmarYCerrar}>
                   <div className="btn-accion-ico">
                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
                       <path d="M17 5L8 14l-4-4"/>
@@ -5563,7 +6574,7 @@ export default function ConfirmarPage() {
             .promo-logo-ring-2 { animation-delay:1s }
             .promo-logo-ring-3 { animation-delay:2s }
             .promo-logo-pulse { position:relative;z-index:2;animation:promoLogoPulse 3.5s ease-in-out infinite;filter:drop-shadow(0 4px 20px rgba(79,70,229,0.20)) }
-            .promo-logo-name { font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;letter-spacing:-1.2px;color:#0F172A;line-height:1;text-align:center }
+            .promo-logo-name { font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:32px;font-weight:600;letter-spacing:-1.2px;color:#0F172A;line-height:1;text-align:center }
             .promo-logo-name span { color:#4F46E5 }
             .promo-logo-tag { font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:#64748B;margin-top:3px;text-align:center }
             .promo-card-box { background:#FFFFFF;border:1.5px solid #E5E7F0;border-radius:24px;padding:28px 24px;box-shadow:0 14px 40px -10px rgba(15,23,42,0.10);width:100%;max-width:380px }
@@ -5605,7 +6616,7 @@ export default function ConfirmarPage() {
 
             {/* Card */}
             <div className="promo-card-box promo-wrap-card">
-              <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22, fontWeight: 600, color: "#0F172A", marginBottom: 4, letterSpacing: "-0.3px" }}>
+              <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 22, fontWeight: 600, color: "#0F172A", marginBottom: 4, letterSpacing: "-0.3px" }}>
                 ¡Creá tu propio evento!
               </div>
               <p style={{ fontSize: 13, color: "#64748B", marginBottom: 20, lineHeight: 1.55 }}>

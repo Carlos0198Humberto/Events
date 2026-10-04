@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
+import { saludo, tratoDe } from "@/lib/tratoInvitado";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type Evento = {
@@ -562,10 +563,13 @@ function MiniInvitados({
 
   function abrirWhatsApp(inv: InvitadoResumen) {
     const link = `${window.location.origin}/confirmar/${inv.token}`;
+    // Sin *negritas*: en la caja de texto de WhatsApp se ven los asteriscos
+    const trato = tratoDe(inv.nombre, inv.token);
+    const varios = trato === "plural";
     const msg =
       lang === "es"
-        ? `*${eventoNombre}*\n\nHola ${inv.nombre}, te enviamos tu invitación personal.\n\nConfirmá tu asistencia aquí:\n${link}\n\n— Evorix`
-        : `*${eventoNombre}*\n\nHi ${inv.nombre}, here is your personal invitation.\n\nConfirm your attendance here:\n${link}\n\n— Evorix`;
+        ? `${eventoNombre}\n\n${saludo(inv.nombre, trato)}:\n\n${varios ? "Les enviamos su invitación personal." : "Te enviamos tu invitación personal."}\n\n${varios ? "Confirmen su asistencia" : "Confirmá tu asistencia"} en este enlace:\n${link}\n\n— Evorix`
+        : `${eventoNombre}\n\nHi ${inv.nombre}, here is your personal invitation.\n\nConfirm your attendance here:\n${link}\n\n— Evorix`;
     const tel = inv.telefono?.replace(/\D/g, "") ?? "";
     openWhatsApp(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`);
   }
