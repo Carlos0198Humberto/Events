@@ -7,8 +7,8 @@
 // con sus padres) y las del muro, y un lugar para dejar su mensaje. El
 // formulario del mensaje y el regalo llegan como `children` desde la página.
 //
-// Identidad propia, distinta de la invitación de asistencia: papel blanco, oro
-// rosa y letra caligráfica, como una carta escrita a mano.
+// Identidad propia, distinta de la invitación de asistencia: papel blanco,
+// rosa viejo y letra caligráfica, como una carta escrita a mano.
 
 import { useEffect, useState, type ReactNode } from "react";
 import {
@@ -206,39 +206,35 @@ function Visor({ fotos, indice, onCambiar, onCerrar }: { fotos: string[]; indice
   );
 }
 
-// Oro rosa sobre blanco. Los tonos oscuros (#8E5546) son los que se leen en
-// texto chico; los claros solo decoran.
+// Rosa viejo liso sobre blanco, sin degradados metálicos. El tono oscuro
+// (#8E5546) es el que se lee en texto chico; los claros solo decoran.
 const ESTILOS = `
 @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:ital,wght@0,500;0,600;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap');
 /* La página entera en papel blanco (la de graduación es azul noche) */
 html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .page.page-distancia{background-color:#FFFFFF;background-size:auto;
-  background-image:radial-gradient(ellipse 90% 26% at 50% 0%,rgba(233,182,166,.22) 0%,transparent 72%),linear-gradient(180deg,#FFFFFF 0%,#F7F5F6 100%)}
+  background-image:linear-gradient(180deg,#FFFFFF 0%,#F6F7F9 100%)}
 .page-distancia .topbar{background:rgba(255,255,255,.9);border-bottom:1px solid rgba(185,122,104,.22)}
 .page-distancia .topbar-name{color:#2A2326}
 .page-distancia .topbar-sub{color:#8E5546;opacity:1}
-.dl-wrap{--rg:#8E5546;--rg2:#B97A68;--rg3:#E9B6A6;--rg4:#FBEFEB;--tinta:#2A2326;--tinta2:#5E5357;
-  --rg-metal:linear-gradient(135deg,#8E5546 0%,#D9998A 32%,#A8695A 52%,#E8B4A4 74%,#8E5546 100%);
+.dl-wrap{--rg:#8E5546;--rg2:#B98F84;--rg3:#E2CFCA;--rg4:#F4F1F0;--tinta:#22252E;--tinta2:#5B5F6B;
   max-width:460px;margin:0 auto;padding:18px 14px 44px;color:var(--tinta)}
 @keyframes dlSube{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-.dl-carta{position:relative;background:#FFFFFF;border-radius:22px;padding:34px 26px 32px;
-  box-shadow:0 1px 2px rgba(42,35,38,.06),0 18px 44px -18px rgba(142,85,70,.28);animation:dlSube .7s ease both}
-.dl-marco{position:absolute;inset:10px;border:1px solid rgba(185,122,104,.55);border-radius:15px;pointer-events:none}
-.dl-marco::after{content:"";position:absolute;inset:4px;border:.5px solid rgba(185,122,104,.32);border-radius:12px}
+.dl-carta{position:relative;background:#FFFFFF;border-radius:20px;padding:34px 26px 32px;
+  box-shadow:0 1px 2px rgba(34,37,46,.06),0 18px 44px -20px rgba(34,37,46,.25);animation:dlSube .7s ease both}
+.dl-marco{position:absolute;inset:10px;border:1px solid rgba(142,85,70,.22);border-radius:13px;pointer-events:none}
 .dl-cab{position:relative;text-align:center}
 .dl-kicker{display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:var(--rg)}
 .dl-kicker i{display:block;width:26px;height:1px;background:linear-gradient(90deg,transparent,var(--rg2))}
 .dl-kicker i:last-child{background:linear-gradient(90deg,var(--rg2),transparent)}
-.dl-retrato{margin:20px auto 0;width:min(46vw,172px);padding:4px;background:var(--rg-metal);box-shadow:0 12px 28px -12px rgba(142,85,70,.45)}
-.dl-retrato img{display:block;width:100%;object-fit:cover;object-position:50% 22%;border:3px solid #FFFFFF;background:var(--rg4)}
+.dl-retrato{margin:22px auto 0;width:min(48vw,180px);box-shadow:0 14px 30px -16px rgba(34,37,46,.45)}
+.dl-retrato img{display:block;width:100%;object-fit:cover;object-position:50% 22%;background:var(--rg4)}
 .dl-retrato.circulo,.dl-retrato.circulo img{border-radius:50%}
 .dl-retrato.circulo img{aspect-ratio:1}
-.dl-retrato.arco{border-radius:999px 999px 14px 14px}
-.dl-retrato.arco img{aspect-ratio:4/5;border-radius:999px 999px 11px 11px}
-.dl-retrato.retrato{border-radius:14px}
-.dl-retrato.retrato img{aspect-ratio:4/5;border-radius:11px}
-.dl-script{font-family:'Great Vibes',cursive;font-size:clamp(40px,12vw,52px);line-height:1.1;margin-top:16px;padding:0 6px;
-  background:var(--rg-metal);-webkit-background-clip:text;background-clip:text;color:transparent}
+.dl-retrato.arco,.dl-retrato.arco img{border-radius:999px 999px 0 0}
+.dl-retrato.arco img,.dl-retrato.retrato img{aspect-ratio:4/5}
+.dl-retrato.retrato,.dl-retrato.retrato img{border-radius:12px}
+.dl-script{font-family:'Great Vibes',cursive;font-size:clamp(40px,12vw,52px);line-height:1.1;margin-top:16px;padding:0 6px;color:var(--rg)}
 .dl-nombre{font-family:'Playfair Display',Georgia,serif;font-size:clamp(25px,7vw,32px);font-weight:600;line-height:1.15;color:var(--tinta);margin-top:2px;text-wrap:balance}
 .dl-carrera{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:16.5px;color:var(--tinta2);margin-top:8px;text-wrap:balance}
 .dl-institucion{font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--rg);margin-top:5px;text-wrap:balance}
@@ -250,9 +246,9 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dl-saludo{font-family:'Great Vibes',cursive;font-size:34px;line-height:1.15;color:var(--rg);margin-bottom:10px}
 .dl-texto>p:not(.dl-saludo):not(.dl-oracion):not(.dl-despedida):not(.dl-firma){font-family:'Cormorant Garamond',Georgia,serif;font-size:19.5px;line-height:1.62;color:var(--tinta);margin-top:12px;text-wrap:pretty}
 .dl-oracion{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:19px;color:var(--tinta2);margin-top:18px}
-.dl-bendicion{position:relative;margin:12px 0 0;padding:20px 18px 18px;border-radius:16px;text-align:center;
-  background:linear-gradient(180deg,#FFFFFF 0%,var(--rg4) 100%);border:1px solid rgba(185,122,104,.35)}
-.dl-bendicion::before{content:"";position:absolute;top:-1px;left:50%;width:44px;height:2px;margin-left:-22px;background:var(--rg-metal);border-radius:2px}
+.dl-bendicion{position:relative;margin:12px 0 0;padding:20px 18px 18px;border-radius:14px;text-align:center;
+  background:#FFFFFF;border:1px solid rgba(142,85,70,.22)}
+.dl-bendicion::before{content:"";position:absolute;top:-1px;left:50%;width:44px;height:2px;margin-left:-22px;background:var(--rg)}
 .dl-bendicion p{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:17px;line-height:1.6;color:var(--tinta)}
 .dl-despedida{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:19px;color:var(--tinta2);margin-top:24px;text-align:right}
 .dl-firma{font-family:'Great Vibes',cursive;font-size:clamp(30px,9vw,38px);line-height:1.15;color:var(--rg);text-align:right;margin-top:2px}
@@ -276,7 +272,7 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
   background:#FFFFFF;border:1px dashed rgba(185,122,104,.55);border-radius:16px;padding:20px 16px}
 .dist-vacio svg{color:var(--rg2)}
 .dl-muro{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;text-decoration:none;background:#FFFFFF;
-  border:1px solid rgba(185,122,104,.35);color:var(--tinta);box-shadow:0 8px 22px -14px rgba(142,85,70,.4);transition:transform .15s}
+  border:1px solid rgba(142,85,70,.22);color:var(--tinta);box-shadow:0 8px 22px -16px rgba(34,37,46,.35);transition:transform .15s}
 .dl-muro:active{transform:scale(.98)}
 .dl-muro-fotos{display:flex;flex-shrink:0}
 .dl-muro-fotos img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #FFFFFF;box-shadow:0 0 0 1px var(--rg3)}

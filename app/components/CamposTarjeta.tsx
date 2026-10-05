@@ -15,7 +15,7 @@ import { achicarImagen } from "@/lib/fotos";
 import { IcoCamara } from "@/app/components/Iconos";
 import {
   armarDatosTarjeta, conMetal, DISENOS_TARJETA, doradoCss, FORMAS_FOTO, FRASES_HONOR, LETRAS_NOMBRE, METALES_TARJETA,
-  PALETAS_TARJETA, paletaDe, type EventoTarjeta, type ExtrasTarjeta,
+  PALETAS_TARJETA, paletaDe, tintasPlanas, type EventoTarjeta, type ExtrasTarjeta, type MetalTarjeta,
 } from "@/lib/tarjetaInvitacion";
 
 const CARRERAS = [
@@ -106,16 +106,22 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
                   fontFamily: "'DM Sans',sans-serif",
                 }}
               >
-                {/* Muestra: el fondo de la paleta con una franja de su dorado */}
-                <span style={{ width: "100%", height: 34, borderRadius: 8, background: `radial-gradient(circle at 50% 45%, ${p.fondoCentro}, ${p.fondo} 75%)`, border: "1px solid rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ width: "58%", height: 6, borderRadius: 3, backgroundImage: doradoCss(p) }} />
-                </span>
+                {/* Muestra: el fondo de la paleta con una franja de su detalle (lisos en la moderna) */}
+                {datos.diseno === "moderna" ? (
+                  <span style={{ width: "100%", height: 34, borderRadius: 8, background: tintasPlanas(p).fondo, border: "1px solid rgba(0,0,0,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ width: "40%", height: 4, borderRadius: 2, background: tintasPlanas(p).acento }} />
+                  </span>
+                ) : (
+                  <span style={{ width: "100%", height: 34, borderRadius: 8, background: `radial-gradient(circle at 50% 45%, ${p.fondoCentro}, ${p.fondo} 75%)`, border: "1px solid rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ width: "58%", height: 6, borderRadius: 3, backgroundImage: doradoCss(p) }} />
+                  </span>
+                )}
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: activa ? "var(--accent2)" : "var(--text2)", lineHeight: 1.2, textAlign: "center" }}>{p.nombre}</span>
               </button>
             );
           })}
         </div>
-        <p className="field-hint">Si no elegís, va la del tipo de evento: azul noche en graduación, blanco perla en bodas, rosa vino en XV años.</p>
+        <p className="field-hint">Si no elegís, va la del tipo de evento: azul noche en graduación, blanco en bodas, rosa vino en XV años.</p>
       </div>
 
       <div>
@@ -131,13 +137,14 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
       </div>
 
       <div>
-        <label className="field-label">Metal de los detalles</label>
+        <label className="field-label">Color de los detalles</label>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {METALES_TARJETA.map((m) => {
+          {/* En la blanca el detalle es azul marino salvo que se elija un metal */}
+          {(paletaActiva === "marfil" ? [{ id: null, nombre: "Azul marino" }, ...METALES_TARJETA] : METALES_TARJETA).map((m: { id: MetalTarjeta | null; nombre: string }) => {
             const muestra = conMetal(PALETAS_TARJETA[paletaActiva], m.id);
-            const activo = (valor.metal ?? "oro") === m.id;
+            const activo = (valor.metal ?? (paletaActiva === "marfil" ? null : "oro")) === m.id;
             return (
-              <button key={m.id} type="button" style={{ ...chip(activo), display: "inline-flex", alignItems: "center", gap: 7 }} onClick={() => onChange({ ...valor, metal: m.id })}>
+              <button key={m.id ?? "tinta"} type="button" style={{ ...chip(activo), display: "inline-flex", alignItems: "center", gap: 7 }} onClick={() => onChange({ ...valor, metal: m.id })}>
                 <span style={{ width: 18, height: 18, borderRadius: "50%", backgroundImage: doradoCss(muestra), border: "1px solid rgba(0,0,0,0.12)" }} />
                 {m.nombre}
               </button>

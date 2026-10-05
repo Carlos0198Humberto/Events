@@ -11,7 +11,7 @@
 // trazados que dibuja el canvas (lib/ornamentosTarjeta.ts).
 
 import { ImageResponse } from "next/og";
-import { doradoCss, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
+import { doradoCss, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, separador } from "@/lib/ornamentosTarjeta";
 
 export const TAM_OG = { width: 1200, height: 630 };
@@ -160,7 +160,113 @@ function Separador({ ancho, margen, P }: { ancho: number; margen: number; P: Pal
   );
 }
 
+// ─── Diseño moderno ───────────────────────────────────────────────────────────
+// La misma composición que el canvas, en horizontal: la foto en arco a la
+// izquierda (nunca detrás del texto) y los datos a la derecha. Colores lisos,
+// Playfair y Jost, la fecha en bloque.
+async function renderModernaOG(datos: DatosTarjeta) {
+  const T = tintasPlanas(datos.paleta);
+  const letra = datos.letraNombre;
+  const nombre = letra === "mayusculas" ? datos.protagonista.toLocaleUpperCase("es") : datos.protagonista;
+  const kicker = datos.tituloScript.toLocaleUpperCase("es");
+  const honorBase = datos.honor && !datos.especial ? datos.honor.toLocaleLowerCase("es") : "";
+  const honor = honorBase ? honorBase.charAt(0).toLocaleUpperCase("es") + honorBase.slice(1) : "";
+  const institucion = datos.institucion?.toLocaleUpperCase("es") ?? "";
+  const lugar = !datos.especial ? datos.lugar?.toLocaleUpperCase("es") ?? "" : "";
+  const direccion = !datos.especial ? datos.direccion ?? "" : "";
+  const para = datos.invitado ? `Para ${datos.invitado}` : "";
+  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
+  const fp = !datos.especial ? datos.fechaPartes : null;
+  const lado = datos.horaCorta ? datos.horaCorta.toLocaleUpperCase("es") : fp?.anio ?? "";
+  const fechaLinea = datos.especial ? datos.fecha ?? "" : "";
+  const dedicatoria = datos.dedicatoria ?? "";
+  const cursivas = `${honor}${datos.carrera ?? ""}${para}${fechaLinea}${dedicatoria}`;
+  const sans5 = `${kicker}${institucion}${lugar}${cta}${fp ? `${fp.semana}${fp.mes}${fp.anio}${lado}` : ""}`;
+
+  const [foto, serif, italica, jost5, jost3, caps, script] = await Promise.all([
+    fotoComoDataUrl(datos.foto),
+    fuenteGoogle("Playfair+Display:wght@500", `${letra === "clasica" ? nombre : ""}${fp?.dia ?? ""}`),
+    cursivas ? fuenteGoogle("Playfair+Display:ital,wght@1,500", cursivas) : null,
+    fuenteGoogle("Jost:wght@500", sans5),
+    direccion ? fuenteGoogle("Jost:wght@300", direccion) : null,
+    letra === "mayusculas" ? fuenteGoogle("Cinzel:wght@600", nombre) : null,
+    letra === "caligrafia" || datos.familia ? fuenteGoogle("Great+Vibes", `${letra === "caligrafia" ? nombre : ""}${datos.familia ?? ""}`) : null,
+  ]);
+  type Fuente = { name: string; data: ArrayBuffer; weight: 300 | 400 | 500 | 600; style: "normal" | "italic" };
+  const fuentes = ([
+    serif && { name: "Serif", data: serif, weight: 500, style: "normal" },
+    italica && { name: "Serif", data: italica, weight: 500, style: "italic" },
+    jost5 && { name: "Sans", data: jost5, weight: 500, style: "normal" },
+    jost3 && { name: "Sans", data: jost3, weight: 300, style: "normal" },
+    caps && { name: "Caps", data: caps, weight: 600, style: "normal" },
+    script && { name: "Script", data: script, weight: 400, style: "normal" },
+  ] as (Fuente | null)[]).filter((x): x is Fuente => !!x);
+
+  // Satori no mide: el nombre se achica por largo y parte solo en dos líneas
+  const largo = nombre.length;
+  const pxNombre = letra === "caligrafia" ? (largo > 30 ? 54 : 64) : letra === "mayusculas" ? (largo > 30 ? 34 : 40) : (largo > 36 ? 44 : 52);
+  const anchoTexto = foto ? 620 : 900;
+  const sep = (ancho: number, margen: number) => <div style={{ display: "flex", width: ancho, height: 2, backgroundColor: T.acento, marginTop: margen }} />;
+  const columnaLado = (texto: string) => (
+    <div style={{ display: "flex", width: 150, justifyContent: "center", padding: "7px 0", borderTop: `1.5px solid ${T.linea}`, borderBottom: `1.5px solid ${T.linea}`,
+      fontFamily: "Sans", fontWeight: 500, fontSize: 13, letterSpacing: 3, color: T.tinta }}>{texto}</div>
+  );
+
+  // Arco vertical, como en la tarjeta (el círculo y el retrato, con su forma)
+  const radiosFoto = datos.formaFoto === "circulo" ? { borderRadius: "50%" }
+    : datos.formaFoto === "arco" ? { borderTopLeftRadius: 170, borderTopRightRadius: 170 } : { borderRadius: 14 };
+  const fotoAncho = datos.formaFoto === "circulo" ? 400 : 340;
+
+  return new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", backgroundColor: T.fondo }}>
+        <div style={{ position: "absolute", left: 22, top: 22, width: 1156, height: 586, border: `1.5px solid ${T.linea}`, display: "flex" }} />
+        {foto && (
+          <div style={{ position: "absolute", left: 60, top: 0, width: 440, height: 630, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={foto} width={fotoAncho} height={datos.formaFoto === "circulo" ? 400 : 430} style={{ objectFit: "cover", objectPosition: "50% 22%", ...radiosFoto }} alt="" />
+          </div>
+        )}
+        <div style={{
+          position: "absolute", left: foto ? 520 : 150, top: 40, width: anchoTexto, height: 550,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center",
+        }}>
+          <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 500, fontSize: 15, letterSpacing: 5, color: T.acento }}>{kicker}</div>
+          {honor && <div style={{ display: "flex", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 22, color: T.suave, marginTop: 6 }}>{honor}</div>}
+          <div style={{
+            display: "flex", justifyContent: "center", textAlign: "center", maxWidth: anchoTexto - 20, marginTop: 6, fontSize: pxNombre, lineHeight: 1.12, color: T.tinta,
+            ...(letra === "caligrafia" ? { fontFamily: "Script" } : letra === "mayusculas" ? { fontFamily: "Caps", fontWeight: 600, letterSpacing: 2 } : { fontFamily: "Serif", fontWeight: 500 }),
+          }}>{nombre}</div>
+          {datos.carrera && <div style={{ display: "flex", justifyContent: "center", maxWidth: anchoTexto - 40, fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 21, lineHeight: 1.3, color: T.suave, marginTop: 10 }}>{datos.carrera}</div>}
+          {institucion && <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 500, fontSize: 12, letterSpacing: 3, color: T.suave, marginTop: 6 }}>{institucion}</div>}
+          {fp && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 22 }}>
+              <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 500, fontSize: 13, letterSpacing: 4, color: T.acento }}>{fp.mes}</div>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                {columnaLado(fp.semana)}
+                <div style={{ display: "flex", width: 110, justifyContent: "center", fontFamily: "Serif", fontWeight: 500, fontSize: 58, lineHeight: 1.05, color: T.tinta }}>{fp.dia}</div>
+                {columnaLado(lado)}
+              </div>
+              {datos.horaCorta && <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 500, fontSize: 13, letterSpacing: 4, color: T.acento }}>{fp.anio}</div>}
+            </div>
+          )}
+          {fechaLinea && <div style={{ display: "flex", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 22, color: T.tinta, marginTop: 16 }}>{fechaLinea}</div>}
+          {dedicatoria && <div style={{ display: "flex", justifyContent: "center", maxWidth: anchoTexto - 60, fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 22, lineHeight: 1.3, color: T.tinta, marginTop: 12 }}>{dedicatoria}</div>}
+          {lugar && <div style={{ display: "flex", justifyContent: "center", maxWidth: anchoTexto - 40, fontFamily: "Sans", fontWeight: 500, fontSize: 16, letterSpacing: 3, color: T.tinta, marginTop: 18 }}>{lugar}</div>}
+          {direccion && <div style={{ display: "flex", justifyContent: "center", maxWidth: anchoTexto - 60, fontFamily: "Sans", fontWeight: 300, fontSize: 15, color: T.suave, marginTop: 3 }}>{direccion}</div>}
+          {sep(56, 18)}
+          {para && <div style={{ display: "flex", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 26, color: T.tinta, marginTop: 14 }}>{para}</div>}
+          <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 500, fontSize: 12, letterSpacing: 3, color: T.suave, marginTop: 6 }}>{cta}</div>
+          {datos.familia && <div style={{ display: "flex", fontFamily: "Script", fontSize: 34, color: T.tinta, marginTop: 8 }}>{datos.familia}</div>}
+        </div>
+      </div>
+    ),
+    { ...TAM_OG, fonts: fuentes.length ? fuentes : undefined },
+  );
+}
+
 export async function renderTarjetaOG(datos: DatosTarjeta) {
+  if (datos.diseno === "moderna") return renderModernaOG(datos);
   const P = datos.paleta;
   const TEXTO_ORO = textoOro(P);
   // El nombre en la letra elegida (mayúsculas, caligrafía o clásica)

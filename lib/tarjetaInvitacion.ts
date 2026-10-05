@@ -52,13 +52,14 @@ export type ExtrasTarjeta = {
 
 // Opciones de estilo de la tarjeta (las claves son lo que se guarda)
 export type FormaFoto = "circulo" | "arco" | "retrato";
-export type DisenoTarjeta = "gala" | "minimal" | "floral";
+export type DisenoTarjeta = "moderna" | "gala" | "minimal" | "floral";
 export type MetalTarjeta = "oro" | "plata" | "oro_rosa";
 export type LetraNombre = "mayusculas" | "caligrafia" | "clasica";
 export const FORMAS_FOTO: { id: FormaFoto; nombre: string }[] = [
   { id: "circulo", nombre: "Círculo" }, { id: "arco", nombre: "Arco" }, { id: "retrato", nombre: "Retrato" },
 ];
 export const DISENOS_TARJETA: { id: DisenoTarjeta; nombre: string; detalle: string }[] = [
+  { id: "moderna", nombre: "Moderna", detalle: "Foto grande, letra limpia y colores lisos, sin adornos" },
   { id: "gala", nombre: "Gala", detalle: "Bandas de filigrana" },
   { id: "minimal", nombre: "Minimal", detalle: "Limpio, mucho aire" },
   { id: "floral", nombre: "Floral", detalle: "Ramilletes en las esquinas" },
@@ -137,6 +138,7 @@ export type DatosTarjeta = {
   paleta: PaletaTarjeta;      // colores (azul noche y oro, blanco perla y oro…)
   fecha: string | null;       // "Sábado 21 de noviembre de 2026"
   fechaCorta: string | null;  // "21 · NOV · 2026"
+  fechaPartes: { semana: string; dia: string; mes: string; anio: string } | null; // SÁBADO · 21 · NOVIEMBRE · 2026
   diaHora: string | null;     // "SÁBADO · 6:00 P. M."
   hora: string | null;        // "A las seis de la tarde"
   horaCorta: string | null;   // "6:00 p. m."
@@ -415,12 +417,19 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
 
   let fecha: string | null = null;
   let fechaCorta: string | null = null;
+  let fechaPartes: DatosTarjeta["fechaPartes"] = null;
   let dia: string | null = null;
   if (evento.fecha) {
     const d = fechaLocal(evento.fecha);
     fecha = fechaLarga(evento.fecha);
     fechaCorta = `${d.getDate()} · ${MESES[d.getMonth()]} · ${d.getFullYear()}`;
     dia = d.toLocaleDateString("es", { weekday: "long" }).toLocaleUpperCase("es");
+    fechaPartes = {
+      semana: dia,
+      dia: String(d.getDate()),
+      mes: d.toLocaleDateString("es", { month: "long" }).toLocaleUpperCase("es"),
+      anio: String(d.getFullYear()),
+    };
   }
   const hCorta = evento.hora ? horaCorta(evento.hora) : null;
   const diaHora = [dia, hCorta?.toLocaleUpperCase("es")].filter(Boolean).join(" · ") || null;
@@ -458,12 +467,14 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
       ? (evento.tipo === "graduacion" ? "Aunque estés lejos, fuiste parte de este logro." : "Aunque estés lejos, sos parte de este momento.")
       : null,
     foto: extras.foto === false ? null : extras.foto_url || evento.imagen_url?.trim() || null,
-    formaFoto: extras.forma_foto ?? "circulo",
-    diseno: extras.diseno ?? "gala",
-    letraNombre: extras.letra_nombre ?? "mayusculas",
+    // La moderna pide la foto en arco y el nombre en letra clásica; los demás diseños, el círculo y las mayúsculas
+    formaFoto: extras.forma_foto ?? ((extras.diseno ?? "moderna") === "moderna" ? "arco" : "circulo"),
+    diseno: extras.diseno ?? "moderna",
+    letraNombre: extras.letra_nombre ?? ((extras.diseno ?? "moderna") === "moderna" ? "clasica" : "mayusculas"),
     paleta: paletaDe(evento),
     fecha,
     fechaCorta,
+    fechaPartes,
     diaHora,
     hora: evento.hora ? horaEnPalabras(evento.hora) : null,
     horaCorta: hCorta,
@@ -496,6 +507,10 @@ export type PaletaTarjeta = {
 const DORADO_CLASICO: [number, string][] = [
   [0, "#8A672C"], [0.28, "#E8CB82"], [0.5, "#B4873A"], [0.74, "#F4DD9A"], [1, "#97712F"],
 ];
+// Tinta azul marino para la paleta clara (lo que en las oscuras es el dorado)
+const AZUL_TINTA: [number, string][] = [
+  [0, "#1B2A4E"], [0.3, "#34507F"], [0.5, "#22365F"], [0.74, "#3B5A8E"], [1, "#1A284A"],
+];
 // Sobre fondo claro el dorado tiene que ser más oscuro para leerse
 const DORADO_PROFUNDO: [number, string][] = [
   [0, "#7A5718"], [0.28, "#B88E3A"], [0.5, "#8C6420"], [0.74, "#C9A04A"], [1, "#6E4E15"],
@@ -514,13 +529,14 @@ export const PALETAS_TARJETA: Record<string, PaletaTarjeta> = {
     oroPlano: "#DBBF7C", textoSuave: "#D9D3BF", textoFuerte: "#F3E7C4", textoVersiculo: "#EDE4C8",
     tinta: "#3A2A10", sombra: "rgba(0,0,10,0.7)", dorado: DORADO_CLASICO,
   },
-  // La clave sigue siendo "marfil" (es lo que guardaron los eventos), pero el
-  // fondo es blanco perla: el crema se veía viejo.
+  // La clave sigue siendo "marfil" (es lo que guardaron los eventos), pero es
+  // papel blanco con tinta azul marino: el crema y el dorado sobre claro se
+  // veían viejos. El dorado vuelve solo si se elige el metal "Oro".
   marfil: {
-    id: "marfil", nombre: "Blanco perla y oro",
-    fondo: "#F3F4F8", fondoCentro: "#FFFFFF", banda: "#E8EBF2",
-    oroPlano: "#8C6A26", textoSuave: "#4A5064", textoFuerte: "#1C2133", textoVersiculo: "#2C3245",
-    tinta: "#3A2A10", sombra: "rgba(30,40,70,0.20)", dorado: DORADO_PROFUNDO,
+    id: "marfil", nombre: "Blanco y azul marino",
+    fondo: "#F4F6FA", fondoCentro: "#FFFFFF", banda: "#EDF0F6",
+    oroPlano: "#2D4372", textoSuave: "#4E5870", textoFuerte: "#152039", textoVersiculo: "#2C3245",
+    tinta: "#FFFFFF", sombra: "rgba(22,32,57,0.16)", dorado: AZUL_TINTA,
   },
   rosa: {
     id: "rosa", nombre: "Rosa vino y oro",
@@ -555,10 +571,28 @@ const METALES: Record<Exclude<MetalTarjeta, "oro">, { brillo: [number, string][]
 
 /** La paleta con el metal elegido (el oro es el de la propia paleta). */
 export function conMetal(paleta: PaletaTarjeta, metal: MetalTarjeta | null | undefined): PaletaTarjeta {
+  const claro = paleta.id === "marfil";
+  // En la clara, sin metal elegido va la tinta azul; "Oro" la vuelve dorada
+  if (claro && metal === "oro") return { ...paleta, dorado: DORADO_PROFUNDO, oroPlano: "#8C6A26" };
   if (!metal || metal === "oro") return paleta;
   const m = METALES[metal];
-  const claro = paleta.id === "marfil";
   return { ...paleta, dorado: claro ? m.profundo : m.brillo, oroPlano: claro ? m.planoProfundo : m.plano };
+}
+
+/** Colores lisos del diseño moderno: fondo, tinta, texto suave, acento y líneas finas. */
+export type TintasPlanas = { fondo: string; tinta: string; suave: string; acento: string; linea: string };
+const PLANAS: Record<string, Omit<TintasPlanas, "acento" | "linea">> = {
+  marfil: { fondo: "#FFFFFF", tinta: "#152039", suave: "#5A6379" },
+  azul: { fondo: "#0F1A36", tinta: "#FFFFFF", suave: "#B9C2D9" },
+  negro: { fondo: "#121214", tinta: "#FFFFFF", suave: "#BEBEC4" },
+  rosa: { fondo: "#3A0F27", tinta: "#FFFFFF", suave: "#E8C9D7" },
+  esmeralda: { fondo: "#0B2E24", tinta: "#FFFFFF", suave: "#BFD6CC" },
+};
+export function tintasPlanas(P: PaletaTarjeta): TintasPlanas {
+  const base = PLANAS[P.id] ?? PLANAS.azul;
+  const h = P.oroPlano.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  return { ...base, acento: P.oroPlano, linea: `rgba(${r},${g},${b},${P.id === "marfil" ? 0.22 : 0.38})` };
 }
 
 /** La paleta elegida por el organizador (o la del tipo de evento), con su metal. */

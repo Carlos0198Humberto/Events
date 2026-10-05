@@ -9,6 +9,7 @@ import {
   quienInvitaHablado,
   paletaDe,
   protagonistaDe,
+  tintasPlanas,
   type EventoTarjeta,
 } from "@/lib/tarjetaInvitacion";
 
@@ -167,9 +168,23 @@ describe("invitados a distancia", () => {
 });
 
 describe("estilos de la tarjeta", () => {
-  it("por defecto: gala, círculo, mayúsculas y la foto de portada", () => {
+  it("por defecto: moderna, foto en arco, letra clásica y la foto de portada", () => {
     const d = armarDatosTarjeta(grad({ imagen_url: "https://x/portada.jpg" }), "X");
-    expect([d.diseno, d.formaFoto, d.letraNombre, d.foto]).toEqual(["gala", "circulo", "mayusculas", "https://x/portada.jpg"]);
+    expect([d.diseno, d.formaFoto, d.letraNombre, d.foto]).toEqual(["moderna", "arco", "clasica", "https://x/portada.jpg"]);
+    expect(d.fechaPartes).toEqual({ semana: "SÁBADO", dia: "31", mes: "OCTUBRE", anio: "2026" });
+  });
+
+  it("los diseños clásicos conservan el círculo y las mayúsculas", () => {
+    const d = armarDatosTarjeta(grad({ tarjeta: { diseno: "gala" } }), "X");
+    expect([d.diseno, d.formaFoto, d.letraNombre]).toEqual(["gala", "circulo", "mayusculas"]);
+  });
+
+  it("la paleta blanca va en tinta azul marino; el oro solo si se elige", () => {
+    const blanca = paletaDe({ tipo: "boda" });
+    expect(blanca.nombre).toBe("Blanco y azul marino");
+    expect(tintasPlanas(blanca)).toMatchObject({ fondo: "#FFFFFF", acento: "#2D4372" });
+    expect(paletaDe({ tipo: "boda", tarjeta: { metal: "oro" } }).oroPlano).toBe("#8C6A26");
+    expect(tintasPlanas(paletaDe({ tipo: "graduacion" })).tinta).toBe("#FFFFFF");
   });
 
   it("usa la foto propia de la tarjeta y los estilos elegidos", () => {

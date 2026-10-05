@@ -2364,11 +2364,11 @@ const preferenciaAudio = { sinSonido: false };
 
 // ─── Portada de graduación ────────────────────────────────────────────────────
 // Una sola pantalla antes de la invitación, como la tapa de una tarjeta
-// impresa: papel blanco perla con luz dorada, marco fino, la foto del graduado
+// impresa: papel blanco, tinta azul marino, marco fino, la foto del graduado
 // ENMARCADA (nunca de fondo: tapaba las letras), su nombre, para quién es, la
 // fecha y un único botón. Al tocarlo se lanzan los birretes y la portada sube
 // como un telón. "Entrar sin sonido" para quien la abre en el trabajo o en el
-// bus. La invitación especial (a distancia) usa oro rosa y letra caligráfica.
+// bus. La invitación especial (a distancia) usa rosa viejo y letra caligráfica.
 function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonidoPrevio, especial = false }: {
   invitado: Invitado;
   evento: Evento;
@@ -2397,12 +2397,11 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   const forma = ex.forma_foto ?? "arco";
   const [fotoLista, setFotoLista] = useState(false);
   const [fotoFallo, setFotoFallo] = useState(false);
-  // Oro (o oro rosa en la especial): oscuro para texto chico, claro para decorar
+  // Colores lisos, como la tarjeta moderna: tinta azul marino (rosa viejo en
+  // la especial) para el texto chico, un tono suave para filetes y marco
   const c = especial
-    ? { texto: "#8E5546", deco: "#B97A68", claro: "#E9B6A6", luz: "rgba(233,182,166,0.22)", sombra: "rgba(142,85,70,0.42)",
-        metal: "linear-gradient(135deg,#8E5546 0%,#D9998A 32%,#A8695A 52%,#E8B4A4 74%,#8E5546 100%)" }
-    : { texto: GRAD.oroOscuro, deco: GRAD.oro, claro: GRAD.oroClaro, luz: "rgba(230,207,142,0.20)", sombra: "rgba(168,132,58,0.45)",
-        metal: `linear-gradient(135deg,${GRAD.oroMedio} 0%,${GRAD.oroClaro} 32%,${GRAD.oro} 52%,${GRAD.oroPalido} 74%,${GRAD.oroMedio} 100%)` };
+    ? { texto: "#8E5546", deco: "#CDA99F", claro: "#EAD9D4", luz: "rgba(142,85,70,0.05)", sombra: "rgba(90,50,40,0.28)", boton: "#8E5546" }
+    : { texto: "#2D4372", deco: "#A9B4CA", claro: "#D5DCE9", luz: "rgba(45,67,114,0.05)", sombra: "rgba(21,32,57,0.28)", boton: "#152039" };
 
   return (
     <div className={`portada${especial ? " especial" : ""}${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`}>
@@ -2412,7 +2411,6 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         @keyframes ptBaja{0%{opacity:0;transform:translateY(-12px)}100%{opacity:1;transform:none}}
         @keyframes ptFilete{0%{transform:scaleX(0);opacity:0}100%{transform:scaleX(1);opacity:1}}
         @keyframes ptBrillo{0%,60%{transform:translateX(-140%) skewX(-18deg)}100%{transform:translateX(260%) skewX(-18deg)}}
-        @keyframes ptPolvo{0%{transform:translateY(0);opacity:0}20%{opacity:.9}100%{transform:translateY(-150px);opacity:0}}
         @keyframes ptTelon{0%{transform:translateY(0)}100%{transform:translateY(-104%)}}
         @keyframes ptRetrato{0%{opacity:0;transform:scale(.94)}100%{opacity:1;transform:none}}
         @keyframes ptBirrete{0%{transform:translate(0,0) rotate(0deg) scale(.6);opacity:0}12%{opacity:1}
@@ -2427,7 +2425,6 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         .portada.saliendo{animation:ptTelon .8s .28s cubic-bezier(.7,0,.2,1) forwards}
         .pt-marco{position:fixed;inset:max(12px,env(safe-area-inset-top,12px)) 12px max(12px,env(safe-area-inset-bottom,12px));border:1px solid ${c.deco};border-radius:18px;opacity:.75;pointer-events:none}
         .pt-marco::after{content:"";position:absolute;inset:5px;border:.5px solid ${c.deco};border-radius:14px;opacity:.6}
-        .pt-polvo{position:fixed;bottom:16%;width:3px;height:3px;border-radius:50%;background:${c.deco};pointer-events:none;animation:ptPolvo 5.5s ease-out infinite}
         .pt-arriba,.pt-centro,.pt-abajo{position:relative;z-index:2;width:100%;max-width:400px}
         .pt-arriba{animation:ptBaja .8s .15s ease both}
         .pt-kicker{display:flex;align-items:center;justify-content:center;gap:12px;font-family:'Cinzel',Georgia,serif;font-size:12px;font-weight:600;letter-spacing:.34em;color:${c.texto}}
@@ -2435,19 +2432,19 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         .pt-kicker i:last-child{background:linear-gradient(90deg,${c.deco},transparent)}
         .pt-promo{font-family:'Cinzel',Georgia,serif;font-size:10.5px;font-weight:500;letter-spacing:.32em;color:#5B6378;margin-top:7px}
         .pt-centro{margin-top:auto;margin-bottom:auto;padding:18px 0 4px}
-        .pt-retrato{--lado:min(40vw,24vh,170px);position:relative;margin:0 auto 16px;padding:4px;background:${c.metal};
+        .pt-retrato{--lado:min(40vw,24vh,170px);position:relative;margin:0 auto 18px;
           width:calc(var(--lado)*.84);height:calc(var(--lado)*1.06);box-shadow:0 18px 36px -16px ${c.sombra};animation:ptRetrato .9s .25s ease both}
         .pt-retrato.circulo{width:var(--lado);height:var(--lado)}
-        .pt-retrato,.pt-retrato .pt-retrato-in{border-radius:16px}
-        .pt-retrato.arco,.pt-retrato.arco .pt-retrato-in{border-radius:999px 999px 16px 16px}
+        .pt-retrato,.pt-retrato .pt-retrato-in{border-radius:14px}
+        .pt-retrato.arco,.pt-retrato.arco .pt-retrato-in{border-radius:999px 999px 0 0}
         .pt-retrato.circulo,.pt-retrato.circulo .pt-retrato-in{border-radius:50%}
-        .pt-retrato-in{position:relative;width:100%;height:100%;overflow:hidden;border:3px solid #FFFFFF;background:${GRAD.perla2};
+        .pt-retrato-in{position:relative;width:100%;height:100%;overflow:hidden;background:${GRAD.perla2};
           display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',Georgia,serif;font-size:calc(var(--lado)*.34);font-weight:600;color:${c.claro}}
         .pt-retrato-in img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;opacity:0;transition:opacity .6s}
         .pt-retrato-in img.lista{opacity:1}
         .pt-emblema{display:flex;justify-content:center;margin-bottom:16px;animation:ptBaja .9s .3s ease both}
         .pt-script{font-family:'Great Vibes',cursive;font-size:clamp(38px,11vw,48px);line-height:1.1;margin-bottom:2px;
-          background:${c.metal};-webkit-background-clip:text;background-clip:text;color:transparent;animation:ptSube .7s .4s ease both}
+          color:${c.texto};animation:ptSube .7s .4s ease both}
         .pt-para{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:17px;color:${c.texto};animation:ptSube .7s .45s ease both}
         .pt-honor{font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:${c.texto};margin-top:10px;animation:ptSube .7s .55s ease both}
         .pt-nombre{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:clamp(36px,11vw,52px);line-height:1.04;letter-spacing:-.01em;color:${GRAD.tinta};
@@ -2463,11 +2460,10 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         .pt-abajo{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:22px;animation:ptSube .7s 1.25s ease both}
         .pt-cta{position:relative;overflow:hidden;width:100%;max-width:330px;display:flex;align-items:center;justify-content:center;gap:10px;
           border:none;border-radius:16px;padding:17px 20px;cursor:pointer;font-family:'Jost',sans-serif;font-size:15.5px;font-weight:600;letter-spacing:.02em;
-          color:${especial ? "#FFFFFF" : GRAD.tinta};
-          background:${especial ? "linear-gradient(135deg,#C48878 0%,#9A5F52 55%,#7A4336 100%)" : `linear-gradient(135deg,${GRAD.oroClaro} 0%,${GRAD.oro} 52%,${GRAD.oroMedio} 100%)`};
-          box-shadow:0 14px 30px -10px ${c.sombra},inset 0 1px 0 rgba(255,255,255,0.45);transition:transform .15s}
+          color:#FFFFFF;background:${c.boton};
+          box-shadow:0 14px 30px -12px ${c.sombra};transition:transform .15s}
         .pt-cta:active{transform:scale(.98)}
-        .pt-cta::after{content:"";position:absolute;top:0;bottom:0;width:40%;background:linear-gradient(105deg,transparent,rgba(255,255,255,0.5),transparent);animation:ptBrillo 3.2s 2s ease-in-out infinite}
+        .pt-cta::after{content:"";position:absolute;top:0;bottom:0;width:40%;background:linear-gradient(105deg,transparent,rgba(255,255,255,0.16),transparent);animation:ptBrillo 3.6s 2s ease-in-out infinite}
         .pt-silencio{display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:10px 12px;
           font-family:'Jost',sans-serif;font-size:13px;font-weight:500;color:#5B6378}
         .pt-silencio:hover{color:${GRAD.tinta}}
@@ -2479,15 +2475,12 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
           .pt-abajo{margin-top:16px}
         }
         @media (prefers-reduced-motion: reduce){
-          .pt-cta::after,.pt-polvo,.pt-emblema,.pt-retrato{animation:none}
+          .pt-cta::after,.pt-emblema,.pt-retrato{animation:none}
           .pt-arriba,.pt-script,.pt-para,.pt-honor,.pt-nombre,.pt-carrera,.pt-institucion,.pt-filete,.pt-invita,.pt-fecha,.pt-abajo{animation:none}
         }
       `}</style>
 
       <span className="pt-marco" aria-hidden="true" />
-      {[14, 28, 46, 63, 79, 88].map((l, i) => (
-        <span key={i} className="pt-polvo" style={{ left: `${l}%`, animationDelay: `${i * 0.8}s` }} />
-      ))}
 
       <div className="pt-arriba">
         <div className="pt-kicker"><i />{especial ? "Invitación especial" : "Graduación"}<i /></div>
@@ -2505,7 +2498,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
             </div>
           </div>
         ) : (
-          <div className="pt-emblema" aria-hidden="true"><BirreteSVG size={74} color={GRAD.navy} borla={c.deco} /></div>
+          <div className="pt-emblema" aria-hidden="true"><BirreteSVG size={74} color={GRAD.navy} borla={c.texto} /></div>
         )}
         {especial && <p className="pt-script">Con gratitud</p>}
         <p className="pt-para">Para {para}</p>
@@ -2546,7 +2539,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
       {/* Al entrar: los birretes vuelan, como al final de la ceremonia */}
       {saliendo && [-120, -70, -30, 10, 50, 95, 135].map((dx, i) => (
         <span key={i} className="pt-birrete" style={{ ["--dx" as string]: `${dx}px`, ["--rot" as string]: `${(i % 2 ? 1 : -1) * (180 + i * 40)}deg`, animationDelay: `${i * 0.045}s`, marginLeft: -16 } as React.CSSProperties}>
-          <BirreteSVG size={i % 3 === 0 ? 40 : 30} color={i % 2 ? GRAD.navy2 : GRAD.navy} borla={c.deco} />
+          <BirreteSVG size={i % 3 === 0 ? 40 : 30} color={i % 2 ? GRAD.navy2 : GRAD.navy} borla={c.texto} />
         </span>
       ))}
     </div>

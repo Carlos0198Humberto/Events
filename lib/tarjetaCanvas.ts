@@ -8,14 +8,16 @@
 // Tres formatos: "tarjeta" (1080×1350, la que va con el mensaje), "historia"
 // (1080×1920, para estados) e "imprimir" (5×7 pulgadas, ~300 ppp, con QR).
 //
-// Estilos que elige el organizador: diseño (gala, minimal, floral), forma de
-// la foto (círculo, arco, retrato), metal (en la paleta) y letra del nombre.
+// Estilos que elige el organizador: diseño (moderna, gala, minimal, floral),
+// forma de la foto (círculo, arco, retrato), metal (en la paleta) y letra del
+// nombre. La moderna es otra composición: foto grande arriba, colores lisos,
+// dos familias de letra y la fecha en bloque, como la papelería de imprenta.
 //
 // La tarjeta digital no lleva QR: la confirmación es el enlace del mensaje que
 // la acompaña, que en WhatsApp sí se puede tocar. La impresa sí lo lleva.
 
 import qrcode from "qrcode-generator";
-import { PALETAS_TARJETA, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
+import { PALETAS_TARJETA, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta, type TintasPlanas } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, sello, separador } from "@/lib/ornamentosTarjeta";
 
 const W = 1080;
@@ -33,7 +35,7 @@ const SCRIPT = "'Great Vibes', cursive";
 const CAPS = "'Cinzel', Georgia, serif";
 const SERIF = "'Playfair Display', Georgia, serif";
 const SANS = "'Jost', Arial, sans-serif";
-const URL_FUENTES = "https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cinzel:wght@500;600&family=Playfair+Display:ital,wght@0,500;1,500;1,600&family=Jost:wght@300;400&display=swap";
+const URL_FUENTES = "https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cinzel:wght@500;600&family=Playfair+Display:ital,wght@0,500;1,500;1,600&family=Jost:wght@300;400;500&display=swap";
 
 // La banda superior cruza el borde de arriba con su línea central en x = 730
 const BANDA_C = 730;
@@ -59,6 +61,7 @@ export async function cargarFuentesTarjeta() {
       document.fonts.load(`italic 600 40px 'Playfair Display'`),
       document.fonts.load(`300 40px 'Jost'`),
       document.fonts.load(`400 40px 'Jost'`),
+      document.fonts.load(`500 40px 'Jost'`),
     ]);
   } catch { /* se dibuja con la fuente de respaldo */ }
 }
@@ -434,6 +437,11 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   const cx = W / 2;
   const qr = formato === "imprimir" ? opciones.qr : undefined;
 
+  if (datos.diseno === "moderna") {
+    dibujarModerna(ctx, datos, foto, formato, qr);
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+  }
+
   // Fondo negro con una luz suave al centro
   ctx.fillStyle = P.fondo;
   ctx.fillRect(0, 0, W, H);
@@ -630,28 +638,32 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   const arriba = 112;
   const abajo = H - 88;
   const disponible = abajo - arriba;
-  const medir = () => ({
-    altos: bloques.reduce((s, b) => s + b.alto, 0),
-    huecos: bloques.reduce((s, b) => s + b.antes, 0),
-  });
 
   // El sello es adorno: entra solo si queda lugar
   const R = compacta ? 46 : 54;
   const bloqueSello = { alto: R * 2.75, antes: 20, dibujar: (y: number) => dibujarSello(ctx, cx, y + R, R, datos.iniciales) };
-  { const m = medir(); if (m.altos + bloqueSello.alto + (m.huecos + bloqueSello.antes) * 0.45 <= disponible) bloques.push(bloqueSello); }
+  { const m = medirBloques(bloques); if (m.altos + bloqueSello.alto + (m.huecos + bloqueSello.antes) * 0.45 <= disponible) bloques.push(bloqueSello); }
 
-  // Reparte el espacio libre entre los bloques y centra el conjunto en el marco.
-  // Si aun con los huecos al mínimo no entra (carrera + familia + versículo…),
-  // todo el contenido se escala un poco alrededor del centro: mejor letra algo
-  // más chica que un texto que pisa el marco.
-  // En el formato para estados sobra alto: el contenido se agranda un poco
-  // en vez de quedar flotando en el medio.
-  const { altos, huecos } = medir();
+  repartir(ctx, bloques, arriba, abajo, formato === "historia" ? 1.16 : 1);
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+}
+
+function medirBloques(bloques: Bloque[]) {
+  return { altos: bloques.reduce((s, b) => s + b.alto, 0), huecos: bloques.reduce((s, b) => s + b.antes, 0) };
+}
+
+// Reparte el espacio libre entre los bloques y centra el conjunto entre
+// `arriba` y `abajo`. Si aun con los huecos al mínimo no entra (carrera +
+// familia + versículo…), todo el contenido se escala un poco alrededor del
+// centro: mejor letra algo más chica que un texto que pisa el marco. Con alto
+// de sobra (formato para estados) se agranda hasta `agrandar`.
+function repartir(ctx: CanvasRenderingContext2D, bloques: Bloque[], arriba: number, abajo: number, agrandar: number) {
+  const cx = W / 2;
+  const disponible = abajo - arriba;
+  const { altos, huecos } = medirBloques(bloques);
   const factor = Math.min(1.5, Math.max(0.35, (disponible - altos) / Math.max(huecos, 1)));
   const total = altos + huecos * factor;
-  const escala = total > disponible
-    ? disponible / total
-    : formato === "historia" ? Math.min(1.16, (disponible * 0.9) / total) : 1;
+  const escala = total > disponible ? disponible / total : agrandar > 1 ? Math.max(1, Math.min(agrandar, (disponible * 0.9) / total)) : 1;
   ctx.save();
   ctx.translate(cx, arriba + (disponible - total * escala) / 2);
   ctx.scale(escala, escala);
@@ -663,6 +675,203 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
     y += b.alto;
   }
   ctx.restore();
+}
 
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+// ─── Diseño moderno ───────────────────────────────────────────────────────────
+// Papel liso (blanco con tinta azul marino, o el color oscuro de la paleta con
+// letras blancas), un filete fino, la foto grande arriba y el texto debajo:
+// Playfair para el nombre y las frases, Jost para los datos. Un solo acento de
+// color, sin degradados metálicos, sin filigranas ni sello.
+
+// Alto de la foto según el formato (la de estados tiene alto de sobra)
+const ALTO_FOTO: Record<FormatoTarjeta, number> = { tarjeta: 450, historia: 780, imprimir: 380 };
+const MARGEN = 40;   // filete
+const INTERIOR = 76; // borde de la foto
+
+function fotoModerna(ctx: CanvasRenderingContext2D, img: HTMLImageElement, forma: FormaFoto, alto: number) {
+  const cx = W / 2;
+  // Vertical (como las fotos de toga): el arco y el retrato a 4:5, el círculo del alto
+  const h = alto;
+  const w = forma === "circulo" ? alto : Math.round(alto * 0.8);
+  const x = cx - w / 2;
+  const y = INTERIOR + (alto - h) / 2;
+  ctx.save();
+  ctx.beginPath();
+  if (forma === "circulo") ctx.arc(cx, y + h / 2, h / 2, 0, Math.PI * 2);
+  else if (forma === "arco") { ctx.moveTo(x, y + h); ctx.lineTo(x, y + w / 2); ctx.arc(cx, y + w / 2, w / 2, Math.PI, 0); ctx.lineTo(x + w, y + h); ctx.closePath(); }
+  else rectRedondo(ctx, x, y, w, h, 18);
+  ctx.clip();
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const esc = Math.max(w / iw, h / ih);
+  const dw = iw * esc, dh = ih * esc;
+  // El recorte favorece la parte de arriba: ahí suele estar la cara
+  ctx.drawImage(img, x - (dw - w) / 2, y - (dh - h) * 0.2, dw, dh);
+  ctx.restore();
+}
+
+// Una o dos líneas parejas para el nombre: parte por la palabra que deja las
+// dos mitades más parecidas, y achica la letra hasta que entren
+function lineasNombre(ctx: CanvasRenderingContext2D, nombre: string, fuente: (px: number) => string, px: number, min: number, max: number) {
+  ctx.font = fuente(px);
+  if (ctx.measureText(nombre).width <= max) return { lineas: [nombre], px };
+  const palabras = nombre.split(/\s+/);
+  let lineas = [nombre];
+  if (palabras.length > 1) {
+    let mejor = Infinity;
+    for (let i = 1; i < palabras.length; i++) {
+      const a = palabras.slice(0, i).join(" "), b = palabras.slice(i).join(" ");
+      const dif = Math.abs(ctx.measureText(a).width - ctx.measureText(b).width);
+      if (dif < mejor) { mejor = dif; lineas = [a, b]; }
+    }
+  }
+  const ancho = () => Math.max(...lineas.map((l) => ctx.measureText(l).width));
+  while (ancho() > max && px > min) { px -= 2; ctx.font = fuente(px); }
+  return { lineas, px };
+}
+
+// Línea corta, el adorno de la moderna
+function filete(ctx: CanvasRenderingContext2D, y: number, largo: number, color: string, grosor = 2) {
+  ctx.fillStyle = color;
+  ctx.fillRect(W / 2 - largo / 2, y - grosor / 2, largo, grosor);
+}
+
+function dibujarModerna(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, foto: HTMLImageElement | null, formato: FormatoTarjeta, qr?: string) {
+  const T: TintasPlanas = tintasPlanas(P);
+  const cx = W / 2;
+  // El birrete de línea se dibuja con la tinta lisa del acento
+  P = { ...P, dorado: [[0, T.acento], [1, T.acento]], fondoCentro: T.fondo };
+
+  ctx.fillStyle = T.fondo;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = T.linea;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(MARGEN, MARGEN, W - MARGEN * 2, H - MARGEN * 2);
+
+  const altoFoto = ALTO_FOTO[formato];
+  if (foto) fotoModerna(ctx, foto, datos.formaFoto, altoFoto);
+
+  const bloques: Bloque[] = [];
+  const ancho = W - 2 * 130;
+  const sans = (peso: number) => (px: number) => `${peso} ${px}px ${SANS}`;
+  const italica = (px: number) => `italic 500 ${px}px ${SERIF}`;
+
+  if (!foto && datos.esGraduacion) {
+    bloques.push({ alto: 96, antes: 0, dibujar: (y) => birrete(ctx, cx, y + 40, 0.62) });
+  }
+
+  // Qué es: en mayúsculas espaciadas, del color del acento
+  bloques.push({ alto: 24, antes: foto ? 0 : 18, dibujar: (y) =>
+    escribir(ctx, datos.tituloScript.toLocaleUpperCase("es"), cx, y + 21, { fuente: sans(500), px: 23, min: 15, max: ancho, espacio: 7, color: T.acento }) });
+
+  // La frase de honor, en cursiva y en minúsculas ("en honor a")
+  if (datos.honor && !datos.especial) {
+    const frase = datos.honor.toLocaleLowerCase("es");
+    bloques.push({ alto: 34, antes: 16, dibujar: (y) =>
+      escribir(ctx, frase.charAt(0).toLocaleUpperCase("es") + frase.slice(1), cx, y + 28, { fuente: italica, px: 32, min: 22, max: ancho, color: T.suave }) });
+  }
+
+  // El nombre: protagonista de la tarjeta, en una o dos líneas
+  const fuenteNombre = datos.letraNombre === "caligrafia" ? (px: number) => `${px}px ${SCRIPT}`
+    : datos.letraNombre === "mayusculas" ? (px: number) => `600 ${px}px ${CAPS}`
+    : (px: number) => `500 ${px}px ${SERIF}`;
+  const textoNombre = datos.letraNombre === "mayusculas" ? datos.protagonista.toLocaleUpperCase("es") : datos.protagonista;
+  const base = datos.letraNombre === "caligrafia" ? 100 : datos.letraNombre === "mayusculas" ? 60 : 76;
+  const nombre = lineasNombre(ctx, textoNombre, fuenteNombre, base, Math.round(base * 0.6), ancho + 40);
+  const interlinea = Math.round(nombre.px * (datos.letraNombre === "caligrafia" ? 1.0 : 1.12));
+  bloques.push({ alto: nombre.lineas.length * interlinea, antes: 14, dibujar: (y) => {
+    ctx.font = fuenteNombre(nombre.px);
+    ctx.fillStyle = T.tinta;
+    ctx.textAlign = "center";
+    nombre.lineas.forEach((l, i) => ctx.fillText(l, cx, y + nombre.px * 0.86 + i * interlinea));
+  } });
+
+  if (datos.carrera) {
+    ctx.font = italica(34);
+    const lineasC = partirEnLineas(ctx, datos.carrera, ancho).slice(0, 2);
+    bloques.push({ alto: lineasC.length * 42, antes: 16, dibujar: (y) =>
+      lineasC.forEach((l, i) => escribir(ctx, l, cx, y + 32 + i * 42, { fuente: italica, px: 34, min: 24, max: ancho, color: T.suave })) });
+  }
+  if (datos.institucion) {
+    bloques.push({ alto: 20, antes: datos.carrera ? 10 : 16, dibujar: (y) =>
+      escribir(ctx, datos.institucion!.toLocaleUpperCase("es"), cx, y + 18, { fuente: sans(500), px: 19, min: 13, max: ancho, espacio: 4, color: T.suave }) });
+  }
+
+  // La fecha como en la papelería impresa: el día grande al centro, el día de
+  // la semana y la hora a los lados entre dos líneas
+  const fp = datos.fechaPartes;
+  if (fp && !datos.especial) {
+    const lado = datos.horaCorta ? datos.horaCorta.toLocaleUpperCase("es") : fp.anio;
+    bloques.push({ alto: datos.horaCorta ? 150 : 124, antes: 34, dibujar: (y) => {
+      escribir(ctx, fp.mes, cx, y + 20, { fuente: sans(500), px: 21, min: 15, max: 300, espacio: 6, color: T.acento });
+      ctx.font = `500 92px ${SERIF}`;
+      ctx.fillStyle = T.tinta;
+      ctx.textAlign = "center";
+      ctx.fillText(fp.dia, cx, y + 114);
+      if (datos.horaCorta) escribir(ctx, fp.anio, cx, y + 148, { fuente: sans(500), px: 21, min: 15, max: 300, espacio: 6, color: T.acento });
+      const medio = y + 80;
+      for (const [texto, centro] of [[fp.semana, cx - 230], [lado, cx + 230]] as const) {
+        ctx.fillStyle = T.linea;
+        ctx.fillRect(centro - 120, medio - 34, 240, 1.5);
+        ctx.fillRect(centro - 120, medio + 24, 240, 1.5);
+        escribir(ctx, texto, centro, medio + 4, { fuente: sans(500), px: 22, min: 14, max: 230, espacio: 5, color: T.tinta });
+      }
+    } });
+  } else if (datos.fecha) {
+    bloques.push({ alto: 40, antes: 30, dibujar: (y) =>
+      escribir(ctx, datos.fecha!, cx, y + 32, { fuente: italica, px: 34, min: 24, max: ancho, color: T.tinta }) });
+  }
+
+  if (datos.lugar && !datos.especial) {
+    bloques.push({ alto: 28, antes: 30, dibujar: (y) =>
+      escribir(ctx, datos.lugar!.toLocaleUpperCase("es"), cx, y + 25, { fuente: sans(500), px: 26, min: 17, max: ancho, espacio: 4, color: T.tinta }) });
+    if (datos.direccion) {
+      ctx.font = `300 24px ${SANS}`;
+      const lineasD = partirEnLineas(ctx, datos.direccion, ancho).slice(0, 2);
+      bloques.push({ alto: lineasD.length * 32 - 4, antes: 8, dibujar: (y) =>
+        lineasD.forEach((l, i) => escribir(ctx, l, cx, y + 23 + i * 32, { fuente: sans(300), px: 24, min: 18, max: ancho, color: T.suave })) });
+    }
+  }
+
+  if (datos.dedicatoria) {
+    ctx.font = italica(34);
+    const lineasD = partirEnLineas(ctx, datos.dedicatoria, ancho).slice(0, 3);
+    bloques.push({ alto: lineasD.length * 44, antes: 24, dibujar: (y) =>
+      lineasD.forEach((l, i) => escribir(ctx, l, cx, y + 34 + i * 44, { fuente: italica, px: 34, min: 24, max: ancho, color: T.tinta })) });
+  }
+
+  if (datos.versiculo) {
+    const v = datos.versiculo;
+    ctx.font = italica(25);
+    const lineasV = partirEnLineas(ctx, `«${v.texto}»`, ancho - 40).slice(0, 4);
+    bloques.push({ alto: lineasV.length * 34 + 28, antes: 26, dibujar: (y) => {
+      lineasV.forEach((l, i) => escribir(ctx, l, cx, y + 25 + i * 34, { fuente: italica, px: 25, min: 18, max: ancho, color: T.suave }));
+      escribir(ctx, v.cita.toLocaleUpperCase("es"), cx, y + lineasV.length * 34 + 22, { fuente: sans(500), px: 16, min: 12, max: ancho, espacio: 4, color: T.acento });
+    } });
+  }
+
+  bloques.push({ alto: 2, antes: 30, dibujar: (y) => filete(ctx, y + 1, 72, T.acento) });
+
+  if (datos.invitado) {
+    bloques.push({ alto: 44, antes: 26, dibujar: (y) =>
+      escribir(ctx, `Para ${datos.invitado}`, cx, y + 36, { fuente: italica, px: 40, min: 26, max: ancho, color: T.tinta }) });
+  }
+  if (qr) {
+    const lado = 180;
+    bloques.push({ alto: lado + 30, antes: 20, dibujar: (y) => {
+      dibujarQR(ctx, qr, cx, y, lado);
+      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 26,
+        { fuente: sans(500), px: 16, min: 12, max: ancho, espacio: 4, color: T.suave });
+    } });
+  } else if (datos.invitado) {
+    bloques.push({ alto: 18, antes: 12, dibujar: (y) =>
+      escribir(ctx, datos.cta.toLocaleUpperCase("es"), cx, y + 16, { fuente: sans(500), px: 16, min: 12, max: ancho, espacio: 4, color: T.suave }) });
+  }
+
+  if (datos.familia) {
+    bloques.push({ alto: 60, antes: 22, dibujar: (y) =>
+      escribir(ctx, datos.familia!, cx, y + 48, { fuente: (px) => `${px}px ${SCRIPT}`, px: 62, min: 40, max: ancho, color: T.tinta }) });
+  }
+
+  const arriba = foto ? INTERIOR + altoFoto + 44 : 100;
+  repartir(ctx, bloques, arriba, H - 84, formato === "historia" ? 1.18 : 1.06);
 }
