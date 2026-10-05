@@ -7,11 +7,11 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
-import { armarDatosTarjeta, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, cartaDistancia, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import InvitacionDistancia from "./InvitacionDistancia";
 import { IcoCamara, IcoCorazon as IcoCorazonLinea } from "@/app/components/Iconos";
-import { tratoDe } from "@/lib/tratoInvitado";
-import { versiculoDe } from "@/lib/versiculos";
+import { saludoDeCarta, tratoDe } from "@/lib/tratoInvitado";
+import { citaHablada, versiculoDe } from "@/lib/versiculos";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -1313,6 +1313,23 @@ function limpiarParaVoz(t: string): string {
     .trim();
 }
 
+// Parte una frase larga en trozos de hasta ~150 letras, cortando después de
+// una coma o un punto y coma (nunca en medio de una palabra)
+function partirFraseLarga(frase: string): string[] {
+  const max = 150;
+  const trozos: string[] = [];
+  let resto = frase;
+  while (resto.length > max) {
+    const ventana = resto.slice(0, max);
+    const corte = Math.max(ventana.lastIndexOf("; "), ventana.lastIndexOf(", "));
+    if (corte < 40) break;
+    trozos.push(resto.slice(0, corte + 2));
+    resto = resto.slice(corte + 2);
+  }
+  trozos.push(resto);
+  return trozos;
+}
+
 // Un paso del recorrido: lo que se dice y la sección (data-guia) que se muestra
 type PasoGuia = { t: string; guia?: string };
 
@@ -1320,7 +1337,7 @@ const SILENCIO_KEY = "evorix-voz-silencio";
 
 function FloatingMascot({
   invitado, evento, token: _token, fase, setFase, hablando, leer, detener, textoActual, charIdx,
-  hayPrograma, hayMesas, silencio, setSilencio, distancia,
+  hayPrograma, hayMesas, silencio, setSilencio, distancia, nombresCarta,
 }: {
   invitado: Invitado;
   evento: Evento;
@@ -1337,6 +1354,8 @@ function FloatingMascot({
   silencio: boolean;
   setSilencio: (v: boolean) => void;
   distancia: boolean;
+  /** Los nombres de la tarjeta (varios = la carta va en plural) */
+  nombresCarta: string[];
 }) {
   const [minimizado, setMinimizado] = useState(false);
   // Callado hace un rato (no entre frase y frase): se muestra chico, sin botones
@@ -1461,10 +1480,21 @@ function FloatingMascot({
       : `¡Holaaa, ${primerNombre}! ${trato === "f" ? "Bienvenida" : trato === "m" ? "Bienvenido" : "Bienvenidos"} a ${trato === "plural" ? "su" : "tu"} ${tipoInv}${quien ? ` que ${quien} ${trato === "plural" ? "les" : "te"} hace` : ""}.`;
     pasos.push({ t: saludoVoz, guia: "inicio" });
 
-    // A distancia: no se confirma; se agradece y se muestra qué hay
+    // A distancia: no se confirma. La voz lee la carta entera, párrafo por
+    // párrafo, y la pantalla la va acompañando; al final, las fotos y el mensaje
     if (distancia) {
-      pasos.push({ t: evento.tipo === "graduacion" ? "Aunque estés lejos, fuiste parte de este logro. ¡Gracias!" : "Aunque estés lejos, sos parte de este momento. ¡Gracias!" });
-      pasos.push({ t: `Acá vas a ver las fotos del gran día, y podés dejarle tu mensaje a ${quien || festejado}.` });
+      const varios = nombresCarta.length > 1;
+      const tratoCarta = varios ? "plural" : trato;
+      const carta = cartaDistancia(evento, tratoCarta);
+      const autor = quien || festejado;
+      pasos.push({ t: `${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió esta carta.`, guia: "dl-inicio" });
+      pasos.push({ t: `${carta.gratitud.texto} ${citaHablada(carta.gratitud.cita)}.`, guia: "dl-epigrafe" });
+      pasos.push({ t: saludoDeCarta(varios ? nombresCarta.slice(0, 2).join(" y ") : invitado.nombre, tratoCarta), guia: "dl-saludo" });
+      carta.parrafos.forEach((p, i) => pasos.push({ t: p, guia: `dl-p${i}` }));
+      pasos.push({ t: `${carta.oracion} ${carta.bendicion.texto} ${citaHablada(carta.bendicion.cita)}.`, guia: "dl-bendicion" });
+      pasos.push({ t: `${carta.despedida} ${carta.firma}.`, guia: "dl-firma" });
+      pasos.push({ t: "Más abajo están las fotos del gran día.", guia: "dl-fotos" });
+      pasos.push({ t: `${varios ? "Pueden" : "Podés"} dejarle ${varios ? "su" : "tu"} mensaje a ${autor}.`, guia: "dl-mensaje" });
       decir(pasos, "reposo");
       return;
     }
@@ -1920,7 +1950,10 @@ function useTTS() {
 
     // Leer por FRASES: evita que Android/Chrome corte textos largos
     // y permite reanudar la cola de forma confiable en iOS.
-    const chunks = (texto.match(/[^.!?…]+[.!?…]*\s*/g) ?? [texto]).filter(c => c.trim().length > 0);
+    // Una frase muy larga (la bendición, un párrafo de la carta) se parte en
+    // la última coma o punto y coma antes de ~150 letras: Chrome corta una
+    // locución de más de ~15 segundos y la carta quedaba a medias.
+    const chunks = (texto.match(/[^.!?…]+[.!?…]*\s*/g) ?? [texto]).filter(c => c.trim().length > 0).flatMap(partirFraseLarga);
     let idx = 0;
     let offset = 0;
     // Una sola voz por lectura: si las voces llegan tarde se toma la primera
@@ -1931,6 +1964,12 @@ function useTTS() {
       if (idx >= chunks.length) { fin(); return; }
       const parte = chunks[idx];
       const chunkOffset = texto.indexOf(parte, offset) >= 0 ? texto.indexOf(parte, offset) : offset;
+      // Vigilante por frase: si el motor de voz se muere, se libera el avatar.
+      // Antes era uno solo para todo el texto, calculado con la velocidad
+      // teórica; en una carta larga las pausas entre frases lo hacían vencer
+      // antes de tiempo y la voz se cortaba sin terminar.
+      if (watchdog.current) clearTimeout(watchdog.current);
+      watchdog.current = setTimeout(fin, (parte.length / charsPorSeg) * 2000 + 6000);
       const u = new SpeechSynthesisUtterance(parte);
       u.lang = "es-MX"; // sin lista de voces (iOS al arrancar): pedir acento latino
       u.rate = rate;
@@ -1964,6 +2003,10 @@ function useTTS() {
       } catch { siguiente(); }
     };
 
+    // Vigilante de arranque: antes de arrancar, porque cada frase lo reemplaza
+    // por el suyo al empezar (si se pusiera después, pisaría al de la primera)
+    watchdog.current = setTimeout(fin, 8000);
+
     // Arrancar SIN esperar indefinidamente las voces:
     // en iOS getVoices() llega vacío y onvoiceschanged puede no dispararse jamás.
     let arrancado = false;
@@ -1979,9 +2022,6 @@ function useTTS() {
       setTimeout(arrancar, 300); // iOS: hablar igual con la voz por defecto
     }
 
-    // Watchdog: si el motor de voz muere en silencio, liberar el avatar y seguir el flujo
-    const durMax = (texto.length / charsPorSeg) * 1000 + 8000;
-    watchdog.current = setTimeout(fin, durMax);
     setListo(true);
   }
 
@@ -5216,6 +5256,7 @@ export default function ConfirmarPage() {
           silencio={silencio}
           setSilencio={setSilencio}
           distancia={!!invitado.a_distancia}
+          nombresCarta={nombresEnTarjeta}
         />
       )}
 
@@ -5344,7 +5385,7 @@ export default function ConfirmarPage() {
             trato={nombresEnTarjeta.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token)}
             muro={{ href: `/muro/${invitado.evento_id}?token=${invitado.token}`, urls: muroPreview?.urls ?? [], total: muroPreview?.total ?? 0 }}
           >
-            <section className="dist-seccion">
+            <section className="dist-seccion" data-guia="dl-mensaje">
               <h2>Tu mensaje</h2>
               {deseoPublicado ? (
                 <p className="dist-vacio">¡Gracias! Tu mensaje ya está en el muro.</p>

@@ -113,6 +113,23 @@ export function saludo(nombre: string, trato: Trato): string {
   return `Hola, ${n}`;
 }
 
+// "Tía Rosa María" → "Tía Rosa"; "Rosa María Pérez" → "Rosa"; "Juan Pérez y Ana Gómez" → "Juan y Ana".
+// En una carta se escribe el nombre de pila, no el de la lista.
+const TITULO = /^(t[ií][oa]|abuel[oa]|prim[oa]|herman[oa]|padrin[oa]|madrina|don|doña|sr\.?|sra\.?|srta\.?|dr\.?|dra\.?|lic\.?|licda\.?|ing\.?|pastor|pastora|hno\.?|hna\.?)$/i;
+export function nombreDePila(nombre: string): string {
+  const limpio = nombre.trim();
+  if (/^(la\s+)?(familia|flia\.?|fam\.)\s/i.test(limpio)) return limpio;
+  if (/\s+y\s+/i.test(limpio)) return limpio.split(/\s+y\s+/i).map(nombreDePila).join(" y ");
+  const partes = limpio.split(/\s+/);
+  return TITULO.test(partes[0]) && partes[1] ? `${partes[0]} ${partes[1]}` : partes[0];
+}
+
+/** El encabezado de una carta: "Querida Rosa," o, sin género, "Alex,". */
+export function saludoDeCarta(nombre: string, trato: Trato): string {
+  const n = nombreDePila(nombre);
+  return trato === "neutro" ? `${n},` : `${saludo(n, trato)},`;
+}
+
 /**
  * Cambia "Querido/a", "Bienvenido/a", "invitado/a" por la forma que
  * corresponde. Con trato neutro el texto queda como está.

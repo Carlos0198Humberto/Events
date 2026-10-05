@@ -873,5 +873,25 @@ function dibujarModerna(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, foto
   }
 
   const arriba = foto ? INTERIOR + altoFoto + 44 : 100;
+  marcaDeAgua(ctx, datos, T, (arriba + H - 84) / 2);
   repartir(ctx, bloques, arriba, H - 84, formato === "historia" ? 1.18 : 1.06);
+}
+
+// Marca de agua detrás del texto: un birrete grande de línea (o las
+// iniciales, si no es graduación), apenas visible, como el sello de un papel fino
+function marcaDeAgua(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, T: TintasPlanas, cy: number) {
+  ctx.save();
+  ctx.globalAlpha = T.fondo === "#FFFFFF" ? 0.055 : 0.08;
+  if (datos.esGraduacion) {
+    birrete(ctx, W / 2, cy - 40, 1.9, -0.14);
+  } else {
+    ctx.translate(W / 2, cy);
+    ctx.rotate(-0.14);
+    ctx.font = `600 380px ${SERIF}`;
+    ctx.fillStyle = T.acento;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(datos.iniciales, 0, 0);
+  }
+  ctx.restore();
 }

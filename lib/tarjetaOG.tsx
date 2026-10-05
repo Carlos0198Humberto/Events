@@ -221,6 +221,19 @@ async function renderModernaOG(datos: DatosTarjeta) {
     (
       <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", backgroundColor: T.fondo }}>
         <div style={{ position: "absolute", left: 22, top: 22, width: 1156, height: 586, border: `1.5px solid ${T.linea}`, display: "flex" }} />
+        {/* Marca de agua: el birrete de línea (o las iniciales) detrás del texto, apenas visible */}
+        {datos.esGraduacion ? (
+          <svg width="560" height="296" viewBox="-180 -70 360 186" style={{ position: "absolute", left: (foto ? 520 : 150) + anchoTexto / 2 - 280, top: 160, opacity: T.fondo === "#FFFFFF" ? 0.055 : 0.08, transform: "rotate(-8deg)" }}>
+            <g fill="none" stroke={T.acento} strokeLinecap="round" strokeLinejoin="round">
+              <path d={BIRRETE.casquete} strokeWidth="3" />
+              <path d={BIRRETE.bandaCasquete} strokeWidth="1.4" />
+              <path d={BIRRETE.tablero} strokeWidth="3" />
+              <path d={BIRRETE.canto} strokeWidth="1.8" />
+              <path d={BIRRETE.cordon} strokeWidth="2.2" />
+            </g>
+            <path d={BIRRETE.borla + BIRRETE.boton} fill={T.acento} />
+          </svg>
+        ) : null}
         {foto && (
           <div style={{ position: "absolute", left: 60, top: 0, width: 440, height: 630, display: "flex", alignItems: "center", justifyContent: "center" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}

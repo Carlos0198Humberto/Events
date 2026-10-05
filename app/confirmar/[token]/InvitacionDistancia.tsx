@@ -15,7 +15,8 @@ import {
   cartaDistancia, extrasDe, fechaLarga, horaCorta, protagonistaDe,
   type EventoTarjeta, type FormaFoto,
 } from "@/lib/tarjetaInvitacion";
-import { saludo, type Trato } from "@/lib/tratoInvitado";
+import { saludoDeCarta, type Trato } from "@/lib/tratoInvitado";
+import { BIRRETE } from "@/lib/ornamentosTarjeta";
 import { IcoCalendario, IcoCamara, IcoFlecha, IcoUbicacion } from "@/app/components/Iconos";
 
 type Props = {
@@ -26,23 +27,11 @@ type Props = {
   children?: ReactNode;
 };
 
-// "Tía Rosa María" → "Tía Rosa"; "Rosa María Pérez" → "Rosa"; "Juan Pérez y Ana Gómez" → "Juan y Ana".
-// En una carta se escribe el nombre de pila, no el de la lista.
-const TITULO = /^(t[ií][oa]|abuel[oa]|prim[oa]|herman[oa]|padrin[oa]|madrina|don|doña|sr\.?|sra\.?|srta\.?|dr\.?|dra\.?|lic\.?|licda\.?|ing\.?|pastor|pastora|hno\.?|hna\.?)$/i;
-function nombreDePila(nombre: string): string {
-  const limpio = nombre.trim();
-  if (/^(la\s+)?(familia|flia\.?|fam\.)\s/i.test(limpio)) return limpio;
-  if (/\s+y\s+/i.test(limpio)) return limpio.split(/\s+y\s+/i).map(nombreDePila).join(" y ");
-  const partes = limpio.split(/\s+/);
-  return TITULO.test(partes[0]) && partes[1] ? `${partes[0]} ${partes[1]}` : partes[0];
-}
-
 export default function InvitacionDistancia({ evento, invitadoNombre, trato, muro, children }: Props) {
   const p = protagonistaDe(evento);
   const ex = extrasDe(evento);
   const carta = cartaDistancia(evento, trato);
-  const nombre = nombreDePila(invitadoNombre);
-  const saludoCarta = trato === "neutro" ? `${nombre},` : `${saludo(nombre, trato)},`;
+  const saludoCarta = saludoDeCarta(invitadoNombre, trato);
   const foto = ex.foto === false ? null : ex.foto_url || evento.imagen_url?.trim() || null;
   const forma: FormaFoto = ex.forma_foto ?? "arco";
   const fotos = (Array.isArray(evento.fotos_anfitrion) ? evento.fotos_anfitrion : []).filter((u): u is string => typeof u === "string");
@@ -57,8 +46,9 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
 
       <article className="dl-carta">
         <span className="dl-marco" aria-hidden="true" />
+        <MarcaDeAgua graduacion={evento.tipo === "graduacion"} iniciales={inicialesDe(p.nombre)} />
 
-        <header className="dl-cab">
+        <header className="dl-cab" data-guia="dl-inicio">
           <p className="dl-kicker"><i />Invitación especial<i /></p>
           {foto && (
             <figure className={`dl-retrato ${forma}`}>
@@ -73,21 +63,23 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
           <Ornamento />
         </header>
 
-        <blockquote className="dl-epigrafe">
+        <blockquote className="dl-epigrafe" data-guia="dl-epigrafe">
           <p>«{carta.gratitud.texto}»</p>
           <cite>{carta.gratitud.cita}</cite>
         </blockquote>
 
         <section className="dl-texto" aria-label="Carta de agradecimiento">
-          <p className="dl-saludo">{saludoCarta}</p>
-          {carta.parrafos.map((t, i) => <p key={i}>{t}</p>)}
+          <p className="dl-saludo" data-guia="dl-saludo">{saludoCarta}</p>
+          {carta.parrafos.map((t, i) => <p key={i} data-guia={`dl-p${i}`}>{t}</p>)}
           <p className="dl-oracion">{carta.oracion}</p>
-          <blockquote className="dl-bendicion">
+          <blockquote className="dl-bendicion" data-guia="dl-bendicion">
             <p>«{carta.bendicion.texto}»</p>
             <cite>{carta.bendicion.cita}</cite>
           </blockquote>
-          <p className="dl-despedida">{carta.despedida}</p>
-          {carta.firma && <p className="dl-firma">{carta.firma}</p>}
+          <div data-guia="dl-firma">
+            <p className="dl-despedida">{carta.despedida}</p>
+            {carta.firma && <p className="dl-firma">{carta.firma}</p>}
+          </div>
         </section>
       </article>
 
@@ -105,7 +97,7 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
         </section>
       )}
 
-      <section className="dist-seccion">
+      <section className="dist-seccion" data-guia="dl-fotos">
         <h2>Recuerdos del gran día</h2>
         {fotos.length ? (
           <div className="dl-polaroids">
@@ -150,6 +142,32 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
         <Visor fotos={fotos} indice={abierta} onCambiar={setAbierta} onCerrar={() => setAbierta(null)} />
       )}
     </div>
+  );
+}
+
+const inicialesDe = (nombre: string) =>
+  nombre.split(/\s+/).filter((w) => w.length > 1 && !/^(de|del|la|las|los|y)$/i.test(w)).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join("");
+
+// Marca de agua al fondo de la carta: un birrete de línea (o las iniciales,
+// si no es graduación), apenas visible, como el sello de agua de un papel fino
+function MarcaDeAgua({ graduacion, iniciales }: { graduacion: boolean; iniciales: string }) {
+  return (
+    <span className="dl-marca" aria-hidden="true">
+      {graduacion ? (
+        <svg viewBox="-180 -70 360 186" width="100%">
+          <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+            <path d={BIRRETE.casquete} strokeWidth="3" />
+            <path d={BIRRETE.bandaCasquete} strokeWidth="1.4" />
+            <path d={BIRRETE.tablero} strokeWidth="3" />
+            <path d={BIRRETE.canto} strokeWidth="1.8" />
+            <path d={BIRRETE.cordon} strokeWidth="2.2" />
+          </g>
+          <path d={BIRRETE.borla + BIRRETE.boton} fill="currentColor" />
+        </svg>
+      ) : (
+        <span className="dl-marca-letras">{iniciales}</span>
+      )}
+    </span>
   );
 }
 
@@ -224,6 +242,14 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
   box-shadow:0 1px 2px rgba(34,37,46,.06),0 18px 44px -20px rgba(34,37,46,.25);animation:dlSube .7s ease both}
 .dl-marco{position:absolute;inset:10px;border:1px solid rgba(142,85,70,.22);border-radius:13px;pointer-events:none}
 .dl-cab{position:relative;text-align:center}
+/* Marca de agua: detrás del texto de la carta, sin robarle lectura */
+.dl-marca{position:absolute;left:50%;top:54%;width:88%;transform:translate(-50%,-50%) rotate(-8deg);color:var(--rg);opacity:.06;pointer-events:none;z-index:0}
+.dl-marca svg{display:block}
+.dl-marca-letras{display:block;text-align:center;font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:min(56vw,230px);line-height:1}
+.dl-carta>*:not(.dl-marco):not(.dl-marca){position:relative;z-index:1}
+/* La voz lee la carta: el párrafo que dice se tiñe apenas (sin el contorno dorado de la invitación) */
+.dl-wrap .guia-activa{outline:none;animation:none}
+.dl-texto .guia-activa{background:rgba(142,85,70,.07);border-radius:10px;box-shadow:0 0 0 8px rgba(142,85,70,.07);transition:background .4s,box-shadow .4s}
 .dl-kicker{display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:var(--rg)}
 .dl-kicker i{display:block;width:26px;height:1px;background:linear-gradient(90deg,transparent,var(--rg2))}
 .dl-kicker i:last-child{background:linear-gradient(90deg,var(--rg2),transparent)}

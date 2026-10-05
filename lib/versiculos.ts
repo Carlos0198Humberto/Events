@@ -54,6 +54,17 @@ export const VERSICULO_BENDICION: Versiculo = {
   cita: "Números 6:24-26",
 };
 
+/**
+ * La cita como se lee en voz alta: "Números 6:24-26" → "Números, capítulo 6,
+ * versículos 24 al 26" (la voz diría "seis dos puntos veinticuatro").
+ */
+export function citaHablada(cita: string): string {
+  const m = /^(.+?)\s+(\d+):(\d+)(?:\s*[-–]\s*(\d+))?$/.exec(cita.trim());
+  if (!m) return cita;
+  const [, libro, cap, v1, v2] = m;
+  return `${libro}, capítulo ${cap}, ${v2 ? `versículos ${v1} al ${v2}` : `versículo ${v1}`}`;
+}
+
 /** Sugerencias para el tipo de evento, seguidas de las que sirven para cualquiera. */
 export function versiculosPara(tipo: string): Versiculo[] {
   const propios = POR_TIPO[tipo] ?? [];
