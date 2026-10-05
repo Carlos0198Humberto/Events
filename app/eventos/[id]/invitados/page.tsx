@@ -14,6 +14,7 @@ import VersiculoEvento from "./VersiculoEvento";
 import { ETIQUETAS_TRATO, guardarTrato, saludo, tratoDe, type Trato } from "@/lib/tratoInvitado";
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { toast } from "@/app/components/Toast";
+import { IcoCarta, IcoCelular, IcoCheck, IcoEnlace, IcoImpresora, IcoPapelera, IcoPersonas, IcoWhatsApp } from "@/app/components/Iconos";
 
 
 type Invitado = {
@@ -718,6 +719,8 @@ export default function AgregarInvitados() {
           padding-left: 16px; padding-right: 16px;
           box-shadow: 0 -4px 20px rgba(79,70,229,0.07);
         }
+        /* Con el teclado abierto la barra fija sube con él y tapa el formulario */
+        html:has(input:not([type="checkbox"]):not([type="radio"]):focus, textarea:focus, select:focus) .bottom-bar { display: none; }
         .btn-back {
           display: inline-flex; align-items: center; gap: 8px;
           background: transparent; border: none;
@@ -773,8 +776,8 @@ export default function AgregarInvitados() {
         .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.11); background: var(--surface); }
 
         /* ── Toggle switch ── */
-        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--accent-soft); border-radius: 14px; border: 1px solid var(--border-input); }
-        .toggle-label { font-size: 13px; font-weight: 500; color: var(--text); }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--accent-soft); border-radius: 14px; border: 1px solid var(--border-input); }
+        .toggle-label { font-size: 13px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 6px; }
         .toggle-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
         .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -823,11 +826,13 @@ export default function AgregarInvitados() {
         .inv-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 15px; flex-shrink: 0; }
         .inv-info { flex: 1; min-width: 0; }
         .inv-name { font-size: 14px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .inv-phone { font-size: 11px; color: var(--text3); margin-top: 1px; font-weight: 500; }
+        .inv-phone { font-size: 11px; color: var(--text3); margin-top: 1px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+        .inv-cupo { font-size: 10.5px; color: var(--text3); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
         .inv-no-phone { font-size: 11px; color: #fbbf24; margin-top: 1px; font-weight: 500; }
         .inv-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
-        .btn-action { font-size: 11.5px; font-weight: 700; border-radius: 10px; padding: 6px 10px; cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent; white-space: nowrap; border: 1.5px solid; }
+        .btn-action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 32px; font-size: 11.5px; font-weight: 700; border-radius: 10px; padding: 6px 10px; cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent; white-space: nowrap; border: 1.5px solid; }
+        .btn-action-txt { display: none; }
         .btn-copy-default { color: var(--accent); background: var(--surface); border-color: var(--border-input); }
         .btn-copy-done    { color: #16a34a; background: #f0fdf4; border-color: #86efac; }
         .btn-wa           { color: white; background: var(--wa-green); border-color: var(--wa-dark); }
@@ -854,7 +859,7 @@ export default function AgregarInvitados() {
         .btn-eliminar:hover { background: #fee2e2; }
         .btn-eliminar:disabled { opacity: .5; cursor: wait; }
 
-        .estado-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+        .estado-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
         .estado-confirmado { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
         .estado-pendiente  { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
         .estado-rechazado  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
@@ -1014,11 +1019,11 @@ export default function AgregarInvitados() {
         .tarjeta-principal { width: 100%; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--wa-green), var(--wa-dark)); color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 16px rgba(37,211,102,0.35); margin-bottom: 8px; }
         .tarjeta-principal:disabled { opacity: .5; cursor: wait; box-shadow: none; }
         .tarjeta-secundarias { display: flex; gap: 8px; }
-        .hero-distancia { margin-top: 10px; text-align: center; font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.9); }
+        .hero-distancia { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; text-align: center; font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.9); }
         .estado-distancia { background: #FDF2F8; color: #9D174D; border: 1px solid #FBCFE8; }
         .inv-distancia-btn { margin-top: 4px; padding: 0; border: none; background: none; font-size: 10.5px; font-weight: 700; color: var(--accent); cursor: pointer; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; }
         .toggle-distancia { background: #FDF2F8; border-color: #FBCFE8; }
-        .tarjeta-estados { width: 100%; padding: 11px; border-radius: 12px; border: 1.5px dashed rgba(79,70,229,0.35); background: rgba(79,70,229,0.05); color: #3730A3; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-bottom: 8px; }
+        .tarjeta-estados { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px; border-radius: 12px; border: 1.5px dashed rgba(79,70,229,0.35); background: rgba(79,70,229,0.05); color: #3730A3; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-bottom: 8px; }
         .tarjeta-estados:disabled { opacity: .6; cursor: wait; }
         .tarjeta-link { display: block; width: 100%; margin: -2px 0 10px; padding: 4px; border: none; background: none; font-size: 12px; font-weight: 600; color: var(--accent2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-family: inherit; }
         .tarjeta-secundarias .btn-cancel { padding: 11px 6px; font-size: 13px; }
@@ -1044,16 +1049,16 @@ export default function AgregarInvitados() {
           .card-title { font-size: 19px; }
           .field-input { padding: 12px 13px; font-size: 14.5px; }
           .btn-submit { padding: 14px; font-size: 14.5px; }
-          .inv-row { padding: 10px; gap: 8px; }
+          .inv-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; padding: 11px; gap: 4px 10px; }
           .inv-avatar { width: 32px; height: 32px; font-size: 13px; }
-          .inv-actions { flex-wrap: wrap; gap: 5px; justify-content: flex-end; }
-          .btn-action { font-size: 11px; padding: 5px 8px; }
-          .btn-tarjeta-txt { display: none; }
+          .inv-actions { grid-column: 1 / -1; gap: 6px; margin-top: 8px; padding-top: 9px; border-top: 1px solid var(--border); }
+          .inv-actions .btn-action { flex: 1; min-width: 0; font-size: 11.5px; padding: 6px; min-height: 36px; }
+          .btn-action-txt { display: inline; }
+          .inv-actions .btn-eliminar { flex: 0 0 40px; }
           .qn-link { padding: 8px 11px; font-size: 10px; }
         }
         @media (max-width: 340px) {
-          .inv-actions { flex-direction: column; align-items: stretch; }
-          .btn-action { width: 100%; text-align: center; }
+          .btn-action-txt, .btn-tarjeta-txt { display: none; }
         }
       `}</style>
 
@@ -1128,7 +1133,7 @@ export default function AgregarInvitados() {
               <button className="tarjeta-link" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">o compartir la imagen eligiendo el contacto</button>
             )}
             <button className="tarjeta-estados" onClick={imprimirTarjeta} disabled={!tarjeta.blob} type="button">
-              🖨️ Imprimir (5×7 con código QR)
+              <IcoImpresora size={16} />Imprimir (5×7 con código QR)
             </button>
             <button className="tarjeta-estados" onClick={tarjetaParaEstados} disabled={generandoHistoria} type="button">
               {generandoHistoria ? "Preparando…" : "Versión para estados (sin nombre del invitado)"}
@@ -1197,7 +1202,7 @@ export default function AgregarInvitados() {
                 </div>
               </div>
               {aDistanciaLista.length > 0 && (
-                <div className="hero-distancia">💌 {aDistanciaLista.length} invitación{aDistanciaLista.length !== 1 ? "es" : ""} especial{aDistanciaLista.length !== 1 ? "es" : ""} a distancia</div>
+                <div className="hero-distancia"><IcoCarta size={14} />{aDistanciaLista.length} invitación{aDistanciaLista.length !== 1 ? "es" : ""} especial{aDistanciaLista.length !== 1 ? "es" : ""} a distancia</div>
               )}
             </div>
           )}
@@ -1323,7 +1328,7 @@ export default function AgregarInvitados() {
               {distanciaOk && (
                 <div className="toggle-row toggle-distancia">
                   <div>
-                    <div className="toggle-label">💌 Invitación especial a distancia</div>
+                    <div className="toggle-label"><IcoCarta size={15} style={{ color: "#9D174D", flexShrink: 0 }} />Invitación especial a distancia</div>
                     <div className="toggle-sub">Para quien está lejos: no confirma, ve las fotos y te deja su mensaje</div>
                   </div>
                   <label className="toggle-switch">
@@ -1432,7 +1437,7 @@ export default function AgregarInvitados() {
                     <div className="inv-info">
                       <div className="inv-name">{inv.nombre}</div>
                       {inv.telefono
-                        ? <div className="inv-phone">📱 {inv.telefono}</div>
+                        ? <div className="inv-phone"><IcoCelular size={12} />{inv.telefono}</div>
                         : <div className="inv-no-phone">Sin número</div>
                       }
                     </div>
@@ -1443,7 +1448,8 @@ export default function AgregarInvitados() {
                         type="button"
                         title="Copiar link"
                       >
-                        {copiado === inv.token ? "✓" : "🔗"}
+                        {copiado === inv.token ? <IcoCheck size={14} strokeWidth={2.4} /> : <IcoEnlace size={14} strokeWidth={2.2} />}
+                        <span className="btn-action-txt">{copiado === inv.token ? "Copiado" : "Link"}</span>
                       </button>
                       <button
                         className="btn-action btn-tarjeta"
@@ -1463,7 +1469,8 @@ export default function AgregarInvitados() {
                           type="button"
                           aria-label={`Enviar WhatsApp a ${inv.nombre}`}
                         >
-                          {yaEnviado(inv) ? "✓" : "WA"}
+                          {yaEnviado(inv) ? <IcoCheck size={14} strokeWidth={2.4} /> : <IcoWhatsApp size={14} />}
+                          <span className="btn-action-txt">{yaEnviado(inv) ? "Enviado" : "WhatsApp"}</span>
                         </button>
                       )}
                     </div>
@@ -1572,7 +1579,7 @@ export default function AgregarInvitados() {
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <div className="inv-name">{inv.nombre}</div>
                         {inv.a_distancia ? (
-                          <span className="estado-badge estado-distancia">💌 A distancia</span>
+                          <span className="estado-badge estado-distancia"><IcoCarta size={11} strokeWidth={2.2} />A distancia</span>
                         ) : inv.estado && (
                           <span className={`estado-badge ${
                             inv.estado === "confirmado" ? "estado-confirmado"
@@ -1586,14 +1593,15 @@ export default function AgregarInvitados() {
                         )}
                       </div>
                       {inv.telefono
-                        ? <div className="inv-phone">📱 {inv.telefono}</div>
+                        ? <div className="inv-phone"><IcoCelular size={12} />{inv.telefono}</div>
                         : <div className="inv-no-phone">Sin número</div>
                       }
                       {!inv.a_distancia && (
-                        <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>
+                        <div className="inv-cupo">
+                          <IcoPersonas size={12} />
                           {inv.cupo_elije_invitado
-                            ? "👥 Elige cuántos van"
-                            : `👥 ${inv.num_personas ?? 1} lugar${(inv.num_personas ?? 1) !== 1 ? "es" : ""}`}
+                            ? "Elige cuántos van"
+                            : `${inv.num_personas ?? 1} lugar${(inv.num_personas ?? 1) !== 1 ? "es" : ""}`}
                         </div>
                       )}
                       {distanciaOk && inv.id && (
@@ -1619,7 +1627,8 @@ export default function AgregarInvitados() {
                         type="button"
                         title="Copiar link"
                       >
-                        {copiado === inv.token ? "✓" : "🔗"}
+                        {copiado === inv.token ? <IcoCheck size={14} strokeWidth={2.4} /> : <IcoEnlace size={14} strokeWidth={2.2} />}
+                        <span className="btn-action-txt">{copiado === inv.token ? "Copiado" : "Link"}</span>
                       </button>
                       <button
                         className="btn-action btn-tarjeta"
@@ -1638,16 +1647,18 @@ export default function AgregarInvitados() {
                           onClick={() => enviarWhatsApp(inv)}
                           type="button"
                         >
-                          {yaEnviado(inv) ? "✓" : "WA"}
+                          {yaEnviado(inv) ? <IcoCheck size={14} strokeWidth={2.4} /> : <IcoWhatsApp size={14} />}
+                          <span className="btn-action-txt">{yaEnviado(inv) ? "Enviado" : "WhatsApp"}</span>
                         </button>
                       )}
                       <button
                         className="btn-action btn-eliminar"
+                        aria-label={`Eliminar a ${inv.nombre}`}
                         onClick={() => setConfirmEliminar(confirmEliminar === inv.id ? null : (inv.id ?? null))}
                         type="button"
                         disabled={eliminando === inv.id}
                       >
-                        {eliminando === inv.id ? "..." : "🗑"}
+                        {eliminando === inv.id ? "…" : <IcoPapelera size={15} strokeWidth={2} />}
                       </button>
                     </div>
                   </div>

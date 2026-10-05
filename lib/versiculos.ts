@@ -42,6 +42,18 @@ const POR_TIPO: Record<string, Versiculo[]> = {
   ],
 };
 
+// Para la invitación especial a distancia: se agradece y se bendice a quien
+// acompañó desde lejos. Gratitud arriba (Pablo a los filipenses, también lejos
+// de ellos) y la bendición sacerdotal como cierre de la carta.
+export const VERSICULO_GRATITUD: Versiculo = {
+  texto: "Doy gracias a mi Dios siempre que me acuerdo de vosotros.",
+  cita: "Filipenses 1:3",
+};
+export const VERSICULO_BENDICION: Versiculo = {
+  texto: "Jehová te bendiga, y te guarde; Jehová haga resplandecer su rostro sobre ti, y tenga de ti misericordia; Jehová alce sobre ti su rostro, y ponga en ti paz.",
+  cita: "Números 6:24-26",
+};
+
 /** Sugerencias para el tipo de evento, seguidas de las que sirven para cualquiera. */
 export function versiculosPara(tipo: string): Versiculo[] {
   const propios = POR_TIPO[tipo] ?? [];

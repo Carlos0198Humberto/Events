@@ -5,6 +5,7 @@ import {
   familiaDe,
   fraseInvitacion,
   agradecimientoDe,
+  cartaDistancia,
   quienInvitaHablado,
   paletaDe,
   protagonistaDe,
@@ -137,6 +138,31 @@ describe("invitados a distancia", () => {
     expect(d.dedicatoria).toBe("Aunque estés lejos, fuiste parte de este logro.");
     expect(d.cta).not.toContain("Confirm");
     expect(armarDatosTarjeta(carlos(), "X").especial).toBe(false);
+    expect(armarDatosTarjeta(carlos(), "Tía Rosa", "f", { distancia: true }).versiculo?.cita).toBe("Filipenses 1:3");
+  });
+
+  it("la carta agradece en primera persona y cierra con una bendición", () => {
+    const c = cartaDistancia(grad(), "f");
+    expect(c.parrafos).toHaveLength(3);
+    expect(c.parrafos[0]).toMatch(/^Hoy quiero detenerme a darte las gracias\. Este logro no es solo mío/);
+    expect(c.parrafos[1]).toContain("preparé esta invitación especial para vos");
+    expect(c.oracion).toBe("Y esta es mi oración por vos:");
+    expect(c.bendicion.cita).toBe("Números 6:24-26");
+    expect(c.despedida).toBe("Con todo mi cariño y gratitud,");
+  });
+
+  it("la carta habla como familia y en plural a varios", () => {
+    const c = cartaDistancia(grad({ tarjeta: { familia: "Familia Chavarría" } }), "plural");
+    expect(c.parrafos[0]).toContain("Hoy queremos detenernos a darles las gracias");
+    expect(c.parrafos[1]).toContain("para ustedes: para que vean las fotos");
+    expect(c.parrafos[2]).toContain("Le pedimos a Dios que les devuelva");
+    expect(c.oracion).toBe("Y esta es nuestra oración por ustedes:");
+    expect(c.firma).toBe("Familia Chavarría");
+  });
+
+  it("el agradecimiento propio reemplaza la carta, la bendición queda", () => {
+    const c = cartaDistancia(grad({ tarjeta: { agradecimiento: "Gracias por todo." } }), "m");
+    expect(c.parrafos).toEqual(["Gracias por todo.", expect.stringContaining("Le pido a Dios")]);
   });
 });
 

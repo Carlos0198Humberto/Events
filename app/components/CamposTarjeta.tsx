@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { achicarImagen } from "@/lib/fotos";
+import { IcoCamara } from "@/app/components/Iconos";
 import {
   armarDatosTarjeta, conMetal, DISENOS_TARJETA, doradoCss, FORMAS_FOTO, FRASES_HONOR, LETRAS_NOMBRE, METALES_TARJETA,
   PALETAS_TARJETA, paletaDe, type EventoTarjeta, type ExtrasTarjeta,
@@ -114,7 +115,7 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
             );
           })}
         </div>
-        <p className="field-hint">Si no elegís, va la del tipo de evento: azul noche en graduación, marfil en bodas, rosa vino en XV años.</p>
+        <p className="field-hint">Si no elegís, va la del tipo de evento: azul noche en graduación, blanco perla en bodas, rosa vino en XV años.</p>
       </div>
 
       <div>
@@ -244,7 +245,7 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
           )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             <button type="button" style={chip(false)} disabled={subiendoFoto} onClick={() => fotoInput.current?.click()}>
-              {subiendoFoto ? "Subiendo…" : valor.foto_url ? "Cambiar foto" : "📷 Subir otra foto"}
+              {subiendoFoto ? "Subiendo…" : <><IcoCamara size={14} style={{ verticalAlign: "-2px", marginRight: 5 }} />{valor.foto_url ? "Cambiar foto" : "Subir otra foto"}</>}
             </button>
             {valor.foto_url && (
               <button type="button" style={chip(false)} onClick={() => onChange({ ...valor, foto_url: null })}>Usar la de portada</button>

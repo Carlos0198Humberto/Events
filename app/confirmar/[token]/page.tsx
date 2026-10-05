@@ -9,6 +9,7 @@ import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
 import { armarDatosTarjeta, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import InvitacionDistancia from "./InvitacionDistancia";
+import { IcoCamara, IcoCorazon as IcoCorazonLinea } from "@/app/components/Iconos";
 import { tratoDe } from "@/lib/tratoInvitado";
 import { versiculoDe } from "@/lib/versiculos";
 
@@ -459,8 +460,8 @@ const IcoCalendario = () => (
 const IcoCamera = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     {/* Cámara minimalista y limpia */}
-    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="12" cy="13" r="4" stroke="#4F46E5" strokeWidth="1.6"/>
+    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" stroke="#4F46E5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="12" cy="13" r="3" stroke="#4F46E5" strokeWidth="1.6"/>
   </svg>
 );
 const IcoCorazon = () => (
@@ -2323,8 +2324,8 @@ function SubirFotosInvitado({
       {/* Prompt contextual: publicar deseo después de foto 1 o foto 5 */}
       {promptDeseo && (
         <div style={{ marginTop: 12, background: "var(--acc-soft-grad, linear-gradient(135deg,#EEF2FF,#E0E7FF))", border: "1.5px solid var(--acc-line, rgba(79,70,229,0.20))", borderRadius: 16, padding: "18px 16px", animation: "fadeUp 0.3s ease" }}>
-          <div style={{ fontSize: 22, textAlign: "center", marginBottom: 8 }}>
-            {promptDeseo === "maxima" ? "🎉" : "📸"}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 8, color: "var(--acc-ink, #3730A3)" }}>
+            {promptDeseo === "maxima" ? <IcoCorazonLinea size={24} strokeWidth={1.7} /> : <IcoCamara size={24} strokeWidth={1.7} />}
           </div>
           <p style={{ fontSize: 13, color: "var(--acc-ink, #3730A3)", fontWeight: 600, textAlign: "center", marginBottom: 4 }}>
             {promptDeseo === "maxima"
@@ -2362,10 +2363,12 @@ function SubirFotosInvitado({
 const preferenciaAudio = { sinSonido: false };
 
 // ─── Portada de graduación ────────────────────────────────────────────────────
-// Una sola pantalla antes de la invitación, como la tapa de una revista: la foto
-// del graduado a sangre, su nombre como protagonista, para quién es, la fecha y
-// un único botón. Al tocarlo se lanzan los birretes y la portada sube como un
-// telón. "Entrar sin sonido" para quien la abre en el trabajo o en el bus.
+// Una sola pantalla antes de la invitación, como la tapa de una tarjeta
+// impresa: papel blanco perla con luz dorada, marco fino, la foto del graduado
+// ENMARCADA (nunca de fondo: tapaba las letras), su nombre, para quién es, la
+// fecha y un único botón. Al tocarlo se lanzan los birretes y la portada sube
+// como un telón. "Entrar sin sonido" para quien la abre en el trabajo o en el
+// bus. La invitación especial (a distancia) usa oro rosa y letra caligráfica.
 function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonidoPrevio, especial = false }: {
   invitado: Invitado;
   evento: Evento;
@@ -2378,6 +2381,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
 }) {
   const personas = personasDe(evento);
   const protagonista = personas.protagonista;
+  const ex = extrasDe(evento);
   const anio = evento.fecha ? parseFechaLocal(evento.fecha).getFullYear() : null;
   const fecha = evento.fecha
     ? (() => { const f = parseFechaLocal(evento.fecha!).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" }); return f.charAt(0).toUpperCase() + f.slice(1); })()
@@ -2388,92 +2392,128 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
     ? nombres.slice(0, 2).map(n => n.trim().split(/\s+/)[0]).join(" y ")
     : primeros(invitado.nombre);
   const mono = iniciales(protagonista);
-  // El monograma está siempre debajo: mientras la foto carga (señal floja) o si
-  // falla, la portada nunca queda vacía. La foto entra con un fundido.
+  // La misma foto y forma que eligieron para la tarjeta
+  const foto = ex.foto === false ? null : ex.foto_url || evento.imagen_url?.trim() || null;
+  const forma = ex.forma_foto ?? "arco";
+  const [fotoLista, setFotoLista] = useState(false);
+  const [fotoFallo, setFotoFallo] = useState(false);
+  // Oro (o oro rosa en la especial): oscuro para texto chico, claro para decorar
+  const c = especial
+    ? { texto: "#8E5546", deco: "#B97A68", claro: "#E9B6A6", luz: "rgba(233,182,166,0.22)", sombra: "rgba(142,85,70,0.42)",
+        metal: "linear-gradient(135deg,#8E5546 0%,#D9998A 32%,#A8695A 52%,#E8B4A4 74%,#8E5546 100%)" }
+    : { texto: GRAD.oroOscuro, deco: GRAD.oro, claro: GRAD.oroClaro, luz: "rgba(230,207,142,0.20)", sombra: "rgba(168,132,58,0.45)",
+        metal: `linear-gradient(135deg,${GRAD.oroMedio} 0%,${GRAD.oroClaro} 32%,${GRAD.oro} 52%,${GRAD.oroPalido} 74%,${GRAD.oroMedio} 100%)` };
 
   return (
-    <div className={`portada${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`}>
+    <div className={`portada${especial ? " especial" : ""}${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`}>
       <style>{`
-        @keyframes ptKen{0%{transform:scale(1.04)}100%{transform:scale(1.14) translateY(-10px)}}
+        ${especial ? "@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');" : ""}
         @keyframes ptSube{0%{opacity:0;transform:translateY(18px)}100%{opacity:1;transform:none}}
         @keyframes ptBaja{0%{opacity:0;transform:translateY(-12px)}100%{opacity:1;transform:none}}
         @keyframes ptFilete{0%{transform:scaleX(0);opacity:0}100%{transform:scaleX(1);opacity:1}}
         @keyframes ptBrillo{0%,60%{transform:translateX(-140%) skewX(-18deg)}100%{transform:translateX(260%) skewX(-18deg)}}
-        @keyframes ptPolvo{0%{transform:translateY(0);opacity:0}20%{opacity:.8}100%{transform:translateY(-140px);opacity:0}}
+        @keyframes ptPolvo{0%{transform:translateY(0);opacity:0}20%{opacity:.9}100%{transform:translateY(-150px);opacity:0}}
         @keyframes ptTelon{0%{transform:translateY(0)}100%{transform:translateY(-104%)}}
+        @keyframes ptRetrato{0%{opacity:0;transform:scale(.94)}100%{opacity:1;transform:none}}
         @keyframes ptBirrete{0%{transform:translate(0,0) rotate(0deg) scale(.6);opacity:0}12%{opacity:1}
           100%{transform:translate(var(--dx),-92vh) rotate(var(--rot)) scale(1);opacity:0}}
-        .portada{position:fixed;inset:0;z-index:9990;overflow:hidden;background:${GRAD.noche};color:#FFFFFF;
+        .portada{position:fixed;inset:0;z-index:9990;overflow-x:hidden;overflow-y:auto;color:${GRAD.tinta};
+          background:
+            radial-gradient(ellipse 90% 42% at 50% 0%,${c.luz} 0%,transparent 70%),
+            radial-gradient(ellipse 70% 26% at 50% 100%,${c.luz} 0%,transparent 72%),
+            linear-gradient(180deg,#FFFFFF 0%,${GRAD.perla} 100%);
           display:flex;flex-direction:column;align-items:center;text-align:center;
-          padding:max(30px,env(safe-area-inset-top,30px)) 24px max(26px,env(safe-area-inset-bottom,26px))}
+          padding:max(34px,calc(env(safe-area-inset-top,0px) + 30px)) 30px max(30px,calc(env(safe-area-inset-bottom,0px) + 26px))}
         .portada.saliendo{animation:ptTelon .8s .28s cubic-bezier(.7,0,.2,1) forwards}
-        .pt-foto{position:absolute;inset:0;overflow:hidden}
-        .pt-emblema{display:flex;justify-content:center;margin-bottom:18px;animation:ptBaja .9s .3s ease both;filter:drop-shadow(0 6px 18px rgba(201,165,76,0.35))}
-        .pt-mono{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;padding-top:16vh;
-          font-family:'Playfair Display',Georgia,serif;font-size:min(62vw,300px);font-weight:600;line-height:1;color:rgba(201,165,76,0.10);
-          background:radial-gradient(ellipse 80% 50% at 50% 25%,${GRAD.navy3} 0%,${GRAD.navy} 55%,${GRAD.noche} 100%)}
-        .pt-velo{position:absolute;inset:0;pointer-events:none;background:
-          linear-gradient(180deg,rgba(10,15,36,0.70) 0%,rgba(10,15,36,0.08) 24%,rgba(10,15,36,0.18) 42%,rgba(10,15,36,0.86) 64%,${GRAD.noche} 84%),
-          radial-gradient(ellipse 120% 55% at 50% 100%,rgba(201,165,76,0.16) 0%,transparent 60%)}
-        .pt-polvo{position:absolute;bottom:18%;width:3px;height:3px;border-radius:50%;background:${GRAD.oroClaro};pointer-events:none;animation:ptPolvo 5s ease-out infinite}
-        .pt-arriba,.pt-centro,.pt-abajo{position:relative;z-index:2;width:100%;max-width:420px}
+        .pt-marco{position:fixed;inset:max(12px,env(safe-area-inset-top,12px)) 12px max(12px,env(safe-area-inset-bottom,12px));border:1px solid ${c.deco};border-radius:18px;opacity:.75;pointer-events:none}
+        .pt-marco::after{content:"";position:absolute;inset:5px;border:.5px solid ${c.deco};border-radius:14px;opacity:.6}
+        .pt-polvo{position:fixed;bottom:16%;width:3px;height:3px;border-radius:50%;background:${c.deco};pointer-events:none;animation:ptPolvo 5.5s ease-out infinite}
+        .pt-arriba,.pt-centro,.pt-abajo{position:relative;z-index:2;width:100%;max-width:400px}
         .pt-arriba{animation:ptBaja .8s .15s ease both}
-        .pt-kicker{display:flex;align-items:center;justify-content:center;gap:12px;font-family:'Cinzel',Georgia,serif;font-size:12.5px;font-weight:600;letter-spacing:.34em;color:${GRAD.oroClaro};text-shadow:0 1px 10px rgba(0,0,0,0.5)}
-        .pt-kicker i{display:block;width:30px;height:1px;background:linear-gradient(90deg,transparent,${GRAD.oro})}
-        .pt-kicker i:last-child{background:linear-gradient(90deg,${GRAD.oro},transparent)}
-        .pt-promo{font-family:'Cinzel',Georgia,serif;font-size:10.5px;font-weight:500;letter-spacing:.32em;color:rgba(255,255,255,0.78);margin-top:8px;text-shadow:0 1px 8px rgba(0,0,0,0.5)}
-        .pt-centro{margin-top:auto;margin-bottom:auto}
-        .pt-para{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:17px;color:${GRAD.oroClaro};animation:ptSube .7s .45s ease both}
-        .pt-nombre{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:clamp(40px,12.5vw,58px);line-height:1.02;letter-spacing:-.01em;
-          margin-top:8px;text-wrap:balance;text-shadow:0 4px 30px rgba(0,0,0,0.45);animation:ptSube .8s .6s ease both}
-        .pt-honor{font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:${GRAD.oroClaro};margin-top:12px;text-shadow:0 1px 8px rgba(0,0,0,0.5);animation:ptSube .7s .55s ease both}
-        .pt-carrera{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:clamp(16px,4.6vw,19px);line-height:1.3;color:#FFFFFF;opacity:.95;margin-top:10px;text-wrap:balance;text-shadow:0 2px 14px rgba(0,0,0,0.5);animation:ptSube .7s .7s ease both}
-        .pt-institucion{font-family:'Cinzel',Georgia,serif;font-size:10.5px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:${GRAD.oroClaro};margin-top:6px;text-wrap:balance;animation:ptSube .7s .75s ease both}
-        .pt-nombre.largo{font-size:clamp(32px,9.6vw,46px);line-height:1.06}
-        .pt-filete{display:flex;align-items:center;justify-content:center;gap:10px;margin:18px auto 14px;animation:ptFilete .9s .85s ease both}
-        .pt-filete i{display:block;width:64px;height:1px;background:linear-gradient(90deg,transparent,${GRAD.oro})}
-        .pt-filete i:last-child{background:linear-gradient(90deg,${GRAD.oro},transparent)}
-        .pt-invita{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:19px;color:#FFFFFF;opacity:.92;animation:ptSube .7s 1s ease both}
-        .pt-fecha{font-family:'Jost',sans-serif;font-size:13.5px;font-weight:500;letter-spacing:.03em;color:rgba(255,255,255,0.74);margin-top:10px;animation:ptSube .7s 1.1s ease both}
-        .pt-abajo{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:30px;animation:ptSube .7s 1.25s ease both}
-        .pt-cta{position:relative;overflow:hidden;width:100%;max-width:340px;display:flex;align-items:center;justify-content:center;gap:10px;
-          border:none;border-radius:16px;padding:17px 20px;cursor:pointer;font-family:'Jost',sans-serif;font-size:15.5px;font-weight:600;letter-spacing:.02em;color:${GRAD.tinta};
-          background:linear-gradient(135deg,${GRAD.oroClaro} 0%,${GRAD.oro} 52%,${GRAD.oroMedio} 100%);
-          box-shadow:0 14px 34px -8px rgba(201,165,76,0.60),inset 0 1px 0 rgba(255,255,255,0.5);transition:transform .15s}
+        .pt-kicker{display:flex;align-items:center;justify-content:center;gap:12px;font-family:'Cinzel',Georgia,serif;font-size:12px;font-weight:600;letter-spacing:.34em;color:${c.texto}}
+        .pt-kicker i{display:block;width:30px;height:1px;background:linear-gradient(90deg,transparent,${c.deco})}
+        .pt-kicker i:last-child{background:linear-gradient(90deg,${c.deco},transparent)}
+        .pt-promo{font-family:'Cinzel',Georgia,serif;font-size:10.5px;font-weight:500;letter-spacing:.32em;color:#5B6378;margin-top:7px}
+        .pt-centro{margin-top:auto;margin-bottom:auto;padding:18px 0 4px}
+        .pt-retrato{--lado:min(40vw,24vh,170px);position:relative;margin:0 auto 16px;padding:4px;background:${c.metal};
+          width:calc(var(--lado)*.84);height:calc(var(--lado)*1.06);box-shadow:0 18px 36px -16px ${c.sombra};animation:ptRetrato .9s .25s ease both}
+        .pt-retrato.circulo{width:var(--lado);height:var(--lado)}
+        .pt-retrato,.pt-retrato .pt-retrato-in{border-radius:16px}
+        .pt-retrato.arco,.pt-retrato.arco .pt-retrato-in{border-radius:999px 999px 16px 16px}
+        .pt-retrato.circulo,.pt-retrato.circulo .pt-retrato-in{border-radius:50%}
+        .pt-retrato-in{position:relative;width:100%;height:100%;overflow:hidden;border:3px solid #FFFFFF;background:${GRAD.perla2};
+          display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',Georgia,serif;font-size:calc(var(--lado)*.34);font-weight:600;color:${c.claro}}
+        .pt-retrato-in img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;opacity:0;transition:opacity .6s}
+        .pt-retrato-in img.lista{opacity:1}
+        .pt-emblema{display:flex;justify-content:center;margin-bottom:16px;animation:ptBaja .9s .3s ease both}
+        .pt-script{font-family:'Great Vibes',cursive;font-size:clamp(38px,11vw,48px);line-height:1.1;margin-bottom:2px;
+          background:${c.metal};-webkit-background-clip:text;background-clip:text;color:transparent;animation:ptSube .7s .4s ease both}
+        .pt-para{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:17px;color:${c.texto};animation:ptSube .7s .45s ease both}
+        .pt-honor{font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:${c.texto};margin-top:10px;animation:ptSube .7s .55s ease both}
+        .pt-nombre{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:clamp(36px,11vw,52px);line-height:1.04;letter-spacing:-.01em;color:${GRAD.tinta};
+          margin-top:6px;text-wrap:balance;animation:ptSube .8s .6s ease both}
+        .pt-nombre.largo{font-size:clamp(29px,8.6vw,42px);line-height:1.08}
+        .pt-carrera{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:clamp(16px,4.5vw,19px);line-height:1.3;color:#3B4258;margin-top:9px;text-wrap:balance;animation:ptSube .7s .7s ease both}
+        .pt-institucion{font-family:'Cinzel',Georgia,serif;font-size:10.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:${c.texto};margin-top:6px;text-wrap:balance;animation:ptSube .7s .75s ease both}
+        .pt-filete{display:flex;align-items:center;justify-content:center;gap:10px;margin:16px auto 12px;animation:ptFilete .9s .85s ease both}
+        .pt-filete i{display:block;width:64px;height:1px;background:linear-gradient(90deg,transparent,${c.deco})}
+        .pt-filete i:last-child{background:linear-gradient(90deg,${c.deco},transparent)}
+        .pt-invita{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:18px;line-height:1.35;color:#2B3247;text-wrap:balance;animation:ptSube .7s 1s ease both}
+        .pt-fecha{font-family:'Jost',sans-serif;font-size:13.5px;font-weight:500;letter-spacing:.03em;color:#5B6378;margin-top:8px;animation:ptSube .7s 1.1s ease both}
+        .pt-abajo{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:22px;animation:ptSube .7s 1.25s ease both}
+        .pt-cta{position:relative;overflow:hidden;width:100%;max-width:330px;display:flex;align-items:center;justify-content:center;gap:10px;
+          border:none;border-radius:16px;padding:17px 20px;cursor:pointer;font-family:'Jost',sans-serif;font-size:15.5px;font-weight:600;letter-spacing:.02em;
+          color:${especial ? "#FFFFFF" : GRAD.tinta};
+          background:${especial ? "linear-gradient(135deg,#C48878 0%,#9A5F52 55%,#7A4336 100%)" : `linear-gradient(135deg,${GRAD.oroClaro} 0%,${GRAD.oro} 52%,${GRAD.oroMedio} 100%)`};
+          box-shadow:0 14px 30px -10px ${c.sombra},inset 0 1px 0 rgba(255,255,255,0.45);transition:transform .15s}
         .pt-cta:active{transform:scale(.98)}
-        .pt-cta::after{content:"";position:absolute;top:0;bottom:0;width:40%;background:linear-gradient(105deg,transparent,rgba(255,255,255,0.45),transparent);animation:ptBrillo 3.2s 2s ease-in-out infinite}
+        .pt-cta::after{content:"";position:absolute;top:0;bottom:0;width:40%;background:linear-gradient(105deg,transparent,rgba(255,255,255,0.5),transparent);animation:ptBrillo 3.2s 2s ease-in-out infinite}
         .pt-silencio{display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:10px 12px;
-          font-family:'Jost',sans-serif;font-size:13px;font-weight:500;color:rgba(255,255,255,0.68)}
-        .pt-silencio:hover{color:#FFFFFF}
-        .pt-birrete{position:absolute;bottom:22%;left:50%;z-index:3;pointer-events:none;animation:ptBirrete 1.15s cubic-bezier(.2,.7,.3,1) forwards}
+          font-family:'Jost',sans-serif;font-size:13px;font-weight:500;color:#5B6378}
+        .pt-silencio:hover{color:${GRAD.tinta}}
+        .pt-birrete{position:fixed;bottom:22%;left:50%;z-index:3;pointer-events:none;animation:ptBirrete 1.15s cubic-bezier(.2,.7,.3,1) forwards}
+        @media (max-height:700px){
+          .pt-retrato{--lado:min(36vw,20vh,150px);margin-bottom:12px}
+          .pt-nombre{font-size:clamp(32px,9.6vw,44px)}
+          .pt-filete{margin:12px auto 10px}
+          .pt-abajo{margin-top:16px}
+        }
         @media (prefers-reduced-motion: reduce){
-          .pt-cta::after,.pt-polvo,.pt-emblema{animation:none}
-          .pt-arriba,.pt-para,.pt-honor,.pt-nombre,.pt-carrera,.pt-institucion,.pt-filete,.pt-invita,.pt-fecha,.pt-abajo{animation:none}
+          .pt-cta::after,.pt-polvo,.pt-emblema,.pt-retrato{animation:none}
+          .pt-arriba,.pt-script,.pt-para,.pt-honor,.pt-nombre,.pt-carrera,.pt-institucion,.pt-filete,.pt-invita,.pt-fecha,.pt-abajo{animation:none}
         }
       `}</style>
 
-      <div className="pt-foto">
-        <div className="pt-mono" aria-hidden="true">{mono}</div>
-
-      </div>
-      <div className="pt-velo" />
+      <span className="pt-marco" aria-hidden="true" />
       {[14, 28, 46, 63, 79, 88].map((l, i) => (
         <span key={i} className="pt-polvo" style={{ left: `${l}%`, animationDelay: `${i * 0.8}s` }} />
       ))}
 
       <div className="pt-arriba">
         <div className="pt-kicker"><i />{especial ? "Invitación especial" : "Graduación"}<i /></div>
-        {anio && <div className="pt-promo">Promoción {anio}</div>}
+        {anio && !especial && <div className="pt-promo">Promoción {anio}</div>}
       </div>
 
       <div className="pt-centro">
-        <div className="pt-emblema" aria-hidden="true"><BirreteSVG size={78} /></div>
+        {foto && !fotoFallo ? (
+          <div className={`pt-retrato ${forma}`}>
+            {/* El monograma queda debajo mientras la foto carga (señal floja) */}
+            <div className="pt-retrato-in" aria-hidden="true">
+              {mono}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={foto} alt="" className={fotoLista ? "lista" : ""} onLoad={() => setFotoLista(true)} onError={() => setFotoFallo(true)} />
+            </div>
+          </div>
+        ) : (
+          <div className="pt-emblema" aria-hidden="true"><BirreteSVG size={74} color={GRAD.navy} borla={c.deco} /></div>
+        )}
+        {especial && <p className="pt-script">Con gratitud</p>}
         <p className="pt-para">Para {para}</p>
-        {personas.honor && <p className="pt-honor">{personas.honor}</p>}
+        {personas.honor && !especial && <p className="pt-honor">{personas.honor}</p>}
         <h1 className={`pt-nombre${protagonista.length > 22 ? " largo" : ""}`}>{protagonista}</h1>
         {personas.carrera && <p className="pt-carrera">{personas.carrera}</p>}
         {personas.institucion && <p className="pt-institucion">{personas.institucion}</p>}
-        <div className="pt-filete" aria-hidden="true"><i /><EstrellaSVG size={11} color={GRAD.oro} /><i /></div>
+        <div className="pt-filete" aria-hidden="true"><i /><EstrellaSVG size={11} color={c.deco} /><i /></div>
         <p className="pt-invita">
           {especial
             ? "Aunque estés lejos, fuiste parte de este logro"
@@ -2481,7 +2521,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
             ? `${personas.familia} te invita a celebrar este logro`
             : personas.esAnfitrion || evento.anfitriones ? "te invita a celebrar su graduación" : "Te invitamos a celebrar"}
         </p>
-        {(fecha || hora) && <p className="pt-fecha">{[fecha, hora].filter(Boolean).join("  ·  ")}</p>}
+        {(fecha || hora) && !especial && <p className="pt-fecha">{[fecha, hora].filter(Boolean).join("  ·  ")}</p>}
       </div>
 
       <div className="pt-abajo">
@@ -2494,7 +2534,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
           }}
           onClick={() => onEntrar(true)}
         >
-          Abrir invitación
+          {especial ? "Abrir mi carta" : "Abrir invitación"}
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
         <button className="pt-silencio" onPointerDown={onSinSonidoPrevio} onClick={() => onEntrar(false)}>
@@ -2506,7 +2546,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
       {/* Al entrar: los birretes vuelan, como al final de la ceremonia */}
       {saliendo && [-120, -70, -30, 10, 50, 95, 135].map((dx, i) => (
         <span key={i} className="pt-birrete" style={{ ["--dx" as string]: `${dx}px`, ["--rot" as string]: `${(i % 2 ? 1 : -1) * (180 + i * 40)}deg`, animationDelay: `${i * 0.045}s`, marginLeft: -16 } as React.CSSProperties}>
-          <BirreteSVG size={i % 3 === 0 ? 40 : 30} color={i % 2 ? GRAD.oroClaro : GRAD.oro} borla={GRAD.oroPalido} />
+          <BirreteSVG size={i % 3 === 0 ? 40 : 30} color={i % 2 ? GRAD.navy2 : GRAD.navy} borla={c.deco} />
         </span>
       ))}
     </div>
@@ -3253,7 +3293,7 @@ const ICONOS_PROGRAMA: { re: RegExp; d: string }[] = [
   { re: /🎓|📜|ceremonia|acto|entrega|diploma|graduaci|investidura/i, d: "M12 4 L22 9 L12 14 L2 9 Z M6 11 V16 Q12 19.5 18 16 V11 M21 9.5 V15" },
   { re: /🍽|🍴|🥘|cena|comida|almuerzo|banquete|buffet/i, d: "M7 3v6a2 2 0 0 0 4 0V3 M9 11v10 M17 21V3c-2 1.5-3 4-3 8h3" },
   { re: /🎶|🎵|💃|🕺|🎉|🪩|baile|fiesta|m[uú]sica|\bdj\b|vals/i, d: "M9 18V6l10-2v12 M9 18a2 2 0 1 1-4 0a2 2 0 0 1 4 0z M19 16a2 2 0 1 1-4 0a2 2 0 0 1 4 0z" },
-  { re: /📸|📷|foto|sesi[oó]n/i, d: "M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z M15.5 13a3.5 3.5 0 1 1-7 0a3.5 3.5 0 0 1 7 0z" },
+  { re: /📸|📷|foto|sesi[oó]n/i, d: "M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z M15 13a3 3 0 1 1-6 0a3 3 0 0 1 6 0z" },
   { re: /⛪|🙏|misa|iglesia|culto|acci[oó]n de gracias|oraci[oó]n/i, d: "M12 2v4 M10 4h4 M6 21V11l6-4 6 4v10 M4 21h16 M10 21v-4a2 2 0 0 1 4 0v4" },
   { re: /🎂|🍰|🧁|pastel|torta|postre/i, d: "M4 21h16 M5 21v-7h14v7 M5 16c2 1.5 4 1.5 6 0s4-1.5 6 0 M12 14v-3 M12 8.5c.6 0 1-.4 1-1 0-1-1-2.5-1-2.5s-1 1.5-1 2.5c0 .6.4 1 1 1z" },
 ];
@@ -5290,7 +5330,7 @@ export default function ConfirmarPage() {
       )}
 
       <div
-        className={`page${mounted ? " vis" : ""}${destroying ? " destroying" : ""}`}
+        className={`page${mounted ? " vis" : ""}${destroying ? " destroying" : ""}${invitado.a_distancia && step === "vista" ? " page-distancia" : ""}`}
       >
         {/* Topbar — solo logo, sin links al dashboard */}
         <div className="topbar">
@@ -5308,12 +5348,13 @@ export default function ConfirmarPage() {
           <InvitacionDistancia
             evento={evento}
             invitadoNombre={nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
+            trato={nombresEnTarjeta.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token)}
             muro={{ href: `/muro/${invitado.evento_id}?token=${invitado.token}`, urls: muroPreview?.urls ?? [], total: muroPreview?.total ?? 0 }}
           >
             <section className="dist-seccion">
               <h2>Tu mensaje</h2>
               {deseoPublicado ? (
-                <p className="dist-vacio">¡Gracias! Tu mensaje ya está en el muro. 💌</p>
+                <p className="dist-vacio">¡Gracias! Tu mensaje ya está en el muro.</p>
               ) : (
                 <DeseoFormInline
                   invitadoId={invitado.id}
@@ -6444,9 +6485,9 @@ export default function ConfirmarPage() {
               </div>
               <div className="promo-feat-row">
                 <div className="promo-feat-ic">
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 7a2 2 0 012-2h1.2l1.6-2h6.4l1.6 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z"/>
-                      <circle cx="10" cy="11" r="2.5"/>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                      <circle cx="12" cy="13" r="3"/>
                     </svg>
                   </div>
                 <div>

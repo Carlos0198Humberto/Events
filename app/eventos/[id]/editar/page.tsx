@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AppLogo } from "@/app/components/AppLogo";
 import { achicarImagen } from "@/lib/fotos";
 import { CamposDireccion, CamposTarjeta, extrasParaGuardar } from "@/app/components/CamposTarjeta";
-import { agradecimientoDe, extrasDe, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { cartaDistancia, extrasDe, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 
 type Evento = {
   id: string; nombre: string; tipo: string; anfitriones: string;
@@ -97,9 +97,9 @@ function ImagenUploader({
           <img src={preview} alt="" style={{ width:"100%", maxHeight:180, objectFit:"cover", display:"block" }} />
         ) : (
           <div style={{ textAlign:"center", padding:"20px 12px", color:"var(--accent2)" }}>
-            <svg width="28" height="28" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ margin:"0 auto 8px", display:"block" }}>
-              <path d="M2 7a2 2 0 012-2h1.2l1.6-2h6.4l1.6 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z"/>
-              <circle cx="10" cy="11" r="2.5"/>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ margin:"0 auto 8px", display:"block" }}>
+              <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+              <circle cx="12" cy="13" r="3"/>
             </svg>
             <span style={{ fontSize:12, fontWeight:600 }}>Toca para subir foto</span>
           </div>
@@ -514,7 +514,7 @@ export default function EditarEvento() {
             {/* ── 4. Foto de portada ── */}
             <div className="section-card">
               <p className="section-title">
-                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7a2 2 0 012-2h1.2l1.6-2h6.4l1.6 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z"/><circle cx="10" cy="11" r="2.5"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                 Foto de portada
               </p>
               <ImagenUploader
@@ -626,9 +626,9 @@ export default function EditarEvento() {
                     maxLength={400}
                     value={extras.agradecimiento ?? ""}
                     onChange={(e) => setExtras({ ...extras, agradecimiento: e.target.value })}
-                    placeholder={agradecimientoDe({ nombre, tipo, anfitriones, tarjeta: { ...extras, agradecimiento: null } })}
+                    placeholder={cartaDistancia({ nombre, tipo, anfitriones, tarjeta: { ...extras, agradecimiento: null } }, "neutro").parrafos[0]}
                   />
-                  <p className="field-hint">Si lo dejás vacío, va el texto de ejemplo.</p>
+                  <p className="field-hint">Si lo dejás vacío, cada invitado recibe una carta de agradecimiento con su nombre. Lo que escribas acá reemplaza esa carta; el versículo de gratitud y la bendición (Números 6:24-26) van siempre.</p>
                 </div>
                 <div>
                   <label className="field-label">Tus fotos para ellos ({fotosAnfitrion.length}/20)</label>

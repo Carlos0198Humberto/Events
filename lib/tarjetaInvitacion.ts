@@ -8,7 +8,7 @@
 // Por eso acá no hay nada de DOM ni de librerías de dibujo.
 
 import type { Trato } from "@/lib/tratoInvitado";
-import { versiculoDe, type Versiculo } from "@/lib/versiculos";
+import { VERSICULO_BENDICION, VERSICULO_GRATITUD, versiculoDe, type Versiculo } from "@/lib/versiculos";
 
 export type EventoTarjeta = {
   nombre: string;
@@ -134,7 +134,7 @@ export type DatosTarjeta = {
   formaFoto: FormaFoto;
   diseno: DisenoTarjeta;
   letraNombre: LetraNombre;
-  paleta: PaletaTarjeta;      // colores (azul noche y oro, marfil y oro…)
+  paleta: PaletaTarjeta;      // colores (azul noche y oro, blanco perla y oro…)
   fecha: string | null;       // "Sábado 21 de noviembre de 2026"
   fechaCorta: string | null;  // "21 · NOV · 2026"
   diaHora: string | null;     // "SÁBADO · 6:00 P. M."
@@ -290,6 +290,60 @@ export function agradecimientoDe(evento: EventoTarjeta): string {
   return `Aunque estés lejos, sos parte de este momento. Gracias por tu cariño de siempre. ${prepare} esta invitación especial para que vivas la celebración ${conmigo} desde donde estés.`;
 }
 
+export type CartaDistancia = {
+  parrafos: string[];
+  /** La frase que presenta la bendición: "Y esta es mi oración por vos:" */
+  oracion: string;
+  bendicion: Versiculo;
+  gratitud: Versiculo;
+  despedida: string;
+  firma: string;
+};
+
+/**
+ * La carta de la invitación especial a distancia: gracias a esa persona por
+ * su nombre (el saludo lo pone la vista), por qué fue parte del logro, para
+ * qué es esta invitación y una bendición. En primera persona si habla el
+ * mismo protagonista; en plural ("les", "ustedes") si va a varios. Si el
+ * organizador escribió su propio agradecimiento, ese reemplaza a los dos
+ * primeros párrafos: lo personal manda.
+ */
+export function cartaDistancia(evento: EventoTarjeta, trato: Trato): CartaDistancia {
+  const yo = hablaElProtagonista(evento);
+  const pl = trato === "plural";
+  const grad = evento.tipo === "graduacion";
+  const p = protagonistaDe(evento);
+  // Lo que cambia entre "vos" y "ustedes"
+  const t = pl
+    ? { te: "les", tu: "su", tus: "sus", vos: "ustedes", diste: "dieron", estes: "estén", vas: "van", veas: "vean", vivas: "vivan", sembraste: "sembraron" }
+    : { te: "te", tu: "tu", tus: "tus", vos: "vos", diste: "diste", estes: "estés", vas: "vas", veas: "veas", vivas: "vivas", sembraste: "sembraste" };
+  const mi = yo ? "mi" : "nuestro";
+  const logro = grad
+    ? (yo ? `Este logro no es solo mío: también lleva ${t.tu} nombre.`
+      : `Este logro${p.esPersona ? ` de ${p.nombre.split(/\s+/)[0]}` : ""} también lleva ${t.tu} nombre.`)
+    : `Este día tan especial también lleva ${t.tu} nombre.`;
+
+  const propio = extrasDe(evento).agradecimiento;
+  const parrafos = propio
+    ? [propio]
+    : [
+      `${yo ? "Hoy quiero detenerme" : "Hoy queremos detenernos"} a dar${t.te} las gracias. ${logro} Cada palabra de aliento, cada oración y cada muestra de cariño que ${yo ? "me" : "nos"} ${t.diste}, aun desde lejos, ${yo ? "me sostuvieron" : "nos sostuvieron"} en los días difíciles y ${yo ? "me dieron" : "nos dieron"} fuerzas para llegar hasta acá.`,
+      `La distancia nunca pudo separarnos. Aunque no ${t.estes} ${grad ? "en la ceremonia" : "en la celebración"}, ${t.vas} a estar en ${mi} corazón en cada momento. Por eso ${yo ? "preparé" : "preparamos"} esta invitación especial para ${t.vos}: para que ${t.veas} las fotos de este día y lo ${t.vivas} ${yo ? "conmigo" : "con nosotros"} desde donde ${t.estes}.`,
+    ];
+  parrafos.push(
+    `${yo ? "Le pido" : "Le pedimos"} a Dios que ${t.te} devuelva multiplicado todo el bien que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos y que llene ${t.tu} casa de paz.`,
+  );
+
+  return {
+    parrafos,
+    oracion: `Y esta es ${yo ? "mi" : "nuestra"} oración por ${t.vos}:`,
+    bendicion: VERSICULO_BENDICION,
+    gratitud: VERSICULO_GRATITUD,
+    despedida: yo ? "Con todo mi cariño y gratitud," : "Con todo nuestro cariño y gratitud,",
+    firma: familiaDe(evento) || (p.esPersona ? p.nombre : quienInvitaHablado(evento)),
+  };
+}
+
 /**
  * La frase que invita, en minúscula y sin punto final:
  * "con mucha alegría te invitamos a celebrar la graduación de Andrea Castillo".
@@ -415,13 +469,13 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     horaCorta: hCorta,
     lugar,
     direccion,
-    versiculo: versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
+    versiculo: especial ? VERSICULO_GRATITUD : versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
   };
 }
 
 // ─── Paletas de la tarjeta ────────────────────────────────────────────────────
 // La tarjeta combina con el evento: azul noche y oro en graduación (la misma
-// paleta de la invitación y el muro), marfil y oro en bodas, rosa vino y oro en
+// paleta de la invitación y el muro), blanco perla y oro en bodas, rosa vino y oro en
 // XV años, negro y oro en lo demás. El organizador puede elegir otra.
 export type PaletaTarjeta = {
   id: string;
@@ -460,11 +514,13 @@ export const PALETAS_TARJETA: Record<string, PaletaTarjeta> = {
     oroPlano: "#DBBF7C", textoSuave: "#D9D3BF", textoFuerte: "#F3E7C4", textoVersiculo: "#EDE4C8",
     tinta: "#3A2A10", sombra: "rgba(0,0,10,0.7)", dorado: DORADO_CLASICO,
   },
+  // La clave sigue siendo "marfil" (es lo que guardaron los eventos), pero el
+  // fondo es blanco perla: el crema se veía viejo.
   marfil: {
-    id: "marfil", nombre: "Marfil y oro",
-    fondo: "#F7F1E4", fondoCentro: "#FFFDF8", banda: "#EFE4CC",
-    oroPlano: "#93702C", textoSuave: "#5E4B2C", textoFuerte: "#3A2A10", textoVersiculo: "#4A3B22",
-    tinta: "#3A2A10", sombra: "rgba(110,80,30,0.28)", dorado: DORADO_PROFUNDO,
+    id: "marfil", nombre: "Blanco perla y oro",
+    fondo: "#F3F4F8", fondoCentro: "#FFFFFF", banda: "#E8EBF2",
+    oroPlano: "#8C6A26", textoSuave: "#4A5064", textoFuerte: "#1C2133", textoVersiculo: "#2C3245",
+    tinta: "#3A2A10", sombra: "rgba(30,40,70,0.20)", dorado: DORADO_PROFUNDO,
   },
   rosa: {
     id: "rosa", nombre: "Rosa vino y oro",
@@ -483,7 +539,7 @@ export const PALETAS_TARJETA: Record<string, PaletaTarjeta> = {
 const PALETA_POR_TIPO: Record<string, string> = { graduacion: "azul", boda: "marfil", quinceañera: "rosa" };
 
 // Plata y oro rosa: mismas cinco paradas (oscuro → brillo → oscuro → brillo →
-// oscuro). La versión "profunda" es para fondos claros (marfil).
+// oscuro). La versión "profunda" es para fondos claros (blanco perla).
 const METALES: Record<Exclude<MetalTarjeta, "oro">, { brillo: [number, string][]; profundo: [number, string][]; plano: string; planoProfundo: string }> = {
   plata: {
     brillo: [[0, "#7D848C"], [0.28, "#E9EDF1"], [0.5, "#A7AEB6"], [0.74, "#F7F9FB"], [1, "#858C94"]],

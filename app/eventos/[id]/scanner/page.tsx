@@ -407,16 +407,16 @@ export default function ScannerPage() {
               {camPermiso === "pendiente" && (
                 <>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="#4F46E5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="12" cy="13" r="4" stroke="#4F46E5" strokeWidth="1.5"/>
+                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" stroke="#4F46E5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="13" r="3" stroke="#4F46E5" strokeWidth="1.5"/>
                   </svg>
                   <p style={{ color: "rgba(99, 102, 241,0.75)", fontSize: 13, textAlign: "center", lineHeight: 1.5 }}>
                     Necesitamos acceso a la cámara<br/>para escanear los QR
                   </p>
                   <button className="btn-primary" style={{ maxWidth: 240 }} onClick={iniciarCamara}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                      <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
+                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      <circle cx="12" cy="13" r="3" stroke="currentColor" strokeWidth="2"/>
                     </svg>
                     Activar cámara
                   </button>

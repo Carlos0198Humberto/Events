@@ -104,7 +104,7 @@ const T = {
     subeFoto: "Sube tu foto primero",
     escribirDeseoBtn: "Escribir deseo",
     verMuro: "Ver muro",
-    subirMiFoto: "📸 Mi foto",
+    subirMiFoto: "Mi foto",
     miDeseo: "💌 Mi deseo",
     eliminarFoto: "¿Eliminar esta foto del muro?",
     eliminarDeseo: "¿Eliminar este deseo?",
@@ -177,7 +177,7 @@ const T = {
     subeFoto: "Upload photo first",
     escribirDeseoBtn: "Write a wish",
     verMuro: "View wall",
-    subirMiFoto: "📸 My photo",
+    subirMiFoto: "My photo",
     miDeseo: "💌 My wish",
     eliminarFoto: "Delete this photo from the wall?",
     eliminarDeseo: "Delete this wish?",
@@ -269,8 +269,8 @@ const Ico = {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-      <circle cx="12" cy="13" r="4" />
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+      <circle cx="12" cy="13" r="3" />
     </svg>
   ),
   grid: (s = 18, c = "currentColor") => (
@@ -2180,7 +2180,7 @@ export default function MuroPublico() {
           )}
           {/* Badge tipo evento */}
           <div style={{ display:"inline-flex", alignItems:"center", gap:5, background:"rgba(255,255,255,0.18)", backdropFilter:"blur(8px)", borderRadius:20, padding:"4px 12px", marginBottom:10, fontSize:10, fontWeight:700, letterSpacing:"1.2px", textTransform:"uppercase", border:"1px solid rgba(255,255,255,0.25)" }}>
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7a2 2 0 012-2h1.2l1.6-2h6.4l1.6 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z"/><circle cx="10" cy="11" r="2.5"/></svg> Muro del evento
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> Muro del evento
           </div>
           <h1 style={{ fontSize:26, fontWeight:800, marginBottom:4, lineHeight:1.1, fontFamily:"'Playfair Display',serif", textShadow:"0 2px 12px rgba(0,0,0,0.3)" }}>
             {evento.nombre}
@@ -2202,9 +2202,9 @@ export default function MuroPublico() {
           <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:14 }}>
             {([
               { num:fotos.length, label:fotos.length === 1 ? t.foto1 : t.fotos, svg:(
-                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 7a2 2 0 012-2h1.2l1.6-2h6.4l1.6 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z"/>
-                  <circle cx="10" cy="11" r="2.5"/>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                  <circle cx="12" cy="13" r="3"/>
                 </svg>
               )},
               { num:deseos.length, label:deseos.length === 1 ? t.deseo1 : t.deseos, svg:(

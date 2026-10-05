@@ -14,6 +14,7 @@
 
 import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseInvitacion, hablaElProtagonista, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 import { saludo, type Trato } from "@/lib/tratoInvitado";
+import { VERSICULO_GRATITUD } from "@/lib/versiculos";
 
 export type EventoMensaje = EventoTarjeta & { fecha_limite_confirmacion?: string | null };
 
@@ -141,6 +142,7 @@ export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: str
     titulo(evento).texto,
     `${saludo(nombreInvitado, trato)}:\n${lejos} ${gracias}`,
     invitacion,
+    `_«${VERSICULO_GRATITUD.texto}»_\n${VERSICULO_GRATITUD.cita}`,
     `\u{1F48C} ${plural ? "Su" : "Tu"} invitación especial:\n${link}`,
     firma(evento),
   ].filter(Boolean).join("\n\n");

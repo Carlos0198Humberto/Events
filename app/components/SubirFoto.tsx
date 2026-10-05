@@ -4,6 +4,7 @@
 //  Pega este componente completo en lugar del SubirFoto existente
 // ══════════════════════════════════════════════════════════════
 
+import { IcoCamara } from "@/app/components/Iconos";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
@@ -484,7 +485,8 @@ export default function SubirFoto({
           marginBottom: 4,
         }}
       >
-        📸 Comparte un momento del evento
+        <IcoCamara size={16} style={{ verticalAlign: "-3px", marginRight: 6, color: "#4F46E5" }} />
+        Comparte un momento del evento
       </p>
 
       {/* Botón cámara */}
