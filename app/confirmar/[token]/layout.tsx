@@ -23,8 +23,13 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
     "Graduación": "la graduación", "Nuestra boda": "la boda", "Mis XV años": "los XV años", "Cumpleaños": "el cumpleaños",
   };
   const queEs = `${QUE_ES[datos.titulo] ?? "la celebración"} de ${datos.protagonista}`;
-  const title = `${primerNombre}, te invitamos a ${queEs}`;
-  const description = [datos.fecha, datos.hora, datos.lugar].filter(Boolean).join(" · ") + ". Tocá para confirmar tu asistencia.";
+  // Invitado a distancia: no se le pide confirmar, se le agradece
+  const title = datos.especial
+    ? `${primerNombre}, una invitación especial de ${datos.protagonista}`
+    : `${primerNombre}, te invitamos a ${queEs}`;
+  const description = datos.especial
+    ? `${datos.dedicatoria} Tocá para ver tu invitación.`
+    : [datos.fecha, datos.hora, datos.lugar].filter(Boolean).join(" · ") + ". Tocá para confirmar tu asistencia.";
 
   return {
     metadataBase,

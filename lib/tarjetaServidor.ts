@@ -29,9 +29,11 @@ export async function datosPorToken(token: string): Promise<{ datos: DatosTarjet
   const generica = armarDatosTarjeta({ nombre: "Tu invitación", tipo: "otro" }, "");
   if (!/^[\w-]{6,80}$/.test(token)) return { datos: generica, encontrado: false };
 
-  const invitados = await rest<{ nombre: string; evento_id: string }[]>(
-    `invitados?token=eq.${encodeURIComponent(token)}&select=nombre,evento_id&limit=1`,
-  );
+  // a_distancia (supabase-distancia.sql): la vista previa de la invitación especial
+  const filtro = `invitados?token=eq.${encodeURIComponent(token)}&limit=1&select=nombre,evento_id`;
+  const invitados =
+    (await rest<{ nombre: string; evento_id: string; a_distancia?: boolean | null }[]>(`${filtro},a_distancia`)) ??
+    (await rest<{ nombre: string; evento_id: string; a_distancia?: boolean | null }[]>(filtro));
   const inv = invitados?.[0];
   if (!inv) return { datos: generica, encontrado: false };
 
@@ -45,5 +47,5 @@ export async function datosPorToken(token: string): Promise<{ datos: DatosTarjet
     (await rest<EventoTarjeta[]>(base));
   const ev = eventos?.[0];
   if (!ev) return { datos: generica, encontrado: false };
-  return { datos: armarDatosTarjeta(ev, inv.nombre), encontrado: true };
+  return { datos: armarDatosTarjeta(ev, inv.nombre, null, { distancia: !!inv.a_distancia }), encontrado: true };
 }

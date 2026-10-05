@@ -7,7 +7,8 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
-import { armarDatosTarjeta, extrasDe, familiaDe, protagonistaDe, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import InvitacionDistancia from "./InvitacionDistancia";
 import { tratoDe } from "@/lib/tratoInvitado";
 import { versiculoDe } from "@/lib/versiculos";
 
@@ -27,6 +28,7 @@ type Invitado = {
   evento_id: string;
   nombres_personas?: string | null;
   asistentes_nombres?: string[] | null; // quiénes marcó que van (supabase-asistentes.sql)
+  a_distancia?: boolean | null; // invitación especial de agradecimiento (supabase-distancia.sql)
   mesa_id?: string | null;
   mesa_nombre?: string | null; // populated by join
 };
@@ -63,6 +65,7 @@ type Evento = {
   fotos_carrusel?: string[] | null;
   foto_lugar_url?: string | null;
   tarjeta?: ExtrasTarjeta | null; // supabase-tarjeta.sql
+  fotos_anfitrion?: string[] | null; // supabase-distancia.sql
   versiculo_texto?: string | null; // supabase-envios.sql
   versiculo_cita?: string | null;
 };
@@ -937,8 +940,8 @@ const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
 // La música va de fondo: al 100% tapaba la voz del asistente. Mientras habla
 // baja casi a nada. iPhone y iPad ignoran audio.volume (suena siempre al
 // 100%): ahí la música se pausa mientras habla y sigue sola al terminar.
-const MUSICA_BASE = 0.35;
-const MUSICA_CON_VOZ = 0.06;
+const MUSICA_BASE = 0.18;
+const MUSICA_CON_VOZ = 0.03;
 let volumenControlable: boolean | null = null;
 let pausadaPorVoz = false;
 function puedeControlarVolumen() {
@@ -1273,7 +1276,7 @@ const SILENCIO_KEY = "evorix-voz-silencio";
 
 function FloatingMascot({
   invitado, evento, token: _token, fase, setFase, hablando, leer, detener, textoActual, charIdx,
-  hayPrograma, hayMesas, silencio, setSilencio,
+  hayPrograma, hayMesas, silencio, setSilencio, distancia,
 }: {
   invitado: Invitado;
   evento: Evento;
@@ -1289,6 +1292,7 @@ function FloatingMascot({
   hayMesas: boolean;
   silencio: boolean;
   setSilencio: (v: boolean) => void;
+  distancia: boolean;
 }) {
   const [minimizado, setMinimizado] = useState(false);
   // Callado hace un rato (no entre frase y frase): se muestra chico, sin botones
@@ -1404,7 +1408,22 @@ function FloatingMascot({
     const pasos: PasoGuia[] = [];
     // Corto a propósito: la invitación ya está escrita en pantalla; la voz
     // solo marca lo importante (cuándo, dónde, cómo confirmar).
-    pasos.push({ t: `¡Hola, ${primerNombre}! Tenés una invitación muy especial.`, guia: "inicio" });
+    // "¡Holaaa, Reina! Bienvenida a tu invitación virtual que Carlos Chavarría te hace."
+    const trato = tratoDe(invitado.nombre, invitado.token);
+    const quien = quienInvitaHablado(evento);
+    const tipoInv = distancia ? "invitación especial" : "invitación virtual";
+    const saludoVoz = trato === "neutro"
+      ? `¡Holaaa, ${primerNombre}! Esta es tu ${tipoInv}${quien ? `, que ${quien} te hace` : ""}.`
+      : `¡Holaaa, ${primerNombre}! ${trato === "f" ? "Bienvenida" : trato === "m" ? "Bienvenido" : "Bienvenidos"} a ${trato === "plural" ? "su" : "tu"} ${tipoInv}${quien ? ` que ${quien} ${trato === "plural" ? "les" : "te"} hace` : ""}.`;
+    pasos.push({ t: saludoVoz, guia: "inicio" });
+
+    // A distancia: no se confirma; se agradece y se muestra qué hay
+    if (distancia) {
+      pasos.push({ t: evento.tipo === "graduacion" ? "Aunque estés lejos, fuiste parte de este logro. ¡Gracias!" : "Aunque estés lejos, sos parte de este momento. ¡Gracias!" });
+      pasos.push({ t: `Acá vas a ver las fotos del gran día, y podés dejarle tu mensaje a ${quien || festejado}.` });
+      decir(pasos, "reposo");
+      return;
+    }
 
     const hora = evento.hora ? horaHablada(evento.hora) : null;
     if (evento.fecha) pasos.push({ t: `La cita es el ${fechaHablada(evento.fecha)}${hora ? `, ${hora}` : ""}.`, guia: "fecha" });
@@ -2303,13 +2322,15 @@ const preferenciaAudio = { sinSonido: false };
 // del graduado a sangre, su nombre como protagonista, para quién es, la fecha y
 // un único botón. Al tocarlo se lanzan los birretes y la portada sube como un
 // telón. "Entrar sin sonido" para quien la abre en el trabajo o en el bus.
-function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonidoPrevio }: {
+function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonidoPrevio, especial = false }: {
   invitado: Invitado;
   evento: Evento;
   nombres: string[];
   saliendo: boolean;
   onEntrar: (conSonido: boolean) => void;
   onSinSonidoPrevio: () => void;
+  /** Invitado a distancia: invitación de agradecimiento, no de asistencia */
+  especial?: boolean;
 }) {
   const personas = personasDe(evento);
   const protagonista = personas.protagonista;
@@ -2397,7 +2418,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
       ))}
 
       <div className="pt-arriba">
-        <div className="pt-kicker"><i />Graduación<i /></div>
+        <div className="pt-kicker"><i />{especial ? "Invitación especial" : "Graduación"}<i /></div>
         {anio && <div className="pt-promo">Promoción {anio}</div>}
       </div>
 
@@ -2410,7 +2431,9 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         {personas.institucion && <p className="pt-institucion">{personas.institucion}</p>}
         <div className="pt-filete" aria-hidden="true"><i /><EstrellaSVG size={11} color={GRAD.oro} /><i /></div>
         <p className="pt-invita">
-          {personas.familia
+          {especial
+            ? "Aunque estés lejos, fuiste parte de este logro"
+            : personas.familia
             ? `${personas.familia} te invita a celebrar este logro`
             : personas.esAnfitrion || evento.anfitriones ? "te invita a celebrar su graduación" : "Te invitamos a celebrar"}
         </p>
@@ -3757,7 +3780,7 @@ export default function ConfirmarPage() {
   // ── Vista previa del muro (últimas fotos) — solo graduación ──
   const [muroPreview, setMuroPreview] = useState<{ urls: string[]; total: number } | null>(null);
   useEffect(() => {
-    if (!invitado?.evento_id || evento?.tipo !== "graduacion") return;
+    if (!invitado?.evento_id || (evento?.tipo !== "graduacion" && !invitado?.a_distancia)) return;
     (async () => {
       // Círculos de 42 px: con la miniatura alcanza (si la columna no existe, la original)
       const consulta = (cols: string) => supabase
@@ -3774,7 +3797,7 @@ export default function ConfirmarPage() {
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invitado?.evento_id, evento?.tipo]);
+  }, [invitado?.evento_id, evento?.tipo, invitado?.a_distancia]);
   // ── Aparición suave de las secciones al hacer scroll ──
   useEffect(() => {
     if (loading || step !== "vista") return;
@@ -3941,11 +3964,11 @@ export default function ConfirmarPage() {
     setInvitado({ ...inv, mesa_nombre });
     if (ev) setEvento(ev);
     setNumPersonas(inv.num_personas || 1);
-    if (inv.estado === "confirmado") {
+    if (inv.estado === "confirmado" && !inv.a_distancia) {
       setStep("confirmado");
       cargarMesasDisponibles(inv.evento_id);
     }
-    if (inv.estado === "rechazado") setStep("rechazado");
+    if (inv.estado === "rechazado" && !inv.a_distancia) setStep("rechazado");
     // Cargar itinerario (falla graciosamente si tabla no existe)
     try {
       const { data: iti } = await supabase
@@ -4464,6 +4487,11 @@ export default function ConfirmarPage() {
     .lugar-ref img,.lugar-ref video{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:#0f172a}
     .lugar-ref-zoom{position:absolute;right:10px;bottom:10px;font-size:11px;font-weight:700;color:#fff;background:rgba(15,23,42,.62);backdrop-filter:blur(6px);padding:5px 10px;border-radius:99px}
     .lugar-ref figcaption{font-size:12px;color:var(--ink3);padding:9px 14px;font-weight:600;letter-spacing:.2px}
+    details.como-llegar-box summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
+    details.como-llegar-box summary::-webkit-details-marker{display:none}
+    details.como-llegar-box summary::after{content:"Ver ▾";font-size:11px;letter-spacing:0;text-transform:none;font-weight:600}
+    details.como-llegar-box[open] summary{margin-bottom:8px}
+    details.como-llegar-box[open] summary::after{content:"Ocultar ▴"}
     .como-llegar-box{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px}
     .como-llegar-label{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
     .como-llegar-text{font-size:14px;color:var(--ink2);line-height:1.7}
@@ -5013,6 +5041,7 @@ export default function ConfirmarPage() {
           saliendo={saliendoPortada}
           onEntrar={entrarInvitacion}
           onSinSonidoPrevio={marcarSinSonido}
+          especial={!!invitado.a_distancia}
         />
       )}
 
@@ -5103,6 +5132,7 @@ export default function ConfirmarPage() {
           hayMesas={mesasDisponibles.length > 0}
           silencio={silencio}
           setSilencio={setSilencio}
+          distancia={!!invitado.a_distancia}
         />
       )}
 
@@ -5223,8 +5253,35 @@ export default function ConfirmarPage() {
           </div>
         </div>
 
+        {/* ─── VISTA: invitado a distancia (agradecimiento, sin confirmar) ─── */}
+        {step === "vista" && invitado.a_distancia && (
+          <InvitacionDistancia
+            evento={evento}
+            invitadoNombre={nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
+            muro={{ href: `/muro/${invitado.evento_id}?token=${invitado.token}`, urls: muroPreview?.urls ?? [], total: muroPreview?.total ?? 0 }}
+          >
+            <section className="dist-seccion">
+              <h2>Tu mensaje</h2>
+              {deseoPublicado ? (
+                <p className="dist-vacio">¡Gracias! Tu mensaje ya está en el muro. 💌</p>
+              ) : (
+                <DeseoFormInline
+                  invitadoId={invitado.id}
+                  eventoId={invitado.evento_id}
+                  invitadoNombre={invitado.nombre}
+                  onPublicado={() => setDeseoPublicado(true)}
+                />
+              )}
+            </section>
+            {evento.regalo_activo && (evento.regalo_banco || evento.regalo_titular || evento.regalo_cuenta) && (
+              <section className="dist-seccion"><RegaloCard evento={evento} /></section>
+            )}
+            <div style={{ height: 22 }} />
+          </InvitacionDistancia>
+        )}
+
         {/* ─── VISTA ─── */}
-        {step === "vista" && (
+        {step === "vista" && !invitado.a_distancia && (
           <div className="wrap wrap-has-bar">
             <div className="inv-card" style={{ position: "relative" }}>
 
@@ -5516,10 +5573,10 @@ export default function ConfirmarPage() {
 
                 {/* 📍 Instrucciones aparte (si no hay maps_url, o en graduación que no usa el botón grande) */}
                 {(!evento.maps_url || evento.tipo === "graduacion") && evento.como_llegar && (
-                  <div className="como-llegar-box" data-guia="llegar">
-                    <div className="como-llegar-label">Instrucciones para llegar</div>
+                  <details className="como-llegar-box" data-guia="llegar">
+                    <summary className="como-llegar-label">Cómo llegar</summary>
                     <p className="como-llegar-text">{evento.como_llegar}</p>
-                  </div>
+                  </details>
                 )}
 
                 {/* 🗺️ Cómo llegar rápido (graduación): Google Maps + Waze aunque no haya maps_url */}

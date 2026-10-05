@@ -23,6 +23,7 @@ const ANCHO_SCRIPT: Record<string, number> = {
   "Mis XV Años": 557.2,
   "Invitación de Cumpleaños": 811.9,
   "Invitación": 341.4,
+  "Con gratitud": 425, // estimado (invitación especial a distancia)
 };
 
 // Ancho de cada carácter de Cinzel 600 a 100 px (Cinzel 500 es apenas más angosta)
@@ -156,7 +157,8 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
   const lugar = datos.lugar?.toLocaleUpperCase("es") ?? "";
   const honor = datos.honor ? `—  ${datos.honor}  —` : "";
   const para = datos.invitado ? `Para ${datos.invitado}` : "";
-  const cta = "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
+  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
+  const dedicatoria = datos.dedicatoria ?? "";
   const versiculo = datos.versiculo ? `«${datos.versiculo.texto}»` : "";
   const cita = datos.versiculo?.cita.toLocaleUpperCase("es") ?? "";
   const institucion = datos.institucion?.toLocaleUpperCase("es") ?? "";
@@ -170,8 +172,8 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
     fuenteGoogle("Cinzel:wght@500", `${honor}${lugar}${cita}${institucion}`),
     fuenteGoogle("Jost:wght@300", `${datos.fechaCorta ?? ""}${datos.direccion ?? ""}`),
     fuenteGoogle("Jost:wght@400", `${datos.diaHora ?? ""}${cta}`),
-    para || versiculo || carrera || familia
-      ? fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${versiculo}${carrera}${familia}`)
+    para || versiculo || carrera || familia || dedicatoria
+      ? fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${versiculo}${carrera}${familia}${dedicatoria}`)
       : null,
   ]);
   type Fuente = { name: string; data: ArrayBuffer; weight: 300 | 400 | 500 | 600; style: "normal" | "italic" };
@@ -239,9 +241,10 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
               <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 300, fontSize: 46, letterSpacing: 3, lineHeight: 1.15, padding: "0 14px", ...TEXTO_ORO }}>{datos.fechaCorta}</div>
             </div>
           )}
-          {datos.diaHora && <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 400, fontSize: 19, letterSpacing: 4, color: P.textoSuave, marginTop: 14 }}>{datos.diaHora}</div>}
-          {lugar && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Caps", fontWeight: 500, fontSize: pxLugar, letterSpacing: 1, lineHeight: 1.25, maxWidth: 460, marginTop: 30, ...TEXTO_ORO }}>{lugar}</div>}
-          {datos.direccion && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Sans", fontWeight: 300, fontSize: 18, lineHeight: 1.35, color: P.textoSuave, maxWidth: 430, marginTop: 6 }}>{datos.direccion}</div>}
+          {dedicatoria && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 24, lineHeight: 1.3, color: P.textoFuerte, maxWidth: 440, marginTop: 22 }}>{dedicatoria}</div>}
+          {datos.diaHora && !datos.especial && <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 400, fontSize: 19, letterSpacing: 4, color: P.textoSuave, marginTop: 14 }}>{datos.diaHora}</div>}
+          {lugar && !datos.especial && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Caps", fontWeight: 500, fontSize: pxLugar, letterSpacing: 1, lineHeight: 1.25, maxWidth: 460, marginTop: 30, ...TEXTO_ORO }}>{lugar}</div>}
+          {datos.direccion && !datos.especial && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Sans", fontWeight: 300, fontSize: 18, lineHeight: 1.35, color: P.textoSuave, maxWidth: 430, marginTop: 6 }}>{datos.direccion}</div>}
           <Separador ancho={160} margen={24} P={P} />
           {versiculo && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 14, maxWidth: 430 }}>

@@ -4,6 +4,8 @@ import {
   extrasDe,
   familiaDe,
   fraseInvitacion,
+  agradecimientoDe,
+  quienInvitaHablado,
   paletaDe,
   protagonistaDe,
   type EventoTarjeta,
@@ -109,5 +111,31 @@ describe("paletaDe", () => {
   it("respeta la elegida y descarta una que no existe", () => {
     expect(paletaDe({ tipo: "graduacion", tarjeta: { paleta: "esmeralda" } }).id).toBe("esmeralda");
     expect(paletaDe({ tipo: "graduacion", tarjeta: { paleta: "violeta" } }).id).toBe("azul");
+  });
+});
+
+describe("invitados a distancia", () => {
+  const carlos = () => grad({ tarjeta: { graduando: "Carlos Humberto Chavarría Aparicio" } });
+
+  it("la voz nombra a quien invita con nombre y primer apellido", () => {
+    expect(quienInvitaHablado(carlos())).toBe("Carlos Chavarría");
+    expect(quienInvitaHablado(grad({ tarjeta: { graduando: "Ana López" } }))).toBe("Ana López");
+    expect(quienInvitaHablado(grad({ nombre: "Graduación 2026", anfitriones: "Familia Ramírez" }))).toBe("la familia Ramírez");
+  });
+
+  it("el agradecimiento usa el texto propio o uno según quién habla", () => {
+    expect(agradecimientoDe(grad({ tarjeta: { agradecimiento: "Gracias por todo." } }))).toBe("Gracias por todo.");
+    expect(agradecimientoDe(grad())).toContain("Preparé esta invitación especial");
+    expect(agradecimientoDe(grad({ tarjeta: { familia: "Familia Chavarría" } }))).toContain("Preparamos esta invitación especial");
+  });
+
+  it("la tarjeta especial agradece en vez de pedir confirmar", () => {
+    const d = armarDatosTarjeta(carlos(), "Tía Rosa", "f", { distancia: true });
+    expect(d.especial).toBe(true);
+    expect(d.tituloScript).toBe("Con gratitud");
+    expect(d.honor).toBe("INVITACIÓN ESPECIAL");
+    expect(d.dedicatoria).toBe("Aunque estés lejos, fuiste parte de este logro.");
+    expect(d.cta).not.toContain("Confirm");
+    expect(armarDatosTarjeta(carlos(), "X").especial).toBe(false);
   });
 });

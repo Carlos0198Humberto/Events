@@ -3245,6 +3245,7 @@ export default function MuroPublico() {
           reacciones={reacciones}
           onReaccionar={reaccionar}
           tema={tema}
+          nombreAnfitrion={evento.tarjeta?.graduando || evento.anfitriones || "Anfitrión"}
         />
       )}
 

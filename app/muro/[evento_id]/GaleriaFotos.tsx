@@ -112,7 +112,7 @@ export function MiniaturaFoto({ foto, nueva, totalReacciones, emojis, tema, onAb
 // ─── Visor a pantalla completa ────────────────────────────────────────────────
 export function VisorFoto({
   fotos, indice, onCambiar, onCerrar, esOrg, onEliminar, onDescargar,
-  invitadoId, invitadoNombre, eventoId, reacciones, onReaccionar, tema,
+  invitadoId, invitadoNombre, eventoId, reacciones, onReaccionar, tema, nombreAnfitrion,
 }: {
   fotos: FotoMuro[];
   indice: number;
@@ -123,6 +123,8 @@ export function VisorFoto({
   onDescargar: (f: FotoMuro) => void;
   invitadoId: string | null;
   invitadoNombre: string;
+  /** Con quién firma el anfitrión sus comentarios (comenta sin enlace de invitado) */
+  nombreAnfitrion?: string;
   eventoId: string;
   reacciones: ReaccionFila[];
   onReaccionar: (fotoId: string, emoji: string) => Promise<string | null>;
@@ -173,6 +175,7 @@ export function VisorFoto({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [foto.id]);
 
+  const puedeComentar = !!invitadoId || esOrg;
   const deEsta = reacciones.filter(r => r.foto_id === foto.id);
   const mia = invitadoId ? deEsta.find(r => r.invitado_id === invitadoId)?.emoji ?? null : null;
   const nombre = foto.invitados?.nombre ?? "Invitado";
@@ -185,13 +188,23 @@ export function VisorFoto({
 
   async function comentar() {
     const limpio = texto.trim().slice(0, 300);
-    if (!limpio || !invitadoId || enviando) return;
+    // Comenta un invitado con su enlace o el anfitrión (supabase-distancia.sql
+    // agregó el permiso para el organizador)
+    if (!limpio || !puedeComentar || enviando) return;
     setEnviando(true);
     const { data, error } = await supabase.from("comentarios_fotos")
-      .insert({ foto_id: foto.id, evento_id: eventoId, invitado_id: invitadoId, nombre_autor: invitadoNombre || "Invitado", texto: limpio })
+      .insert({
+        foto_id: foto.id, evento_id: eventoId, texto: limpio,
+        invitado_id: invitadoId ?? null,
+        nombre_autor: invitadoId ? invitadoNombre || "Invitado" : nombreAnfitrion || "Anfitrión",
+      })
       .select("id,nombre_autor,texto,created_at").single();
     setEnviando(false);
-    if (error || !data) { setAviso("No se pudo publicar el comentario. Probá de nuevo."); return; }
+    if (error || !data) {
+      // El anfitrión comenta con el permiso de supabase-distancia.sql
+      setAviso(!invitadoId ? "No se pudo publicar. Si no corriste supabase-distancia.sql, hacelo para comentar como anfitrión." : "No se pudo publicar el comentario. Probá de nuevo.");
+      return;
+    }
     setComentarios(prev => [...prev, data]);
     setTexto("");
   }
@@ -282,7 +295,7 @@ export function VisorFoto({
                 <b style={{ color: tema.tinta }}>{c.nombre_autor}</b> {c.texto}
               </div>
             ))}
-            {invitadoId ? (
+            {puedeComentar ? (
               <div className="vf-escribir">
                 <input value={texto} maxLength={300} onChange={e => setTexto(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") comentar(); }}
@@ -291,7 +304,9 @@ export function VisorFoto({
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                 </button>
               </div>
-            ) : null}
+            ) : (
+              <p className="vf-sin-comentar">Para comentar, abrí el muro desde el enlace de tu invitación.</p>
+            )}
           </div>
         )}
       </div>
@@ -364,6 +379,7 @@ export function EstilosGaleria({ tema }: { tema: TemaMuro }) {
       .vf-escribir input:focus{border-color:${tema.destaque}}
       .vf-escribir button{width:42px;border:none;border-radius:12px;color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer}
       .vf-escribir button:disabled{opacity:.45;cursor:default}
+      .vf-sin-comentar{font-size:12.5px;color:#64748B;background:#F8FAFC;border:1px dashed #E2E8F0;border-radius:10px;padding:9px 12px;margin-top:2px}
     `}</style>
   );
 }

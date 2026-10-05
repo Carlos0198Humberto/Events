@@ -13,7 +13,7 @@ import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import { saludo, type Trato } from "@/lib/tratoInvitado";
 
 export type TipoEnvio = "invitacion" | "recordatorio" | "dia";
-export type InvitadoEnvio = { nombre: string; token: string; telefono?: string; estado?: string };
+export type InvitadoEnvio = { nombre: string; token: string; telefono?: string; estado?: string; a_distancia?: boolean | null };
 export type MarcasEnvio = Record<string, { enviado_at?: string | null; recordatorio_at?: string | null; dia_at?: string | null }>;
 
 // Nombre de cada tipo en singular y plural, para los textos de la cola
@@ -36,9 +36,10 @@ type Props = {
 
 const pendiente = (inv: InvitadoEnvio) => !inv.estado || inv.estado === "pendiente";
 const confirmado = (inv: InvitadoEnvio) => inv.estado === "confirmado";
-// Invitación: a todos. Recordatorio: a quien no respondió. Día del evento: a quien confirmó.
+// Invitación: a todos. Recordatorio: a quien no respondió. Día del evento: a
+// quien confirmó. Los invitados a distancia solo reciben su invitación especial.
 const corresponde = (tipo: TipoEnvio, inv: InvitadoEnvio) =>
-  tipo === "invitacion" || (tipo === "recordatorio" ? pendiente(inv) : confirmado(inv));
+  tipo === "invitacion" || (!inv.a_distancia && (tipo === "recordatorio" ? pendiente(inv) : confirmado(inv)));
 
 export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, marcas, tratoDe, urlWhatsApp, onEnviado, onCerrar }: Props) {
   const [tipo, setTipo] = useState<TipoEnvio>(tipoInicial);
@@ -177,7 +178,7 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
                     <label key={inv.token} className="eg-fila">
                       <input type="checkbox" checked={elegidos.has(inv.token)} onChange={() => alternar(inv.token)} />
                       <div style={{ minWidth: 0 }}>
-                        <div className="eg-fila-nombre">{inv.nombre}</div>
+                        <div className="eg-fila-nombre">{inv.nombre}{inv.a_distancia ? " · 💌 a distancia" : ""}</div>
                         <div className="eg-fila-info">{inv.telefono ? inv.telefono : "Sin número: elegís el contacto en WhatsApp"}</div>
                       </div>
                       {marca && <span className="eg-marca">{marca}</span>}

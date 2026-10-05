@@ -42,6 +42,7 @@ export type ExtrasTarjeta = {
   referencia?: string | null;   // "Frente a la entrada principal, portón 3"
   foto?: boolean;               // false = la tarjeta va sin la foto de portada
   paleta?: string | null;       // colores de la tarjeta (PALETAS_TARJETA); null = según el tipo
+  agradecimiento?: string | null; // mensaje para los invitados a distancia (null = el de siempre)
 };
 
 /** Frases sugeridas para la línea pequeña sobre el nombre, por tipo de evento. */
@@ -79,6 +80,7 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   if (typeof o.honor === "string") ex.honor = limpio(o.honor, 48);
   if (typeof o.foto === "boolean") ex.foto = o.foto;
   if (typeof o.paleta === "string") ex.paleta = limpio(o.paleta, 20) || null;
+  if (typeof o.agradecimiento === "string") ex.agradecimiento = limpio(o.agradecimiento, 400) || null;
   return ex;
 }
 
@@ -94,6 +96,8 @@ export type DatosTarjeta = {
   iniciales: string;          // "AC" (el sello)
   invitado: string;           // "María José Hernández"
   cta: string;                // "Confirmá tu asistencia en el enlace del mensaje"
+  especial: boolean;          // invitación de agradecimiento (invitado a distancia)
+  dedicatoria: string | null; // "Aunque estés lejos, fuiste parte de este logro." (solo especial)
   foto: string | null;        // URL de la foto de portada, si va en la tarjeta
   paleta: PaletaTarjeta;      // colores (azul noche y oro, marfil y oro…)
   fecha: string | null;       // "Sábado 21 de noviembre de 2026"
@@ -120,8 +124,9 @@ const TITULOS_SCRIPT: Record<string, string> = {
   cumpleaños: "Invitación de Cumpleaños",
 };
 export const TITULO_SCRIPT_GENERICO = "Invitación";
+export const TITULO_SCRIPT_GRATITUD = "Con gratitud";
 /** Todos los títulos en caligrafía posibles (la vista previa los tiene medidos). */
-export const TODOS_TITULOS_SCRIPT = [...Object.values(TITULOS_SCRIPT), TITULO_SCRIPT_GENERICO];
+export const TODOS_TITULOS_SCRIPT = [...Object.values(TITULOS_SCRIPT), TITULO_SCRIPT_GENERICO, TITULO_SCRIPT_GRATITUD];
 
 const HORAS = ["doce", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once"];
 const MESES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
@@ -209,6 +214,48 @@ export function familiaDe(evento: EventoTarjeta): string | null {
 }
 
 /**
+ * ¿Habla el mismo protagonista? ("te invito a mi graduación"). Sí cuando
+ * organiza él mismo y no firma una familia: si firma la familia, invita la familia.
+ */
+export function hablaElProtagonista(evento: EventoTarjeta): boolean {
+  const p = protagonistaDe(evento);
+  const anfitriones = normal(evento.anfitriones ?? "");
+  return p.esPersona && !extrasDe(evento).familia && anfitriones !== "" && anfitriones === normal(p.nombre);
+}
+
+/**
+ * Quién invita, dicho en voz alta: "Carlos Chavarría" (nombre y primer
+ * apellido del protagonista) o, si no es una persona, la familia.
+ */
+export function quienInvitaHablado(evento: EventoTarjeta): string {
+  const p = protagonistaDe(evento);
+  if (p.esPersona) {
+    const partes = p.nombre.split(/\s+/).filter(Boolean);
+    if (/&|\sy\s/i.test(p.nombre) || partes.length <= 2) return p.nombre;
+    return partes.length >= 4 ? `${partes[0]} ${partes[2]}` : `${partes[0]} ${partes[1]}`;
+  }
+  const familia = familiaDe(evento) || evento.anfitriones?.trim() || "";
+  return /^familia\s/i.test(familia) ? `la ${familia.charAt(0).toLowerCase()}${familia.slice(1)}` : familia;
+}
+
+/**
+ * El agradecimiento para los invitados a distancia: el que escribió el
+ * organizador o uno según el tipo de evento, en primera persona si habla el
+ * mismo protagonista.
+ */
+export function agradecimientoDe(evento: EventoTarjeta): string {
+  const propio = extrasDe(evento).agradecimiento;
+  if (propio) return propio;
+  const yo = hablaElProtagonista(evento);
+  const prepare = yo ? "Preparé" : "Preparamos";
+  const conmigo = yo ? "conmigo" : "con nosotros";
+  if (evento.tipo === "graduacion") {
+    return `Aunque estés lejos, fuiste parte de este logro. Gracias por tu cariño, tus oraciones y tu apoyo en cada etapa del camino. ${prepare} esta invitación especial para que vivas la celebración ${conmigo} desde donde estés.`;
+  }
+  return `Aunque estés lejos, sos parte de este momento. Gracias por tu cariño de siempre. ${prepare} esta invitación especial para que vivas la celebración ${conmigo} desde donde estés.`;
+}
+
+/**
  * La frase que invita, en minúscula y sin punto final:
  * "con mucha alegría te invitamos a celebrar la graduación de Andrea Castillo".
  * Si quien organiza es la misma persona que se gradúa, habla en primera
@@ -218,10 +265,7 @@ export function familiaDe(evento: EventoTarjeta): string | null {
 export function fraseInvitacion(evento: EventoTarjeta, plural: boolean, corta = false): string {
   const te = plural ? "los" : "te";
   const p = protagonistaDe(evento);
-  const anfitriones = normal(evento.anfitriones ?? "");
-  // Primera persona ("te invito a mi graduación") solo si organiza el mismo
-  // protagonista y no firma una familia: si firma la familia, invita la familia
-  const esAnfitrion = p.esPersona && !extrasDe(evento).familia && anfitriones !== "" && anfitriones === normal(p.nombre);
+  const esAnfitrion = hablaElProtagonista(evento);
   switch (evento.tipo) {
     case "graduacion":
       if (esAnfitrion) return `con mucha alegría ${te} invito a celebrar mi graduación`;
@@ -248,10 +292,7 @@ export function fraseInvitacion(evento: EventoTarjeta, plural: boolean, corta = 
  */
 export function motivoCelebracion(evento: EventoTarjeta): string {
   const p = protagonistaDe(evento);
-  const anfitriones = normal(evento.anfitriones ?? "");
-  // Primera persona ("te invito a mi graduación") solo si organiza el mismo
-  // protagonista y no firma una familia: si firma la familia, invita la familia
-  const esAnfitrion = p.esPersona && !extrasDe(evento).familia && anfitriones !== "" && anfitriones === normal(p.nombre);
+  const esAnfitrion = hablaElProtagonista(evento);
   switch (evento.tipo) {
     case "graduacion":
       return esAnfitrion ? "mi graduación" : p.esPersona ? `la graduación de ${p.nombre}` : "esta graduación";
@@ -277,7 +318,8 @@ function inicialesDe(nombre: string): string {
  * género ("Querida María José, …"); sin trato (la vista previa del servidor,
  * que no conoce la corrección del organizador) el párrafo no lo nombra.
  */
-export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string, trato?: Trato | null): DatosTarjeta {
+export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string, trato?: Trato | null, opciones: { distancia?: boolean } = {}): DatosTarjeta {
+  const especial = !!opciones.distancia;
   const esGraduacion = evento.tipo === "graduacion";
   const protagonista = protagonistaDe(evento);
   const invitado = nombreInvitado.trim();
@@ -309,8 +351,8 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
   return {
     esGraduacion,
     titulo: TITULOS[evento.tipo] ?? "Celebración",
-    tituloScript: TITULOS_SCRIPT[evento.tipo] ?? TITULO_SCRIPT_GENERICO,
-    honor: extras.honor !== undefined
+    tituloScript: especial ? TITULO_SCRIPT_GRATITUD : TITULOS_SCRIPT[evento.tipo] ?? TITULO_SCRIPT_GENERICO,
+    honor: especial ? "INVITACIÓN ESPECIAL" : extras.honor !== undefined
       ? (extras.honor ? extras.honor.toLocaleUpperCase("es") : null)
       : esGraduacion && protagonista.esPersona ? "EN HONOR A" : null,
     protagonista: protagonista.nombre,
@@ -319,7 +361,13 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     familia: familiaDe(evento),
     iniciales: inicialesDe(protagonista.nombre),
     invitado,
-    cta: plural ? "Confirmen su asistencia en el enlace del mensaje" : "Confirmá tu asistencia en el enlace del mensaje",
+    cta: especial
+      ? (plural ? "Abran su invitación en el enlace del mensaje" : "Abrí tu invitación en el enlace del mensaje")
+      : plural ? "Confirmen su asistencia en el enlace del mensaje" : "Confirmá tu asistencia en el enlace del mensaje",
+    especial,
+    dedicatoria: especial
+      ? (evento.tipo === "graduacion" ? "Aunque estés lejos, fuiste parte de este logro." : "Aunque estés lejos, sos parte de este momento.")
+      : null,
     foto: extras.foto === false ? null : evento.imagen_url?.trim() || null,
     paleta: paletaDe(evento),
     fecha,

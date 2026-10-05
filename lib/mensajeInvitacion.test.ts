@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   armarMensajeDia,
+  armarMensajeDistancia,
   armarMensajeInvitacion,
   armarMensajeRecordatorio,
   type EventoMensaje,
@@ -102,5 +103,28 @@ describe("armarMensajeRecordatorio", () => {
     const m = armarMensajeRecordatorio(grad(), "Ana", LINK, "f", new Date(2026, 9, 28));
     expect(m).toContain("faltan 3 días");
     expect(enlaces(m)).toEqual([LINK]);
+  });
+});
+
+describe("armarMensajeDistancia", () => {
+  it("agradece, no pide confirmar y lleva un solo enlace", () => {
+    const m = armarMensajeDistancia(grad({ tarjeta: { graduando: "Carlos Humberto Chavarría Aparicio" } }), "Rosa", LINK, "f");
+    expect(m).toContain("Querida Rosa:\nAunque estés lejos, fuiste parte de este logro. Gracias por tu cariño y tu apoyo.");
+    expect(m).toContain("invitación especial");
+    expect(m).not.toContain("Confirm");
+    expect(enlaces(m)).toEqual([LINK]);
+  });
+
+  it("habla en plural a varios y como familia si firma la familia", () => {
+    const m = armarMensajeDistancia(grad({ tarjeta: { familia: "Familia Chavarría" } }), "Los López", LINK, "plural");
+    expect(m).toContain("Aunque estén lejos, fueron parte de este logro.");
+    expect(m).toContain("Les preparamos una invitación especial para que vivan la celebración");
+  });
+});
+
+describe("título del mensaje", () => {
+  it("no repite al graduado si el nombre del evento ya lo menciona", () => {
+    const m = armarMensajeInvitacion(grad({ nombre: "Graduación de Carlos - Ingeniería 2026", tarjeta: { graduando: "Carlos Humberto Chavarría Aparicio" } }), "Ana", LINK, "f", HOY);
+    expect(m.split("\n")[0]).toBe("🎓 Graduación de Carlos - Ingeniería 2026");
   });
 });

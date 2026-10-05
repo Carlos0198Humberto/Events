@@ -12,7 +12,7 @@
 // El enlace va solo en su línea y es el ÚNICO del mensaje: WhatsApp arma la
 // vista previa con el primero que encuentra.
 
-import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseInvitacion, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
+import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseInvitacion, hablaElProtagonista, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 import { saludo, type Trato } from "@/lib/tratoInvitado";
 
 export type EventoMensaje = EventoTarjeta & { fecha_limite_confirmacion?: string | null };
@@ -53,7 +53,10 @@ function titulo(evento: EventoMensaje): { texto: string; nombra: boolean } {
   const emoji = EMOJI[evento.tipo];
   const nombre = evento.nombre.trim();
   const p = protagonistaDe(evento);
-  const yaLoDice = normal(nombre).includes(normal(p.nombre));
+  // "Graduación de Carlos - Ingeniería 2026" ya nombra a Carlos Humberto Chavarría
+  const primerNombre = normal(p.nombre).split(/\s+/)[0] ?? "";
+  const yaLoDice = normal(nombre).includes(normal(p.nombre))
+    || (primerNombre.length >= 3 && new RegExp(`\\b${primerNombre}\\b`).test(normal(nombre)));
   const texto = !p.esPersona || yaLoDice ? nombre
     : SOLO_TIPO.test(normal(nombre)) ? `${nombre} de ${p.nombre}`
     : `${nombre} · ${p.nombre}`;
@@ -112,6 +115,33 @@ export function armarMensajeInvitacion(evento: EventoMensaje, nombreInvitado: st
     `${saludo(nombreInvitado, trato)}:\n${mayuscula(frase)}.`,
     [cuandoYDonde(evento, hoy), lugares].filter(Boolean).join("\n"),
     `${confirmar}\n${link}`,
+    firma(evento),
+  ].filter(Boolean).join("\n\n");
+}
+
+/**
+ * Invitación especial para quien está lejos pero fue parte del logro: no se
+ * le pide confirmar; se le agradece y se lo invita a ver las fotos y dejar su
+ * mensaje. Mismo enlace personal: la página sabe que es "a distancia".
+ */
+export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato): string {
+  const plural = trato === "plural";
+  const yo = hablaElProtagonista(evento);
+  const graduacion = evento.tipo === "graduacion";
+  const lejos = plural
+    ? (graduacion ? "Aunque estén lejos, fueron parte de este logro." : "Aunque estén lejos, son parte de este momento.")
+    : (graduacion ? "Aunque estés lejos, fuiste parte de este logro." : "Aunque estés lejos, sos parte de este momento.");
+  const gracias = plural ? "Gracias por su cariño y su apoyo." : "Gracias por tu cariño y tu apoyo.";
+  const preparamos = `${plural ? "Les" : "Te"} ${yo ? "preparé" : "preparamos"}`;
+  const invitacion = plural
+    ? `${preparamos} una invitación especial para que vivan la celebración desde donde estén: las fotos del gran día y un espacio para su mensaje.`
+    : `${preparamos} una invitación especial para que vivas la celebración desde donde estés: las fotos del gran día y un espacio para tu mensaje.`;
+
+  return [
+    titulo(evento).texto,
+    `${saludo(nombreInvitado, trato)}:\n${lejos} ${gracias}`,
+    invitacion,
+    `\u{1F48C} ${plural ? "Su" : "Tu"} invitación especial:\n${link}`,
     firma(evento),
   ].filter(Boolean).join("\n\n");
 }

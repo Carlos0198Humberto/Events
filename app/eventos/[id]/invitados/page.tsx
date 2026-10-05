@@ -7,7 +7,7 @@ import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import { armarDatosTarjeta, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
-import { armarMensajeDia, armarMensajeInvitacion, armarMensajeRecordatorio, diasHasta } from "@/lib/mensajeInvitacion";
+import { armarMensajeDia, armarMensajeDistancia, armarMensajeInvitacion, armarMensajeRecordatorio, diasHasta } from "@/lib/mensajeInvitacion";
 import { versiculoDe, type Versiculo } from "@/lib/versiculos";
 import EnvioEnGrupo, { type MarcasEnvio, type TipoEnvio } from "./EnvioEnGrupo";
 import VersiculoEvento from "./VersiculoEvento";
@@ -24,6 +24,7 @@ type Invitado = {
   num_personas?: number;
   cupo_elije_invitado?: boolean;
   estado?: string;
+  a_distancia?: boolean | null; // invitación especial de agradecimiento (supabase-distancia.sql)
 };
 
 type Evento = {
@@ -58,6 +59,10 @@ export default function AgregarInvitados() {
   const [numPersonas, setNumPersonas] = useState("1");
   const storageKey = 'evorix_cupo_elije_' + (typeof window !== 'undefined' ? window.location.pathname : 'default');
   const [cupoElijeInvitado, setCupoElijeInvitado] = useState(false);
+  // Invitado a distancia: no confirma; recibe la invitación de agradecimiento
+  const [aDistancia, setADistancia] = useState(false);
+  // false si todavía no se corrió supabase-distancia.sql
+  const [distanciaOk, setDistanciaOk] = useState(true);
   // Leer localStorage solo en el cliente (evita hydration mismatch)
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
@@ -167,12 +172,13 @@ export default function AgregarInvitados() {
 
   async function cargarTodosInvitados() {
     setLoadingInvitados(true);
-    const { data } = await supabase
-      .from("invitados")
-      .select("id, nombre, token, telefono, num_personas, cupo_elije_invitado, estado")
-      .eq("evento_id", id)
-      .order("created_at", { ascending: true });
-    if (data) setTodosInvitados(data);
+    // Con a_distancia (supabase-distancia.sql); sin la columna, la lista carga igual
+    const columnas = "id, nombre, token, telefono, num_personas, cupo_elije_invitado, estado";
+    const consulta = (cols: string) => supabase.from("invitados").select(cols).eq("evento_id", id).order("created_at", { ascending: true });
+    let { data, error: errLista } = await consulta(`${columnas}, a_distancia`);
+    setDistanciaOk(!errLista);
+    if (errLista) ({ data } = await consulta(columnas));
+    if (data) setTodosInvitados(data as unknown as Invitado[]);
     setLoadingInvitados(false);
     // Consulta aparte: si la columna todavía no existe, la lista de arriba no se rompe
     const { data: asist, error } = await supabase
@@ -278,6 +284,7 @@ export default function AgregarInvitados() {
   const yaEnviado = (inv: Invitado): boolean => enviados.has(inv.token) || !!marcas[inv.token]?.enviado_at;
 
   function buildMensaje(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
+    if (inv.a_distancia) return armarMensajeDistancia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
     // Si el invitado elige cuántos van, no se le dice un número de lugares
     const personas = inv.cupo_elije_invitado ? null : inv.num_personas ?? null;
     return armarMensajeInvitacion(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, new Date(), { personas });
@@ -297,6 +304,20 @@ export default function AgregarInvitados() {
       : `https://wa.me/?text=${msg}`;
   }
 
+  async function alternarDistancia(inv: Invitado) {
+    if (!inv.id) return;
+    const nuevo = !inv.a_distancia;
+    const { error } = await supabase.from("invitados").update({ a_distancia: nuevo }).eq("id", inv.id);
+    if (error) {
+      toast.error(/a_distancia/i.test(error.message || "") ? "Falta correr supabase-distancia.sql" : "No se pudo cambiar. Probá de nuevo.");
+      return;
+    }
+    const cambiar = (lista: Invitado[]) => lista.map((i) => (i.id === inv.id ? { ...i, a_distancia: nuevo } : i));
+    setTodosInvitados(cambiar);
+    setAgregados(cambiar);
+    toast.success(nuevo ? `${inv.nombre.split(" ")[0]} recibe ahora la invitación especial a distancia` : `${inv.nombre.split(" ")[0]} vuelve a la invitación normal`);
+  }
+
   async function handleAgregar() {
     setLoading(true);
     setError("");
@@ -311,7 +332,9 @@ export default function AgregarInvitados() {
       setLoading(false);
       return;
     }
-    const personas = cupoElijeInvitado ? null : Math.max(1, parseInt(numPersonas) || 1);
+    // A distancia: un solo lugar y sin elegir cupo (no viene al evento)
+    const elige = aDistancia ? false : cupoElijeInvitado;
+    const personas = elige ? null : aDistancia ? 1 : Math.max(1, parseInt(numPersonas) || 1);
     const { data, error } = await supabase
       .from("invitados")
       .insert({
@@ -319,14 +342,16 @@ export default function AgregarInvitados() {
         nombre: nombre.trim(),
         telefono: telefono.trim() || null,
         num_personas: personas ?? 1,
-        cupo_elije_invitado: cupoElijeInvitado,
+        cupo_elije_invitado: elige,
+        ...(aDistancia ? { a_distancia: true } : {}),
       })
       .select()
       .single();
 
     if (error) {
-      setError("Error al agregar invitado. Intenta de nuevo.");
-      toast.error("No se pudo agregar. Intentá de nuevo.");
+      const falta = aDistancia && /a_distancia/i.test(error.message || "");
+      setError(falta ? "Para invitados a distancia falta correr supabase-distancia.sql en Supabase." : "Error al agregar invitado. Intenta de nuevo.");
+      toast.error(falta ? "Falta correr supabase-distancia.sql" : "No se pudo agregar. Intentá de nuevo.");
     } else {
       const nuevo: Invitado = {
         id: data.id,
@@ -334,14 +359,16 @@ export default function AgregarInvitados() {
         token: data.token,
         telefono: telefono || undefined,
         num_personas: personas ?? 1,
-        cupo_elije_invitado: cupoElijeInvitado,
+        cupo_elije_invitado: elige,
         estado: "pendiente",
+        a_distancia: aDistancia,
       };
       setAgregados((prev) => [...prev, nuevo]);
       setTodosInvitados((prev) => [...prev, nuevo]);
       setNombre("");
       setTelefono("");
       setNumPersonas("1");
+      setADistancia(false); // se marca invitado por invitado
       // cupoElijeInvitado se mantiene (persiste en localStorage hasta que el usuario lo cambie)
       // Feedback visual + háptico
       toast.success(`¡${nombre.trim()} agregado a la lista! 🎉`);
@@ -380,7 +407,7 @@ export default function AgregarInvitados() {
       if (previa?.url) URL.revokeObjectURL(previa.url);
       return { inv, trato, blob: null, url: null };
     });
-    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, trato));
+    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia }));
     if (n !== generacionRef.current) return;
     if (!blob) {
       toast.error("No se pudo generar la tarjeta. Probá de nuevo.");
@@ -490,11 +517,13 @@ export default function AgregarInvitados() {
 
   // Recordatorio: desde una semana antes del evento, para quien no confirmó
   const diasFaltan = evento?.fecha ? diasHasta(evento.fecha) : null;
-  const sinConfirmar = todosInvitados.filter((i) => !i.estado || i.estado === "pendiente");
+  // Los invitados a distancia no confirman: no cuentan como pendientes ni reciben recordatorio
+  const sinConfirmar = todosInvitados.filter((i) => !i.a_distancia && (!i.estado || i.estado === "pendiente"));
+  const aDistanciaLista = todosInvitados.filter((i) => i.a_distancia);
   const sinRecordar = sinConfirmar.filter((i) => !marcas[i.token]?.recordatorio_at);
   const mostrarRecordatorio = diasFaltan !== null && diasFaltan >= 0 && diasFaltan <= 7 && sinConfirmar.length > 0;
   // La víspera y el mismo día: el mensaje con la hora y cómo llegar, para los confirmados
-  const confirmados = todosInvitados.filter((i) => i.estado === "confirmado");
+  const confirmados = todosInvitados.filter((i) => i.estado === "confirmado" && !i.a_distancia);
   const sinMensajeDia = confirmados.filter((i) => !marcas[i.token]?.dia_at);
   const mostrarMensajeDia = (diasFaltan === 0 || diasFaltan === 1) && confirmados.length > 0;
 
@@ -909,6 +938,10 @@ export default function AgregarInvitados() {
         .tarjeta-principal { width: 100%; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--wa-green), var(--wa-dark)); color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 16px rgba(37,211,102,0.35); margin-bottom: 8px; }
         .tarjeta-principal:disabled { opacity: .5; cursor: wait; box-shadow: none; }
         .tarjeta-secundarias { display: flex; gap: 8px; }
+        .hero-distancia { margin-top: 10px; text-align: center; font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.9); }
+        .estado-distancia { background: #FDF2F8; color: #9D174D; border: 1px solid #FBCFE8; }
+        .inv-distancia-btn { margin-top: 4px; padding: 0; border: none; background: none; font-size: 10.5px; font-weight: 700; color: var(--accent); cursor: pointer; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; }
+        .toggle-distancia { background: #FDF2F8; border-color: #FBCFE8; }
         .tarjeta-estados { width: 100%; padding: 11px; border-radius: 12px; border: 1.5px dashed rgba(79,70,229,0.35); background: rgba(79,70,229,0.05); color: #3730A3; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-bottom: 8px; }
         .tarjeta-estados:disabled { opacity: .6; cursor: wait; }
         .tarjeta-secundarias .btn-cancel { padding: 11px 6px; font-size: 13px; }
@@ -1065,7 +1098,7 @@ export default function AgregarInvitados() {
                 </div>
                 <div className="hero-pill pill-pend">
                   <div className="hero-pill-num">
-                    {todosInvitados.filter(i => i.estado === "pendiente" || !i.estado).length}
+                    {sinConfirmar.length}
                   </div>
                   <div className="hero-pill-label">Pendientes</div>
                 </div>
@@ -1076,6 +1109,9 @@ export default function AgregarInvitados() {
                   <div className="hero-pill-label">Rechazaron</div>
                 </div>
               </div>
+              {aDistanciaLista.length > 0 && (
+                <div className="hero-distancia">💌 {aDistanciaLista.length} invitación{aDistanciaLista.length !== 1 ? "es" : ""} especial{aDistanciaLista.length !== 1 ? "es" : ""} a distancia</div>
+              )}
             </div>
           )}
 
@@ -1197,7 +1233,20 @@ export default function AgregarInvitados() {
                 />
               </div>
 
-              {!cupoElijeInvitado && (
+              {distanciaOk && (
+                <div className="toggle-row toggle-distancia">
+                  <div>
+                    <div className="toggle-label">💌 Invitación especial a distancia</div>
+                    <div className="toggle-sub">Para quien está lejos: no confirma, ve las fotos y te deja su mensaje</div>
+                  </div>
+                  <label className="toggle-switch">
+                    <input type="checkbox" checked={aDistancia} onChange={(e) => setADistancia(e.target.checked)} />
+                    <span className="toggle-thumb" />
+                  </label>
+                </div>
+              )}
+
+              {!cupoElijeInvitado && !aDistancia && (
                 <div>
                   <label className="field-label">Cantidad de lugares</label>
                   <input
@@ -1212,7 +1261,7 @@ export default function AgregarInvitados() {
                 </div>
               )}
 
-              <div className="toggle-row">
+              {!aDistancia && <div className="toggle-row">
                 <div>
                   <div className="toggle-label">El invitado elige cuántos van</div>
                   <div className="toggle-sub">No se asigna un cupo fijo</div>
@@ -1228,7 +1277,7 @@ export default function AgregarInvitados() {
                   />
                   <span className="toggle-thumb" />
                 </label>
-              </div>
+              </div>}
 
               <button
                 className={`btn-submit${btnSuccess ? " btn-success-pulse" : ""}`}
@@ -1419,7 +1468,9 @@ export default function AgregarInvitados() {
                     <div className="inv-info">
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <div className="inv-name">{inv.nombre}</div>
-                        {inv.estado && (
+                        {inv.a_distancia ? (
+                          <span className="estado-badge estado-distancia">💌 A distancia</span>
+                        ) : inv.estado && (
                           <span className={`estado-badge ${
                             inv.estado === "confirmado" ? "estado-confirmado"
                             : inv.estado === "rechazado" ? "estado-rechazado"
@@ -1435,11 +1486,18 @@ export default function AgregarInvitados() {
                         ? <div className="inv-phone">📱 {inv.telefono}</div>
                         : <div className="inv-no-phone">Sin número</div>
                       }
-                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>
-                        {inv.cupo_elije_invitado
-                          ? "👥 Elige cuántos van"
-                          : `👥 ${inv.num_personas ?? 1} lugar${(inv.num_personas ?? 1) !== 1 ? "es" : ""}`}
-                      </div>
+                      {!inv.a_distancia && (
+                        <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>
+                          {inv.cupo_elije_invitado
+                            ? "👥 Elige cuántos van"
+                            : `👥 ${inv.num_personas ?? 1} lugar${(inv.num_personas ?? 1) !== 1 ? "es" : ""}`}
+                        </div>
+                      )}
+                      {distanciaOk && inv.id && (
+                        <button type="button" className="inv-distancia-btn" onClick={() => alternarDistancia(inv)}>
+                          {inv.a_distancia ? "Volver a invitación normal" : "Marcar como a distancia"}
+                        </button>
+                      )}
                       {inv.estado === "confirmado" && inv.id && asistentesPorId[inv.id]?.length > 0 && (
                         <div style={{ fontSize: 10.5, color: "var(--text2)", marginTop: 2, fontWeight: 600 }}>
                           ✓ Van: {asistentesPorId[inv.id].join(", ")}

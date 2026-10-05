@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AppLogo } from "@/app/components/AppLogo";
 import { achicarImagen } from "@/lib/fotos";
 import { CamposDireccion, CamposTarjeta, extrasParaGuardar } from "@/app/components/CamposTarjeta";
-import { extrasDe, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { agradecimientoDe, extrasDe, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 
 type Evento = {
   id: string; nombre: string; tipo: string; anfitriones: string;
@@ -20,6 +20,7 @@ type Evento = {
   color_primario?: string | null; color_secundario?: string | null;
   plantilla?: string | null;
   fotos_carrusel?: string[] | null;
+  fotos_anfitrion?: string[] | null; // supabase-distancia.sql
   tarjeta?: ExtrasTarjeta | null;
 };
 
@@ -204,6 +205,10 @@ export default function EditarEvento() {
   const [mediaLugar, setMediaLugar] = useState<string | null>(null);
   // Carrusel de fotos (graduación): historia del graduado
   const [fotosCarrusel, setFotosCarrusel] = useState<string[]>([]);
+  // Fotos del anfitrión para los invitados a distancia (ej. la graduación con los padres)
+  const [fotosAnfitrion, setFotosAnfitrion] = useState<string[]>([]);
+  const [subiendoAnfitrion, setSubiendoAnfitrion] = useState(false);
+  const anfitrionInputRef = useRef<HTMLInputElement>(null);
   const [subiendoCarrusel, setSubiendoCarrusel] = useState(false);
   const carruselInputRef = useRef<HTMLInputElement>(null);
   // Datos propios de la tarjeta (frase de honor, graduando, carrera, familia, dirección…)
@@ -243,6 +248,7 @@ export default function EditarEvento() {
     setImagenUrl(data.imagen_url ?? null);
     setMediaLugar(data.foto_lugar_url ?? null);
     setFotosCarrusel(Array.isArray(data.fotos_carrusel) ? data.fotos_carrusel : []);
+    setFotosAnfitrion(Array.isArray(data.fotos_anfitrion) ? data.fotos_anfitrion.filter((u): u is string => typeof u === "string") : []);
     setColorPrimario(data.color_primario ?? "#0D9488");
     setColorSecundario(data.color_secundario ?? "#5EEAD4");
     setPlantilla(data.plantilla ?? "clasica");
@@ -278,6 +284,7 @@ export default function EditarEvento() {
       color_secundario: colorSecundario,
       plantilla,
       fotos_carrusel: fotosCarrusel.length ? fotosCarrusel : null,
+      fotos_anfitrion: fotosAnfitrion.length ? fotosAnfitrion : null,
       tarjeta: extrasParaGuardar(extras),
     };
     // Columnas opcionales: si alguna todavía no existe en Supabase, se guarda
@@ -285,10 +292,11 @@ export default function EditarEvento() {
     const OPCIONALES: Record<string, string> = {
       fotos_carrusel: "el carrusel necesita supabase-graduacion-extras.sql",
       tarjeta: "los datos de la tarjeta necesitan supabase-tarjeta.sql",
+      fotos_anfitrion: "las fotos para invitados a distancia necesitan supabase-distancia.sql",
     };
     const faltan: string[] = [];
     let { error: errUpdate } = await supabase.from("eventos").update(payload).eq("id", eventoId);
-    for (let i = 0; errUpdate && i < 2; i++) {
+    for (let i = 0; errUpdate && i < Object.keys(OPCIONALES).length; i++) {
       const col = Object.keys(OPCIONALES).find((c) => c in payload && new RegExp(c, "i").test(errUpdate!.message || ""));
       if (!col) break;
       delete payload[col];
@@ -598,6 +606,84 @@ export default function EditarEvento() {
                 <p className="field-hint" style={{ marginTop: 8 }}>Recordá tocar <strong>Guardar</strong> al final para aplicar los cambios.</p>
               </div>
             )}
+
+            {/* ── 4c. Invitados a distancia: agradecimiento y fotos del anfitrión ── */}
+            <div className="section-card">
+              <p className="section-title">
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5h14v10H3z"/><path d="M3 5l7 6 7-6"/></svg>
+                Invitados a distancia 💌
+              </p>
+              <p className="field-hint" style={{ marginBottom: 10 }}>
+                Para familiares y amigos que están lejos pero fueron parte del logro. Los marcás en <strong>Invitados</strong>: reciben una
+                invitación de agradecimiento (no confirman), ven estas fotos y las del muro, y te dejan su mensaje.
+              </p>
+              <div className="fields-group">
+                <div>
+                  <label className="field-label">Mensaje de agradecimiento</label>
+                  <textarea
+                    className="field-input field-textarea"
+                    rows={4}
+                    maxLength={400}
+                    value={extras.agradecimiento ?? ""}
+                    onChange={(e) => setExtras({ ...extras, agradecimiento: e.target.value })}
+                    placeholder={agradecimientoDe({ nombre, tipo, anfitriones, tarjeta: { ...extras, agradecimiento: null } })}
+                  />
+                  <p className="field-hint">Si lo dejás vacío, va el texto de ejemplo.</p>
+                </div>
+                <div>
+                  <label className="field-label">Tus fotos para ellos ({fotosAnfitrion.length}/20)</label>
+                  {fotosAnfitrion.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 10 }}>
+                      {fotosAnfitrion.map((url, i) => (
+                        <div key={url + i} style={{ position: "relative", aspectRatio: "1", borderRadius: 10, overflow: "hidden", border: "1.5px solid var(--border-mid)" }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`Foto ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          <button
+                            onClick={() => setFotosAnfitrion((f) => f.filter((_, j) => j !== i))}
+                            aria-label="Quitar foto"
+                            style={{ position: "absolute", top: 2, right: 2, width: 22, height: 22, borderRadius: "50%", border: "none", cursor: "pointer", background: "rgba(220,38,38,0.9)", color: "white", fontSize: 12, fontWeight: 800, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+                          >×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {fotosAnfitrion.length < 20 && (
+                    <button
+                      onClick={() => anfitrionInputRef.current?.click()}
+                      disabled={subiendoAnfitrion}
+                      style={{ width: "100%", border: "2px dashed rgba(79,70,229,0.30)", borderRadius: 12, background: "rgba(79,70,229,0.04)", padding: "14px", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--accent)", fontFamily: "'DM Sans',sans-serif" }}
+                    >
+                      {subiendoAnfitrion ? "Subiendo fotos..." : "+ Agregar fotos (ej. tu graduación con tus papás)"}
+                    </button>
+                  )}
+                  <input
+                    ref={anfitrionInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || []).slice(0, 20 - fotosAnfitrion.length);
+                      if (!files.length) return;
+                      setSubiendoAnfitrion(true);
+                      const nuevas: string[] = [];
+                      for (const original of files) {
+                        if (original.size > 20 * 1024 * 1024) continue;
+                        const file = await achicarImagen(original);
+                        const ext = file.name.split(".").pop() ?? "jpg";
+                        const path = `${eventoId}/anfitrion-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+                        const { error: upErr } = await supabase.storage.from("eventos").upload(path, file, { upsert: true, contentType: file.type });
+                        if (!upErr) nuevas.push(supabase.storage.from("eventos").getPublicUrl(path).data.publicUrl);
+                      }
+                      setFotosAnfitrion((f) => [...f, ...nuevas].slice(0, 20));
+                      setSubiendoAnfitrion(false);
+                      e.target.value = "";
+                    }}
+                  />
+                  <p className="field-hint" style={{ marginTop: 8 }}>Solo las ven los invitados a distancia. Recordá tocar <strong>Guardar</strong> al final.</p>
+                </div>
+              </div>
+            </div>
 
             {/* ── 5. Foto / Video del lugar ── */}
             <div className="section-card">

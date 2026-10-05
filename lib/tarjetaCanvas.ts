@@ -357,6 +357,16 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
     ctx.restore();
   } });
 
+  // Invitación especial (a distancia): la dedicatoria, en cursiva clara
+  if (datos.dedicatoria) {
+    ctx.font = `italic 500 34px ${SERIF}`;
+    const lineasD = partirEnLineas(ctx, datos.dedicatoria, 760).slice(0, 3);
+    bloques.push({ alto: lineasD.length * 44, antes: 22, dibujar: (y) => {
+      lineasD.forEach((l, i) =>
+        escribir(ctx, l, cx, y + 34 + i * 44, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 34, min: 24, max: 780, color: P.textoFuerte }));
+    } });
+  }
+
   // Versículo bíblico, entre comillas y con su cita
   if (datos.versiculo) {
     const v = datos.versiculo;
@@ -382,12 +392,13 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
       ctx.stroke();
     } });
   }
-  if (datos.diaHora) {
+  // La especial no lleva hora ni lugar: quien la recibe está lejos
+  if (datos.diaHora && !datos.especial) {
     bloques.push({ alto: 30, antes: 14, dibujar: (y) =>
       escribir(ctx, datos.diaHora!, cx, y + 26, { fuente: (px) => `400 ${px}px ${SANS}`, px: 28, min: 20, max: 720, espacio: 5, color: P.textoSuave }) });
   }
 
-  if (datos.lugar) {
+  if (datos.lugar && !datos.especial) {
     bloques.push({ alto: 36, antes: 36, dibujar: (y) =>
       escribir(ctx, datos.lugar!.toLocaleUpperCase("es"), cx, y + 30, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 32, min: 22, max: 780, espacio: 2, color: "oro" }) });
     if (datos.direccion) {
