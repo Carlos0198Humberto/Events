@@ -1,14 +1,15 @@
 // ─── Logo compartido de Eventix ───────────────────────────────────────────────
 // Letra "E" con puntos decorativos — se usa en todas las páginas de la app
 
-export function AppLogo({ size = 32 }: { size?: number }) {
-  const uid = `evx-${size}`;
+// tono "marino": en las invitaciones de graduación, que van en azul marino
+export function AppLogo({ size = 32, tono = "indigo" }: { size?: number; tono?: "indigo" | "marino" }) {
+  const uid = `evx-${size}-${tono}`;
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id={uid} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#312E81" />
-          <stop offset="100%" stopColor="#4F46E5" />
+          <stop offset="0%" stopColor={tono === "marino" ? "#141C42" : "#312E81"} />
+          <stop offset="100%" stopColor={tono === "marino" ? "#2D4372" : "#4F46E5"} />
         </linearGradient>
       </defs>
 

@@ -411,11 +411,15 @@ function VistaPreviaTarjeta({ evento }: { evento: EventoTarjeta }) {
 /** Une los extras con lo guardado, sin campos vacíos (se guarda null si no queda nada). */
 export function extrasParaGuardar(v: ExtrasTarjeta): ExtrasTarjeta | null {
   const out: Record<string, string | boolean> = {};
-  // La foto va por defecto: solo se guarda cuando se la saca
+  // La foto y la entrada con QR van por defecto: solo se guarda cuando se sacan
   if (v.foto === false) out.foto = false;
+  if (v.entrada_qr === false) out.entrada_qr = false;
   for (const [k, val] of Object.entries(v)) {
     if (typeof val !== "string") continue;
-    const t = val.replace(/\s+/g, " ").trim();
+    // La carta a distancia conserva sus párrafos (uno por línea)
+    const t = k === "agradecimiento"
+      ? val.split(/\n+/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean).join("\n")
+      : val.replace(/\s+/g, " ").trim();
     // honor "" es una elección ("sin frase"): se guarda aunque esté vacío
     if (t || k === "honor") out[k] = t;
   }

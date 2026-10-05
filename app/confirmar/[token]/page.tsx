@@ -160,6 +160,13 @@ function parseFechaLocal(fecha: string): Date {
   return new Date(y, (m || 1) - 1, d || 1);
 }
 /** ¿El evento es hoy, en el calendario del celular del invitado? */
+/** ¿El evento todavía no llegó (es mañana o después)? */
+function esFuturoLocal(fecha?: string | null): boolean {
+  if (!fecha) return false;
+  const f = parseFechaLocal(fecha);
+  const h = new Date();
+  return f.getTime() > new Date(h.getFullYear(), h.getMonth(), h.getDate()).getTime();
+}
 function esHoyLocal(fecha?: string | null): boolean {
   if (!fecha) return false;
   const f = parseFechaLocal(fecha);
@@ -755,16 +762,16 @@ function DecoracionEvento({ tipo }: { tipo: string }) {
             </radialGradient>
           </defs>
           {/* Resplandor de fondo */}
-          <ellipse cx="75" cy="38" rx="60" ry="34" fill="url(#gradGlow)" />
+          <ellipse className="deco-glow" cx="75" cy="38" rx="60" ry="34" fill="url(#gradGlow)" />
           {/* Laurel izquierdo */}
-          <g stroke={GRAD.oroMedio} strokeWidth="1.2" fill="rgba(111,134,182,0.20)">
+          <g className="deco-laurel" stroke={GRAD.oroMedio} strokeWidth="1.2" fill="rgba(111,134,182,0.20)">
             <path d="M28 66 Q14 52 14 30 Q14 22 18 14" fill="none" strokeWidth="1.8"/>
             {[[16,18,-40],[14,28,-15],[15,38,5],[18,47,20],[23,56,38],[29,63,52]].map(([x,y,rot],i)=>(
               <ellipse key={i} cx={x} cy={y} rx="6.5" ry="3" transform={`rotate(${rot} ${x} ${y})`} />
             ))}
           </g>
           {/* Laurel derecho */}
-          <g stroke={GRAD.oroMedio} strokeWidth="1.2" fill="rgba(111,134,182,0.20)">
+          <g className="deco-laurel" stroke={GRAD.oroMedio} strokeWidth="1.2" fill="rgba(111,134,182,0.20)">
             <path d="M122 66 Q136 52 136 30 Q136 22 132 14" fill="none" strokeWidth="1.8"/>
             {[[134,18,40],[136,28,15],[135,38,-5],[132,47,-20],[127,56,-38],[121,63,-52]].map(([x,y,rot],i)=>(
               <ellipse key={i} cx={x} cy={y} rx="6.5" ry="3" transform={`rotate(${rot} ${x} ${y})`} />
@@ -1041,7 +1048,7 @@ function TypewriterFrase({ texto }: { texto: string }) {
   return (
     <div ref={ref} style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 16, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px", minHeight: 26 }}>
       <style>{`@keyframes twBlink{0%,49%{opacity:1}50%,100%{opacity:0}}`}</style>
-      <span style={{ color: GRAD.oroMedio, marginRight: 4 }}>❝</span>
+      <span style={{ color: `var(--frase-acento, ${GRAD.oroMedio})`, marginRight: 4 }}>❝</span>
       {texto.slice(0, visible)}
       <span style={{
         display: "inline-block", width: 2, height: 18, verticalAlign: "-3px",
@@ -1050,7 +1057,7 @@ function TypewriterFrase({ texto }: { texto: string }) {
         opacity: terminado ? 0 : 1,
         transition: terminado ? "opacity .8s 1.2s" : "none",
       }} />
-      {terminado && <span style={{ color: GRAD.oroMedio, marginLeft: 4 }}>❞</span>}
+      {terminado && <span style={{ color: `var(--frase-acento, ${GRAD.oroMedio})`, marginLeft: 4 }}>❞</span>}
     </div>
   );
 }
@@ -1507,6 +1514,11 @@ function FloatingMascot({
       return;
     }
 
+    // Lo que el organizador escribió para la invitación: su frase y el versículo
+    if (evento.frase_evento?.trim()) pasos.push({ t: cerrarFrase(evento.frase_evento.trim()), guia: "frase" });
+    const versiculoVoz = versiculoDe(evento.versiculo_texto, evento.versiculo_cita);
+    if (versiculoVoz) pasos.push({ t: `${cerrarFrase(versiculoVoz.texto)} ${citaHablada(versiculoVoz.cita)}.`, guia: "versiculo" });
+
     const hora = evento.hora ? horaHablada(evento.hora) : null;
     if (evento.fecha) pasos.push({ t: `La cita es el ${fechaHablada(evento.fecha)}${hora ? `, ${hora}` : ""}.`, guia: "fecha" });
     else if (hora) pasos.push({ t: `Comenzamos ${hora}.`, guia: "fecha" });
@@ -1529,7 +1541,7 @@ function FloatingMascot({
     }
     const plazo = evento.fecha_limite_confirmacion && (!evento.fecha || evento.fecha_limite_confirmacion < evento.fecha)
       ? ` antes del ${fechaHablada(evento.fecha_limite_confirmacion, false)}` : "";
-    pasos.push({ t: `Confirmá tu asistencia${plazo} con el botón dorado de abajo, o tocá No podré si no vas a poder ir.`, guia: "confirmar" });
+    pasos.push({ t: `Confirmá tu asistencia${plazo} con el botón de abajo, o tocá No podré si no vas a poder ir.`, guia: "confirmar" });
     decir(pasos, "esperando_confirm");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
@@ -1562,7 +1574,9 @@ function FloatingMascot({
       const pasos: PasoGuia[] = [];
       pasos.push({ t: "¡Listo! Tu asistencia quedó confirmada.", guia: "numero" });
       if (inv.numero_confirmacion) pasos.push({ t: `Tu número de confirmación es el ${inv.numero_confirmacion}.` });
-      pasos.push({ t: "Esta es tu entrada con código QR: guardala o sacale una captura para mostrarla al llegar.", guia: "qr" });
+      if (extrasDe(evento).entrada_qr !== false) {
+        pasos.push({ t: "Esta es tu entrada con código QR: guardala o sacale una captura para mostrarla al llegar.", guia: "qr" });
+      }
       if (mesas && !inv.mesa_id) pasos.push({ t: "También podés elegir tu mesa en la lista.", guia: "mesa" });
       pasos.push({ t: `Si querés, subí fotos al muro y dejale un deseo a ${festejado}.`, guia: "acciones" });
       pasos.push({ t: esCumple ? "¡Nos vemos en la fiesta!" : "¡Nos vemos en la graduación!" });
@@ -1725,8 +1739,8 @@ function GradAvatar({ size = 64, hablando, tipo = "graduacion" }: { size?: numbe
       `}</style>
       <defs>
         <linearGradient id="avBg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={esCumple ? "#F97316" : "#6366F1"} />
-          <stop offset="100%" stopColor={esCumple ? "#DB2777" : "#3730A3"} />
+          <stop offset="0%" stopColor={esCumple ? "#F97316" : tipo === "graduacion" ? GRAD.oroOscuro : "#6366F1"} />
+          <stop offset="100%" stopColor={esCumple ? "#DB2777" : tipo === "graduacion" ? GRAD.navy : "#3730A3"} />
         </linearGradient>
         <linearGradient id="avHat" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#F472B6" />
@@ -1737,8 +1751,8 @@ function GradAvatar({ size = 64, hablando, tipo = "graduacion" }: { size?: numbe
           <stop offset="100%" stopColor="#E11D48" />
         </radialGradient>
         <linearGradient id="avCap" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#3b3663" />
-          <stop offset="100%" stopColor="#1e1b4b" />
+          <stop offset="0%" stopColor={tipo === "graduacion" ? GRAD.navy2 : "#3b3663"} />
+          <stop offset="100%" stopColor={tipo === "graduacion" ? GRAD.noche : "#1e1b4b"} />
         </linearGradient>
         <linearGradient id="avGold" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#FDE68A" />
@@ -2849,7 +2863,9 @@ async function generarYoVoyCanvas(evento: Evento): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png", 0.95));
 }
 
-function EntradaDigital({ invitado, evento, mesaNombre }: { invitado: Invitado; evento: Evento; mesaNombre: string | null }) {
+// Con conQR = false (el organizador no va a escanear entradas) queda el pase
+// con los datos, sin código ni botón para guardarlo
+function EntradaDigital({ invitado, evento, mesaNombre, conQR = true }: { invitado: Invitado; evento: Evento; mesaNombre: string | null; conQR?: boolean }) {
   const [guardando, setGuardando] = useState(false);
   const qrUrl = typeof window !== "undefined"
     ? `${window.location.origin}/confirmar/${invitado.token}`
@@ -2884,7 +2900,7 @@ function EntradaDigital({ invitado, evento, mesaNombre }: { invitado: Invitado; 
         {evento.fecha && <div className="entrada-promo">Promoción {parseFechaLocal(evento.fecha).getFullYear()}</div>}
       </div>
       <div className="entrada-corte" aria-hidden="true" />
-      <div className="entrada-qr"><QrSVG texto={qrUrl} size={176} /></div>
+      {conQR && <div className="entrada-qr"><QrSVG texto={qrUrl} size={176} /></div>}
       <div className="entrada-datos">
         {datos.map(d => (
           <div key={d.k} className={d.ancho ? "ancho" : undefined}>
@@ -2893,15 +2909,21 @@ function EntradaDigital({ invitado, evento, mesaNombre }: { invitado: Invitado; 
           </div>
         ))}
       </div>
-      <button className="btn-guardar-entrada" data-guia="guardar-entrada" onClick={guardar} disabled={guardando}>
-        {guardando ? <><div className="spinner" style={{ width: 16, height: 16 }} /> Preparando…</> : (
-          <>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-            Guardar mi entrada
-          </>
-        )}
-      </button>
-      <p className="entrada-hint">Mostrala al llegar: el organizador escanea el código para registrar tu entrada.</p>
+      {conQR ? (
+        <>
+        <button className="btn-guardar-entrada" data-guia="guardar-entrada" onClick={guardar} disabled={guardando}>
+          {guardando ? <><div className="spinner" style={{ width: 16, height: 16 }} /> Preparando…</> : (
+            <>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Guardar mi entrada
+            </>
+          )}
+        </button>
+        <p className="entrada-hint">Mostrala al llegar: el organizador escanea el código para registrar tu entrada.</p>
+        </>
+      ) : (
+        <p className="entrada-hint">Tu lugar está confirmado. ¡Te esperamos!</p>
+      )}
     </div>
   );
 }
@@ -4183,15 +4205,19 @@ export default function ConfirmarPage() {
     if (!invitado) return;
     setConfirmando(true);
 
-    const { data: lastConf } = await supabase
-      .from("invitados")
-      .select("numero_confirmacion")
-      .eq("evento_id", invitado.evento_id)
-      .eq("estado", "confirmado")
-      .order("numero_confirmacion", { ascending: false })
-      .limit(1);
-
-    let siguiente = (lastConf?.[0]?.numero_confirmacion ?? 0) + 1;
+    // Si ya había confirmado y solo cambia quiénes van, conserva su número
+    const cambiando = invitado.estado === "confirmado" && !!invitado.numero_confirmacion;
+    let siguiente = invitado.numero_confirmacion ?? 1;
+    if (!cambiando) {
+      const { data: lastConf } = await supabase
+        .from("invitados")
+        .select("numero_confirmacion")
+        .eq("evento_id", invitado.evento_id)
+        .eq("estado", "confirmado")
+        .order("numero_confirmacion", { ascending: false })
+        .limit(1);
+      siguiente = (lastConf?.[0]?.numero_confirmacion ?? 0) + 1;
+    }
 
     // Quiénes van (chips de nombres). Si la columna todavía no existe en la base
     // (falta correr supabase-asistentes.sql), se reintenta sin ella.
@@ -4243,6 +4269,11 @@ export default function ConfirmarPage() {
 
     if (updated) {
       setInvitado(updated);
+      // Un cambio no se festeja de nuevo: sin birretes, fanfarria ni voz
+      if (cambiando) {
+        prevStepRef.current = "confirmado";
+        toast.success("Listo, actualizamos quiénes van.");
+      }
       setStep("confirmado");
       window.scrollTo({ top: 0, behavior: "instant" });
       cargarMesasDisponibles(updated.evento_id);
@@ -4459,8 +4490,13 @@ export default function ConfirmarPage() {
   const [quienesVan, setQuienesVan] = useState<boolean[]>([]);
   useEffect(() => {
     if (step !== "form" || !usarChips) return;
-    setQuienesVan(nombresEnTarjeta.map((_, i) => i < topeNombres));
-    setNumPersonas(topeNombres);
+    // Si ya había confirmado (vuelve a cambiar quiénes van), se parte de lo que marcó
+    const previos = invitado?.estado === "confirmado" ? invitado.asistentes_nombres : null;
+    const marcados = previos?.length
+      ? nombresEnTarjeta.map((n) => previos.includes(n))
+      : nombresEnTarjeta.map((_, i) => i < topeNombres);
+    setQuienesVan(marcados);
+    setNumPersonas(marcados.filter(Boolean).length || topeNombres);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, usarChips]);
   function alternarAsistente(i: number) {
@@ -4508,7 +4544,7 @@ export default function ConfirmarPage() {
       --on-dark:#FFFFFF;--on-dark-sub:${GRAD.oroClaro};
       --border:rgba(15,23,51,0.08);--border-mid:rgba(63,90,143,0.32);
       --shadow:0 8px 28px rgba(10,15,36,0.08);--shadow-lg:0 20px 48px rgba(10,15,36,0.14);
-      --inv-head-bg:#FFFFFF;
+      --inv-head-bg:linear-gradient(160deg,${GRAD.navy2} 0%,${GRAD.navy} 55%,${GRAD.noche} 100%);
       --acc:${GRAD.oroMedio};--acc-ink:${GRAD.tinta};--acc-sub:#4A5275;
       --acc-soft:${GRAD.perla};--acc-soft-grad:${GRAD.perla};
       --acc-line:rgba(63,90,143,0.30);--acc-dash:rgba(63,90,143,0.45);--acc-wash:${GRAD.perla};
@@ -4796,6 +4832,11 @@ export default function ConfirmarPage() {
     .rech-titulo{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:32px;font-style:italic;color:var(--ink);margin-bottom:12px}
     .rech-sub{font-size:14px;color:var(--ink2);line-height:1.8}
     .rech-wrap{display:grid;gap:16px}
+    .form-volver{display:block;width:100%;margin-top:10px;padding:10px;border:none;background:none;color:var(--ink2);font:600 13px 'Jost',sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+    .cambiar-asist{display:grid;gap:10px;margin-top:4px;padding:14px;border-radius:16px;border:1px dashed var(--border-mid);text-align:center}
+    .cambiar-titulo{margin:0;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+    .cambiar-botones{display:flex;flex-wrap:wrap;gap:8px}
+    .cambiar-botones button{flex:1 1 140px;padding:11px 10px;border-radius:12px;border:1px solid var(--border-mid);background:var(--surface);color:var(--ink);font:600 13px 'Jost',sans-serif;cursor:pointer}
     .rech-ico{display:flex;justify-content:center;margin-bottom:16px;color:var(--gold-dark,var(--gold))}
     .rech-cambiar{margin-top:22px;width:100%;padding:14px;border-radius:var(--r-sm);border:none;cursor:pointer;
       background:var(--acc-primary,var(--dark));color:var(--acc-primary-ink,#fff);font:600 14px 'Jost',sans-serif;box-shadow:var(--acc-primary-shadow,none)}
@@ -4972,6 +5013,24 @@ export default function ConfirmarPage() {
 
     /* Tarjeta principal */
     .inv-card{border:1px solid rgba(21,32,57,0.08);box-shadow:0 22px 50px -24px rgba(21,32,57,0.30)}
+    /* Cabecera azul marino, la misma de «Confirmado» y de la entrada: el nombre
+       en blanco y los detalles en plata. Las variables de tinta se redefinen acá
+       para que todo lo de adentro (frase, versículo) cambie con ellas. */
+    .inv-head{border-bottom:none !important;padding-bottom:22px !important;color:#FFFFFF;
+      --ink:#FFFFFF;--ink2:#DCE3F2;--ink3:${GRAD.oroClaro};--frase-acento:${GRAD.oroClaro}}
+    .inv-head::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.10;
+      background-image:radial-gradient(circle,${GRAD.oroClaro} 1px,transparent 1px);background-size:18px 18px}
+    .inv-head>*{position:relative}
+    .inv-head .inv-tipo-badge{border-color:rgba(201,212,234,0.40);color:${GRAD.oroClaro};background:transparent}
+    .inv-head .inv-tipo-badge-dot{background:${GRAD.oroClaro}}
+    .inv-head .grad-honor,.inv-head .grad-institucion{color:${GRAD.oroClaro}}
+    .inv-head .grad-protagonista{color:#FFFFFF}
+    .inv-head .grad-carrera{color:#DCE3F2}
+    .inv-head .inv-versiculo blockquote{color:#E6ECF7}
+    .inv-head .inv-versiculo figcaption{color:${GRAD.oroClaro}}
+    /* El birrete sobre un medallón blanco (como el QR sobre la entrada) y los laureles en plata */
+    .inv-head .deco-glow{fill:#FFFFFF;opacity:.95}
+    .inv-head .deco-laurel{stroke:${GRAD.oroClaro};fill:rgba(201,212,234,0.18)}
     .inv-tipo-badge{border-color:rgba(63,90,143,0.50);color:${GRAD.oroOscuro};letter-spacing:2.4px}
     .inv-tipo-badge-dot{background:${GRAD.oro};opacity:1}
     .inv-saludo{color:${GRAD.tinta}}
@@ -5408,7 +5467,7 @@ export default function ConfirmarPage() {
         {/* Topbar — solo logo, sin links al dashboard */}
         <div className="topbar">
           <div className="topbar-left">
-            <AppLogo size={30} />
+            <AppLogo size={30} tono={evento.tipo === "graduacion" ? "marino" : undefined} />
             <div>
               <div className="topbar-name">Evorix</div>
               <div className="topbar-sub">Invitaciones digitales</div>
@@ -5518,7 +5577,7 @@ export default function ConfirmarPage() {
               )}
 
               {/* ── Tipo, decoración, nombre invitado, anfitriones — TODO DEBAJO de la foto ── */}
-              <div data-guia="inicio" style={{ textAlign: "center", padding: "24px 22px 10px", background: "var(--inv-head-bg, var(--cream))", borderBottom: "1px solid var(--border)", position: "relative" }}>
+              <div className="inv-head" data-guia="inicio" style={{ textAlign: "center", padding: "24px 22px 10px", background: "var(--inv-head-bg, var(--cream))", borderBottom: "1px solid var(--border)", position: "relative" }}>
                 {/* Badge de tipo */}
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
                   <span className="inv-tipo-badge">
@@ -5568,7 +5627,7 @@ export default function ConfirmarPage() {
                 {/* Frase opcional — con efecto máquina de escribir en graduación */}
                 {evento.frase_evento && (
                   evento.tipo === "graduacion" ? (
-                    <TypewriterFrase texto={evento.frase_evento} />
+                    <div data-guia="frase"><TypewriterFrase texto={evento.frase_evento} /></div>
                   ) : (
                     <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 15, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px" }}>
                       ❝ {evento.frase_evento} ❞
@@ -5581,7 +5640,7 @@ export default function ConfirmarPage() {
                   const v = versiculoDe(evento.versiculo_texto, evento.versiculo_cita);
                   if (!v) return null;
                   return (
-                    <figure className="inv-versiculo">
+                    <figure className="inv-versiculo" data-guia="versiculo">
                       <blockquote>«{v.texto}»</blockquote>
                       <figcaption>{v.cita}</figcaption>
                     </figure>
@@ -5910,8 +5969,8 @@ export default function ConfirmarPage() {
         {step === "form" && (
           <div className="wrap">
             <div className="form-card">
-              <div className="form-titulo">¡Qué alegría!</div>
-              <div className="form-sub">Un detalle más</div>
+              <div className="form-titulo">{invitado.estado === "confirmado" ? "¿Quiénes van?" : "¡Qué alegría!"}</div>
+              <div className="form-sub">{invitado.estado === "confirmado" ? "Actualizá tu confirmación" : "Un detalle más"}</div>
               {usarChips ? (
                 <>
                   <span className="campo-label">¿Quiénes van?</span>
@@ -5989,12 +6048,22 @@ export default function ConfirmarPage() {
               >
                 {confirmando ? (
                   <>
-                    <div className="spinner" /> Confirmando...
+                    <div className="spinner" /> {invitado.estado === "confirmado" ? "Guardando..." : "Confirmando..."}
                   </>
-                ) : (
+                ) : invitado.estado === "confirmado" ? "Guardar cambios" : (
                   "Confirmar asistencia"
                 )}
               </button>
+              {/* Vino a cambiar quiénes van: puede volver sin tocar nada */}
+              {invitado.estado === "confirmado" && (
+                <button
+                  type="button"
+                  className="form-volver"
+                  onClick={() => { prevStepRef.current = "confirmado"; setStep("confirmado"); window.scrollTo({ top: 0, behavior: "instant" }); }}
+                >
+                  Volver sin cambiar
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -6036,7 +6105,7 @@ export default function ConfirmarPage() {
                         <a href={`https://waze.com/ul?q=${encodeURIComponent(consultaMapa(evento))}&navigate=yes`} target="_blank" rel="noopener noreferrer">Waze</a>
                       </div>
                     )}
-                    <p className="hoy-dia-sub">Mostrá tu entrada con el código QR en la puerta.</p>
+                    {extrasDe(evento).entrada_qr !== false && <p className="hoy-dia-sub">Mostrá tu entrada con el código QR en la puerta.</p>}
                   </div>
                 )}
                 {invitado.numero_confirmacion && evento.tipo === "graduacion" ? (
@@ -6143,9 +6212,10 @@ export default function ConfirmarPage() {
                   <EntradaDigital
                     invitado={invitado}
                     evento={evento}
+                    conQR={extrasDe(evento).entrada_qr !== false}
                     mesaNombre={mesasDisponibles.find(m => m.id === invitado.mesa_id)?.nombre || invitado.mesa_nombre || null}
                   />
-                ) : (() => {
+                ) : extrasDe(evento).entrada_qr === false ? null : (() => {
                   const qrUrl = typeof window !== "undefined"
                     ? `${window.location.origin}/confirmar/${invitado.token}`
                     : `/confirmar/${invitado.token}`;
@@ -6434,6 +6504,21 @@ export default function ConfirmarPage() {
                 )}
 
                 {/* ── Listo, cerrar ── */}
+                {/* Días antes del evento: cambiar quiénes van o avisar que ya no puede */}
+                {esFuturoLocal(evento.fecha) && (
+                  <div className="cambiar-asist">
+                    <p className="cambiar-titulo">¿Cambió algo?</p>
+                    <div className="cambiar-botones">
+                      {(usarChips || invitado.cupo_elije_invitado || (invitado.num_personas || 1) > 1) && (
+                        <button type="button" onClick={() => { setStep("form"); window.scrollTo({ top: 0, behavior: "instant" }); }}>
+                          Cambiar quiénes van
+                        </button>
+                      )}
+                      <button type="button" onClick={rechazarAsistencia}>Ya no voy a poder ir</button>
+                    </div>
+                  </div>
+                )}
+
                 <button className="btn-cerrar" data-guia="cerrar" onClick={confirmarYCerrar}>
                   <div className="btn-accion-ico">
                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">

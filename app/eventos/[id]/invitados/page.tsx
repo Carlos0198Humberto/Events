@@ -11,7 +11,7 @@ import { armarMensajeDia, armarMensajeDistancia, armarMensajeInvitacion, armarMe
 import { versiculoDe, type Versiculo } from "@/lib/versiculos";
 import EnvioEnGrupo, { type MarcasEnvio, type TipoEnvio } from "./EnvioEnGrupo";
 import VersiculoEvento from "./VersiculoEvento";
-import { ETIQUETAS_TRATO, guardarTrato, saludo, tratoDe, type Trato } from "@/lib/tratoInvitado";
+import { ETIQUETAS_TRATO, guardarTrato, nombreDePila, saludo, tratoDe, type Trato } from "@/lib/tratoInvitado";
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { toast } from "@/app/components/Toast";
 import { IcoCarta, IcoCelular, IcoCheck, IcoEnlace, IcoImpresora, IcoPapelera, IcoPersonas, IcoWhatsApp } from "@/app/components/Iconos";
@@ -93,6 +93,8 @@ export default function AgregarInvitados() {
   const [busqueda, setBusqueda] = useState("");
   // Tarjeta de invitación (imagen) del invitado que se está por enviar
   const [tarjeta, setTarjeta] = useState<{ inv: Invitado; trato: Trato; blob: Blob | null; url: string | null } | null>(null);
+  // Mensaje de la tarjeta editado a mano (null = el armado automáticamente)
+  const [textoEditado, setTextoEditado] = useState<string | null>(null);
   // Cada generación lleva un número: si el trato cambia o se cierra a mitad de
   // camino, la imagen vieja que termina después no pisa a la nueva
   const generacionRef = useRef(0);
@@ -293,12 +295,12 @@ export default function AgregarInvitados() {
     return armarMensajeInvitacion(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, new Date(), { personas });
   }
 
-  function buildWhatsAppUrl(inv: Invitado, tipo: TipoEnvio = "invitacion") {
-    const texto = tipo === "recordatorio"
+  function buildWhatsAppUrl(inv: Invitado, tipo: TipoEnvio = "invitacion", textoPropio?: string) {
+    const texto = textoPropio ?? (tipo === "recordatorio"
       ? armarMensajeRecordatorio(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), tratoInvitado(inv))
       : tipo === "dia"
       ? armarMensajeDia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), tratoInvitado(inv))
-      : buildMensaje(inv);
+      : buildMensaje(inv));
     const msg = encodeURIComponent(texto);
     const rawPhone = inv.telefono ?? "";
     const phone = rawPhone.replace(/[^\d+]/g, "").replace(/(?!^\+)\+/g, "");
@@ -406,6 +408,7 @@ export default function AgregarInvitados() {
   async function prepararTarjeta(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
     if (!evento) return;
     const n = ++generacionRef.current;
+    setTextoEditado(null);
     setTarjeta((previa) => {
       if (previa?.url) URL.revokeObjectURL(previa.url);
       return { inv, trato, blob: null, url: null };
@@ -426,8 +429,14 @@ export default function AgregarInvitados() {
     prepararTarjeta(tarjeta.inv, trato);
   }
 
+  // El mensaje que acompaña a la tarjeta: el armado o el que editó el organizador
+  function mensajeTarjeta() {
+    return tarjeta ? textoEditado ?? buildMensaje(tarjeta.inv, tarjeta.trato) : "";
+  }
+
   function cerrarTarjeta() {
     generacionRef.current++;
+    setTextoEditado(null);
     if (tarjeta?.url) URL.revokeObjectURL(tarjeta.url);
     setTarjeta(null);
   }
@@ -455,7 +464,7 @@ export default function AgregarInvitados() {
     if (!tarjeta?.blob) return;
     const { inv, blob } = tarjeta;
     try {
-      await navigator.share({ files: [archivoTarjeta(inv, blob)], text: buildMensaje(inv, tarjeta.trato) });
+      await navigator.share({ files: [archivoTarjeta(inv, blob)], text: mensajeTarjeta() });
       marcarEnvio(inv, "invitacion");
       cerrarTarjeta();
     } catch (e) {
@@ -472,7 +481,7 @@ export default function AgregarInvitados() {
       copiada = true;
     } catch { /* este navegador no copia imágenes: se descarga */ }
     if (!copiada) descargarTarjeta();
-    openWhatsApp(buildWhatsAppUrl(inv));
+    openWhatsApp(buildWhatsAppUrl(inv, "invitacion", mensajeTarjeta()));
     marcarEnvio(inv, "invitacion");
     toast.success(copiada ? "Tarjeta copiada: en el chat pegala con Ctrl+V" : "Tarjeta descargada: adjuntala en el chat");
   }
@@ -489,7 +498,7 @@ export default function AgregarInvitados() {
     try {
       copia = navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]).then(() => true, () => false);
     } catch { /* este navegador no copia imágenes */ }
-    openWhatsApp(buildWhatsAppUrl(inv));
+    openWhatsApp(buildWhatsAppUrl(inv, "invitacion", mensajeTarjeta()));
     marcarEnvio(inv, "invitacion");
     const nombre = inv.nombre.split(" ")[0];
     copia.then((ok) => toast.success(ok
@@ -1015,6 +1024,8 @@ export default function AgregarInvitados() {
         .trato-saludo { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-style: italic; color: var(--text); margin-bottom: 8px; }
         .tarjeta-mensaje { text-align: left; margin-bottom: 12px; }
         .tarjeta-mensaje summary { cursor: pointer; text-align: center; font-size: 12px; font-weight: 700; color: var(--accent); }
+        .tarjeta-mensaje-texto { display: block; width: 100%; resize: vertical; white-space: pre-wrap; font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.5; background: var(--surface2); border: 1px solid var(--border-input); border-radius: 12px; padding: 10px 12px; margin-top: 8px; color: var(--text); }
+        .tarjeta-mensaje-texto:focus { outline: none; border-color: var(--accent); background: var(--surface); }
         .tarjeta-mensaje pre { white-space: pre-wrap; word-break: break-word; font-family: 'DM Sans', sans-serif; font-size: 12.5px; line-height: 1.5; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-top: 8px; color: var(--text); }
         .tarjeta-principal { width: 100%; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--wa-green), var(--wa-dark)); color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 16px rgba(37,211,102,0.35); margin-bottom: 8px; }
         .tarjeta-principal:disabled { opacity: .5; cursor: wait; box-shadow: none; }
@@ -1112,10 +1123,19 @@ export default function AgregarInvitados() {
                 </button>
               ))}
             </div>
-            <div className="trato-saludo">{saludo(tarjeta.inv.nombre, tarjeta.trato)}:</div>
-            <details className="tarjeta-mensaje">
-              <summary>Ver el mensaje que la acompaña</summary>
-              <pre>{buildMensaje(tarjeta.inv, tarjeta.trato)}</pre>
+            <div className="trato-saludo">{saludo(nombreDePila(tarjeta.inv.nombre), tarjeta.trato)}:</div>
+            <details className="tarjeta-mensaje" open={textoEditado !== null || undefined}>
+              <summary>Ver o editar el mensaje que la acompaña</summary>
+              <textarea
+                className="tarjeta-mensaje-texto"
+                aria-label="Mensaje que acompaña a la tarjeta"
+                rows={10}
+                value={mensajeTarjeta()}
+                onChange={(e) => setTextoEditado(e.target.value)}
+              />
+              {textoEditado !== null && (
+                <button type="button" className="tarjeta-link" onClick={() => setTextoEditado(null)}>Volver al mensaje original</button>
+              )}
             </details>
             <div className="tarjeta-ayuda">
               {tarjeta.inv.telefono

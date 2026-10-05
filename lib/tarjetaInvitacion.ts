@@ -42,7 +42,8 @@ export type ExtrasTarjeta = {
   referencia?: string | null;   // "Frente a la entrada principal, portón 3"
   foto?: boolean;               // false = la tarjeta va sin la foto de portada
   paleta?: string | null;       // colores de la tarjeta (PALETAS_TARJETA); null = según el tipo
-  agradecimiento?: string | null; // mensaje para los invitados a distancia (null = el de siempre)
+  agradecimiento?: string | null; // carta para los invitados a distancia, un párrafo por línea (null = la automática)
+  entrada_qr?: boolean;         // false = sin entrada con código QR al confirmar
   foto_url?: string | null;     // foto propia de la tarjeta (ej. con toga); null = la de portada
   forma_foto?: FormaFoto | null;
   diseno?: DisenoTarjeta | null;
@@ -91,6 +92,10 @@ export const FRASES_HONOR: Record<string, string[]> = {
 };
 
 const limpio = (v: unknown, max = 120) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
+// Igual, pero respeta los saltos de línea: cada línea es un párrafo
+const limpioParrafos = (v: unknown, max: number) => (typeof v === "string"
+  ? v.split(/\n+/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean).join("\n").slice(0, max)
+  : "");
 
 /** Extras de la tarjeta saneados: cadenas recortadas, vacías → null (salvo `honor`). */
 export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta {
@@ -108,7 +113,8 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   if (typeof o.honor === "string") ex.honor = limpio(o.honor, 48);
   if (typeof o.foto === "boolean") ex.foto = o.foto;
   if (typeof o.paleta === "string") ex.paleta = limpio(o.paleta, 20) || null;
-  if (typeof o.agradecimiento === "string") ex.agradecimiento = limpio(o.agradecimiento, 400) || null;
+  if (typeof o.agradecimiento === "string") ex.agradecimiento = limpioParrafos(o.agradecimiento, 1500) || null;
+  if (o.entrada_qr === false) ex.entrada_qr = false;
   if (typeof o.foto_url === "string" && /^(https?:|blob:|data:image\/)/.test(o.foto_url)) ex.foto_url = o.foto_url;
   ex.forma_foto = una(o.forma_foto, FORMAS_FOTO);
   ex.diseno = una(o.diseno, DISENOS_TARJETA);
@@ -331,8 +337,9 @@ export type CartaDistancia = {
  * estudio: qué carrera y dónde, los semestres y los exámenes que esa persona
  * acompañó, y el título que va a recibir. Cierra con la bendición, el único
  * versículo. En primera persona si habla el mismo protagonista; en plural
- * ("les", "ustedes") si va a varios. Si el organizador escribió su propio
- * agradecimiento, ese reemplaza a la carta (la bendición queda).
+ * ("les", "ustedes") si va a varios. Si el organizador escribió (o retocó) su
+ * propia carta, esa reemplaza a la automática, un párrafo por línea; la
+ * bendición queda.
  */
 export function cartaDistancia(evento: EventoTarjeta, trato: Trato): CartaDistancia {
   const yo = hablaElProtagonista(evento);
@@ -367,7 +374,7 @@ export function cartaDistancia(evento: EventoTarjeta, trato: Trato): CartaDistan
   }
 
   const propio = extrasDe(evento).agradecimiento;
-  const parrafos = propio ? [propio] : carta;
+  const parrafos = propio ? propio.split("\n") : carta;
   parrafos.push(
     `${yo ? "Le pido" : "Le pedimos"} a Dios que ${t.te} devuelva multiplicado todo el bien que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos y que llene ${t.tu} casa de paz.`,
   );

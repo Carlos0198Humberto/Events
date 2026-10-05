@@ -345,6 +345,11 @@ export default function EditarEvento() {
         .nav-brand-sub{font-size:9px;color:var(--text3);font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-top:1px}
         .content{max-width:480px;margin:0 auto;padding:16px 14px 0;position:relative;z-index:1;display:flex;flex-direction:column;gap:11px}
         .section-card{background:var(--surface);border-radius:var(--radius);padding:16px 14px;border:1px solid var(--border);box-shadow:var(--shadow)}
+        .check-fila{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1.5px solid var(--border-mid);border-radius:12px;cursor:pointer}
+        .check-fila input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent);flex-shrink:0}
+        .check-fila strong{display:block;font-size:13px;color:var(--text)}
+        .check-fila small{display:block;font-size:11.5px;color:var(--text3);line-height:1.45;margin-top:2px}
+        .btn-carta{margin-top:8px;padding:8px 14px;border-radius:10px;border:1.5px solid var(--border-mid);background:var(--accent-soft);color:var(--accent2);font:600 12.5px inherit;cursor:pointer}
         .section-title{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:var(--accent2);margin-bottom:13px;display:flex;align-items:center;gap:6px}
         .fields-group{display:flex;flex-direction:column;gap:13px}
         .field-label{font-size:10px;font-weight:700;color:var(--accent2);display:block;margin-bottom:5px;letter-spacing:.2px;text-transform:uppercase}
@@ -508,6 +513,18 @@ export default function EditarEvento() {
                   )}
                   <p className="field-hint">Después de esta fecha los invitados no podrán confirmar.</p>
                 </div>
+                <label className="check-fila" htmlFor="entrada-qr">
+                  <input
+                    id="entrada-qr"
+                    type="checkbox"
+                    checked={extras.entrada_qr !== false}
+                    onChange={(e) => setExtras({ ...extras, entrada_qr: e.target.checked ? undefined : false })}
+                  />
+                  <span>
+                    <strong>Entrada con código QR</strong>
+                    <small>Al confirmar, cada invitado recibe una entrada con QR para escanear en la puerta. Sacalo si no vas a escanear entradas: igual ve su confirmación.</small>
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -619,16 +636,29 @@ export default function EditarEvento() {
               </p>
               <div className="fields-group">
                 <div>
-                  <label className="field-label">Mensaje de agradecimiento</label>
+                  <label className="field-label">Carta de agradecimiento</label>
                   <textarea
                     className="field-input field-textarea"
-                    rows={4}
-                    maxLength={400}
+                    rows={extras.agradecimiento ? 10 : 4}
+                    maxLength={1500}
                     value={extras.agradecimiento ?? ""}
                     onChange={(e) => setExtras({ ...extras, agradecimiento: e.target.value })}
                     placeholder={cartaDistancia({ nombre, tipo, anfitriones, tarjeta: { ...extras, agradecimiento: null } }, "neutro").parrafos[0]}
                   />
-                  <p className="field-hint">Si lo dejás vacío, cada invitado recibe una carta de agradecimiento con su nombre. En graduación habla de tu carrera y tu universidad (las que cargaste en la tarjeta). Lo que escribas acá reemplaza esa carta; la bendición de Números 6:24-26 va siempre.</p>
+                  {!extras.agradecimiento && (
+                    <button
+                      type="button"
+                      className="btn-carta"
+                      onClick={() => {
+                        // La carta automática (sin la bendición, que va siempre), lista para retocar
+                        const c = cartaDistancia({ nombre, tipo, anfitriones, tarjeta: { ...extras, agradecimiento: null } }, "neutro");
+                        setExtras({ ...extras, agradecimiento: c.parrafos.slice(0, -1).join("\n") });
+                      }}
+                    >
+                      Editar la carta sugerida
+                    </button>
+                  )}
+                  <p className="field-hint">Si lo dejás vacío, cada invitado recibe la carta automática con su nombre, que habla de tu carrera y tu universidad. Lo que escribas acá la reemplaza (cada línea es un párrafo); el saludo con su nombre, la bendición de Números 6:24-26 y tu firma van siempre.</p>
                 </div>
                 <div>
                   <label className="field-label">Tus fotos para ellos ({fotosAnfitrion.length}/20)</label>

@@ -171,6 +171,16 @@ describe("invitados a distancia", () => {
     expect(c.firma).toBe("Familia Chavarría");
   });
 
+  it("la carta editada conserva sus párrafos (uno por línea)", () => {
+    const c = cartaDistancia(grad({ tarjeta: { agradecimiento: "Gracias por todo.\n\n  Te quiero mucho.  " } }), "f");
+    expect(c.parrafos).toEqual(["Gracias por todo.", "Te quiero mucho.", expect.stringContaining("Le pido a Dios")]);
+  });
+
+  it("la entrada con QR va salvo que el organizador la saque", () => {
+    expect(extrasDe(grad()).entrada_qr).toBeUndefined();
+    expect(extrasDe(grad({ tarjeta: { entrada_qr: false } })).entrada_qr).toBe(false);
+  });
+
   it("el agradecimiento propio reemplaza la carta, la bendición queda", () => {
     const c = cartaDistancia(grad({ tarjeta: { agradecimiento: "Gracias por todo." } }), "m");
     expect(c.parrafos).toEqual(["Gracias por todo.", expect.stringContaining("Le pido a Dios")]);
