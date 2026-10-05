@@ -628,7 +628,7 @@ export default function EditarEvento() {
                     onChange={(e) => setExtras({ ...extras, agradecimiento: e.target.value })}
                     placeholder={cartaDistancia({ nombre, tipo, anfitriones, tarjeta: { ...extras, agradecimiento: null } }, "neutro").parrafos[0]}
                   />
-                  <p className="field-hint">Si lo dejás vacío, cada invitado recibe una carta de agradecimiento con su nombre. Lo que escribas acá reemplaza esa carta; el versículo de gratitud y la bendición (Números 6:24-26) van siempre.</p>
+                  <p className="field-hint">Si lo dejás vacío, cada invitado recibe una carta de agradecimiento con su nombre. En graduación habla de tu carrera y tu universidad (las que cargaste en la tarjeta). Lo que escribas acá reemplaza esa carta; la bendición de Números 6:24-26 va siempre.</p>
                 </div>
                 <div>
                   <label className="field-label">Tus fotos para ellos ({fotosAnfitrion.length}/20)</label>

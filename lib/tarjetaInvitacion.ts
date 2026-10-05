@@ -8,7 +8,7 @@
 // Por eso acá no hay nada de DOM ni de librerías de dibujo.
 
 import type { Trato } from "@/lib/tratoInvitado";
-import { VERSICULO_BENDICION, VERSICULO_GRATITUD, versiculoDe, type Versiculo } from "@/lib/versiculos";
+import { VERSICULO_BENDICION, versiculoDe, type Versiculo } from "@/lib/versiculos";
 
 export type EventoTarjeta = {
   nombre: string;
@@ -292,46 +292,82 @@ export function agradecimientoDe(evento: EventoTarjeta): string {
   return `Aunque estés lejos, sos parte de este momento. Gracias por tu cariño de siempre. ${prepare} esta invitación especial para que vivas la celebración ${conmigo} desde donde estés.`;
 }
 
+/** "Universidad de El Salvador" → "en la Universidad de El Salvador". */
+export function enInstitucion(institucion: string): string {
+  const i = institucion.trim();
+  if (/^(la|el|los|las)\s/i.test(i)) return `en ${i.charAt(0).toLowerCase()}${i.slice(1)}`;
+  if (/^(universidad|escuela|academia|facultad|normal)\b/i.test(i)) return `en la ${i}`;
+  if (/^(instituto|colegio|centro|seminario|liceo|polit[eé]cnico|tecnol[oó]gico)\b/i.test(i)) return `en el ${i}`;
+  return `en ${i}`;
+}
+
+/**
+ * Qué se estudió, dicho en una frase: "me gradúo de Ingeniería en Sistemas
+ * Informáticos en la Universidad de El Salvador" (o "Carlos se gradúa de…" si
+ * firma la familia). Null si no es graduación o no cargaron carrera ni institución.
+ */
+export function fraseGraduacion(evento: EventoTarjeta): string | null {
+  if (evento.tipo !== "graduacion") return null;
+  const ex = extrasDe(evento);
+  if (!ex.carrera && !ex.institucion) return null;
+  const que = `${ex.carrera ? ` de ${ex.carrera}` : ""}${ex.institucion ? ` ${enInstitucion(ex.institucion)}` : ""}`;
+  if (hablaElProtagonista(evento)) return `me gradúo${que}`;
+  const p = protagonistaDe(evento);
+  return p.esPersona ? `${p.nombre.split(/\s+/)[0]} se gradúa${que}` : `nuestro graduado se gradúa${que}`;
+}
+
 export type CartaDistancia = {
   parrafos: string[];
   /** La frase que presenta la bendición: "Y esta es mi oración por vos:" */
   oracion: string;
+  /** El único texto bíblico de la invitación especial */
   bendicion: Versiculo;
-  gratitud: Versiculo;
   despedida: string;
   firma: string;
 };
 
 /**
- * La carta de la invitación especial a distancia: gracias a esa persona por
- * su nombre (el saludo lo pone la vista), por qué fue parte del logro, para
- * qué es esta invitación y una bendición. En primera persona si habla el
- * mismo protagonista; en plural ("les", "ustedes") si va a varios. Si el
- * organizador escribió su propio agradecimiento, ese reemplaza a los dos
- * primeros párrafos: lo personal manda.
+ * La carta de la invitación especial a distancia. En graduación habla del
+ * estudio: qué carrera y dónde, los semestres y los exámenes que esa persona
+ * acompañó, y el título que va a recibir. Cierra con la bendición, el único
+ * versículo. En primera persona si habla el mismo protagonista; en plural
+ * ("les", "ustedes") si va a varios. Si el organizador escribió su propio
+ * agradecimiento, ese reemplaza a la carta (la bendición queda).
  */
 export function cartaDistancia(evento: EventoTarjeta, trato: Trato): CartaDistancia {
   const yo = hablaElProtagonista(evento);
   const pl = trato === "plural";
   const grad = evento.tipo === "graduacion";
   const p = protagonistaDe(evento);
+  const pila = p.esPersona ? p.nombre.split(/\s+/)[0] : "";
   // Lo que cambia entre "vos" y "ustedes"
   const t = pl
     ? { te: "les", tu: "su", tus: "sus", vos: "ustedes", diste: "dieron", estes: "estén", vas: "van", veas: "vean", vivas: "vivan", sembraste: "sembraron" }
     : { te: "te", tu: "tu", tus: "tus", vos: "vos", diste: "diste", estes: "estés", vas: "vas", veas: "veas", vivas: "vivas", sembraste: "sembraste" };
-  const mi = yo ? "mi" : "nuestro";
-  const logro = grad
-    ? (yo ? `Este logro no es solo mío: también lleva ${t.tu} nombre.`
-      : `Este logro${p.esPersona ? ` de ${p.nombre.split(/\s+/)[0]}` : ""} también lleva ${t.tu} nombre.`)
-    : `Este día tan especial también lleva ${t.tu} nombre.`;
+  const me = yo ? "me" : "nos";
+  const corazon = yo ? "mi corazón" : "nuestro corazón";
+  const hoy = `${yo ? "Hoy quiero detenerme" : "Hoy queremos detenernos"} a dar${t.te} las gracias.`;
+  const preparamos = `Por eso ${yo ? "preparé" : "preparamos"} esta invitación especial para ${t.vos}: para que ${t.veas} las fotos de este día y lo ${t.vivas} ${yo ? "conmigo" : "con nosotros"} desde donde ${t.estes}.`;
+
+  let carta: string[];
+  if (grad) {
+    const estudio = fraseGraduacion(evento)
+      ?? (yo ? "llegó el día de mi graduación" : `llegó el día de la graduación${pila ? ` de ${pila}` : ""}`);
+    const titulo = yo ? "cuando reciba mi título" : pila ? `cuando ${pila} reciba su título` : "en cada momento";
+    carta = [
+      `${hoy} Después de años de estudio, ${estudio}, y este logro ${yo ? `no es solo mío: también lleva ${t.tu} nombre` : `también lleva ${t.tu} nombre`}.`,
+      `Cada palabra de aliento, cada oración y cada muestra de cariño que ${me} ${t.diste}, aun desde lejos, ${me} sostuvieron en los semestres más difíciles, en las noches de estudio y en cada examen, y ${me} dieron fuerzas para llegar a la meta.`,
+      `La distancia nunca pudo separarnos. Aunque no ${t.estes} en la ceremonia, ${t.vas} a estar en ${corazon} ${titulo}. ${preparamos}`,
+    ];
+  } else {
+    carta = [
+      `${hoy} Este día tan especial también lleva ${t.tu} nombre. Cada palabra de aliento, cada oración y cada muestra de cariño que ${me} ${t.diste}, aun desde lejos, ${me} acompañaron hasta acá.`,
+      `La distancia nunca pudo separarnos. Aunque no ${t.estes} en la celebración, ${t.vas} a estar en ${corazon} en cada momento. ${preparamos}`,
+    ];
+  }
 
   const propio = extrasDe(evento).agradecimiento;
-  const parrafos = propio
-    ? [propio]
-    : [
-      `${yo ? "Hoy quiero detenerme" : "Hoy queremos detenernos"} a dar${t.te} las gracias. ${logro} Cada palabra de aliento, cada oración y cada muestra de cariño que ${yo ? "me" : "nos"} ${t.diste}, aun desde lejos, ${yo ? "me sostuvieron" : "nos sostuvieron"} en los días difíciles y ${yo ? "me dieron" : "nos dieron"} fuerzas para llegar hasta acá.`,
-      `La distancia nunca pudo separarnos. Aunque no ${t.estes} ${grad ? "en la ceremonia" : "en la celebración"}, ${t.vas} a estar en ${mi} corazón en cada momento. Por eso ${yo ? "preparé" : "preparamos"} esta invitación especial para ${t.vos}: para que ${t.veas} las fotos de este día y lo ${t.vivas} ${yo ? "conmigo" : "con nosotros"} desde donde ${t.estes}.`,
-    ];
+  const parrafos = propio ? [propio] : carta;
   parrafos.push(
     `${yo ? "Le pido" : "Le pedimos"} a Dios que ${t.te} devuelva multiplicado todo el bien que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos y que llene ${t.tu} casa de paz.`,
   );
@@ -340,7 +376,6 @@ export function cartaDistancia(evento: EventoTarjeta, trato: Trato): CartaDistan
     parrafos,
     oracion: `Y esta es ${yo ? "mi" : "nuestra"} oración por ${t.vos}:`,
     bendicion: VERSICULO_BENDICION,
-    gratitud: VERSICULO_GRATITUD,
     despedida: yo ? "Con todo mi cariño y gratitud," : "Con todo nuestro cariño y gratitud,",
     firma: familiaDe(evento) || (p.esPersona ? p.nombre : quienInvitaHablado(evento)),
   };
@@ -480,7 +515,8 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     horaCorta: hCorta,
     lugar,
     direccion,
-    versiculo: especial ? VERSICULO_GRATITUD : versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
+    // La especial no lleva versículo en la tarjeta: el único va dentro de la carta
+    versiculo: especial ? null : versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
   };
 }
 

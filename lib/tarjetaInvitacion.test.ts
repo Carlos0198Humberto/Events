@@ -6,6 +6,7 @@ import {
   fraseInvitacion,
   agradecimientoDe,
   cartaDistancia,
+  enInstitucion,
   quienInvitaHablado,
   paletaDe,
   protagonistaDe,
@@ -139,24 +140,33 @@ describe("invitados a distancia", () => {
     expect(d.dedicatoria).toBe("Aunque estés lejos, fuiste parte de este logro.");
     expect(d.cta).not.toContain("Confirm");
     expect(armarDatosTarjeta(carlos(), "X").especial).toBe(false);
-    expect(armarDatosTarjeta(carlos(), "Tía Rosa", "f", { distancia: true }).versiculo?.cita).toBe("Filipenses 1:3");
+    // Un solo versículo en toda la especial: la bendición de la carta, no en la tarjeta
+    expect(armarDatosTarjeta(carlos(), "Tía Rosa", "f", { distancia: true }).versiculo).toBeNull();
   });
 
-  it("la carta agradece en primera persona y cierra con una bendición", () => {
+  it("la carta agradece en primera persona, habla del estudio y cierra con la bendición", () => {
     const c = cartaDistancia(grad(), "f");
-    expect(c.parrafos).toHaveLength(3);
-    expect(c.parrafos[0]).toMatch(/^Hoy quiero detenerme a darte las gracias\. Este logro no es solo mío/);
-    expect(c.parrafos[1]).toContain("preparé esta invitación especial para vos");
+    expect(c.parrafos).toHaveLength(4);
+    expect(c.parrafos[0]).toBe("Hoy quiero detenerme a darte las gracias. Después de años de estudio, llegó el día de mi graduación, y este logro no es solo mío: también lleva tu nombre.");
+    expect(c.parrafos[1]).toContain("en los semestres más difíciles, en las noches de estudio y en cada examen");
+    expect(c.parrafos[2]).toContain("cuando reciba mi título. Por eso preparé esta invitación especial para vos");
     expect(c.oracion).toBe("Y esta es mi oración por vos:");
     expect(c.bendicion.cita).toBe("Números 6:24-26");
     expect(c.despedida).toBe("Con todo mi cariño y gratitud,");
   });
 
+  it("la carta nombra la carrera y la universidad cargadas en la tarjeta", () => {
+    const c = cartaDistancia(grad({ tarjeta: { carrera: "Ingeniería en Sistemas Informáticos", institucion: "Universidad de El Salvador" } }), "f");
+    expect(c.parrafos[0]).toContain("Después de años de estudio, me gradúo de Ingeniería en Sistemas Informáticos en la Universidad de El Salvador, y este logro no es solo mío");
+    expect(enInstitucion("Instituto Tecnológico de Centroamérica")).toBe("en el Instituto Tecnológico de Centroamérica");
+    expect(enInstitucion("ITCA-FEPADE")).toBe("en ITCA-FEPADE");
+  });
+
   it("la carta habla como familia y en plural a varios", () => {
-    const c = cartaDistancia(grad({ tarjeta: { familia: "Familia Chavarría" } }), "plural");
-    expect(c.parrafos[0]).toContain("Hoy queremos detenernos a darles las gracias");
-    expect(c.parrafos[1]).toContain("para ustedes: para que vean las fotos");
-    expect(c.parrafos[2]).toContain("Le pedimos a Dios que les devuelva");
+    const c = cartaDistancia(grad({ tarjeta: { familia: "Familia Chavarría", graduando: "Carlos Chavarría", carrera: "Ingeniería Civil" } }), "plural");
+    expect(c.parrafos[0]).toContain("Hoy queremos detenernos a darles las gracias. Después de años de estudio, Carlos se gradúa de Ingeniería Civil");
+    expect(c.parrafos[2]).toContain("cuando Carlos reciba su título. Por eso preparamos esta invitación especial para ustedes: para que vean las fotos");
+    expect(c.parrafos[3]).toContain("Le pedimos a Dios que les devuelva");
     expect(c.oracion).toBe("Y esta es nuestra oración por ustedes:");
     expect(c.firma).toBe("Familia Chavarría");
   });

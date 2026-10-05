@@ -2,8 +2,8 @@
 // ─── Invitación especial para quien está lejos ────────────────────────────────
 //
 // Familiares y amigos que no pueden ir pero fueron parte del logro. No se les
-// pide confirmar: es una carta de agradecimiento con su nombre, un versículo de
-// gratitud y una bendición, las fotos que subió el anfitrión (ej. la graduación
+// pide confirmar: es una carta de agradecimiento con su nombre, que habla de la
+// carrera, y una bendición (el único versículo), las fotos que subió el anfitrión (ej. la graduación
 // con sus padres) y las del muro, y un lugar para dejar su mensaje. El
 // formulario del mensaje y el regalo llegan como `children` desde la página.
 //
@@ -62,11 +62,6 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
           {ex.institucion && <p className="dl-institucion">{ex.institucion}</p>}
           <Ornamento />
         </header>
-
-        <blockquote className="dl-epigrafe" data-guia="dl-epigrafe">
-          <p>«{carta.gratitud.texto}»</p>
-          <cite>{carta.gratitud.cita}</cite>
-        </blockquote>
 
         <section className="dl-texto" aria-label="Carta de agradecimiento">
           <p className="dl-saludo" data-guia="dl-saludo">{saludoCarta}</p>
@@ -265,9 +260,7 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dl-carrera{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:16.5px;color:var(--tinta2);margin-top:8px;text-wrap:balance}
 .dl-institucion{font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--rg);margin-top:5px;text-wrap:balance}
 .dl-ornamento{display:block;margin:18px auto 0}
-.dl-epigrafe{margin:18px 4px 0;text-align:center}
-.dl-epigrafe p{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:16px;line-height:1.5;color:var(--tinta2)}
-.dl-epigrafe cite,.dl-bendicion cite{display:block;margin-top:6px;font-family:'Cormorant Garamond',Georgia,serif;font-style:normal;font-size:12px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--rg)}
+.dl-bendicion cite{display:block;margin-top:6px;font-family:'Cormorant Garamond',Georgia,serif;font-style:normal;font-size:12px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--rg)}
 .dl-texto{margin-top:26px}
 .dl-saludo{font-family:'Great Vibes',cursive;font-size:34px;line-height:1.15;color:var(--rg);margin-bottom:10px}
 .dl-texto>p:not(.dl-saludo):not(.dl-oracion):not(.dl-despedida):not(.dl-firma){font-family:'Cormorant Garamond',Georgia,serif;font-size:19.5px;line-height:1.62;color:var(--tinta);margin-top:12px;text-wrap:pretty}

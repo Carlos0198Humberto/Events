@@ -115,6 +115,12 @@ describe("armarMensajeDistancia", () => {
     expect(enlaces(m)).toEqual([LINK]);
   });
 
+  it("en graduación dice qué se estudió y dónde, sin versículo", () => {
+    const m = armarMensajeDistancia(grad({ tarjeta: { carrera: "Ingeniería en Sistemas Informáticos", institucion: "Universidad de El Salvador" } }), "Rosa", LINK, "f");
+    expect(m).toContain("Querida Rosa:\nMe gradúo de Ingeniería en Sistemas Informáticos en la Universidad de El Salvador, y aunque estés lejos, fuiste parte de este logro.");
+    expect(m).not.toMatch(/Filipenses|«/);
+  });
+
   it("habla en plural a varios y como familia si firma la familia", () => {
     const m = armarMensajeDistancia(grad({ tarjeta: { familia: "Familia Chavarría" } }), "Los López", LINK, "plural");
     expect(m).toContain("Aunque estén lejos, fueron parte de este logro.");

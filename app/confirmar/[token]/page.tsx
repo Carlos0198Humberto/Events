@@ -1488,7 +1488,6 @@ function FloatingMascot({
       const carta = cartaDistancia(evento, tratoCarta);
       const autor = quien || festejado;
       pasos.push({ t: `${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió esta carta.`, guia: "dl-inicio" });
-      pasos.push({ t: `${carta.gratitud.texto} ${citaHablada(carta.gratitud.cita)}.`, guia: "dl-epigrafe" });
       pasos.push({ t: saludoDeCarta(varios ? nombresCarta.slice(0, 2).join(" y ") : invitado.nombre, tratoCarta), guia: "dl-saludo" });
       carta.parrafos.forEach((p, i) => pasos.push({ t: p, guia: `dl-p${i}` }));
       pasos.push({ t: `${carta.oracion} ${carta.bendicion.texto} ${citaHablada(carta.bendicion.cita)}.`, guia: "dl-bendicion" });

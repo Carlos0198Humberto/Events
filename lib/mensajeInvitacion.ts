@@ -12,9 +12,8 @@
 // El enlace va solo en su línea y es el ÚNICO del mensaje: WhatsApp arma la
 // vista previa con el primero que encuentra.
 
-import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseInvitacion, hablaElProtagonista, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
+import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseGraduacion, fraseInvitacion, hablaElProtagonista, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 import { saludo, type Trato } from "@/lib/tratoInvitado";
-import { VERSICULO_GRATITUD } from "@/lib/versiculos";
 
 export type EventoMensaje = EventoTarjeta & { fecha_limite_confirmacion?: string | null };
 
@@ -129,7 +128,11 @@ export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: str
   const plural = trato === "plural";
   const yo = hablaElProtagonista(evento);
   const graduacion = evento.tipo === "graduacion";
-  const lejos = plural
+  // En graduación, qué se estudió y dónde: "Me gradúo de Ingeniería en Sistemas…, y aunque estés lejos…"
+  const estudio = fraseGraduacion(evento);
+  const lejos = estudio
+    ? `${estudio.charAt(0).toUpperCase()}${estudio.slice(1)}, y aunque ${plural ? "estén lejos, fueron" : "estés lejos, fuiste"} parte de este logro.`
+    : plural
     ? (graduacion ? "Aunque estén lejos, fueron parte de este logro." : "Aunque estén lejos, son parte de este momento.")
     : (graduacion ? "Aunque estés lejos, fuiste parte de este logro." : "Aunque estés lejos, sos parte de este momento.");
   const gracias = plural ? "Gracias por su cariño y su apoyo." : "Gracias por tu cariño y tu apoyo.";
@@ -142,7 +145,6 @@ export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: str
     titulo(evento).texto,
     `${saludo(nombreInvitado, trato)}:\n${lejos} ${gracias}`,
     invitacion,
-    `_«${VERSICULO_GRATITUD.texto}»_\n${VERSICULO_GRATITUD.cita}`,
     `\u{1F48C} ${plural ? "Su" : "Tu"} invitación especial:\n${link}`,
     firma(evento),
   ].filter(Boolean).join("\n\n");
