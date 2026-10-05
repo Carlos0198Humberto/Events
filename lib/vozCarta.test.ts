@@ -15,6 +15,10 @@ describe("la carta en voz alta", () => {
     expect(nombreDePila("Tía Rosa María")).toBe("Tía Rosa");
     expect(nombreDePila("Juan Pérez y Ana Gómez")).toBe("Juan y Ana");
     expect(nombreDePila("Familia López Díaz")).toBe("Familia López Díaz");
+    expect(nombreDePila("Los López")).toBe("Los López");
+    expect(nombreDePila("María José Hernández")).toBe("María José");
+    expect(nombreDePila("Juan Carlos Pérez")).toBe("Juan Carlos");
+    expect(nombreDePila("María Pérez")).toBe("María");
     expect(saludoDeCarta("Rosa María Pérez", "f")).toBe("Querida Rosa,");
     expect(saludoDeCarta("Alex Ramos", "neutro")).toBe("Alex,");
   });

@@ -13,7 +13,7 @@
 // vista previa con el primero que encuentra.
 
 import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseGraduacion, fraseInvitacion, hablaElProtagonista, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
-import { saludo, type Trato } from "@/lib/tratoInvitado";
+import { nombreDePila, saludo, type Trato } from "@/lib/tratoInvitado";
 
 export type EventoMensaje = EventoTarjeta & { fecha_limite_confirmacion?: string | null };
 
@@ -112,7 +112,7 @@ export function armarMensajeInvitacion(evento: EventoMensaje, nombreInvitado: st
 
   return [
     t.texto,
-    `${saludo(nombreInvitado, trato)}:\n${mayuscula(frase)}.`,
+    `${saludo(nombreDePila(nombreInvitado), trato)}:\n${mayuscula(frase)}.`,
     [cuandoYDonde(evento, hoy), lugares].filter(Boolean).join("\n"),
     `${confirmar}\n${link}`,
     firma(evento),
@@ -143,7 +143,7 @@ export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: str
 
   return [
     titulo(evento).texto,
-    `${saludo(nombreInvitado, trato)}:\n${lejos} ${gracias}`,
+    `${saludo(nombreDePila(nombreInvitado), trato)}:\n${lejos} ${gracias}`,
     invitacion,
     `\u{1F48C} ${plural ? "Su" : "Tu"} invitación especial:\n${link}`,
     firma(evento),
@@ -170,7 +170,7 @@ export function armarMensajeDia(evento: EventoMensaje, nombreInvitado: string, l
 
   return [
     titulo(evento).texto,
-    `${saludo(nombreInvitado, trato)}:\n${aviso}`,
+    `${saludo(nombreDePila(nombreInvitado), trato)}:\n${aviso}`,
     datos,
     `${enlace}\n${link}`,
     firma(evento),
@@ -200,7 +200,7 @@ export function armarMensajeRecordatorio(evento: EventoMensaje, nombreInvitado: 
 
   return [
     titulo(evento).texto,
-    `${saludo(nombreInvitado, trato)}:\n${recordamos}`,
+    `${saludo(nombreDePila(nombreInvitado), trato)}:\n${recordamos}`,
     cuandoYDonde(evento, hoy),
     `${confirmar}\n${link}`,
     firma(evento),

@@ -106,6 +106,14 @@ describe("armarMensajeRecordatorio", () => {
   });
 });
 
+describe("saludo del mensaje", () => {
+  it("saluda por el nombre de pila, no por el nombre completo de la lista", () => {
+    const m = armarMensajeInvitacion(grad(), "Rosa María Pérez", LINK, "f", HOY);
+    expect(m).toContain("Querida Rosa:");
+    expect(m).not.toContain("Pérez:");
+  });
+});
+
 describe("armarMensajeDistancia", () => {
   it("agradece, no pide confirmar y lleva un solo enlace", () => {
     const m = armarMensajeDistancia(grad({ tarjeta: { graduando: "Carlos Humberto Chavarría Aparicio" } }), "Rosa", LINK, "f");

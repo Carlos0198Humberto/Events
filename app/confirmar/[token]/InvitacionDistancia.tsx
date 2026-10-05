@@ -37,7 +37,13 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
   const fotos = (Array.isArray(evento.fotos_anfitrion) ? evento.fotos_anfitrion : []).filter((u): u is string => typeof u === "string");
   const fecha = evento.fecha ? fechaLarga(evento.fecha) : null;
   const hora = evento.hora ? horaCorta(evento.hora) : null;
-  const lugar = [evento.lugar?.trim(), ex.direccion].filter(Boolean).join(", ");
+  // "Hotel Real InterContinental, San Salvador" + "Bulevar Los Héroes, San
+  // Salvador": la ciudad ya va en la dirección, no se repite en el lugar
+  const lugarCompleto = evento.lugar?.trim() || "";
+  const coma = lugarCompleto.indexOf(",");
+  const ciudad = coma > 0 ? lugarCompleto.slice(coma + 1).trim().toLowerCase() : "";
+  const direccion = ex.direccion ?? null;
+  const lugar = direccion && ciudad && direccion.toLowerCase().includes(ciudad) ? lugarCompleto.slice(0, coma).trim() : lugarCompleto;
   const [abierta, setAbierta] = useState<number | null>(null);
 
   return (
@@ -78,15 +84,15 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
         </section>
       </article>
 
-      {(fecha || lugar) && (
+      {(fecha || lugar || direccion) && (
         <section className="dist-seccion">
           <h2>La celebración</h2>
           <div className="dl-datos">
             {fecha && (
               <p><span className="dl-ico"><IcoCalendario size={17} /></span><span>{fecha}{hora && <small>{hora}</small>}</span></p>
             )}
-            {lugar && (
-              <p><span className="dl-ico"><IcoUbicacion size={17} /></span><span>{lugar}</span></p>
+            {(lugar || direccion) && (
+              <p><span className="dl-ico"><IcoUbicacion size={17} /></span><span>{lugar}{direccion && <small>{direccion}</small>}</span></p>
             )}
           </div>
         </section>
@@ -286,6 +292,8 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dl-polaroid:nth-child(2n){transform:rotate(1.4deg)}
 .dl-polaroid:nth-child(3n){transform:rotate(-.6deg)}
 .dl-polaroid:active{transform:scale(.97)}
+/* Con un número impar de fotos, la última va centrada y no queda sola a un costado */
+.dl-polaroid:last-child:nth-child(odd){grid-column:1 / -1;justify-self:center;width:calc(50% - 7px)}
 .dl-polaroid img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:var(--rg4)}
 .dist-vacio{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14.5px;color:var(--tinta2);text-align:center;
   background:#FFFFFF;border:1px dashed rgba(185,122,104,.55);border-radius:16px;padding:20px 16px}

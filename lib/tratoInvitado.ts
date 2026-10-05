@@ -116,12 +116,19 @@ export function saludo(nombre: string, trato: Trato): string {
 // "Tía Rosa María" → "Tía Rosa"; "Rosa María Pérez" → "Rosa"; "Juan Pérez y Ana Gómez" → "Juan y Ana".
 // En una carta se escribe el nombre de pila, no el de la lista.
 const TITULO = /^(t[ií][oa]|abuel[oa]|prim[oa]|herman[oa]|padrin[oa]|madrina|don|doña|sr\.?|sra\.?|srta\.?|dr\.?|dra\.?|lic\.?|licda\.?|ing\.?|pastor|pastora|hno\.?|hna\.?)$/i;
+// Nombres compuestos que se dicen juntos ("María José", "Juan Carlos"): solo
+// cuando hay apellido después, para no confundir "María Pérez" con uno
+const COMPUESTO_1 = /^(mar[ií]a|jos[eé]|juan|ana|luis|jes[uú]s)$/i;
+const COMPUESTO_2 = /^(jos[eé]|mar[ií]a|fernanda|isabel|elena|teresa|luisa|alejandra|gabriela|celeste|luc[ií]a|paula|bel[eé]n|eugenia|carlos|luis|antonio|manuel|miguel|pablo|francisco|daniel|david|alberto|ernesto|ram[oó]n|fernando|enrique)$/i;
 export function nombreDePila(nombre: string): string {
   const limpio = nombre.trim();
   if (/^(la\s+)?(familia|flia\.?|fam\.)\s/i.test(limpio)) return limpio;
+  if (/^(los|las)\s/i.test(limpio)) return limpio; // "Los López"
   if (/\s+y\s+/i.test(limpio)) return limpio.split(/\s+y\s+/i).map(nombreDePila).join(" y ");
   const partes = limpio.split(/\s+/);
-  return TITULO.test(partes[0]) && partes[1] ? `${partes[0]} ${partes[1]}` : partes[0];
+  if (TITULO.test(partes[0]) && partes[1]) return `${partes[0]} ${partes[1]}`;
+  if (partes.length >= 3 && COMPUESTO_1.test(partes[0]) && COMPUESTO_2.test(partes[1])) return `${partes[0]} ${partes[1]}`;
+  return partes[0];
 }
 
 /** El encabezado de una carta: "Querida Rosa," o, sin género, "Alex,". */
