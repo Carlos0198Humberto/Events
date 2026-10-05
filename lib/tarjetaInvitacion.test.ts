@@ -139,3 +139,32 @@ describe("invitados a distancia", () => {
     expect(armarDatosTarjeta(carlos(), "X").especial).toBe(false);
   });
 });
+
+describe("estilos de la tarjeta", () => {
+  it("por defecto: gala, círculo, mayúsculas y la foto de portada", () => {
+    const d = armarDatosTarjeta(grad({ imagen_url: "https://x/portada.jpg" }), "X");
+    expect([d.diseno, d.formaFoto, d.letraNombre, d.foto]).toEqual(["gala", "circulo", "mayusculas", "https://x/portada.jpg"]);
+  });
+
+  it("usa la foto propia de la tarjeta y los estilos elegidos", () => {
+    const d = armarDatosTarjeta(grad({ imagen_url: "https://x/portada.jpg", tarjeta: {
+      foto_url: "https://x/toga.jpg", diseno: "floral", forma_foto: "arco", letra_nombre: "caligrafia",
+    } }), "X");
+    expect([d.diseno, d.formaFoto, d.letraNombre, d.foto]).toEqual(["floral", "arco", "caligrafia", "https://x/toga.jpg"]);
+  });
+
+  it("descarta valores que no existen", () => {
+    const ex = extrasDe({ tarjeta: { diseno: "neon", forma_foto: "estrella", metal: "bronce", foto_url: "javascript:alert(1)" } as never });
+    expect([ex.diseno, ex.forma_foto, ex.metal, ex.foto_url]).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
+  it("el metal cambia el dorado; en fondo claro usa la versión profunda", () => {
+    const oro = paletaDe({ tipo: "graduacion" });
+    const plata = paletaDe({ tipo: "graduacion", tarjeta: { metal: "plata" } });
+    const plataMarfil = paletaDe({ tipo: "boda", tarjeta: { metal: "plata" } });
+    expect(plata.id).toBe("azul");
+    expect(plata.dorado).not.toEqual(oro.dorado);
+    expect(plataMarfil.dorado).not.toEqual(plata.dorado);
+    expect(paletaDe({ tipo: "graduacion", tarjeta: { metal: "oro" } })).toEqual(oro);
+  });
+});

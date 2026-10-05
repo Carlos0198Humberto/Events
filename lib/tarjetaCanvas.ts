@@ -5,14 +5,17 @@
 // el título en caligrafía, la fecha en mayúsculas finas y un sello con las
 // iniciales. Los colores salen de la paleta del evento (datos.paleta).
 //
-// Dos formatos: "tarjeta" (1080×1350, la que va con el mensaje) e "historia"
-// (1080×1920, para estados de WhatsApp e Instagram).
+// Tres formatos: "tarjeta" (1080×1350, la que va con el mensaje), "historia"
+// (1080×1920, para estados) e "imprimir" (5×7 pulgadas, ~300 ppp, con QR).
 //
-// No lleva QR: la confirmación es el enlace del mensaje que acompaña a la
-// imagen, que en WhatsApp sí se puede tocar. Una imagen no puede tener un
-// enlace adentro.
+// Estilos que elige el organizador: diseño (gala, minimal, floral), forma de
+// la foto (círculo, arco, retrato), metal (en la paleta) y letra del nombre.
+//
+// La tarjeta digital no lleva QR: la confirmación es el enlace del mensaje que
+// la acompaña, que en WhatsApp sí se puede tocar. La impresa sí lo lleva.
 
-import { PALETAS_TARJETA, type DatosTarjeta, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
+import qrcode from "qrcode-generator";
+import { PALETAS_TARJETA, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, sello, separador } from "@/lib/ornamentosTarjeta";
 
 const W = 1080;
@@ -22,7 +25,10 @@ const W = 1080;
 let H = 1350;
 let P: PaletaTarjeta = PALETAS_TARJETA.negro;
 
-export type FormatoTarjeta = "tarjeta" | "historia";
+export type FormatoTarjeta = "tarjeta" | "historia" | "imprimir";
+const ALTO: Record<FormatoTarjeta, number> = { tarjeta: 1350, historia: 1920, imprimir: 1512 };
+// La impresa se dibuja igual y se escala: 1512×2117 px ≈ 5×7 pulgadas a 300 ppp
+const ESCALA: Record<FormatoTarjeta, number> = { tarjeta: 1, historia: 1, imprimir: 1.4 };
 const SCRIPT = "'Great Vibes', cursive";
 const CAPS = "'Cinzel', Georgia, serif";
 const SERIF = "'Playfair Display', Georgia, serif";
@@ -100,6 +106,91 @@ function banda(ctx: CanvasRenderingContext2D) {
   ctx.restore();
 }
 
+// Ramillete del diseño floral: dos ramas que salen de la esquina, con hojas y
+// tres flores chicas. Se dibuja en la esquina superior izquierda; la inferior
+// derecha es la misma con el lienzo girado 180°.
+function ramillete(ctx: CanvasRenderingContext2D) {
+  const L = 330;
+  ctx.save();
+  ctx.translate(84, 84);
+  const g = oro(ctx, 0, 0, L, L);
+  ctx.strokeStyle = g;
+  ctx.fillStyle = g;
+  ctx.lineCap = "round";
+  for (const eje of [0, 1]) {
+    // Rama: casi recta, con una curva suave
+    const punto = (t: number) => {
+      const a = t * L, b = 22 * Math.sin(t * Math.PI);
+      return eje === 0 ? [a, b] : [b, a];
+    };
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    for (let t = 0; t <= 1.0001; t += 0.05) {
+      const [px, py] = punto(t);
+      if (t === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    // Hojas a los dos lados, cada vez más chicas hacia la punta
+    for (let i = 1; i <= 8; i++) {
+      const t = i / 9;
+      const [px, py] = punto(t);
+      const [qx, qy] = punto(t + 0.01);
+      const ang = Math.atan2(qy - py, qx - px);
+      const tam = 1.35 - t * 0.7;
+      for (const lado of [-1, 1]) {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang + lado * 0.75);
+        ctx.beginPath();
+        ctx.ellipse(16 * tam, 0, 19 * tam, 7.5 * tam, 0, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.92;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+  // Flores cerca de la esquina
+  for (const [fx, fy, r] of [[26, 26, 21], [88, 18, 14], [18, 88, 14]] as const) {
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(fx + Math.cos(a) * r * 0.9, fy + Math.sin(a) * r * 0.9, r * 0.7, r * 0.42, a, 0, Math.PI * 2);
+      ctx.globalAlpha = 0.9;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(fx, fy, r * 0.32, 0, Math.PI * 2);
+    ctx.fillStyle = P.fondoCentro;
+    ctx.fill();
+    ctx.fillStyle = g;
+  }
+  ctx.restore();
+}
+
+// Código QR (para la tarjeta impresa) sobre un recuadro claro, como para que
+// cualquier celular lo lea aunque el fondo de la tarjeta sea oscuro
+function dibujarQR(ctx: CanvasRenderingContext2D, texto: string, cx: number, y: number, lado: number) {
+  const qr = qrcode(0, "M");
+  qr.addData(texto);
+  qr.make();
+  const n = qr.getModuleCount();
+  const margen = 14;
+  const celda = (lado - margen * 2) / n;
+  ctx.save();
+  ctx.fillStyle = "#FFFFFF";
+  ctx.beginPath();
+  rectRedondo(ctx, cx - lado / 2, y, lado, lado, 14);
+  ctx.fill();
+  ctx.fillStyle = "#111111";
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (qr.isDark(r, c)) ctx.fillRect(cx - lado / 2 + margen + c * celda, y + margen + r * celda, Math.ceil(celda), Math.ceil(celda));
+    }
+  }
+  ctx.restore();
+}
+
 function birrete(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, giro = 0) {
   ctx.save();
   ctx.translate(cx, cy);
@@ -166,6 +257,75 @@ function cargarImagen(url: string): Promise<HTMLImageElement | null> {
     img.src = src;
   });
   return intento(url).then((img) => img ?? intento(`${url}${url.includes("?") ? "&" : "?"}tarjeta=1`));
+}
+
+// Rectángulo con esquinas redondeadas (ctx.roundRect no existe en iOS < 16)
+function rectRedondo(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+// Medidas de la foto según su forma (R = radio del círculo de referencia)
+function medidasFoto(forma: FormaFoto, R: number) {
+  if (forma === "arco") return { ancho: R * 1.62, alto: R * 2.12 };
+  if (forma === "retrato") return { ancho: R * 1.6, alto: R * 2.02 };
+  return { ancho: R * 2, alto: R * 2 };
+}
+
+// La silueta de la foto: arco (rectángulo con medio círculo arriba) o
+// rectángulo apenas redondeado
+function silueta(ctx: CanvasRenderingContext2D, forma: FormaFoto, x: number, y: number, w: number, h: number, extra = 0) {
+  const x0 = x - extra, y0 = y - extra, w0 = w + extra * 2, h0 = h + extra * 2;
+  ctx.beginPath();
+  if (forma === "arco") {
+    const r = w0 / 2;
+    ctx.moveTo(x0, y0 + h0);
+    ctx.lineTo(x0, y0 + r);
+    ctx.arc(x0 + r, y0 + r, r, Math.PI, 0);
+    ctx.lineTo(x0 + w0, y0 + h0);
+    ctx.closePath();
+  } else {
+    rectRedondo(ctx, x0, y0, w0, h0, 10 + extra * 0.4);
+  }
+}
+
+// La foto con su marco dorado. El recorte favorece la parte de arriba de la
+// foto, que es donde suele estar la cara.
+function marcoFoto(ctx: CanvasRenderingContext2D, img: HTMLImageElement, forma: FormaFoto, cx: number, yTop: number, R: number) {
+  if (forma === "circulo") { retrato(ctx, img, cx, yTop + R + 16, R); return; }
+  const { ancho, alto } = medidasFoto(forma, R);
+  const x = cx - ancho / 2, y = yTop + 16;
+
+  ctx.save();
+  ctx.shadowColor = "rgba(212,176,104,0.35)";
+  ctx.shadowBlur = 40;
+  silueta(ctx, forma, x, y, ancho, alto, 12);
+  ctx.fillStyle = P.fondoCentro;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  silueta(ctx, forma, x, y, ancho, alto);
+  ctx.clip();
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const escala = Math.max(ancho / w, alto / h);
+  const dw = w * escala, dh = h * escala;
+  const dy = h * escala > alto ? (dh - alto) * 0.18 : (dh - alto) / 2;
+  ctx.drawImage(img, x - (dw - ancho) / 2, y - dy, dw, dh);
+  ctx.restore();
+
+  ctx.strokeStyle = oro(ctx, x, y, x + ancho, y + alto);
+  ctx.lineWidth = 6;
+  silueta(ctx, forma, x, y, ancho, alto, 3);
+  ctx.stroke();
+  ctx.lineWidth = 1.4;
+  silueta(ctx, forma, x, y, ancho, alto, 15);
+  ctx.stroke();
 }
 
 // Retrato redondo con doble anillo dorado. El recorte favorece la parte de
@@ -254,19 +414,25 @@ function partirEnLineas(ctx: CanvasRenderingContext2D, texto: string, max: numbe
 
 type Bloque = { alto: number; antes: number; dibujar: (y: number) => void };
 
-/** Genera la tarjeta: 1080×1350 (va con el mensaje) o 1080×1920 (para estados). */
-export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTarjeta = "tarjeta"): Promise<Blob | null> {
+/**
+ * Genera la tarjeta: 1080×1350 (va con el mensaje), 1080×1920 (para estados) o
+ * la de imprimir (5×7 pulgadas con `qr`, el enlace de la invitación).
+ */
+export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTarjeta = "tarjeta", opciones: { qr?: string } = {}): Promise<Blob | null> {
   await cargarFuentesTarjeta();
   const foto = datos.foto ? await cargarImagen(datos.foto) : null;
   // Sin más esperas a partir de acá (ver H y P arriba)
-  H = formato === "historia" ? 1920 : 1350;
+  H = ALTO[formato];
   P = datos.paleta ?? PALETAS_TARJETA.negro;
+  const esc = ESCALA[formato];
   const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width = Math.round(W * esc);
+  canvas.height = Math.round(H * esc);
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
+  ctx.scale(esc, esc);
   const cx = W / 2;
+  const qr = formato === "imprimir" ? opciones.qr : undefined;
 
   // Fondo negro con una luz suave al centro
   ctx.fillStyle = P.fondo;
@@ -277,20 +443,27 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   ctx.fillStyle = luz;
   ctx.fillRect(0, 0, W, H);
 
-  // Marco dorado: línea firme y una fina por dentro
+  // Marco y adornos según el diseño
   ctx.strokeStyle = oro(ctx, 0, 0, W, H);
-  ctx.lineWidth = 4;
-  ctx.strokeRect(54, 54, W - 108, H - 108);
-  ctx.lineWidth = 1.2;
-  ctx.strokeRect(68, 68, W - 136, H - 136);
-
-  // Bandas de filigrana sobre las esquinas del marco
-  banda(ctx);
-  ctx.save();
-  ctx.translate(W, H);
-  ctx.rotate(Math.PI);
-  banda(ctx);
-  ctx.restore();
+  if (datos.diseno === "minimal") {
+    // Un solo filete fino, sin adornos: el aire es el diseño
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(62, 62, W - 124, H - 124);
+  } else {
+    // Línea firme y una fina por dentro
+    ctx.lineWidth = 4;
+    ctx.strokeRect(54, 54, W - 108, H - 108);
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(68, 68, W - 136, H - 136);
+    // Gala: bandas de filigrana; floral: ramilletes. Arriba a la izquierda y abajo a la derecha
+    const adorno = datos.diseno === "floral" ? ramillete : banda;
+    adorno(ctx);
+    ctx.save();
+    ctx.translate(W, H);
+    ctx.rotate(Math.PI);
+    adorno(ctx);
+    ctx.restore();
+  }
 
   ctx.textBaseline = "alphabetic";
   const bloques: Bloque[] = [];
@@ -298,13 +471,19 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   // birrete se achican un poco para que todo respire
   const compacta = !!datos.versiculo || [datos.carrera, datos.institucion, datos.familia, datos.direccion].filter(Boolean).length >= 3;
 
-  // Arriba: la foto en un círculo dorado (con el birrete apoyado, en graduación)
+  // Arriba: la foto con su marco dorado (con el birrete apoyado, en graduación)
   // o, sin foto, el birrete solo / un separador
-  const RF = compacta ? 108 : 132;
+  const RF = (compacta ? 108 : 132) * (datos.formaFoto === "circulo" ? 1 : 0.92);
+  const mf = medidasFoto(datos.formaFoto, RF);
   bloques.push(foto
-    ? { alto: RF * 2 + 32, antes: 0, dibujar: (y) => {
-      retrato(ctx, foto, cx, y + RF + 16, RF);
-      if (datos.esGraduacion) birrete(ctx, cx + RF * 0.66, y + RF * 0.36, 0.5, -0.32);
+    ? { alto: mf.alto + 32, antes: 0, dibujar: (y) => {
+      marcoFoto(ctx, foto, datos.formaFoto, cx, y, RF);
+      if (datos.esGraduacion) {
+        // Apoyado en el borde superior derecho del marco
+        const bx = datos.formaFoto === "circulo" ? cx + RF * 0.66 : cx + mf.ancho * 0.36;
+        const by = datos.formaFoto === "circulo" ? y + RF * 0.36 : y + (datos.formaFoto === "arco" ? mf.ancho * 0.16 : 10);
+        birrete(ctx, bx, by, 0.5, -0.32);
+      }
     } }
     : datos.esGraduacion
     ? compacta
@@ -329,8 +508,17 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
       escribir(ctx, `—  ${datos.honor}  —`, cx, y + 21, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 22, min: 13, max: 800, espacio: 4, color: P.oroPlano }) });
   }
 
-  bloques.push({ alto: 62, antes: 14, dibujar: (y) =>
-    escribir(ctx, datos.protagonista.toLocaleUpperCase("es"), cx, y + 54, { fuente: (px) => `600 ${px}px ${CAPS}`, px: 62, min: 34, max: 760, espacio: 2, color: "oro" }) });
+  // El nombre en la letra elegida: mayúsculas elegantes, caligrafía o clásica
+  if (datos.letraNombre === "caligrafia") {
+    bloques.push({ alto: 86, antes: 10, dibujar: (y) =>
+      escribir(ctx, datos.protagonista, cx, y + 70, { fuente: (px) => `${px}px ${SCRIPT}`, px: 92, min: 54, max: 800, color: "oro" }) });
+  } else if (datos.letraNombre === "clasica") {
+    bloques.push({ alto: 66, antes: 14, dibujar: (y) =>
+      escribir(ctx, datos.protagonista, cx, y + 56, { fuente: (px) => `500 ${px}px ${SERIF}`, px: 66, min: 36, max: 800, color: "oro" }) });
+  } else {
+    bloques.push({ alto: 62, antes: 14, dibujar: (y) =>
+      escribir(ctx, datos.protagonista.toLocaleUpperCase("es"), cx, y + 54, { fuente: (px) => `600 ${px}px ${CAPS}`, px: datos.diseno === "minimal" ? 68 : 62, min: 34, max: 760, espacio: 2, color: "oro" }) });
+  }
 
   // De qué se gradúa y dónde: la carrera en cursiva clara, la institución en mayúsculas finas
   if (datos.carrera) {
@@ -419,7 +607,15 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   }
   // El llamado a confirmar es para la tarjeta personal (va con el enlace); la
   // genérica (para estados) no lleva enlace al lado
-  if (datos.invitado) {
+  if (qr) {
+    // Impresa: el QR lleva a la invitación (en papel no hay enlace que tocar)
+    const lado = 190;
+    bloques.push({ alto: lado + 34, antes: 22, dibujar: (y) => {
+      dibujarQR(ctx, qr, cx, y, lado);
+      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 28,
+        { fuente: (px) => `500 ${px}px ${CAPS}`, px: 16, min: 12, max: 760, espacio: 3, color: P.oroPlano });
+    } });
+  } else if (datos.invitado) {
     bloques.push({ alto: 20, antes: 14, dibujar: (y) =>
       escribir(ctx, datos.cta.toLocaleUpperCase("es"), cx, y + 18, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 17, min: 12, max: 760, espacio: 3, color: P.oroPlano }) });
   }

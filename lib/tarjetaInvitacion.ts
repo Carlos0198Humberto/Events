@@ -43,7 +43,34 @@ export type ExtrasTarjeta = {
   foto?: boolean;               // false = la tarjeta va sin la foto de portada
   paleta?: string | null;       // colores de la tarjeta (PALETAS_TARJETA); null = según el tipo
   agradecimiento?: string | null; // mensaje para los invitados a distancia (null = el de siempre)
+  foto_url?: string | null;     // foto propia de la tarjeta (ej. con toga); null = la de portada
+  forma_foto?: FormaFoto | null;
+  diseno?: DisenoTarjeta | null;
+  metal?: MetalTarjeta | null;
+  letra_nombre?: LetraNombre | null;
 };
+
+// Opciones de estilo de la tarjeta (las claves son lo que se guarda)
+export type FormaFoto = "circulo" | "arco" | "retrato";
+export type DisenoTarjeta = "gala" | "minimal" | "floral";
+export type MetalTarjeta = "oro" | "plata" | "oro_rosa";
+export type LetraNombre = "mayusculas" | "caligrafia" | "clasica";
+export const FORMAS_FOTO: { id: FormaFoto; nombre: string }[] = [
+  { id: "circulo", nombre: "Círculo" }, { id: "arco", nombre: "Arco" }, { id: "retrato", nombre: "Retrato" },
+];
+export const DISENOS_TARJETA: { id: DisenoTarjeta; nombre: string; detalle: string }[] = [
+  { id: "gala", nombre: "Gala", detalle: "Bandas de filigrana" },
+  { id: "minimal", nombre: "Minimal", detalle: "Limpio, mucho aire" },
+  { id: "floral", nombre: "Floral", detalle: "Ramilletes en las esquinas" },
+];
+export const METALES_TARJETA: { id: MetalTarjeta; nombre: string }[] = [
+  { id: "oro", nombre: "Oro" }, { id: "plata", nombre: "Plata" }, { id: "oro_rosa", nombre: "Oro rosa" },
+];
+export const LETRAS_NOMBRE: { id: LetraNombre; nombre: string }[] = [
+  { id: "mayusculas", nombre: "Mayúsculas" }, { id: "caligrafia", nombre: "Caligrafía" }, { id: "clasica", nombre: "Clásica" },
+];
+const una = <T extends string>(v: unknown, lista: { id: T }[]): T | undefined =>
+  lista.some((o) => o.id === v) ? (v as T) : undefined;
 
 /** Frases sugeridas para la línea pequeña sobre el nombre, por tipo de evento. */
 export const FRASES_HONOR: Record<string, string[]> = {
@@ -81,6 +108,11 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   if (typeof o.foto === "boolean") ex.foto = o.foto;
   if (typeof o.paleta === "string") ex.paleta = limpio(o.paleta, 20) || null;
   if (typeof o.agradecimiento === "string") ex.agradecimiento = limpio(o.agradecimiento, 400) || null;
+  if (typeof o.foto_url === "string" && /^(https?:|blob:|data:image\/)/.test(o.foto_url)) ex.foto_url = o.foto_url;
+  ex.forma_foto = una(o.forma_foto, FORMAS_FOTO);
+  ex.diseno = una(o.diseno, DISENOS_TARJETA);
+  ex.metal = una(o.metal, METALES_TARJETA);
+  ex.letra_nombre = una(o.letra_nombre, LETRAS_NOMBRE);
   return ex;
 }
 
@@ -98,7 +130,10 @@ export type DatosTarjeta = {
   cta: string;                // "Confirmá tu asistencia en el enlace del mensaje"
   especial: boolean;          // invitación de agradecimiento (invitado a distancia)
   dedicatoria: string | null; // "Aunque estés lejos, fuiste parte de este logro." (solo especial)
-  foto: string | null;        // URL de la foto de portada, si va en la tarjeta
+  foto: string | null;        // la foto de la tarjeta (propia o la de portada), si va
+  formaFoto: FormaFoto;
+  diseno: DisenoTarjeta;
+  letraNombre: LetraNombre;
   paleta: PaletaTarjeta;      // colores (azul noche y oro, marfil y oro…)
   fecha: string | null;       // "Sábado 21 de noviembre de 2026"
   fechaCorta: string | null;  // "21 · NOV · 2026"
@@ -368,7 +403,10 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     dedicatoria: especial
       ? (evento.tipo === "graduacion" ? "Aunque estés lejos, fuiste parte de este logro." : "Aunque estés lejos, sos parte de este momento.")
       : null,
-    foto: extras.foto === false ? null : evento.imagen_url?.trim() || null,
+    foto: extras.foto === false ? null : extras.foto_url || evento.imagen_url?.trim() || null,
+    formaFoto: extras.forma_foto ?? "circulo",
+    diseno: extras.diseno ?? "gala",
+    letraNombre: extras.letra_nombre ?? "mayusculas",
     paleta: paletaDe(evento),
     fecha,
     fechaCorta,
@@ -444,10 +482,34 @@ export const PALETAS_TARJETA: Record<string, PaletaTarjeta> = {
 
 const PALETA_POR_TIPO: Record<string, string> = { graduacion: "azul", boda: "marfil", quinceañera: "rosa" };
 
-/** La paleta elegida por el organizador o, si no eligió, la del tipo de evento. */
+// Plata y oro rosa: mismas cinco paradas (oscuro → brillo → oscuro → brillo →
+// oscuro). La versión "profunda" es para fondos claros (marfil).
+const METALES: Record<Exclude<MetalTarjeta, "oro">, { brillo: [number, string][]; profundo: [number, string][]; plano: string; planoProfundo: string }> = {
+  plata: {
+    brillo: [[0, "#7D848C"], [0.28, "#E9EDF1"], [0.5, "#A7AEB6"], [0.74, "#F7F9FB"], [1, "#858C94"]],
+    profundo: [[0, "#4E555C"], [0.28, "#8E969E"], [0.5, "#5F666D"], [0.74, "#9AA2AA"], [1, "#4A5056"]],
+    plano: "#CDD3DA", planoProfundo: "#5F666D",
+  },
+  oro_rosa: {
+    brillo: [[0, "#9A5F52"], [0.28, "#F2C7B8"], [0.5, "#C08070"], [0.74, "#FAD9CC"], [1, "#A06656"]],
+    profundo: [[0, "#7A4336"], [0.28, "#B97A68"], [0.5, "#8E5546"], [0.74, "#C58B79"], [1, "#6E3B30"]],
+    plano: "#E9B6A6", planoProfundo: "#8E5546",
+  },
+};
+
+/** La paleta con el metal elegido (el oro es el de la propia paleta). */
+export function conMetal(paleta: PaletaTarjeta, metal: MetalTarjeta | null | undefined): PaletaTarjeta {
+  if (!metal || metal === "oro") return paleta;
+  const m = METALES[metal];
+  const claro = paleta.id === "marfil";
+  return { ...paleta, dorado: claro ? m.profundo : m.brillo, oroPlano: claro ? m.planoProfundo : m.plano };
+}
+
+/** La paleta elegida por el organizador (o la del tipo de evento), con su metal. */
 export function paletaDe(evento: Pick<EventoTarjeta, "tipo" | "tarjeta">): PaletaTarjeta {
-  const elegida = extrasDe(evento).paleta;
-  return PALETAS_TARJETA[elegida ?? ""] ?? PALETAS_TARJETA[PALETA_POR_TIPO[evento.tipo] ?? "negro"];
+  const ex = extrasDe(evento);
+  const base = PALETAS_TARJETA[ex.paleta ?? ""] ?? PALETAS_TARJETA[PALETA_POR_TIPO[evento.tipo] ?? "negro"];
+  return conMetal(base, ex.metal);
 }
 
 export const doradoCss = (p: PaletaTarjeta) =>

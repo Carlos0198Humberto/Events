@@ -11,7 +11,7 @@
 // trazados que dibuja el canvas (lib/ornamentosTarjeta.ts).
 
 import { ImageResponse } from "next/og";
-import { doradoCss, type DatosTarjeta, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
+import { doradoCss, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, separador } from "@/lib/ornamentosTarjeta";
 
 export const TAM_OG = { width: 1200, height: 630 };
@@ -123,15 +123,25 @@ async function fotoComoDataUrl(url: string | null): Promise<string | null> {
   }
 }
 
-function Retrato({ src, lado, P }: { src: string; lado: number; P: PaletaTarjeta }) {
+// Bordes según la forma: círculo, arco (redondo arriba) o retrato
+function radios(forma: FormaFoto, ancho: number) {
+  if (forma === "circulo") return { borderRadius: "50%" };
+  if (forma === "arco") return { borderTopLeftRadius: ancho / 2, borderTopRightRadius: ancho / 2, borderBottomLeftRadius: 8, borderBottomRightRadius: 8 };
+  return { borderRadius: 10 };
+}
+
+function Retrato({ src, lado, P, forma }: { src: string; lado: number; P: PaletaTarjeta; forma: FormaFoto }) {
+  // Arco y retrato son más altos que anchos
+  const ancho = forma === "circulo" ? lado : Math.round(lado * 0.8);
+  const alto = forma === "circulo" ? lado : Math.round(lado * 1.05);
   return (
     <div style={{
-      display: "flex", width: lado + 16, height: lado + 16, borderRadius: "50%", padding: 3,
+      display: "flex", width: ancho + 16, height: alto + 16, padding: 3, ...radios(forma, ancho + 16),
       backgroundImage: doradoCss(P), boxShadow: "0 0 30px rgba(212,176,104,0.35)",
     }}>
-      <div style={{ display: "flex", width: lado + 10, height: lado + 10, borderRadius: "50%", padding: 3, backgroundColor: P.fondo }}>
+      <div style={{ display: "flex", width: ancho + 10, height: alto + 10, padding: 3, backgroundColor: P.fondo, ...radios(forma, ancho + 10) }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} width={lado + 4} height={lado + 4} style={{ borderRadius: "50%", objectFit: "cover", objectPosition: "50% 22%" }} alt="" />
+        <img src={src} width={ancho + 4} height={alto + 4} style={{ objectFit: "cover", objectPosition: "50% 22%", ...radios(forma, ancho + 4) }} alt="" />
       </div>
     </div>
   );
@@ -153,7 +163,9 @@ function Separador({ ancho, margen, P }: { ancho: number; margen: number; P: Pal
 export async function renderTarjetaOG(datos: DatosTarjeta) {
   const P = datos.paleta;
   const TEXTO_ORO = textoOro(P);
-  const nombre = datos.protagonista.toLocaleUpperCase("es");
+  // El nombre en la letra elegida (mayúsculas, caligrafía o clásica)
+  const letra = datos.letraNombre;
+  const nombre = letra === "mayusculas" ? datos.protagonista.toLocaleUpperCase("es") : datos.protagonista;
   const lugar = datos.lugar?.toLocaleUpperCase("es") ?? "";
   const honor = datos.honor ? `—  ${datos.honor}  —` : "";
   const para = datos.invitado ? `Para ${datos.invitado}` : "";
@@ -165,21 +177,23 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
   const carrera = datos.carrera ?? "";
   const familia = datos.familia ? `Con cariño, ${datos.familia}` : "";
 
-  const [foto, script, caps6, caps5, sans3, sans4, italica] = await Promise.all([
+  const [foto, script, caps6, caps5, sans3, sans4, italica, nombreClasico] = await Promise.all([
     fotoComoDataUrl(datos.foto),
-    fuenteGoogle("Great+Vibes", datos.tituloScript),
-    fuenteGoogle("Cinzel:wght@600", nombre),
+    fuenteGoogle("Great+Vibes", letra === "caligrafia" ? `${datos.tituloScript}${nombre}` : datos.tituloScript),
+    fuenteGoogle("Cinzel:wght@600", letra === "mayusculas" ? nombre : "A"),
     fuenteGoogle("Cinzel:wght@500", `${honor}${lugar}${cita}${institucion}`),
     fuenteGoogle("Jost:wght@300", `${datos.fechaCorta ?? ""}${datos.direccion ?? ""}`),
     fuenteGoogle("Jost:wght@400", `${datos.diaHora ?? ""}${cta}`),
     para || versiculo || carrera || familia || dedicatoria
       ? fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${versiculo}${carrera}${familia}${dedicatoria}`)
       : null,
+    letra === "clasica" ? fuenteGoogle("Playfair+Display:wght@500", nombre) : null,
   ]);
   type Fuente = { name: string; data: ArrayBuffer; weight: 300 | 400 | 500 | 600; style: "normal" | "italic" };
   const fuentes = ([
     script && { name: "Script", data: script, weight: 400, style: "normal" },
     caps6 && { name: "Caps", data: caps6, weight: 600, style: "normal" },
+    nombreClasico && { name: "Serif", data: nombreClasico, weight: 500, style: "normal" },
     caps5 && { name: "Caps", data: caps5, weight: 500, style: "normal" },
     sans3 && { name: "Sans", data: sans3, weight: 300, style: "normal" },
     sans4 && { name: "Sans", data: sans4, weight: 400, style: "normal" },
@@ -187,7 +201,10 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
   ] as (Fuente | null)[]).filter((x): x is Fuente => !!x);
 
   const pxScript = tamano(ANCHO_SCRIPT[datos.tituloScript] ?? 800, 500, 68, 44);
-  const pxNombre = tamano(anchoCinzel(nombre), 470, 50, 26);
+  // Cinzel medido; caligrafía y clásica, estimadas (son más angostas)
+  const pxNombre = letra === "mayusculas" ? tamano(anchoCinzel(nombre), 470, 50, 26)
+    : letra === "caligrafia" ? Math.max(34, Math.min(64, Math.floor(470 * 100 / Math.max(nombre.length * 40, 1))))
+    : Math.max(28, Math.min(52, Math.floor(470 * 100 / Math.max(nombre.length * 52, 1))));
   const pxLugar = tamano(anchoCinzel(lugar), 440, 28, 18);
   // Las frases de honor largas ("CON ALEGRÍA ANUNCIAMOS…") se achican para no salirse
   const pxHonor = tamano(anchoCinzel(honor) + honor.length * 400 / 15, 490, 15, 9);
@@ -221,11 +238,23 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
           position: "absolute", left: 64, top: 40, width: 560, height: 550,
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center",
         }}>
-          {foto ? <Retrato src={foto} lado={datos.carrera || datos.honor ? 118 : 132} P={P} />
+          {foto ? <Retrato src={foto} lado={datos.carrera || datos.honor ? 118 : 132} P={P} forma={datos.formaFoto} />
             : datos.esGraduacion ? <Birrete ancho={190} P={P} /> : <Separador ancho={200} margen={0} P={P} />}
           <div style={{ display: "flex", fontFamily: "Script", fontSize: pxScript, lineHeight: 1.35, padding: "0 12px", marginTop: 4, ...TEXTO_ORO }}>{datos.tituloScript}</div>
           {honor && <div style={{ display: "flex", fontFamily: "Caps", fontWeight: 500, fontSize: pxHonor, letterSpacing: 4, whiteSpace: "nowrap", color: P.oroPlano }}>{honor}</div>}
-          <div style={{ display: "flex", fontFamily: "Caps", fontWeight: 600, fontSize: pxNombre, letterSpacing: 1, lineHeight: 1.2, marginTop: 8, ...TEXTO_ORO }}>{nombre}</div>
+          {letra === "caligrafia" ? (
+            // En caligrafía el espacio es casi nulo: cada palabra va aparte, con aire fijo
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", columnGap: Math.round(pxNombre * 0.28), marginTop: 8, padding: "0 10px" }}>
+              {nombre.split(/\s+/).map((palabra, i) => (
+                <span key={i} style={{ display: "flex", fontFamily: "Script", fontSize: pxNombre, lineHeight: 1.2, ...TEXTO_ORO }}>{palabra}</span>
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              display: "flex", marginTop: 8, lineHeight: 1.2, fontSize: pxNombre, ...TEXTO_ORO,
+              ...(letra === "clasica" ? { fontFamily: "Serif", fontWeight: 500 } : { fontFamily: "Caps", fontWeight: 600, letterSpacing: 1 }),
+            }}>{nombre}</div>
+          )}
           {carrera && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: carrera.length > 48 ? 18 : 21, lineHeight: 1.3, color: P.textoFuerte, maxWidth: 520, marginTop: 6 }}>{carrera}</div>}
           {institucion && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Caps", fontWeight: 500, fontSize: pxInstitucion, letterSpacing: 2, color: P.oroPlano, maxWidth: 520, marginTop: 4 }}>{institucion}</div>}
           <Separador ancho={180} margen={16} P={P} />

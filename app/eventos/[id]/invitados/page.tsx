@@ -87,6 +87,8 @@ export default function AgregarInvitados() {
   const [envioGrupo, setEnvioGrupo] = useState<{ tipo: TipoEnvio; preseleccion: string[] } | null>(null);
   const [editandoVersiculo, setEditandoVersiculo] = useState(false);
   const [exportando, setExportando] = useState(false);
+  // Progreso del ZIP con todas las tarjetas ("12/40"); null = sin generar
+  const [zipProgreso, setZipProgreso] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
   // Tarjeta de invitación (imagen) del invitado que se está por enviar
   const [tarjeta, setTarjeta] = useState<{ inv: Invitado; trato: Trato; blob: Blob | null; url: string | null } | null>(null);
@@ -472,6 +474,80 @@ export default function AgregarInvitados() {
     openWhatsApp(buildWhatsAppUrl(inv));
     marcarEnvio(inv, "invitacion");
     toast.success(copiada ? "Tarjeta copiada: en el chat pegala con Ctrl+V" : "Tarjeta descargada: adjuntala en el chat");
+  }
+
+  // Enviar directo al chat del invitado: WhatsApp no deja que una página
+  // adjunte una imagen, pero sí abrir el chat de un número con el mensaje
+  // escrito. La tarjeta queda copiada para pegarla (mantener presionado →
+  // Pegar), y la vista previa del enlace ya la muestra aunque no se pegue.
+  // La copia NO se espera: iOS solo abre la ventana dentro del mismo toque.
+  function enviarTarjetaAlChat() {
+    if (!tarjeta?.blob) return;
+    const { inv, blob } = tarjeta;
+    let copia: Promise<boolean> = Promise.resolve(false);
+    try {
+      copia = navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]).then(() => true, () => false);
+    } catch { /* este navegador no copia imágenes */ }
+    openWhatsApp(buildWhatsAppUrl(inv));
+    marcarEnvio(inv, "invitacion");
+    const nombre = inv.nombre.split(" ")[0];
+    copia.then((ok) => toast.success(ok
+      ? `Chat de ${nombre} abierto. La tarjeta está copiada: en el chat, mantené presionado y Pegar.`
+      : `Chat de ${nombre} abierto con el mensaje: el enlace ya muestra la tarjeta.`));
+    cerrarTarjeta();
+  }
+
+  // Tarjeta para imprimir (5×7 pulgadas, con QR a la invitación): para abuelos
+  // o quien no usa WhatsApp. Se abre lista para imprimir o guardar como PDF.
+  async function imprimirTarjeta() {
+    if (!evento || !tarjeta) return;
+    // La ventana se abre en el toque; si no, el navegador la bloquea
+    const ventana = window.open("", "_blank");
+    if (!ventana) { toast.error("Permití las ventanas emergentes para imprimir."); return; }
+    ventana.document.write("<p style='font-family:sans-serif;padding:24px;color:#475569'>Preparando la tarjeta para imprimir…</p>");
+    const { inv, trato } = tarjeta;
+    const blob = await generarTarjetaPNG(
+      armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia }),
+      "imprimir",
+      { qr: buildLink(inv.token) },
+    );
+    if (!blob) { ventana.close(); toast.error("No se pudo preparar la tarjeta para imprimir."); return; }
+    const src = await new Promise<string>((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.readAsDataURL(blob); });
+    const titulo = `Tarjeta de ${inv.nombre}`.replace(/[<>&"]/g, "");
+    ventana.document.open();
+    ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${titulo}</title>
+<style>@page{size:5in 7in;margin:0}html,body{margin:0;padding:0;background:#fff}img{display:block;width:5in;height:7in}
+@media screen{body{display:flex;justify-content:center;padding:24px;background:#e2e8f0}img{width:min(100%,520px);height:auto;box-shadow:0 12px 32px rgba(0,0,0,.25)}}</style>
+</head><body><img src="${src}" alt=""><script>document.querySelector("img").onload=function(){setTimeout(function(){print()},300)}<\/script></body></html>`);
+    ventana.document.close();
+  }
+
+  // Todas las tarjetas personalizadas en un ZIP (una por invitado, con su
+  // saludo y, si está lejos, la de agradecimiento)
+  async function descargarTodasLasTarjetas() {
+    if (!evento || zipProgreso || todosInvitados.length === 0) return;
+    setZipProgreso(`0/${todosInvitados.length}`);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      for (let i = 0; i < todosInvitados.length; i++) {
+        const inv = todosInvitados[i];
+        setZipProgreso(`${i + 1}/${todosInvitados.length}`);
+        const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, tratoInvitado(inv), { distancia: !!inv.a_distancia }));
+        if (blob) zip.file(`${String(i + 1).padStart(3, "0")}_${archivoTarjeta(inv, blob).name}`, blob);
+      }
+      const contenido = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(contenido);
+      a.download = `tarjetas_${(evento.nombre || "evento").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]+/g, "_")}.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast.success(`Listo: ${todosInvitados.length} tarjeta${todosInvitados.length !== 1 ? "s" : ""} en el ZIP`);
+    } catch {
+      toast.error("No se pudieron generar las tarjetas. Probá de nuevo.");
+    } finally {
+      setZipProgreso(null);
+    }
   }
 
   // Versión para estados de WhatsApp / Instagram (1080×1920): la ve todo el
@@ -944,6 +1020,7 @@ export default function AgregarInvitados() {
         .toggle-distancia { background: #FDF2F8; border-color: #FBCFE8; }
         .tarjeta-estados { width: 100%; padding: 11px; border-radius: 12px; border: 1.5px dashed rgba(79,70,229,0.35); background: rgba(79,70,229,0.05); color: #3730A3; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-bottom: 8px; }
         .tarjeta-estados:disabled { opacity: .6; cursor: wait; }
+        .tarjeta-link { display: block; width: 100%; margin: -2px 0 10px; padding: 4px; border: none; background: none; font-size: 12px; font-weight: 600; color: var(--accent2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-family: inherit; }
         .tarjeta-secundarias .btn-cancel { padding: 11px 6px; font-size: 13px; }
         .tarjeta-secundarias .btn-cancel:disabled { opacity: .5; cursor: wait; }
 
@@ -1036,13 +1113,23 @@ export default function AgregarInvitados() {
               <pre>{buildMensaje(tarjeta.inv, tarjeta.trato)}</pre>
             </details>
             <div className="tarjeta-ayuda">
-              {compartirEsLoPrincipal()
+              {tarjeta.inv.telefono
+                ? <>Se abre <strong>directo el chat de {tarjeta.inv.nombre.split(" ")[0]}</strong> con el mensaje. La tarjeta queda copiada: en el chat mantené presionado y <strong>Pegar</strong> (en la compu, Ctrl+V).</>
+                : compartirEsLoPrincipal()
                 ? <>Elegí <strong>WhatsApp</strong> y el contacto: la tarjeta va con el mensaje, y el enlace para confirmar se puede tocar.</>
                 : <>Se copia la tarjeta y se abre el chat con el mensaje y el enlace para confirmar. En el chat pegala con <strong>Ctrl+V</strong> y enviá.</>}
             </div>
-            {compartirEsLoPrincipal()
+            {tarjeta.inv.telefono
+              ? <button className="tarjeta-principal" onClick={enviarTarjetaAlChat} disabled={!tarjeta.blob} type="button">Enviar a {tarjeta.inv.nombre.split(" ")[0]} por WhatsApp</button>
+              : compartirEsLoPrincipal()
               ? <button className="tarjeta-principal" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">Enviar tarjeta</button>
               : <button className="tarjeta-principal" onClick={copiarYAbrirWhatsApp} disabled={!tarjeta.blob} type="button">Copiar y abrir WhatsApp</button>}
+            {tarjeta.inv.telefono && compartirEsLoPrincipal() && (
+              <button className="tarjeta-link" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">o compartir la imagen eligiendo el contacto</button>
+            )}
+            <button className="tarjeta-estados" onClick={imprimirTarjeta} disabled={!tarjeta.blob} type="button">
+              🖨️ Imprimir (5×7 con código QR)
+            </button>
             <button className="tarjeta-estados" onClick={tarjetaParaEstados} disabled={generandoHistoria} type="button">
               {generandoHistoria ? "Preparando…" : "Versión para estados (sin nombre del invitado)"}
             </button>
@@ -1422,6 +1509,22 @@ export default function AgregarInvitados() {
                     <line x1="12" y1="15" x2="12" y2="3"/>
                   </svg>
                   {exportando ? "..." : "Excel"}
+                </button>
+                <button
+                  onClick={descargarTodasLasTarjetas}
+                  disabled={!!zipProgreso || !evento}
+                  title="Descargar la tarjeta de cada invitado en un ZIP"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: "rgba(79,70,229,0.10)",
+                    border: "1px solid rgba(79,70,229,0.30)", borderRadius: 10,
+                    padding: "6px 12px", fontSize: 11, fontWeight: 700,
+                    color: "var(--accent2)", cursor: zipProgreso ? "wait" : "pointer",
+                    fontFamily: "inherit", whiteSpace: "nowrap",
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                  {zipProgreso ? `Tarjetas ${zipProgreso}` : "Tarjetas (ZIP)"}
                 </button>
                 </div>
               )}

@@ -10,7 +10,12 @@
 // Usa las clases de formulario de las dos páginas (field-label, field-input…).
 
 import { useEffect, useRef, useState } from "react";
-import { armarDatosTarjeta, doradoCss, FRASES_HONOR, PALETAS_TARJETA, paletaDe, type EventoTarjeta, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { supabase } from "@/lib/supabase";
+import { achicarImagen } from "@/lib/fotos";
+import {
+  armarDatosTarjeta, conMetal, DISENOS_TARJETA, doradoCss, FORMAS_FOTO, FRASES_HONOR, LETRAS_NOMBRE, METALES_TARJETA,
+  PALETAS_TARJETA, paletaDe, type EventoTarjeta, type ExtrasTarjeta,
+} from "@/lib/tarjetaInvitacion";
 
 const CARRERAS = [
   "Bachillerato General",
@@ -63,6 +68,22 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
   useEffect(() => { if (esPropia) setPropia(true); }, [esPropia]);
 
   const paletaActiva = paletaDe({ tipo, tarjeta: valor }).id;
+  const datos = armarDatosTarjeta({ ...evento, tipo, tarjeta: valor }, "");
+  const fotoInput = useRef<HTMLInputElement>(null);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [errorFoto, setErrorFoto] = useState("");
+
+  async function subirFotoTarjeta(original: File) {
+    setErrorFoto("");
+    if (original.size > 20 * 1024 * 1024) { setErrorFoto("La foto no puede superar 20 MB"); return; }
+    setSubiendoFoto(true);
+    const file = await achicarImagen(original);
+    const path = `tarjeta-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${file.name.split(".").pop() || "jpg"}`;
+    const { error } = await supabase.storage.from("eventos").upload(path, file, { upsert: true, contentType: file.type });
+    setSubiendoFoto(false);
+    if (error) { setErrorFoto("No se pudo subir la foto. Probá de nuevo."); return; }
+    onChange({ ...valor, foto_url: supabase.storage.from("eventos").getPublicUrl(path).data.publicUrl, foto: true });
+  }
 
   return (
     <div className="fields-group">
@@ -94,6 +115,45 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
           })}
         </div>
         <p className="field-hint">Si no elegís, va la del tipo de evento: azul noche en graduación, marfil en bodas, rosa vino en XV años.</p>
+      </div>
+
+      <div>
+        <label className="field-label">Diseño</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {DISENOS_TARJETA.map((d) => (
+            <button key={d.id} type="button" style={chip(datos.diseno === d.id)} onClick={() => onChange({ ...valor, diseno: d.id })} title={d.detalle}>
+              {d.nombre}
+            </button>
+          ))}
+        </div>
+        <p className="field-hint">{DISENOS_TARJETA.find((d) => d.id === datos.diseno)?.detalle}.</p>
+      </div>
+
+      <div>
+        <label className="field-label">Metal de los detalles</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {METALES_TARJETA.map((m) => {
+            const muestra = conMetal(PALETAS_TARJETA[paletaActiva], m.id);
+            const activo = (valor.metal ?? "oro") === m.id;
+            return (
+              <button key={m.id} type="button" style={{ ...chip(activo), display: "inline-flex", alignItems: "center", gap: 7 }} onClick={() => onChange({ ...valor, metal: m.id })}>
+                <span style={{ width: 18, height: 18, borderRadius: "50%", backgroundImage: doradoCss(muestra), border: "1px solid rgba(0,0,0,0.12)" }} />
+                {m.nombre}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <label className="field-label">Letra del nombre</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {LETRAS_NOMBRE.map((l) => (
+            <button key={l.id} type="button" style={chip(datos.letraNombre === l.id)} onClick={() => onChange({ ...valor, letra_nombre: l.id })}>
+              {l.nombre}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>
@@ -175,7 +235,42 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
         </>
       )}
 
-      {evento.imagen_url && (
+      <div>
+        <label className="field-label">Foto para la tarjeta</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {(valor.foto_url || evento.imagen_url) && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={valor.foto_url || evento.imagen_url || ""} alt="" style={{ width: 54, height: 54, borderRadius: 12, objectFit: "cover", border: "1.5px solid var(--border-mid)", flexShrink: 0 }} />
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <button type="button" style={chip(false)} disabled={subiendoFoto} onClick={() => fotoInput.current?.click()}>
+              {subiendoFoto ? "Subiendo…" : valor.foto_url ? "Cambiar foto" : "📷 Subir otra foto"}
+            </button>
+            {valor.foto_url && (
+              <button type="button" style={chip(false)} onClick={() => onChange({ ...valor, foto_url: null })}>Usar la de portada</button>
+            )}
+          </div>
+        </div>
+        <input ref={fotoInput} type="file" accept="image/*" style={{ display: "none" }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) subirFotoTarjeta(f); e.target.value = ""; }} />
+        <p className="field-hint">{valor.foto_url ? "Esta foto va solo en la tarjeta (la portada de la invitación no cambia)." : "Si no subís otra, va la foto de portada. Ej.: una con toga y birrete."}</p>
+        {errorFoto && <p className="field-hint" style={{ color: "var(--danger)" }}>{errorFoto}</p>}
+      </div>
+
+      {(evento.imagen_url || valor.foto_url) && (
+        <div>
+          <label className="field-label">Forma de la foto</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {FORMAS_FOTO.map((f) => (
+              <button key={f.id} type="button" style={chip(datos.formaFoto === f.id)} onClick={() => onChange({ ...valor, forma_foto: f.id })}>
+                {f.nombre}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(evento.imagen_url || valor.foto_url) && (
         <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: "1.5px solid var(--border-mid)", background: "var(--accent-soft)", cursor: "pointer" }}>
           <input
             type="checkbox"
@@ -184,8 +279,8 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
             style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
           />
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", lineHeight: 1.35 }}>
-            Poner la foto de portada en la tarjeta
-            <span style={{ display: "block", fontSize: 11, fontWeight: 500, color: "var(--text3)" }}>En un círculo dorado, arriba del título.</span>
+            Poner la foto en la tarjeta
+            <span style={{ display: "block", fontSize: 11, fontWeight: 500, color: "var(--text3)" }}>Arriba del título, con marco dorado.</span>
           </span>
         </label>
       )}
