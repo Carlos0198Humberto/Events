@@ -937,13 +937,21 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
 // ─── Ref global de audio para control de volumen desde TTS ───────────────────
 const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
 
-// La música va de fondo: al 100% tapaba la voz del asistente. Mientras habla
-// baja casi a nada. iPhone y iPad ignoran audio.volume (suena siempre al
-// 100%): ahí la música se pausa mientras habla y sigue sola al terminar.
+// La música va de FONDO de la voz: suave siempre y casi muda mientras habla
+// el asistente. Baja y sube con un fundido, y entre frase y frase no vuelve a
+// subir (antes "bombeaba": silencio-música-silencio en cada frase).
+//
+// iPhone y iPad ignoran audio.volume (la pista sonaba siempre al 100%). Ahí
+// el <audio> pasa por un mezclador de Web Audio (GainNode), el único volumen
+// que iOS respeta. Se arma dentro del primer toque (iOS lo exige) y solo
+// donde hace falta: en compu y Android alcanza con audio.volume. El archivo
+// viene de Supabase Storage con CORS abierto (si no, Web Audio daría silencio).
 const MUSICA_BASE = 0.18;
-const MUSICA_CON_VOZ = 0.03;
+const MUSICA_CON_VOZ = 0.04;
+const FUNDIDO_S = 0.45;
+const ESPERA_VOLVER_MS = 1200;
+
 let volumenControlable: boolean | null = null;
-let pausadaPorVoz = false;
 function puedeControlarVolumen() {
   if (volumenControlable === null) {
     try { const a = new Audio(); a.volume = 0.5; volumenControlable = Math.abs(a.volume - 0.5) < 0.01; }
@@ -951,16 +959,51 @@ function puedeControlarVolumen() {
   }
   return volumenControlable;
 }
-function musicaBajoVoz(hablando: boolean) {
+
+let mezcla: { ctx: AudioContext; ganancia: GainNode } | null = null;
+/** iPhone: conecta la música a un mezclador. Llamar dentro de un toque. */
+function prepararMezcla() {
   const a = globalAudioRef.current;
-  if (!a) return;
-  if (puedeControlarVolumen()) { a.volume = hablando ? MUSICA_CON_VOZ : MUSICA_BASE; return; }
-  if (hablando) {
-    if (!a.paused) { a.pause(); pausadaPorVoz = true; }
-  } else if (pausadaPorVoz) {
-    pausadaPorVoz = false;
-    a.play().catch(() => {});
+  if (!a || puedeControlarVolumen()) return;
+  if (mezcla) { mezcla.ctx.resume().catch(() => {}); return; }
+  try {
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    // Safari 17+: que suene como música (igual que antes) aunque el teléfono esté en silencio
+    const sesion = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (sesion) sesion.type = "playback";
+    const ctx = new AC();
+    const ganancia = ctx.createGain();
+    ganancia.gain.value = MUSICA_BASE;
+    ctx.createMediaElementSource(a).connect(ganancia).connect(ctx.destination);
+    ctx.resume().catch(() => {});
+    mezcla = { ctx, ganancia };
+    // Al volver a la pestaña iOS deja el mezclador "interrumpido"
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") mezcla?.ctx.resume().catch(() => {});
+    });
+  } catch { /* sin Web Audio: la música queda como estaba */ }
+}
+
+function fundirMusica(objetivo: number) {
+  if (mezcla) {
+    const g = mezcla.ganancia.gain;
+    const t = mezcla.ctx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(objetivo, t + FUNDIDO_S);
+    return;
   }
+  const a = globalAudioRef.current;
+  if (a && puedeControlarVolumen()) a.volume = objetivo;
+}
+
+let volverTimer: ReturnType<typeof setTimeout> | null = null;
+function musicaBajoVoz(hablando: boolean) {
+  if (volverTimer) { clearTimeout(volverTimer); volverTimer = null; }
+  if (hablando) { fundirMusica(MUSICA_CON_VOZ); return; }
+  // Si en un momento empieza la frase siguiente, la música ni se entera
+  volverTimer = setTimeout(() => { volverTimer = null; fundirMusica(MUSICA_BASE); }, ESPERA_VOLVER_MS);
 }
 
 // ─── Frase con efecto máquina de escribir (graduación) ────────────────────────
@@ -2017,6 +2060,7 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
     } else {
       // Tocar el reproductor es pedir música explícitamente, aunque haya entrado sin sonido
       preferenciaAudio.sinSonido = false;
+      prepararMezcla();
       a.muted = false;
       a.play().then(() => setPlaying(true)).catch(() => {});
     }
@@ -3837,6 +3881,9 @@ export default function ConfirmarPage() {
     if (conSonido) {
       preferenciaAudio.sinSonido = false;
       if (silencio) setSilencio(false);
+      // Dentro del toque: iPhone arma el mezclador (volumen de fondo real) aunque
+      // la música ya hubiera arrancado sola en silencio
+      prepararMezcla();
       const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
       if (typeof fn === "function") (fn as () => void)();
     } else {
@@ -3891,6 +3938,8 @@ export default function ConfirmarPage() {
       document.removeEventListener("mousedown", unlock, true);
       const audio = getAudio();
       if (!audio) return;
+      globalAudioRef.current = audio;
+      prepararMezcla(); // iPhone: volumen de fondo real (antes de que suene)
       // Truco iOS: play en muted (permitido) → unmute inmediatamente
       audio.muted = true;
       audio.play()
@@ -5024,6 +5073,7 @@ export default function ConfirmarPage() {
         <audio
           id="inv-audio-hidden"
           src={evento.musica_url}
+          crossOrigin="anonymous"
           loop
           playsInline
           muted
