@@ -304,8 +304,8 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
     fuenteGoogle("Cinzel:wght@500", `${honor}${lugar}${cita}${institucion}`),
     fuenteGoogle("Jost:wght@300", `${datos.fechaCorta ?? ""}${datos.direccion ?? ""}`),
     fuenteGoogle("Jost:wght@400", `${datos.diaHora ?? ""}${cta}`),
-    para || versiculo || carrera || familia || dedicatoria
-      ? fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${versiculo}${carrera}${familia}${dedicatoria}`)
+    para || versiculo || carrera || familia || dedicatoria || datos.aviso
+      ? fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${versiculo}${carrera}${familia}${dedicatoria}${datos.aviso ?? ""}`)
       : null,
     letra === "clasica" ? fuenteGoogle("Playfair+Display:wght@500", nombre) : null,
   ]);
@@ -390,7 +390,8 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
               <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 300, fontSize: 46, letterSpacing: 3, lineHeight: 1.15, padding: "0 14px", ...TEXTO_ORO }}>{datos.fechaCorta}</div>
             </div>
           )}
-          {dedicatoria && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 24, lineHeight: 1.3, color: P.textoFuerte, maxWidth: 440, marginTop: 22 }}>{dedicatoria}</div>}
+          {dedicatoria && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: datos.aviso ? 20 : 24, lineHeight: 1.3, color: P.textoFuerte, maxWidth: 440, marginTop: datos.aviso ? 16 : 22 }}>{dedicatoria}</div>}
+          {datos.aviso && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 17, lineHeight: 1.3, color: P.textoSuave, maxWidth: 440, marginTop: 8 }}>{datos.aviso}</div>}
           {datos.diaHora && !datos.especial && <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 400, fontSize: 19, letterSpacing: 4, color: P.textoSuave, marginTop: 14 }}>{datos.diaHora}</div>}
           {lugar && !datos.especial && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Caps", fontWeight: 500, fontSize: pxLugar, letterSpacing: 1, lineHeight: 1.25, maxWidth: 460, marginTop: 30, ...TEXTO_ORO }}>{lugar}</div>}
           {datos.direccion && !datos.especial && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Sans", fontWeight: 300, fontSize: 18, lineHeight: 1.35, color: P.textoSuave, maxWidth: 430, marginTop: 6 }}>{datos.direccion}</div>}

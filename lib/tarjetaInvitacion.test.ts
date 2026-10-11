@@ -257,14 +257,16 @@ describe("pre-invitación (reservá la fecha)", () => {
     expect(d.honor).toBe("RESERVÁ LA FECHA"); // donde la gala dice «ceremony»; nunca «En honor a»
     expect(d.dedicatoria).toBe(textosReserva(reserva(), "f").constancia);
     expect(d.promocion).toBe("2026");
+    expect(d.aviso).toContain("la invitación formal");
+    expect(d.cta).toBe(""); // el aviso completo reemplaza el pie en mayúsculas
   });
 
   it("el texto propio reemplaza la constancia y la tarjeta con el enlace llega después", () => {
     const culto = sugerenciasReserva(reserva(), "f").find((x) => x.id === "culto")!.texto;
-    expect(culto).toBe("He tomado a bien invitarte a compartir conmigo el culto de acción de gracias con el que celebraré mi graduación, un triunfo que Dios ha dado a mi vida.");
+    expect(culto).toBe("Con profunda gratitud a Dios, que me ha permitido culminar esta etapa, tengo el gusto de invitarte al culto de acción de gracias con el que celebraré mi graduación. Este triunfo es obra de Su fidelidad, y será un privilegio compartirlo contigo.");
     const t = textosReserva(reserva({ tarjeta: { etapa: "reserva", pre_texto: culto } }), "f");
     expect(t.constancia).toBe(culto);
-    expect(t.despues).toBe("Más adelante te llegará la tarjeta con el enlace para confirmar tu asistencia.");
+    expect(t.despues).toBe("Próximamente te haré llegar la invitación formal, con todos los detalles y el enlace para confirmar tu asistencia.");
   });
 
   it("quien está lejos recibe su carta aunque la etapa sea la pre-invitación", () => {
@@ -276,7 +278,7 @@ describe("pre-invitación (reservá la fecha)", () => {
     const yo = textosReserva(reserva(), "f");
     expect(yo.constancia).toBe("Te envío esta pre-invitación para dejar constancia de que te invito a mi graduación.");
     expect(yo.apartar).toContain("para que apartes este día");
-    expect(yo.despues).toContain("la tarjeta con el enlace para confirmar tu asistencia");
+    expect(yo.despues).toContain("te haré llegar la invitación formal");
     const familia = textosReserva(reserva({ tarjeta: { familia: "Familia Chavarría", graduando: "Carlos Chavarría" } }), "plural");
     expect(familia.constancia).toBe("Les enviamos esta pre-invitación para dejar constancia de que los invitamos a la graduación de Carlos.");
     expect(familia.apartar).toContain("Sabemos que tienen muchas ocupaciones");

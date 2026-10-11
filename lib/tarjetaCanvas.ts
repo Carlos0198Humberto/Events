@@ -591,11 +591,20 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   // Pre-invitación: el texto del organizador bajo la fecha y, como el «Class
   // of» de la gala, «Promoción» con el año grande
   if (datos.dedicatoria && datos.reserva) {
-    ctx.font = `italic 500 30px ${SERIF}`;
-    const lineasT = partirEnLineas(ctx, datos.dedicatoria, 740).slice(0, 4);
-    bloques.push({ alto: lineasT.length * 40, antes: 26, dibujar: (y) => {
+    // Hasta 7 renglones: el texto del organizador nunca se corta
+    ctx.font = `italic 500 28px ${SERIF}`;
+    const lineasT = partirEnLineas(ctx, datos.dedicatoria, 740).slice(0, 7);
+    bloques.push({ alto: lineasT.length * 38, antes: 26, dibujar: (y) => {
       lineasT.forEach((l, i) =>
-        escribir(ctx, l, cx, y + 30 + i * 40, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 22, max: 760, color: P.textoFuerte }));
+        escribir(ctx, l, cx, y + 28 + i * 38, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 28, min: 20, max: 760, color: P.textoFuerte }));
+    } });
+  }
+  if (datos.aviso) {
+    ctx.font = `italic 500 26px ${SERIF}`;
+    const lineasA = partirEnLineas(ctx, datos.aviso, 740).slice(0, 3);
+    bloques.push({ alto: lineasA.length * 35, antes: 14, dibujar: (y) => {
+      lineasA.forEach((l, i) =>
+        escribir(ctx, l, cx, y + 26 + i * 35, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 26, min: 19, max: 760, color: P.textoSuave }));
     } });
   }
   if (datos.promocion) {
@@ -639,7 +648,7 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
       escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : datos.reserva ? "ESCANEÁ PARA VER TU PRE-INVITACIÓN" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 28,
         { fuente: (px) => `500 ${px}px ${CAPS}`, px: 16, min: 12, max: 760, espacio: 3, color: P.oroPlano });
     } });
-  } else if (datos.invitado) {
+  } else if (datos.invitado && datos.cta) {
     bloques.push({ alto: 20, antes: 14, dibujar: (y) =>
       escribir(ctx, datos.cta.toLocaleUpperCase("es"), cx, y + 18, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 17, min: 12, max: 760, espacio: 3, color: P.oroPlano }) });
   }

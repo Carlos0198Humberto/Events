@@ -157,6 +157,7 @@ export type DatosTarjeta = {
   direccion: string | null;   // "Km 12 Carretera al Puerto, La Libertad"
   versiculo: Versiculo | null; // texto bíblico elegido por el organizador
   promocion: string | null;   // "2026" (pre-invitación: «Promoción 2026», como el «Class of» de la gala)
+  aviso: string | null;       // pre-invitación: que la invitación formal para confirmar llega después
 };
 
 const TITULOS: Record<string, string> = {
@@ -343,7 +344,7 @@ export type TextosReserva = {
   constancia: string;
   /** "Sé que tenés muchas ocupaciones: por eso te aviso con tiempo, para que apartes este día." */
   apartar: string;
-  /** "Más adelante te envío la invitación con la hora y el lugar, para que confirmes tu asistencia." */
+  /** "Próximamente te haré llegar la invitación formal, con todos los detalles y el enlace para confirmar tu asistencia." */
   despues: string;
   firma: string;
 };
@@ -368,7 +369,7 @@ export function textosReserva(evento: EventoTarjeta, trato: Trato): TextosReserv
     // Lo que escribió el organizador manda (ej. el culto de acción de gracias)
     constancia: propio || `${envio} esta pre-invitación para dejar constancia de que ${invito} a ${graduacion}.`,
     apartar: `${yo ? "Sé" : "Sabemos"} que ${pl ? "tienen" : "tenés"} muchas ocupaciones: por eso ${a} ${yo ? "aviso" : "avisamos"} con tiempo, para que ${pl ? "aparten" : "apartes"} este día.`,
-    despues: `Más adelante ${pl ? "les" : "te"} llegará la tarjeta con el enlace para ${pl ? "confirmar su" : "confirmar tu"} asistencia.`,
+    despues: `Próximamente ${pl ? "les" : "te"} ${yo ? "haré" : "haremos"} llegar la invitación formal, con todos los detalles y el enlace para confirmar ${pl ? "su" : "tu"} asistencia.`,
     firma: familiaDe(evento) || (p.esPersona ? p.nombre : quienInvitaHablado(evento)),
   };
 }
@@ -385,9 +386,10 @@ export function sugerenciasReserva(evento: EventoTarjeta, trato: Trato): { id: s
   const pila = p.esPersona ? p.nombre.split(/\s+/)[0] : "";
   const sinPropio = { ...evento, tarjeta: { ...extrasDe(evento), pre_texto: null } };
   const invitar = pl ? "invitarlos" : "invitarte";
+  const contigo = pl ? "con ustedes" : "contigo";
   const culto = yo
-    ? `He tomado a bien ${invitar} a compartir conmigo el culto de acción de gracias con el que celebraré mi graduación, un triunfo que Dios ha dado a mi vida.`
-    : `Hemos tomado a bien ${invitar} a compartir con nosotros el culto de acción de gracias con el que celebraremos la graduación${pila ? ` de ${pila}` : ""}, un triunfo que Dios le ha dado.`;
+    ? `Con profunda gratitud a Dios, que me ha permitido culminar esta etapa, tengo el gusto de ${invitar} al culto de acción de gracias con el que celebraré mi graduación. Este triunfo es obra de Su fidelidad, y será un privilegio compartirlo ${contigo}.`
+    : `Con profunda gratitud a Dios, que le ha permitido ${pila ? `a ${pila} ` : ""}culminar esta etapa, tenemos el gusto de ${invitar} al culto de acción de gracias con el que celebraremos su graduación. Este triunfo es obra de Su fidelidad, y será un privilegio compartirlo ${contigo}.`;
   return [
     { id: "culto", nombre: "Culto de acción de gracias", texto: culto },
     { id: "constancia", nombre: "Constancia de invitación", texto: textosReserva(sinPropio, trato).constancia },
@@ -579,7 +581,7 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     invitado,
     cta: especial
       ? (plural ? "Abran su invitación en el enlace del mensaje" : "Abrí tu invitación en el enlace del mensaje")
-      : reserva ? "La invitación para confirmar llega más adelante"
+      : reserva ? ""
       : plural ? "Confirmen su asistencia en el enlace del mensaje" : "Confirmá tu asistencia en el enlace del mensaje",
     especial,
     reserva,
@@ -608,6 +610,7 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     // carta) y la pre-invitación tampoco: es solo el aviso de la fecha
     versiculo: especial || reserva ? null : versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
     promocion: reserva && evento.fecha ? String(fechaLocal(evento.fecha).getFullYear()) : null,
+    aviso: reserva ? textosReserva(evento, trato ?? "neutro").despues : null,
   };
 }
 
