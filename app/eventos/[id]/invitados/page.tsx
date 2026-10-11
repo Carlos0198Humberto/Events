@@ -300,7 +300,7 @@ export default function AgregarInvitados() {
 
   function buildMensaje(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
     if (inv.a_distancia) return armarMensajeDistancia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
-    if (esPreInvitacion(inv)) return armarMensajeReserva(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
+    if (esPreInvitacion(inv)) return armarMensajeReserva(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, trato);
     // Si el invitado elige cuántos van, no se le dice un número de lugares
     const personas = inv.cupo_elije_invitado ? null : inv.num_personas ?? null;
     return armarMensajeInvitacion(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, new Date(), { personas });
@@ -406,6 +406,13 @@ export default function AgregarInvitados() {
   function enviarWhatsApp(inv: Invitado) {
     openWhatsApp(buildWhatsAppUrl(inv));
     marcarEnvio(inv, "invitacion");
+  }
+
+  // La pre-invitación no lleva enlace, y sin enlace WhatsApp no muestra ninguna
+  // imagen: el botón de la fila abre la tarjeta, que viaja junto al texto
+  function enviarDesdeFila(inv: Invitado) {
+    if (esPreInvitacion(inv)) prepararTarjeta(inv);
+    else enviarWhatsApp(inv);
   }
 
   // ── Invitación como tarjeta ──────────────────────────────────────────────
@@ -530,7 +537,7 @@ export default function AgregarInvitados() {
     const blob = await generarTarjetaPNG(
       armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia }),
       "imprimir",
-      { qr: buildLink(inv.token) },
+      { qr: esPreInvitacion(inv) ? undefined : buildLink(inv.token) },
     );
     if (!blob) { ventana.close(); toast.error("No se pudo preparar la tarjeta para imprimir."); return; }
     const src = await new Promise<string>((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.readAsDataURL(blob); });
@@ -1214,8 +1221,9 @@ export default function AgregarInvitados() {
               {tarjeta.inv.telefono
                 ? <>Se abre <strong>directo el chat de {tarjeta.inv.nombre.split(" ")[0]}</strong> con el mensaje. La tarjeta queda copiada: en el chat mantené presionado y <strong>Pegar</strong> (en la compu, Ctrl+V).</>
                 : compartirEsLoPrincipal()
-                ? <>Elegí <strong>WhatsApp</strong> y el contacto: la tarjeta va con el mensaje, y el enlace para confirmar se puede tocar.</>
-                : <>Se copia la tarjeta y se abre el chat con el mensaje y el enlace para confirmar. En el chat pegala con <strong>Ctrl+V</strong> y enviá.</>}
+                ? <>Elegí <strong>WhatsApp</strong> y el contacto: la tarjeta va con el mensaje{esPreInvitacion(tarjeta.inv) ? "." : ", y el enlace para confirmar se puede tocar."}</>
+                : <>Se copia la tarjeta y se abre el chat con el mensaje{esPreInvitacion(tarjeta.inv) ? "" : " y el enlace para confirmar"}. En el chat pegala con <strong>Ctrl+V</strong> y enviá.</>}
+              {esPreInvitacion(tarjeta.inv) && <> La pre-invitación <strong>no lleva enlace</strong>: el enlace va con la invitación formal (etapa 2).</>}
             </div>
             {tarjeta.inv.telefono
               ? <button className="tarjeta-principal" onClick={enviarTarjetaAlChat} disabled={!tarjeta.blob} type="button">Enviar a {tarjeta.inv.nombre.split(" ")[0]} por WhatsApp</button>
@@ -1226,7 +1234,7 @@ export default function AgregarInvitados() {
               <button className="tarjeta-link" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">o compartir la imagen eligiendo el contacto</button>
             )}
             <button className="tarjeta-estados" onClick={imprimirTarjeta} disabled={!tarjeta.blob} type="button">
-              <IcoImpresora size={16} />Imprimir (5×7 con código QR)
+              <IcoImpresora size={16} />{esPreInvitacion(tarjeta.inv) ? "Imprimir (5×7)" : "Imprimir (5×7 con código QR)"}
             </button>
             <button className="tarjeta-estados" onClick={tarjetaParaEstados} disabled={generandoHistoria} type="button">
               {generandoHistoria ? "Preparando…" : "Versión para estados (sin nombre del invitado)"}
@@ -1307,7 +1315,7 @@ export default function AgregarInvitados() {
               <div className="etapa-opciones" role="radiogroup" aria-label="Etapa de la invitación">
                 <button type="button" role="radio" aria-checked={reservaActiva} className={`etapa-op${reservaActiva ? " activa" : ""}`} onClick={() => cambiarEtapa(true)} disabled={cambiandoEtapa}>
                   <span className="etapa-num">1</span>
-                  <span className="etapa-txt"><strong>Pre-invitación</strong><small>Para que aparten la fecha. No piden confirmar.</small></span>
+                  <span className="etapa-txt"><strong>Pre-invitación</strong><small>Tarjeta y mensaje, sin enlace. Para que aparten la fecha.</small></span>
                 </button>
                 <button type="button" role="radio" aria-checked={!reservaActiva} className={`etapa-op${!reservaActiva ? " activa" : ""}`} onClick={() => cambiarEtapa(false)} disabled={cambiandoEtapa}>
                   <span className="etapa-num">2</span>
@@ -1315,7 +1323,9 @@ export default function AgregarInvitados() {
                 </button>
               </div>
               <p className="etapa-ayuda">
-                Cada invitado tiene un solo enlace: al cambiar de etapa, lo que ve al abrirlo cambia solo.
+                {reservaActiva
+                  ? "La pre-invitación va sin enlace: la tarjeta negro y oro con el mensaje. El enlace de cada invitado se manda en la etapa 2, para confirmar."
+                  : "Cada invitado tiene un solo enlace: al cambiar de etapa, lo que ve al abrirlo cambia solo."}
                 {reservaActiva && sinDistancia > 0 && ` Pre-invitaciones enviadas: ${preEnviadas} de ${sinDistancia}.`}
               </p>
               {reservaActiva && evento && (
@@ -1338,7 +1348,7 @@ export default function AgregarInvitados() {
                   <button type="button" className="etapa-guardar" onClick={guardarPreTexto} disabled={cambiandoEtapa || preTexto.trim() === preTextoGuardado}>
                     Guardar texto
                   </button>
-                  <p className="etapa-ayuda">Va en el mensaje de WhatsApp, en la pantalla y en lo que lee el avatar. Después siempre siguen la fecha, que la aparten y que la tarjeta con el enlace para confirmar llega más adelante. Vacío = el texto automático.</p>
+                  <p className="etapa-ayuda">Va en el mensaje de WhatsApp, en la pantalla y en lo que lee el avatar. Después siempre siguen la fecha, que la aparten y que la invitación formal para confirmar llega más adelante. Vacío = el texto automático.</p>
                 </div>
               )}
             </div>
@@ -1602,7 +1612,7 @@ export default function AgregarInvitados() {
                       {inv.telefono && (
                         <button
                           className={`btn-action ${yaEnviado(inv) ? "btn-wa-done" : "btn-wa"}${lastAdded === inv.token && !yaEnviado(inv) ? " btn-wa-new" : ""}`}
-                          onClick={() => enviarWhatsApp(inv)}
+                          onClick={() => enviarDesdeFila(inv)}
                           type="button"
                           aria-label={`Enviar WhatsApp a ${inv.nombre}`}
                         >
@@ -1781,7 +1791,7 @@ export default function AgregarInvitados() {
                       {inv.telefono && (
                         <button
                           className={`btn-action ${yaEnviado(inv) ? "btn-wa-done" : "btn-wa"}`}
-                          onClick={() => enviarWhatsApp(inv)}
+                          onClick={() => enviarDesdeFila(inv)}
                           type="button"
                         >
                           {yaEnviado(inv) ? <IcoCheck size={14} strokeWidth={2.4} /> : <IcoWhatsApp size={14} />}

@@ -153,16 +153,17 @@ export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: str
 /**
  * La pre-invitación (primer momento de la graduación): que conste que está
  * invitado, la fecha para apartarla y que la invitación para confirmar llega
- * después. Sin hora ni lugar: eso va en la invitación.
+ * después. Sin hora, lugar ni enlace: eso va en la invitación formal.
  */
-export function armarMensajeReserva(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato): string {
+export function armarMensajeReserva(evento: EventoMensaje, nombreInvitado: string, trato: Trato): string {
   const t = textosReserva(evento, trato);
-  const plural = trato === "plural";
+  // Sin enlace: la pre-invitación es la tarjeta y este texto. El enlace llega
+  // con la invitación formal, la que se confirma
   return [
     titulo(evento).texto,
     `${saludo(nombreDePila(nombreInvitado), trato)}:\n${t.constancia}`,
-    evento.fecha ? `\u{1F5D3}\u{FE0F} ${fechaLarga(evento.fecha)}\n${t.apartar} ${t.despues}` : `${t.apartar} ${t.despues}`,
-    `\u{1F4C5} ${plural ? "Su" : "Tu"} pre-invitación:\n${link}`,
+    evento.fecha ? `\u{1F5D3}\u{FE0F} ${fechaLarga(evento.fecha)}\n${t.apartar}` : t.apartar,
+    t.despues,
     firma(evento),
   ].filter(Boolean).join("\n\n");
 }

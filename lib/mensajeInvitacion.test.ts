@@ -146,11 +146,15 @@ describe("título del mensaje", () => {
 
 describe("armarMensajeReserva", () => {
   it("deja constancia, da la fecha para apartarla y no pide confirmar ni dice el lugar", () => {
-    const m = armarMensajeReserva(grad({ lugar: "Hotel Real", hora: "18:00", tarjeta: { etapa: "reserva" } }), "Rosa María Pérez", LINK, "f");
+    const m = armarMensajeReserva(grad({ lugar: "Hotel Real", hora: "18:00", tarjeta: { etapa: "reserva" } }), "Rosa María Pérez", "f");
     expect(m).toContain("Querida Rosa:\nTe envío esta pre-invitación para dejar constancia de que te invito a mi graduación.");
     expect(m).toContain("para que apartes este día");
-    expect(m).toContain("pre-invitación:\n" + LINK);
+    expect(m).toContain("Próximamente te haré llegar la invitación formal");
     expect(m).not.toMatch(/Hotel Real|Confirmá tu asistencia aquí/);
-    expect(enlaces(m)).toEqual([LINK]);
+  });
+
+  it("no lleva enlace: el enlace llega con la invitación formal", () => {
+    const m = armarMensajeReserva(grad({ tarjeta: { etapa: "reserva" } }), "Rosa", "f");
+    expect(enlaces(m)).toEqual([]);
   });
 });

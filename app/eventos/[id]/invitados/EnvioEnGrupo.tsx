@@ -157,6 +157,13 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
               ))}
             </div>
 
+            {/* En grupo solo viaja el texto, y la pre-invitación no tiene enlace que muestre la tarjeta */}
+            {reserva && tipo === "invitacion" && (
+              <div className="eg-nota" style={{ marginBottom: 12 }}>
+                En grupo va <strong>solo el mensaje</strong>, sin la tarjeta negro y oro. Para mandarla, usá el botón <strong>Tarjeta</strong> (o WhatsApp) de cada invitado.
+              </div>
+            )}
+
             <div className="eg-filtros">
               {filtros.map((f) => (
                 <button key={f.clave} type="button" className="eg-filtro" onClick={() => setElegidos(new Set(f.tokens))}>
