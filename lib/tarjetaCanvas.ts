@@ -554,7 +554,7 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   } });
 
   // Invitación especial (a distancia): la dedicatoria, en cursiva clara
-  if (datos.dedicatoria) {
+  if (datos.dedicatoria && !datos.reserva) {
     ctx.font = `italic 500 34px ${SERIF}`;
     const lineasD = partirEnLineas(ctx, datos.dedicatoria, 760).slice(0, 3);
     bloques.push({ alto: lineasD.length * 44, antes: 22, dibujar: (y) => {
@@ -587,6 +587,22 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
       ctx.lineTo(cx + ancho / 2 + 18, y + 70);
       ctx.stroke();
     } });
+  }
+  // Pre-invitación: el texto del organizador bajo la fecha y, como el «Class
+  // of» de la gala, «Promoción» con el año grande
+  if (datos.dedicatoria && datos.reserva) {
+    ctx.font = `italic 500 30px ${SERIF}`;
+    const lineasT = partirEnLineas(ctx, datos.dedicatoria, 740).slice(0, 4);
+    bloques.push({ alto: lineasT.length * 40, antes: 26, dibujar: (y) => {
+      lineasT.forEach((l, i) =>
+        escribir(ctx, l, cx, y + 30 + i * 40, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 22, max: 760, color: P.textoFuerte }));
+    } });
+  }
+  if (datos.promocion) {
+    bloques.push({ alto: 22, antes: 26, dibujar: (y) =>
+      escribir(ctx, "PROMOCIÓN", cx, y + 19, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 20, min: 14, max: 400, espacio: 5, color: P.oroPlano }) });
+    bloques.push({ alto: 86, antes: 6, dibujar: (y) =>
+      escribir(ctx, datos.promocion!, cx, y + 76, { fuente: (px) => `500 ${px}px ${SERIF}`, px: 92, min: 56, max: 420, color: "oro" }) });
   }
   // La especial no lleva hora ni lugar: quien la recibe está lejos
   if (datos.diaHora && !datos.especial) {

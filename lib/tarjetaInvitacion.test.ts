@@ -245,11 +245,18 @@ describe("pre-invitación (reservá la fecha)", () => {
   it("la tarjeta anuncia la fecha y nada más: sin hora, lugar ni pedir confirmar", () => {
     const d = armarDatosTarjeta(reserva({ hora: "18:00", lugar: "Hotel Real, San Salvador" }), "Rosa", "f");
     expect(d.reserva).toBe(true);
-    expect(d.tituloScript).toBe("Reservá la fecha");
     expect([d.horaCorta, d.lugar, d.direccion, d.versiculo]).toEqual([null, null, null, null]);
     expect(d.fechaPartes).not.toBeNull();
     expect(d.cta).not.toMatch(/confirm[aá] tu/i);
-    expect(d.honor).toBeNull(); // sin «En honor a» en la pre-invitación
+  });
+
+  it("la tarjeta de la pre-invitación es la gala negro y oro de la referencia", () => {
+    const d = armarDatosTarjeta(reserva({ imagen_url: "https://x/foto.jpg", tarjeta: { etapa: "reserva", diseno: "moderna", paleta: "marfil" } }), "Rosa", "f");
+    expect([d.diseno, d.paleta.id, d.letraNombre, d.foto]).toEqual(["gala", "negro", "mayusculas", null]);
+    expect(d.tituloScript).toBe("Invitación de Graduación");
+    expect(d.honor).toBe("RESERVÁ LA FECHA"); // donde la gala dice «ceremony»; nunca «En honor a»
+    expect(d.dedicatoria).toBe(textosReserva(reserva(), "f").constancia);
+    expect(d.promocion).toBe("2026");
   });
 
   it("el texto propio reemplaza la constancia y la tarjeta con el enlace llega después", () => {

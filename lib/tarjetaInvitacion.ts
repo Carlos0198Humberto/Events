@@ -156,6 +156,7 @@ export type DatosTarjeta = {
   lugar: string | null;       // "Salón Los Almendros"
   direccion: string | null;   // "Km 12 Carretera al Puerto, La Libertad"
   versiculo: Versiculo | null; // texto bíblico elegido por el organizador
+  promocion: string | null;   // "2026" (pre-invitación: «Promoción 2026», como el «Class of» de la gala)
 };
 
 const TITULOS: Record<string, string> = {
@@ -564,8 +565,10 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
   return {
     esGraduacion,
     titulo: TITULOS[evento.tipo] ?? "Celebración",
-    tituloScript: especial ? TITULO_SCRIPT_GRATITUD : reserva ? TITULO_SCRIPT_RESERVA : TITULOS_SCRIPT[evento.tipo] ?? TITULO_SCRIPT_GENERICO,
-    honor: especial ? "INVITACIÓN ESPECIAL" : reserva ? null : extras.honor !== undefined
+    // La pre-invitación es la tarjeta de gala de la referencia: «Invitación de
+    // Graduación» en caligrafía y debajo, donde iría «ceremony», la etapa
+    tituloScript: especial ? TITULO_SCRIPT_GRATITUD : TITULOS_SCRIPT[evento.tipo] ?? TITULO_SCRIPT_GENERICO,
+    honor: especial ? "INVITACIÓN ESPECIAL" : reserva ? TITULO_SCRIPT_RESERVA.toLocaleUpperCase("es") : extras.honor !== undefined
       ? (extras.honor ? extras.honor.toLocaleUpperCase("es") : null)
       : esGraduacion && protagonista.esPersona ? "EN HONOR A" : null,
     protagonista: protagonista.nombre,
@@ -582,13 +585,16 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     reserva,
     dedicatoria: especial
       ? (evento.tipo === "graduacion" ? "Aunque estés lejos, fuiste parte de este logro." : "Aunque estés lejos, sos parte de este momento.")
+      // En la pre-invitación, lo que escribió el organizador (ej. el culto de acción de gracias)
+      : reserva ? textosReserva(evento, trato ?? "neutro").constancia
       : null,
-    foto: extras.foto === false ? null : extras.foto_url || evento.imagen_url?.trim() || null,
+    // La pre-invitación va siempre en gala negro y oro, con el birrete y sin foto
+    foto: reserva ? null : extras.foto === false ? null : extras.foto_url || evento.imagen_url?.trim() || null,
     // La moderna pide la foto en arco y el nombre en letra clásica; los demás diseños, el círculo y las mayúsculas
     formaFoto: extras.forma_foto ?? ((extras.diseno ?? "moderna") === "moderna" ? "arco" : "circulo"),
-    diseno: extras.diseno ?? "moderna",
-    letraNombre: extras.letra_nombre ?? ((extras.diseno ?? "moderna") === "moderna" ? "clasica" : "mayusculas"),
-    paleta: paletaDe(evento),
+    diseno: reserva ? "gala" : extras.diseno ?? "moderna",
+    letraNombre: reserva ? "mayusculas" : extras.letra_nombre ?? ((extras.diseno ?? "moderna") === "moderna" ? "clasica" : "mayusculas"),
+    paleta: reserva ? PALETAS_TARJETA.negro : paletaDe(evento),
     fecha,
     fechaCorta,
     fechaPartes,
@@ -601,6 +607,7 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     // La especial no lleva versículo en la tarjeta (el único va dentro de la
     // carta) y la pre-invitación tampoco: es solo el aviso de la fecha
     versiculo: especial || reserva ? null : versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
+    promocion: reserva && evento.fecha ? String(fechaLocal(evento.fecha).getFullYear()) : null,
   };
 }
 
