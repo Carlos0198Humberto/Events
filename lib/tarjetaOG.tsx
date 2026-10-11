@@ -24,6 +24,7 @@ const ANCHO_SCRIPT: Record<string, number> = {
   "Invitación de Cumpleaños": 811.9,
   "Invitación": 341.4,
   "Con gratitud": 425, // estimado (invitación especial a distancia)
+  "Reservá la fecha": 560, // estimado (pre-invitación)
 };
 
 // Ancho de cada carácter de Cinzel 600 a 100 px (Cinzel 500 es apenas más angosta)
@@ -175,7 +176,7 @@ async function renderModernaOG(datos: DatosTarjeta) {
   const lugar = !datos.especial ? datos.lugar?.toLocaleUpperCase("es") ?? "" : "";
   const direccion = !datos.especial ? datos.direccion ?? "" : "";
   const para = datos.invitado ? `Para ${datos.invitado}` : "";
-  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
+  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : datos.reserva ? "TOCÁ PARA VER TU PRE-INVITACIÓN" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
   const fp = !datos.especial ? datos.fechaPartes : null;
   const lado = datos.horaCorta ? datos.horaCorta.toLocaleUpperCase("es") : fp?.anio ?? "";
   const fechaLinea = datos.especial ? datos.fecha ?? "" : "";
@@ -288,7 +289,7 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
   const lugar = datos.lugar?.toLocaleUpperCase("es") ?? "";
   const honor = datos.honor ? `—  ${datos.honor}  —` : "";
   const para = datos.invitado ? `Para ${datos.invitado}` : "";
-  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
+  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : datos.reserva ? "TOCÁ PARA VER TU PRE-INVITACIÓN" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
   const dedicatoria = datos.dedicatoria ?? "";
   const versiculo = datos.versiculo ? `«${datos.versiculo.texto}»` : "";
   const cita = datos.versiculo?.cita.toLocaleUpperCase("es") ?? "";

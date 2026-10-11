@@ -44,6 +44,7 @@ export type ExtrasTarjeta = {
   paleta?: string | null;       // colores de la tarjeta (PALETAS_TARJETA); null = según el tipo
   agradecimiento?: string | null; // carta para los invitados a distancia, un párrafo por línea (null = la automática)
   entrada_qr?: boolean;         // false = sin entrada con código QR al confirmar
+  etapa?: "reserva" | null;     // "reserva" = pre-invitación (apartá la fecha); sin valor = invitación para confirmar
   foto_url?: string | null;     // foto propia de la tarjeta (ej. con toga); null = la de portada
   forma_foto?: FormaFoto | null;
   diseno?: DisenoTarjeta | null;
@@ -115,6 +116,7 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   if (typeof o.paleta === "string") ex.paleta = limpio(o.paleta, 20) || null;
   if (typeof o.agradecimiento === "string") ex.agradecimiento = limpioParrafos(o.agradecimiento, 1500) || null;
   if (o.entrada_qr === false) ex.entrada_qr = false;
+  if (o.etapa === "reserva") ex.etapa = "reserva";
   if (typeof o.foto_url === "string" && /^(https?:|blob:|data:image\/)/.test(o.foto_url)) ex.foto_url = o.foto_url;
   ex.forma_foto = una(o.forma_foto, FORMAS_FOTO);
   ex.diseno = una(o.diseno, DISENOS_TARJETA);
@@ -136,6 +138,7 @@ export type DatosTarjeta = {
   invitado: string;           // "María José Hernández"
   cta: string;                // "Confirmá tu asistencia en el enlace del mensaje"
   especial: boolean;          // invitación de agradecimiento (invitado a distancia)
+  reserva: boolean;           // pre-invitación: solo la fecha, sin hora, lugar ni confirmar
   dedicatoria: string | null; // "Aunque estés lejos, fuiste parte de este logro." (solo especial)
   foto: string | null;        // la foto de la tarjeta (propia o la de portada), si va
   formaFoto: FormaFoto;
@@ -168,8 +171,18 @@ const TITULOS_SCRIPT: Record<string, string> = {
 };
 export const TITULO_SCRIPT_GENERICO = "Invitación";
 export const TITULO_SCRIPT_GRATITUD = "Con gratitud";
+export const TITULO_SCRIPT_RESERVA = "Reservá la fecha";
 /** Todos los títulos en caligrafía posibles (la vista previa los tiene medidos). */
-export const TODOS_TITULOS_SCRIPT = [...Object.values(TITULOS_SCRIPT), TITULO_SCRIPT_GENERICO, TITULO_SCRIPT_GRATITUD];
+export const TODOS_TITULOS_SCRIPT = [...Object.values(TITULOS_SCRIPT), TITULO_SCRIPT_GENERICO, TITULO_SCRIPT_GRATITUD, TITULO_SCRIPT_RESERVA];
+
+/**
+ * ¿La graduación está en la etapa de pre-invitación? El organizador la elige
+ * en Invitados: primero se manda la pre-invitación (para que aparten la fecha)
+ * y después, con el mismo enlace, la invitación para confirmar.
+ */
+export function enReserva(evento: Pick<EventoTarjeta, "tipo" | "tarjeta">): boolean {
+  return evento.tipo === "graduacion" && extrasDe(evento).etapa === "reserva";
+}
 
 const HORAS = ["doce", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once"];
 const MESES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
@@ -322,6 +335,39 @@ export function fraseGraduacion(evento: EventoTarjeta): string | null {
   return p.esPersona ? `${p.nombre.split(/\s+/)[0]} se gradúa${que}` : `nuestro graduado se gradúa${que}`;
 }
 
+export type TextosReserva = {
+  /** "Te envío esta pre-invitación para dejar constancia de que te invito a mi graduación." */
+  constancia: string;
+  /** "Sé que tenés muchas ocupaciones: por eso te aviso con tiempo, para que apartes este día." */
+  apartar: string;
+  /** "Más adelante te envío la invitación con la hora y el lugar, para que confirmes tu asistencia." */
+  despues: string;
+  firma: string;
+};
+
+/**
+ * Lo que dice la pre-invitación de graduación: que quede constancia de que la
+ * persona está invitada, que aparte la fecha y que la invitación para
+ * confirmar llega después. En primera persona si habla el mismo graduado; en
+ * plural ("los", "ustedes") si va a varios.
+ */
+export function textosReserva(evento: EventoTarjeta, trato: Trato): TextosReserva {
+  const yo = hablaElProtagonista(evento);
+  const pl = trato === "plural";
+  const p = protagonistaDe(evento);
+  const pila = p.esPersona ? p.nombre.split(/\s+/)[0] : "";
+  const graduacion = yo ? "mi graduación" : pila ? `la graduación de ${pila}` : "esta graduación";
+  const a = pl ? "les" : "te";
+  const envio = yo ? `${pl ? "Les" : "Te"} envío` : `${pl ? "Les" : "Te"} enviamos`;
+  const invito = `${pl ? "los" : "te"} ${yo ? "invito" : "invitamos"}`;
+  return {
+    constancia: `${envio} esta pre-invitación para dejar constancia de que ${invito} a ${graduacion}.`,
+    apartar: `${yo ? "Sé" : "Sabemos"} que ${pl ? "tienen" : "tenés"} muchas ocupaciones: por eso ${a} ${yo ? "aviso" : "avisamos"} con tiempo, para que ${pl ? "aparten" : "apartes"} este día.`,
+    despues: `Más adelante ${a} ${yo ? "envío" : "enviamos"} la invitación con la hora y el lugar, para que ${pl ? "confirmen su" : "confirmes tu"} asistencia.`,
+    firma: familiaDe(evento) || (p.esPersona ? p.nombre : quienInvitaHablado(evento)),
+  };
+}
+
 export type CartaDistancia = {
   parrafos: string[];
   /** La frase que presenta la bendición: "Y esta es mi oración por vos:" */
@@ -453,6 +499,8 @@ function inicialesDe(nombre: string): string {
  */
 export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string, trato?: Trato | null, opciones: { distancia?: boolean } = {}): DatosTarjeta {
   const especial = !!opciones.distancia;
+  // La pre-invitación no es para quien está lejos: esa persona recibe su carta
+  const reserva = !especial && enReserva(evento);
   const esGraduacion = evento.tipo === "graduacion";
   const protagonista = protagonistaDe(evento);
   const invitado = nombreInvitado.trim();
@@ -491,7 +539,7 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
   return {
     esGraduacion,
     titulo: TITULOS[evento.tipo] ?? "Celebración",
-    tituloScript: especial ? TITULO_SCRIPT_GRATITUD : TITULOS_SCRIPT[evento.tipo] ?? TITULO_SCRIPT_GENERICO,
+    tituloScript: especial ? TITULO_SCRIPT_GRATITUD : reserva ? TITULO_SCRIPT_RESERVA : TITULOS_SCRIPT[evento.tipo] ?? TITULO_SCRIPT_GENERICO,
     honor: especial ? "INVITACIÓN ESPECIAL" : extras.honor !== undefined
       ? (extras.honor ? extras.honor.toLocaleUpperCase("es") : null)
       : esGraduacion && protagonista.esPersona ? "EN HONOR A" : null,
@@ -503,8 +551,10 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     invitado,
     cta: especial
       ? (plural ? "Abran su invitación en el enlace del mensaje" : "Abrí tu invitación en el enlace del mensaje")
+      : reserva ? "La invitación para confirmar llega más adelante"
       : plural ? "Confirmen su asistencia en el enlace del mensaje" : "Confirmá tu asistencia en el enlace del mensaje",
     especial,
+    reserva,
     dedicatoria: especial
       ? (evento.tipo === "graduacion" ? "Aunque estés lejos, fuiste parte de este logro." : "Aunque estés lejos, sos parte de este momento.")
       : null,
@@ -517,13 +567,15 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     fecha,
     fechaCorta,
     fechaPartes,
-    diaHora,
-    hora: evento.hora ? horaEnPalabras(evento.hora) : null,
-    horaCorta: hCorta,
-    lugar,
-    direccion,
-    // La especial no lleva versículo en la tarjeta: el único va dentro de la carta
-    versiculo: especial ? null : versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
+    // La pre-invitación solo anuncia la fecha: hora y lugar van en la invitación
+    diaHora: reserva ? null : diaHora,
+    hora: !reserva && evento.hora ? horaEnPalabras(evento.hora) : null,
+    horaCorta: reserva ? null : hCorta,
+    lugar: reserva ? null : lugar,
+    direccion: reserva ? null : direccion,
+    // La especial no lleva versículo en la tarjeta (el único va dentro de la
+    // carta) y la pre-invitación tampoco: es solo el aviso de la fecha
+    versiculo: especial || reserva ? null : versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
   };
 }
 

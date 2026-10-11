@@ -6,6 +6,8 @@ import {
   fraseInvitacion,
   agradecimientoDe,
   cartaDistancia,
+  enReserva,
+  textosReserva,
   enInstitucion,
   quienInvitaHablado,
   paletaDe,
@@ -227,5 +229,40 @@ describe("estilos de la tarjeta", () => {
     expect(plata.dorado).not.toEqual(oro.dorado);
     expect(plataMarfil.dorado).not.toEqual(plata.dorado);
     expect(paletaDe({ tipo: "graduacion", tarjeta: { metal: "oro" } })).toEqual(oro);
+  });
+});
+
+describe("pre-invitación (reservá la fecha)", () => {
+  const reserva = (extra: Partial<EventoTarjeta> = {}) => grad({ ...extra, tarjeta: { etapa: "reserva", ...(extra.tarjeta ?? {}) } });
+
+  it("solo la graduación tiene etapa de pre-invitación", () => {
+    expect(enReserva(reserva())).toBe(true);
+    expect(enReserva(grad())).toBe(false);
+    expect(enReserva({ tipo: "boda", tarjeta: { etapa: "reserva" } })).toBe(false);
+  });
+
+  it("la tarjeta anuncia la fecha y nada más: sin hora, lugar ni pedir confirmar", () => {
+    const d = armarDatosTarjeta(reserva({ hora: "18:00", lugar: "Hotel Real, San Salvador" }), "Rosa", "f");
+    expect(d.reserva).toBe(true);
+    expect(d.tituloScript).toBe("Reservá la fecha");
+    expect([d.horaCorta, d.lugar, d.direccion, d.versiculo]).toEqual([null, null, null, null]);
+    expect(d.fechaPartes).not.toBeNull();
+    expect(d.cta).not.toMatch(/confirm[aá] tu/i);
+  });
+
+  it("quien está lejos recibe su carta aunque la etapa sea la pre-invitación", () => {
+    const d = armarDatosTarjeta(reserva(), "Rosa", "f", { distancia: true });
+    expect([d.especial, d.reserva]).toEqual([true, false]);
+  });
+
+  it("los textos hablan en primera persona o como familia, y en plural a varios", () => {
+    const yo = textosReserva(reserva(), "f");
+    expect(yo.constancia).toBe("Te envío esta pre-invitación para dejar constancia de que te invito a mi graduación.");
+    expect(yo.apartar).toContain("para que apartes este día");
+    expect(yo.despues).toContain("para que confirmes tu asistencia");
+    const familia = textosReserva(reserva({ tarjeta: { familia: "Familia Chavarría", graduando: "Carlos Chavarría" } }), "plural");
+    expect(familia.constancia).toBe("Les enviamos esta pre-invitación para dejar constancia de que los invitamos a la graduación de Carlos.");
+    expect(familia.apartar).toContain("Sabemos que tienen muchas ocupaciones");
+    expect(familia.firma).toBe("Familia Chavarría");
   });
 });

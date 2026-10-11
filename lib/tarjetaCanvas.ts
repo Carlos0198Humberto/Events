@@ -620,7 +620,7 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
     const lado = 190;
     bloques.push({ alto: lado + 34, antes: 22, dibujar: (y) => {
       dibujarQR(ctx, qr, cx, y, lado);
-      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 28,
+      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : datos.reserva ? "ESCANEÁ PARA VER TU PRE-INVITACIÓN" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 28,
         { fuente: (px) => `500 ${px}px ${CAPS}`, px: 16, min: 12, max: 760, espacio: 3, color: P.oroPlano });
     } });
   } else if (datos.invitado) {
@@ -859,7 +859,7 @@ function dibujarModerna(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, foto
     const lado = 180;
     bloques.push({ alto: lado + 30, antes: 20, dibujar: (y) => {
       dibujarQR(ctx, qr, cx, y, lado);
-      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 26,
+      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : datos.reserva ? "ESCANEÁ PARA VER TU PRE-INVITACIÓN" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 26,
         { fuente: sans(500), px: 16, min: 12, max: ancho, espacio: 4, color: T.suave });
     } });
   } else if (datos.invitado) {

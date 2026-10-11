@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
-import { armarDatosTarjeta, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, enReserva, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
-import { armarMensajeDia, armarMensajeDistancia, armarMensajeInvitacion, armarMensajeRecordatorio, diasHasta } from "@/lib/mensajeInvitacion";
+import { armarMensajeDia, armarMensajeDistancia, armarMensajeInvitacion, armarMensajeRecordatorio, armarMensajeReserva, diasHasta } from "@/lib/mensajeInvitacion";
 import { versiculoDe, type Versiculo } from "@/lib/versiculos";
 import EnvioEnGrupo, { type MarcasEnvio, type TipoEnvio } from "./EnvioEnGrupo";
 import VersiculoEvento from "./VersiculoEvento";
@@ -212,6 +212,7 @@ export default function AgregarInvitados() {
           enviado_at: r.enviado_at ?? locales[r.token]?.enviado_at ?? null,
           recordatorio_at: r.recordatorio_at ?? locales[r.token]?.recordatorio_at ?? null,
           dia_at: locales[r.token]?.dia_at ?? null, // solo existe en este navegador
+          reserva_at: locales[r.token]?.reserva_at ?? null, // pre-invitación: también solo acá
         };
       });
     }
@@ -272,10 +273,17 @@ export default function AgregarInvitados() {
     try { return JSON.parse(localStorage.getItem(claveMarcas) || "{}"); } catch { return {}; }
   }
 
+  // Etapa de pre-invitación (graduación): el primer envío anuncia la fecha y
+  // se marca aparte, para que la invitación para confirmar no figure como enviada
+  const reservaActiva = !!evento && enReserva(evento);
+  const esPreInvitacion = (inv: Invitado) => reservaActiva && !inv.a_distancia;
+
   function marcarEnvio(inv: Invitado, tipo: TipoEnvio) {
-    const campo = tipo === "invitacion" ? "enviado_at" : tipo === "recordatorio" ? "recordatorio_at" : "dia_at";
+    const campo = tipo === "invitacion"
+      ? (esPreInvitacion(inv) ? "reserva_at" : "enviado_at")
+      : tipo === "recordatorio" ? "recordatorio_at" : "dia_at";
     const ahora = new Date().toISOString();
-    if (tipo === "invitacion") setEnviados((prev) => new Set(prev).add(inv.token));
+    if (campo === "enviado_at") setEnviados((prev) => new Set(prev).add(inv.token));
     setMarcas((prev) => {
       const nuevas = { ...prev, [inv.token]: { ...prev[inv.token], [campo]: ahora } };
       try { localStorage.setItem(claveMarcas, JSON.stringify(nuevas)); } catch { /* sin almacenamiento */ }
@@ -283,13 +291,16 @@ export default function AgregarInvitados() {
     });
     // Si la columna todavía no existe, falla en silencio: queda la marca local
     // (el mensaje del día no tiene columna: queda solo la marca local)
-    if (inv.id && campo !== "dia_at") supabase.from("invitados").update({ [campo]: ahora }).eq("id", inv.id).then(() => {});
+    if (inv.id && campo !== "dia_at" && campo !== "reserva_at") supabase.from("invitados").update({ [campo]: ahora }).eq("id", inv.id).then(() => {});
   }
 
-  const yaEnviado = (inv: Invitado): boolean => enviados.has(inv.token) || !!marcas[inv.token]?.enviado_at;
+  const yaEnviado = (inv: Invitado): boolean => esPreInvitacion(inv)
+    ? !!marcas[inv.token]?.reserva_at
+    : enviados.has(inv.token) || !!marcas[inv.token]?.enviado_at;
 
   function buildMensaje(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
     if (inv.a_distancia) return armarMensajeDistancia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
+    if (esPreInvitacion(inv)) return armarMensajeReserva(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
     // Si el invitado elige cuántos van, no se le dice un número de lugares
     const personas = inv.cupo_elije_invitado ? null : inv.num_personas ?? null;
     return armarMensajeInvitacion(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, new Date(), { personas });
@@ -615,6 +626,32 @@ export default function AgregarInvitados() {
 
   const versiculoActual = versiculoDe(evento?.versiculo_texto, evento?.versiculo_cita);
 
+  // Cambiar de etapa: el enlace de cada invitado es el mismo, lo que ve al
+  // abrirlo cambia solo (pre-invitación ↔ invitación para confirmar)
+  const [cambiandoEtapa, setCambiandoEtapa] = useState(false);
+  async function cambiarEtapa(reserva: boolean) {
+    if (!evento || cambiandoEtapa || reserva === reservaActiva) return;
+    setCambiandoEtapa(true);
+    const tarjeta: ExtrasTarjeta = { ...(evento.tarjeta ?? {}) };
+    if (reserva) tarjeta.etapa = "reserva"; else delete tarjeta.etapa;
+    const { error } = await supabase.from("eventos").update({ tarjeta }).eq("id", id);
+    setCambiandoEtapa(false);
+    if (error) { toast.error("No se pudo cambiar la etapa. Probá de nuevo."); return; }
+    setEvento({ ...evento, tarjeta });
+    toast.success(reserva
+      ? "Etapa: pre-invitación. Los enlaces muestran la fecha para apartarla."
+      : "Etapa: confirmación. Los mismos enlaces ahora piden confirmar.");
+  }
+  const preEnviadas = todosInvitados.filter((i) => !i.a_distancia && marcas[i.token]?.reserva_at).length;
+  const sinDistancia = todosInvitados.filter((i) => !i.a_distancia).length;
+  // La cola mira «enviado_at» para saber a quién ya se le mandó: en la etapa de
+  // pre-invitación esa marca es la de la pre-invitación
+  const marcasCola: MarcasEnvio = reservaActiva
+    ? Object.fromEntries(todosInvitados.map((i) => [i.token, esPreInvitacion(i)
+      ? { ...marcas[i.token], enviado_at: marcas[i.token]?.reserva_at ?? null }
+      : marcas[i.token] ?? {}]))
+    : marcas;
+
   async function guardarVersiculo(v: Versiculo | null) {
     const { error } = await supabase
       .from("eventos")
@@ -850,6 +887,19 @@ export default function AgregarInvitados() {
         .btn-tarjeta:disabled { opacity: .55; cursor: wait; }
         .btn-varios { display: flex; align-items: center; gap: 6px; background: rgba(37,211,102,0.10); border: 1px solid rgba(37,211,102,0.35); border-radius: 10px; padding: 6px 12px; font-size: 11px; font-weight: 700; color: #128C7E; cursor: pointer; font-family: inherit; }
         .inv-envio { font-size: 10.5px; color: #16a34a; margin-top: 2px; font-weight: 600; }
+        .etapa-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px; padding: 14px; box-shadow: var(--shadow); display: grid; gap: 10px; }
+        .etapa-titulo { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+        .etapa-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .etapa-op { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 11px; border-radius: 14px; border: 1.5px solid var(--border-input); background: var(--surface); cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        .etapa-op.activa { border-color: var(--accent); background: var(--accent-soft); }
+        .etapa-op:disabled { opacity: .6; cursor: wait; }
+        .etapa-num { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--accent); border: 1.5px solid var(--accent); }
+        .etapa-op.activa .etapa-num { background: var(--accent); color: white; }
+        .etapa-txt { display: grid; gap: 2px; min-width: 0; }
+        .etapa-txt strong { font-size: 13px; color: var(--text); }
+        .etapa-txt small { font-size: 11px; color: var(--text3); line-height: 1.35; }
+        .etapa-ayuda { font-size: 11.5px; color: var(--text3); line-height: 1.45; }
+        @media (max-width: 360px) { .etapa-opciones { grid-template-columns: 1fr; } }
         .recordatorio-banner { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #1D1C20, #2A2620); border: 1px solid #B4873A; border-radius: 18px; padding: 14px 14px 14px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
         .recordatorio-icono { font-size: 24px; }
         .recordatorio-cuerpo { flex: 1; min-width: 0; }
@@ -1079,7 +1129,8 @@ export default function AgregarInvitados() {
           invitados={todosInvitados}
           tipoInicial={envioGrupo.tipo}
           preseleccion={envioGrupo.preseleccion}
-          marcas={marcas}
+          marcas={marcasCola}
+          reserva={reservaActiva}
           tratoDe={(inv) => tratoDe(inv.nombre, inv.token)}
           urlWhatsApp={(inv, tipo) => buildWhatsAppUrl(inv as Invitado, tipo)}
           onEnviado={(inv, tipo) => marcarEnvio(inv as Invitado, tipo)}
@@ -1227,8 +1278,29 @@ export default function AgregarInvitados() {
             </div>
           )}
 
+          {/* ── Etapa de la invitación (graduación): pre-invitación → confirmación ── */}
+          {evento?.tipo === "graduacion" && (
+            <div className="etapa-card anim-card">
+              <div className="etapa-titulo">Etapa de la invitación</div>
+              <div className="etapa-opciones" role="radiogroup" aria-label="Etapa de la invitación">
+                <button type="button" role="radio" aria-checked={reservaActiva} className={`etapa-op${reservaActiva ? " activa" : ""}`} onClick={() => cambiarEtapa(true)} disabled={cambiandoEtapa}>
+                  <span className="etapa-num">1</span>
+                  <span className="etapa-txt"><strong>Pre-invitación</strong><small>Para que aparten la fecha. No piden confirmar.</small></span>
+                </button>
+                <button type="button" role="radio" aria-checked={!reservaActiva} className={`etapa-op${!reservaActiva ? " activa" : ""}`} onClick={() => cambiarEtapa(false)} disabled={cambiandoEtapa}>
+                  <span className="etapa-num">2</span>
+                  <span className="etapa-txt"><strong>Confirmación</strong><small>Con hora, lugar y el botón para confirmar.</small></span>
+                </button>
+              </div>
+              <p className="etapa-ayuda">
+                Cada invitado tiene un solo enlace: al cambiar de etapa, lo que ve al abrirlo cambia solo.
+                {reservaActiva && sinDistancia > 0 && ` Pre-invitaciones enviadas: ${preEnviadas} de ${sinDistancia}.`}
+              </p>
+            </div>
+          )}
+
           {/* ── Recordatorio: falta una semana o menos ── */}
-          {mostrarRecordatorio && (
+          {mostrarRecordatorio && !reservaActiva && (
             <div className="recordatorio-banner anim-card">
               <div className="recordatorio-icono" aria-hidden="true">⏳</div>
               <div className="recordatorio-cuerpo">
@@ -1634,9 +1706,9 @@ export default function AgregarInvitados() {
                           ✓ Van: {asistentesPorId[inv.id].join(", ")}
                         </div>
                       )}
-                      {(marcas[inv.token]?.enviado_at || marcas[inv.token]?.recordatorio_at) && (
+                      {(marcas[inv.token]?.reserva_at || marcas[inv.token]?.enviado_at || marcas[inv.token]?.recordatorio_at) && (
                         <div className="inv-envio">
-                          {[marcas[inv.token]?.enviado_at && "Invitación enviada", marcas[inv.token]?.recordatorio_at && "Recordado"].filter(Boolean).join(" · ")}
+                          {[marcas[inv.token]?.reserva_at && "Pre-invitación enviada", marcas[inv.token]?.enviado_at && "Invitación enviada", marcas[inv.token]?.recordatorio_at && "Recordado"].filter(Boolean).join(" · ")}
                         </div>
                       )}
                     </div>

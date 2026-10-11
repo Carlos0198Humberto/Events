@@ -14,7 +14,8 @@ import { saludo, type Trato } from "@/lib/tratoInvitado";
 
 export type TipoEnvio = "invitacion" | "recordatorio" | "dia";
 export type InvitadoEnvio = { nombre: string; token: string; telefono?: string; estado?: string; a_distancia?: boolean | null };
-export type MarcasEnvio = Record<string, { enviado_at?: string | null; recordatorio_at?: string | null; dia_at?: string | null }>;
+// reserva_at = pre-invitación enviada (solo en este navegador, como el mensaje del día)
+export type MarcasEnvio = Record<string, { enviado_at?: string | null; recordatorio_at?: string | null; dia_at?: string | null; reserva_at?: string | null }>;
 
 // Nombre de cada tipo en singular y plural, para los textos de la cola
 const NOMBRES: Record<TipoEnvio, [string, string]> = {
@@ -32,6 +33,8 @@ type Props = {
   urlWhatsApp: (inv: InvitadoEnvio, tipo: TipoEnvio) => string;
   onEnviado: (inv: InvitadoEnvio, tipo: TipoEnvio) => void;
   onCerrar: () => void;
+  /** Etapa de pre-invitación: el primer envío es la pre-invitación y no hay recordatorio (no se pide confirmar) */
+  reserva?: boolean;
 };
 
 const pendiente = (inv: InvitadoEnvio) => !inv.estado || inv.estado === "pendiente";
@@ -41,7 +44,7 @@ const confirmado = (inv: InvitadoEnvio) => inv.estado === "confirmado";
 const corresponde = (tipo: TipoEnvio, inv: InvitadoEnvio) =>
   tipo === "invitacion" || (!inv.a_distancia && (tipo === "recordatorio" ? pendiente(inv) : confirmado(inv)));
 
-export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, marcas, tratoDe, urlWhatsApp, onEnviado, onCerrar }: Props) {
+export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, marcas, tratoDe, urlWhatsApp, onEnviado, onCerrar, reserva = false }: Props) {
   const [tipo, setTipo] = useState<TipoEnvio>(tipoInicial);
   const [elegidos, setElegidos] = useState<Set<string>>(() => new Set(preseleccion));
   const [cola, setCola] = useState<InvitadoEnvio[] | null>(null);
@@ -63,7 +66,7 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
     return tipo === "invitacion"
       ? [
           // Quien ya respondió tiene la invitación aunque no figure como enviada
-          { clave: "sin-enviar", texto: "Sin invitación", tokens: lista.filter((i) => !marcas[i.token]?.enviado_at && pendiente(i)).map((i) => i.token) },
+          { clave: "sin-enviar", texto: reserva ? "Sin pre-invitación" : "Sin invitación", tokens: lista.filter((i) => !marcas[i.token]?.enviado_at && pendiente(i)).map((i) => i.token) },
           { clave: "pendientes", texto: "Sin confirmar", tokens: lista.filter(pendiente).map((i) => i.token) },
           { clave: "todos", texto: "Todos", tokens: lista.map((i) => i.token) },
         ]
@@ -105,7 +108,7 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
     setIndice((i) => i + 1);
   }
 
-  const [nombreTipo, nombreTipos] = NOMBRES[tipo];
+  const [nombreTipo, nombreTipos] = reserva && tipo === "invitacion" ? ["pre-invitación", "pre-invitaciones"] : NOMBRES[tipo];
   const seleccionados = visibles.filter((i) => elegidos.has(i.token)).length;
   const actual = cola && indice < cola.length ? cola[indice] : null;
 
@@ -147,9 +150,9 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
             <div className="eg-sub">Elegí a quiénes. Después vas mandando de a uno, con un toque cada uno: WhatsApp no permite que una página envíe mensajes sola.</div>
 
             <div className="eg-tipos" role="tablist">
-              {(["invitacion", "recordatorio", "dia"] as TipoEnvio[]).map((t) => (
+              {((reserva ? ["invitacion", "dia"] : ["invitacion", "recordatorio", "dia"]) as TipoEnvio[]).map((t) => (
                 <button key={t} type="button" role="tab" aria-selected={tipo === t} className={`eg-tipo${tipo === t ? " activo" : ""}`} onClick={() => cambiarTipo(t)}>
-                  {t === "invitacion" ? "Invitación" : t === "recordatorio" ? "Recordatorio" : "Día del evento"}
+                  {t === "invitacion" ? (reserva ? "Pre-invitación" : "Invitación") : t === "recordatorio" ? "Recordatorio" : "Día del evento"}
                 </button>
               ))}
             </div>

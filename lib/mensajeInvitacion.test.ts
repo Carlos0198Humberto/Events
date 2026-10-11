@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   armarMensajeDia,
   armarMensajeDistancia,
+  armarMensajeReserva,
   armarMensajeInvitacion,
   armarMensajeRecordatorio,
   type EventoMensaje,
@@ -140,5 +141,16 @@ describe("título del mensaje", () => {
   it("no repite al graduado si el nombre del evento ya lo menciona", () => {
     const m = armarMensajeInvitacion(grad({ nombre: "Graduación de Carlos - Ingeniería 2026", tarjeta: { graduando: "Carlos Humberto Chavarría Aparicio" } }), "Ana", LINK, "f", HOY);
     expect(m.split("\n")[0]).toBe("🎓 Graduación de Carlos - Ingeniería 2026");
+  });
+});
+
+describe("armarMensajeReserva", () => {
+  it("deja constancia, da la fecha para apartarla y no pide confirmar ni dice el lugar", () => {
+    const m = armarMensajeReserva(grad({ lugar: "Hotel Real", hora: "18:00", tarjeta: { etapa: "reserva" } }), "Rosa María Pérez", LINK, "f");
+    expect(m).toContain("Querida Rosa:\nTe envío esta pre-invitación para dejar constancia de que te invito a mi graduación.");
+    expect(m).toContain("para que apartes este día");
+    expect(m).toContain("pre-invitación:\n" + LINK);
+    expect(m).not.toMatch(/Hotel Real|Confirmá tu asistencia aquí/);
+    expect(enlaces(m)).toEqual([LINK]);
   });
 });
