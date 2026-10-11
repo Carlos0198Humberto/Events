@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
-import { armarDatosTarjeta, enReserva, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, enReserva, sugerenciasReserva, textosReserva, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
 import { armarMensajeDia, armarMensajeDistancia, armarMensajeInvitacion, armarMensajeRecordatorio, armarMensajeReserva, diasHasta } from "@/lib/mensajeInvitacion";
 import { versiculoDe, type Versiculo } from "@/lib/versiculos";
@@ -642,6 +642,22 @@ export default function AgregarInvitados() {
       ? "Etapa: pre-invitación. Los enlaces muestran la fecha para apartarla."
       : "Etapa: confirmación. Los mismos enlaces ahora piden confirmar.");
   }
+  // Lo que dice la pre-invitación: el texto automático o el que escribe el organizador
+  const [preTexto, setPreTexto] = useState("");
+  const preTextoGuardado = evento?.tarjeta?.pre_texto ?? "";
+  useEffect(() => { setPreTexto(preTextoGuardado); }, [preTextoGuardado]);
+  async function guardarPreTexto() {
+    if (!evento || cambiandoEtapa) return;
+    setCambiandoEtapa(true);
+    const tarjeta: ExtrasTarjeta = { ...(evento.tarjeta ?? {}) };
+    const t = preTexto.replace(/\s+/g, " ").trim();
+    if (t) tarjeta.pre_texto = t; else delete tarjeta.pre_texto;
+    const { error } = await supabase.from("eventos").update({ tarjeta }).eq("id", id);
+    setCambiandoEtapa(false);
+    if (error) { toast.error("No se pudo guardar el texto. Probá de nuevo."); return; }
+    setEvento({ ...evento, tarjeta });
+    toast.success(t ? "Listo: la pre-invitación usa tu texto." : "Listo: la pre-invitación usa el texto automático.");
+  }
   const preEnviadas = todosInvitados.filter((i) => !i.a_distancia && marcas[i.token]?.reserva_at).length;
   const sinDistancia = todosInvitados.filter((i) => !i.a_distancia).length;
   // La cola mira «enviado_at» para saber a quién ya se le mandó: en la etapa de
@@ -899,6 +915,12 @@ export default function AgregarInvitados() {
         .etapa-txt strong { font-size: 13px; color: var(--text); }
         .etapa-txt small { font-size: 11px; color: var(--text3); line-height: 1.35; }
         .etapa-ayuda { font-size: 11.5px; color: var(--text3); line-height: 1.45; }
+        .etapa-texto { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+        .etapa-texto textarea { resize: vertical; line-height: 1.5; }
+        .etapa-sugerencias { display: flex; flex-wrap: wrap; gap: 6px; }
+        .etapa-sugerencia { padding: 6px 12px; border-radius: 99px; border: 1.5px solid var(--border-input); background: var(--accent-soft); color: var(--accent2); font: 600 12px 'DM Sans', sans-serif; cursor: pointer; }
+        .etapa-guardar { justify-self: start; padding: 9px 16px; border-radius: 10px; border: none; background: var(--accent); color: white; font: 700 13px 'DM Sans', sans-serif; cursor: pointer; }
+        .etapa-guardar:disabled { opacity: .5; cursor: default; }
         @media (max-width: 360px) { .etapa-opciones { grid-template-columns: 1fr; } }
         .recordatorio-banner { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #1D1C20, #2A2620); border: 1px solid #B4873A; border-radius: 18px; padding: 14px 14px 14px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
         .recordatorio-icono { font-size: 24px; }
@@ -1296,6 +1318,29 @@ export default function AgregarInvitados() {
                 Cada invitado tiene un solo enlace: al cambiar de etapa, lo que ve al abrirlo cambia solo.
                 {reservaActiva && sinDistancia > 0 && ` Pre-invitaciones enviadas: ${preEnviadas} de ${sinDistancia}.`}
               </p>
+              {reservaActiva && evento && (
+                <div className="etapa-texto">
+                  <label className="field-label" htmlFor="pre-texto">Qué dice la pre-invitación</label>
+                  <textarea
+                    id="pre-texto"
+                    className="field-input"
+                    rows={4}
+                    maxLength={400}
+                    value={preTexto}
+                    onChange={(e) => setPreTexto(e.target.value)}
+                    placeholder={textosReserva({ ...evento, tarjeta: { ...(evento.tarjeta ?? {}), pre_texto: null } }, "neutro").constancia}
+                  />
+                  <div className="etapa-sugerencias">
+                    {sugerenciasReserva(evento, "neutro").map((sg) => (
+                      <button key={sg.id} type="button" className="etapa-sugerencia" onClick={() => setPreTexto(sg.texto)}>{sg.nombre}</button>
+                    ))}
+                  </div>
+                  <button type="button" className="etapa-guardar" onClick={guardarPreTexto} disabled={cambiandoEtapa || preTexto.trim() === preTextoGuardado}>
+                    Guardar texto
+                  </button>
+                  <p className="etapa-ayuda">Va en el mensaje de WhatsApp, en la pantalla y en lo que lee el avatar. Después siempre siguen la fecha, que la aparten y que la tarjeta con el enlace para confirmar llega más adelante. Vacío = el texto automático.</p>
+                </div>
+              )}
             </div>
           )}
 

@@ -45,6 +45,7 @@ export type ExtrasTarjeta = {
   agradecimiento?: string | null; // carta para los invitados a distancia, un párrafo por línea (null = la automática)
   entrada_qr?: boolean;         // false = sin entrada con código QR al confirmar
   etapa?: "reserva" | null;     // "reserva" = pre-invitación (apartá la fecha); sin valor = invitación para confirmar
+  pre_texto?: string | null;    // lo que dice la pre-invitación, escrito por el organizador (null = el automático)
   foto_url?: string | null;     // foto propia de la tarjeta (ej. con toga); null = la de portada
   forma_foto?: FormaFoto | null;
   diseno?: DisenoTarjeta | null;
@@ -117,6 +118,7 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   if (typeof o.agradecimiento === "string") ex.agradecimiento = limpioParrafos(o.agradecimiento, 1500) || null;
   if (o.entrada_qr === false) ex.entrada_qr = false;
   if (o.etapa === "reserva") ex.etapa = "reserva";
+  if (typeof o.pre_texto === "string") ex.pre_texto = limpio(o.pre_texto, 400) || null;
   if (typeof o.foto_url === "string" && /^(https?:|blob:|data:image\/)/.test(o.foto_url)) ex.foto_url = o.foto_url;
   ex.forma_foto = una(o.forma_foto, FORMAS_FOTO);
   ex.diseno = una(o.diseno, DISENOS_TARJETA);
@@ -352,6 +354,7 @@ export type TextosReserva = {
  * plural ("los", "ustedes") si va a varios.
  */
 export function textosReserva(evento: EventoTarjeta, trato: Trato): TextosReserva {
+  const propio = extrasDe(evento).pre_texto;
   const yo = hablaElProtagonista(evento);
   const pl = trato === "plural";
   const p = protagonistaDe(evento);
@@ -361,11 +364,33 @@ export function textosReserva(evento: EventoTarjeta, trato: Trato): TextosReserv
   const envio = yo ? `${pl ? "Les" : "Te"} envío` : `${pl ? "Les" : "Te"} enviamos`;
   const invito = `${pl ? "los" : "te"} ${yo ? "invito" : "invitamos"}`;
   return {
-    constancia: `${envio} esta pre-invitación para dejar constancia de que ${invito} a ${graduacion}.`,
+    // Lo que escribió el organizador manda (ej. el culto de acción de gracias)
+    constancia: propio || `${envio} esta pre-invitación para dejar constancia de que ${invito} a ${graduacion}.`,
     apartar: `${yo ? "Sé" : "Sabemos"} que ${pl ? "tienen" : "tenés"} muchas ocupaciones: por eso ${a} ${yo ? "aviso" : "avisamos"} con tiempo, para que ${pl ? "aparten" : "apartes"} este día.`,
-    despues: `Más adelante ${a} ${yo ? "envío" : "enviamos"} la invitación con la hora y el lugar, para que ${pl ? "confirmen su" : "confirmes tu"} asistencia.`,
+    despues: `Más adelante ${pl ? "les" : "te"} llegará la tarjeta con el enlace para ${pl ? "confirmar su" : "confirmar tu"} asistencia.`,
     firma: familiaDe(evento) || (p.esPersona ? p.nombre : quienInvitaHablado(evento)),
   };
+}
+
+/**
+ * Textos sugeridos para la pre-invitación, para elegir con un toque y retocar.
+ * El del culto de acción de gracias es el que pidió el organizador: se ofrece,
+ * no se impone (no toda graduación es un culto).
+ */
+export function sugerenciasReserva(evento: EventoTarjeta, trato: Trato): { id: string; nombre: string; texto: string }[] {
+  const yo = hablaElProtagonista(evento);
+  const pl = trato === "plural";
+  const p = protagonistaDe(evento);
+  const pila = p.esPersona ? p.nombre.split(/\s+/)[0] : "";
+  const sinPropio = { ...evento, tarjeta: { ...extrasDe(evento), pre_texto: null } };
+  const invitar = pl ? "invitarlos" : "invitarte";
+  const culto = yo
+    ? `He tomado a bien ${invitar} a compartir conmigo el culto de acción de gracias con el que celebraré mi graduación, un triunfo que Dios ha dado a mi vida.`
+    : `Hemos tomado a bien ${invitar} a compartir con nosotros el culto de acción de gracias con el que celebraremos la graduación${pila ? ` de ${pila}` : ""}, un triunfo que Dios le ha dado.`;
+  return [
+    { id: "culto", nombre: "Culto de acción de gracias", texto: culto },
+    { id: "constancia", nombre: "Constancia de invitación", texto: textosReserva(sinPropio, trato).constancia },
+  ];
 }
 
 export type CartaDistancia = {
@@ -540,7 +565,7 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     esGraduacion,
     titulo: TITULOS[evento.tipo] ?? "Celebración",
     tituloScript: especial ? TITULO_SCRIPT_GRATITUD : reserva ? TITULO_SCRIPT_RESERVA : TITULOS_SCRIPT[evento.tipo] ?? TITULO_SCRIPT_GENERICO,
-    honor: especial ? "INVITACIÓN ESPECIAL" : extras.honor !== undefined
+    honor: especial ? "INVITACIÓN ESPECIAL" : reserva ? null : extras.honor !== undefined
       ? (extras.honor ? extras.honor.toLocaleUpperCase("es") : null)
       : esGraduacion && protagonista.esPersona ? "EN HONOR A" : null,
     protagonista: protagonista.nombre,

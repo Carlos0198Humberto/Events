@@ -7,6 +7,7 @@ import {
   agradecimientoDe,
   cartaDistancia,
   enReserva,
+  sugerenciasReserva,
   textosReserva,
   enInstitucion,
   quienInvitaHablado,
@@ -248,6 +249,15 @@ describe("pre-invitación (reservá la fecha)", () => {
     expect([d.horaCorta, d.lugar, d.direccion, d.versiculo]).toEqual([null, null, null, null]);
     expect(d.fechaPartes).not.toBeNull();
     expect(d.cta).not.toMatch(/confirm[aá] tu/i);
+    expect(d.honor).toBeNull(); // sin «En honor a» en la pre-invitación
+  });
+
+  it("el texto propio reemplaza la constancia y la tarjeta con el enlace llega después", () => {
+    const culto = sugerenciasReserva(reserva(), "f").find((x) => x.id === "culto")!.texto;
+    expect(culto).toBe("He tomado a bien invitarte a compartir conmigo el culto de acción de gracias con el que celebraré mi graduación, un triunfo que Dios ha dado a mi vida.");
+    const t = textosReserva(reserva({ tarjeta: { etapa: "reserva", pre_texto: culto } }), "f");
+    expect(t.constancia).toBe(culto);
+    expect(t.despues).toBe("Más adelante te llegará la tarjeta con el enlace para confirmar tu asistencia.");
   });
 
   it("quien está lejos recibe su carta aunque la etapa sea la pre-invitación", () => {
@@ -259,7 +269,7 @@ describe("pre-invitación (reservá la fecha)", () => {
     const yo = textosReserva(reserva(), "f");
     expect(yo.constancia).toBe("Te envío esta pre-invitación para dejar constancia de que te invito a mi graduación.");
     expect(yo.apartar).toContain("para que apartes este día");
-    expect(yo.despues).toContain("para que confirmes tu asistencia");
+    expect(yo.despues).toContain("la tarjeta con el enlace para confirmar tu asistencia");
     const familia = textosReserva(reserva({ tarjeta: { familia: "Familia Chavarría", graduando: "Carlos Chavarría" } }), "plural");
     expect(familia.constancia).toBe("Les enviamos esta pre-invitación para dejar constancia de que los invitamos a la graduación de Carlos.");
     expect(familia.apartar).toContain("Sabemos que tienen muchas ocupaciones");

@@ -2586,7 +2586,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         )}
         {especial && <p className="pt-script">Con gratitud</p>}
         <p className="pt-para">Para {para}</p>
-        {personas.honor && !especial && <p className="pt-honor">{personas.honor}</p>}
+        {personas.honor && !especial && !reserva && <p className="pt-honor">{personas.honor}</p>}
         <h1 className={`pt-nombre${protagonista.length > 22 ? " largo" : ""}`}>{protagonista}</h1>
         {personas.carrera && <p className="pt-carrera">{personas.carrera}</p>}
         {personas.institucion && <p className="pt-institucion">{personas.institucion}</p>}
