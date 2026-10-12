@@ -1,6 +1,6 @@
 "use client";
 /**
- * Sistema de Toast Notifications para Eventix.
+ * Sistema de Toast Notifications para Evorix.
  * Uso:
  *   import { toast } from "@/app/components/Toast";
  *   toast.success("¡Guardado correctamente!");
@@ -114,7 +114,7 @@ export function ToastProvider() {
       <style>{`
         @keyframes toastIn{from{opacity:0;transform:translateX(100%) scale(0.9)}to{opacity:1;transform:translateX(0) scale(1)}}
         @keyframes toastOut{from{opacity:1;transform:translateX(0) scale(1)}to{opacity:0;transform:translateX(110%) scale(0.9)}}
-        .eventix-toast{
+        .evorix-toast{
           display:flex;align-items:center;gap:11px;
           padding:12px 15px;border-radius:14px;
           border:1px solid;
@@ -125,8 +125,8 @@ export function ToastProvider() {
           max-width:320px;min-width:200px;
           cursor:pointer;
         }
-        .eventix-toast.entering{animation:toastIn .35s cubic-bezier(.22,1,.36,1) both}
-        .eventix-toast.leaving{animation:toastOut .35s cubic-bezier(.22,1,.36,1) both}
+        .evorix-toast.entering{animation:toastIn .35s cubic-bezier(.22,1,.36,1) both}
+        .evorix-toast.leaving{animation:toastOut .35s cubic-bezier(.22,1,.36,1) both}
         .toast-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,0.06)}
         .toast-progress{position:absolute;bottom:0;left:0;height:2px;border-radius:0 0 14px 14px;animation:toastProgress ${DURATION}ms linear both}
         @keyframes toastProgress{from{width:100%}to{width:0%}}
@@ -149,7 +149,7 @@ export function ToastProvider() {
           return (
             <div
               key={t.id}
-              className={`eventix-toast ${t.leaving ? "leaving" : "entering"}`}
+              className={`evorix-toast ${t.leaving ? "leaving" : "entering"}`}
               style={{
                 background: cfg.bg,
                 borderColor: cfg.border,

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/app/components/Toast";
 import { AppLogo } from "@/app/components/AppLogo";
+import { IcoCheck, IcoCompartir, IcoEnlace } from "@/app/components/Iconos";
+import { openWhatsApp } from "@/app/utils/openWhatsApp";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type UsuarioAdmin = {
@@ -96,6 +98,50 @@ export default function AdminPanel() {
   const [confirmDelete, setConfirmDelete] = useState<UsuarioAdmin | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<"todos" | "activos" | "bloqueados">("todos");
+  // Compartir la app: el enlace es el del dominio con el que se abrió el panel
+  const [urlApp, setUrlApp] = useState("");
+  const [copiadoApp, setCopiadoApp] = useState(false);
+  useEffect(() => { setUrlApp(window.location.origin); }, []);
+
+  const TEXTO_COMPARTIR = "Evorix: invitaciones digitales para tus eventos, con confirmación de asistencia, música, voz y fotos. Creá la tuya aquí:";
+  async function compartirApp() {
+    if (!urlApp) return;
+    // En el celular, la hoja del sistema (WhatsApp, Messenger, correo…); en la
+    // compu esa hoja no suele ofrecer WhatsApp, así que se abre WhatsApp directo
+    const tactil = window.matchMedia("(pointer: coarse)").matches;
+    if (tactil && navigator.share) {
+      try {
+        await navigator.share({ title: "Evorix", text: TEXTO_COMPARTIR, url: urlApp });
+      } catch (e) {
+        if ((e as Error)?.name !== "AbortError") copiarEnlaceApp();
+      }
+      return;
+    }
+    openWhatsApp(`https://wa.me/?text=${encodeURIComponent(`${TEXTO_COMPARTIR}\n${urlApp}`)}`);
+  }
+  async function copiarEnlaceApp() {
+    if (!urlApp) return;
+    let copiado = false;
+    try {
+      await navigator.clipboard.writeText(urlApp);
+      copiado = true;
+    } catch {
+      // Navegadores que bloquean el portapapeles (algunos dentro de otras apps):
+      // la forma clásica, con un campo de texto oculto
+      const campo = document.createElement("textarea");
+      campo.value = urlApp;
+      campo.setAttribute("readonly", "");
+      campo.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+      document.body.appendChild(campo);
+      campo.select();
+      try { copiado = document.execCommand("copy"); } catch { copiado = false; }
+      campo.remove();
+    }
+    if (!copiado) { toast.error(`No se pudo copiar. El enlace es ${urlApp}`); return; }
+    setCopiadoApp(true);
+    setTimeout(() => setCopiadoApp(false), 2200);
+    toast.success("Enlace de Evorix copiado");
+  }
 
   const cargarUsuarios = useCallback(async () => {
     const { data, error } = await supabase
@@ -381,7 +427,7 @@ export default function AdminPanel() {
         .nav-left{display:flex;align-items:center;gap:10px}
         .nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none}
         .nav-logo-text{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);letter-spacing:.02em}
-        .nav-badge{background:rgba(220,38,38,0.1);color:var(--danger);border:1px solid var(--danger-border);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+        .nav-badge{background:rgba(220,38,38,0.1);color:var(--danger);border:1px solid var(--danger-border);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
         .btn-back{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;border:1px solid var(--border-mid);background:var(--surface);color:var(--ink2);font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all .2s}
         .btn-back:hover{background:var(--accent-soft2);border-color:var(--accent)}
 
@@ -394,7 +440,8 @@ export default function AdminPanel() {
         .page-subtitle{font-size:13px;color:var(--ink3)}
 
         /* Stats */
-        .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}
+        .stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:22px}
+        @media (min-width: 600px){.stats-row{grid-template-columns:repeat(4,1fr)}}
         .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;box-shadow:var(--shadow)}
         .stat-value{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:var(--ink);line-height:1}
         .stat-label{font-size:10px;color:var(--ink3);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.07em}
@@ -444,7 +491,8 @@ export default function AdminPanel() {
         .btn-save:disabled{opacity:0.5;cursor:not-allowed}
 
         /* Block button */
-        .btn-block{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;margin-left:auto}
+        .btn-block{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+        .user-acciones{display:flex;gap:8px;flex-shrink:0}
         .btn-block-danger{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border)}
         .btn-block-danger:hover:not(:disabled){background:#fee2e2}
         .btn-block-ok{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
@@ -482,6 +530,37 @@ export default function AdminPanel() {
         .modal-btn-cancel:hover{border-color:var(--accent);background:var(--accent-soft)}
         .modal-btn-delete{flex:1;padding:10px;border-radius:11px;border:none;background:var(--danger);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
         .modal-btn-delete:hover{background:#b91c1c}
+
+        /* Compartir la app */
+        .share-card{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px;padding:16px 18px;border-radius:var(--radius);
+          background:linear-gradient(135deg,#312E81 0%,#4F46E5 100%);color:#FFFFFF;box-shadow:0 10px 28px -12px rgba(49,46,129,0.55);animation:fadeUp .3s .03s ease both}
+        .share-info{flex:1;min-width:200px}
+        .share-titulo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;line-height:1.1}
+        .share-sub{font-size:12.5px;opacity:.85;margin-top:3px;line-height:1.45}
+        .share-url{display:inline-block;max-width:100%;margin-top:9px;padding:4px 11px;border-radius:99px;background:rgba(255,255,255,0.14);font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .share-acciones{display:flex;gap:8px}
+        .btn-share{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 16px;border-radius:11px;border:none;background:#FFFFFF;color:var(--accent2);font-family:'DM Sans',sans-serif;font-size:13.5px;font-weight:700;cursor:pointer;transition:transform .15s}
+        .btn-share:active,.btn-copy-app:active{transform:scale(.97)}
+        .btn-copy-app{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 14px;border-radius:11px;border:1px solid rgba(255,255,255,0.45);background:transparent;color:#FFFFFF;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
+        @media (max-width: 599px){.share-acciones{width:100%}.share-acciones button{flex:1;white-space:nowrap}}
+        /* Celular chico: el ícono de Evorix alcanza; así entran la marca de admin y el botón */
+        @media (max-width: 360px){.nav-logo-text{display:none}}
+
+        /* Celular: cada control en su renglón, botones grandes para el dedo */
+        @media (max-width: 899px){
+          .search-wrap{flex:1 1 100%}
+          .filter-tabs{flex:1}
+          .filter-tab{flex:1;padding:7px 6px}
+          .user-row-bottom{display:grid;grid-template-columns:1fr;gap:10px}
+          .eventos-badge{width:100%}
+          .limit-wrap{justify-content:space-between;padding:6px 6px 6px 12px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
+          .limit-wrap .limit-label{flex:1;font-size:12px}
+          .limit-input{min-height:34px}
+          .btn-save{min-height:34px}
+          .user-acciones{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+          .user-acciones .btn-plan{grid-column:1 / -1}
+          .user-acciones button{justify-content:center;min-height:40px;padding:8px 10px;font-size:12.5px}
+        }
 
         /* Empty */
         .empty{padding:44px 20px;text-align:center;color:var(--ink3);font-size:14px}
@@ -537,8 +616,25 @@ export default function AdminPanel() {
             <p className="page-subtitle">Gestiona cuentas, límites y acceso de todos los usuarios registrados</p>
           </div>
 
+          {/* Compartir la app con quien quiera crear sus invitaciones */}
+          <section className="share-card" aria-label="Compartir Evorix">
+            <div className="share-info">
+              <div className="share-titulo">Compartí Evorix</div>
+              <div className="share-sub">Mandá el enlace para que otros creen sus invitaciones digitales.</div>
+              {urlApp && <div className="share-url">{urlApp.replace(/^https?:\/\//, "")}</div>}
+            </div>
+            <div className="share-acciones">
+              <button type="button" className="btn-share" onClick={compartirApp} disabled={!urlApp}>
+                <IcoCompartir size={16} />Compartir
+              </button>
+              <button type="button" className="btn-copy-app" onClick={copiarEnlaceApp} disabled={!urlApp}>
+                {copiadoApp ? <><IcoCheck size={15} />Copiado</> : <><IcoEnlace size={15} />Copiar</>}
+              </button>
+            </div>
+          </section>
+
           {/* Stats */}
-          <div className="stats-row" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
+          <div className="stats-row">
             <div className="stat-card">
               <div className="stat-value">{totalUsuarios}</div>
               <div className="stat-label">Usuarios</div>
@@ -687,8 +783,9 @@ export default function AdminPanel() {
                       </div>
                     )}
 
-                    {/* Plan toggle — solo para no-admins */}
+                    {/* Plan, bloqueo y eliminar — solo para no-admins */}
                     {!u.es_admin && (
+                    <div className="user-acciones">
                       <button
                         className={`btn-plan ${(u.plan === "pro" || u.evento_limit === null) ? "btn-plan-downgrade" : "btn-plan-upgrade"}`}
                         disabled={!!cambiandoPlan[u.id]}
@@ -697,10 +794,7 @@ export default function AdminPanel() {
                       >
                         {cambiandoPlan[u.id] ? "..." : (u.plan === "pro" || u.evento_limit === null) ? "↓ Mover a Free" : "✦ Activar Pro"}
                       </button>
-                    )}
 
-                    {/* Block toggle — solo para no-admins */}
-                    {!u.es_admin && (
                       <button
                         className={`btn-block ${u.bloqueado ? "btn-block-ok" : "btn-block-danger"}`}
                         disabled={!!bloqueando[u.id]}
@@ -714,10 +808,7 @@ export default function AdminPanel() {
                           <><Icon.block /> Bloquear</>
                         )}
                       </button>
-                    )}
 
-                    {/* Delete — solo para no-admins */}
-                    {!u.es_admin && (
                       <button
                         className="btn-delete"
                         disabled={!!eliminando[u.id]}
@@ -725,6 +816,7 @@ export default function AdminPanel() {
                       >
                         {eliminando[u.id] ? "..." : <><Icon.trash /> Eliminar</>}
                       </button>
+                    </div>
                     )}
                   </div>
                 </div>

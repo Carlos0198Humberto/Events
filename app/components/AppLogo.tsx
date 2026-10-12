@@ -1,4 +1,4 @@
-// ─── Logo compartido de Eventix ───────────────────────────────────────────────
+// ─── Logo compartido de Evorix ───────────────────────────────────────────────
 // Letra "E" con puntos decorativos — se usa en todas las páginas de la app
 
 // tono "marino": en las invitaciones de graduación, que van en azul marino

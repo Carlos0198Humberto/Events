@@ -53,7 +53,7 @@ export default function FullscreenManager() {
 
     if (os === "ios") {
       // Only show once per session (not every page navigation)
-      if (sessionStorage.getItem("eventix_fs_dismissed")) return;
+      if (sessionStorage.getItem("evorix_fs_dismissed")) return;
       const timer = setTimeout(() => setShowPrompt(true), 3000);
       return () => clearTimeout(timer);
     }
@@ -61,7 +61,7 @@ export default function FullscreenManager() {
 
   function dismiss() {
     setLeaving(true);
-    sessionStorage.setItem("eventix_fs_dismissed", "1");
+    sessionStorage.setItem("evorix_fs_dismissed", "1");
     setTimeout(() => setShowPrompt(false), 380);
   }
 
