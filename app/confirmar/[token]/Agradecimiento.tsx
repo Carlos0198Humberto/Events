@@ -2,7 +2,7 @@
 // ─── Agradecimiento de graduación: el tercer momento ─────────────────────────
 //
 // Después del evento, con el mismo enlace, el organizador le agradece a cada
-// persona: a quien fue, por acompañarlo; a quien no pudo ir, por su cariño.
+// persona que fue (a quien no llegó no se le manda nada).
 // Debajo, las fotos de ese día (las aprobadas del muro) y un lugar para que la
 // persona deje su mensaje, que llega como `children` desde la página.
 //
@@ -20,17 +20,16 @@ type Props = {
   eventoId: string;
   invitadoNombre: string;
   trato: Trato;
-  asistio: boolean;
   muroHref: string;
   children?: ReactNode;
 };
 
 type Foto = { url: string; thumb_url?: string | null };
 
-export default function Agradecimiento({ evento, eventoId, invitadoNombre, trato, asistio, muroHref, children }: Props) {
+export default function Agradecimiento({ evento, eventoId, invitadoNombre, trato, muroHref, children }: Props) {
   const p = protagonistaDe(evento);
   const ex = extrasDe(evento);
-  const t = textosGracias(evento, trato, asistio);
+  const t = textosGracias(evento, trato);
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [total, setTotal] = useState(0);
   const [abierta, setAbierta] = useState<number | null>(null);

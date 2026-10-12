@@ -169,12 +169,11 @@ export function armarMensajeReserva(evento: EventoMensaje, nombreInvitado: strin
 }
 
 /**
- * El agradecimiento (tercer momento, después del evento): a quien fue, por
- * acompañar; a quien no pudo ir, por su cariño. El enlace lleva a las fotos
- * del día y a la voz que lee el agradecimiento.
+ * El agradecimiento (tercer momento, después del evento), solo para quien
+ * fue. El enlace lleva a las fotos del día y a la voz que lee el agradecimiento.
  */
-export function armarMensajeGracias(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato, asistio: boolean): string {
-  const t = textosGracias(evento, trato, asistio);
+export function armarMensajeGracias(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato): string {
+  const t = textosGracias(evento, trato);
   return [
     titulo(evento).texto,
     `${saludo(nombreDePila(nombreInvitado), trato)}:\n${t.texto}`,

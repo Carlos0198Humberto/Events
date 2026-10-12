@@ -721,7 +721,7 @@ export default function AgradecimientosPage() {
             >
               <strong style={{ fontSize: 14 }}>En la graduación, el agradecimiento es la etapa 3</strong>
               <span style={{ fontSize: 12.5, color: "var(--text2)", lineHeight: 1.45 }}>
-                En Invitados → Etapa de la invitación → Agradecimiento: cada persona recibe la tarjeta negro y oro, su mensaje según fue o no, las fotos y la voz. Tocá para ir.
+                En Invitados → Etapa de la invitación → Agradecimiento: quienes fueron reciben la tarjeta negro y oro, tu mensaje, las fotos y la voz. Tocá para ir.
               </span>
             </button>
           )}

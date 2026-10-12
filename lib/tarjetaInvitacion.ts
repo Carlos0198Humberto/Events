@@ -47,7 +47,6 @@ export type ExtrasTarjeta = {
   etapa?: "reserva" | "gracias" | null; // "reserva" = pre-invitación (apartá la fecha); "gracias" = agradecimiento después del evento; sin valor = invitación para confirmar
   pre_texto?: string | null;    // lo que dice la pre-invitación, escrito por el organizador (null = el automático)
   gracias_texto?: string | null;   // agradecimiento para quienes fueron (null = el automático)
-  gracias_ausente?: string | null; // agradecimiento para quienes no pudieron ir (null = el automático)
   asistencia?: "escaner" | null;   // "escaner" = fueron los que entraron con su código; sin valor = los que confirmaron
   foto_url?: string | null;     // foto propia de la tarjeta (ej. con toga); null = la de portada
   forma_foto?: FormaFoto | null;
@@ -124,7 +123,6 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   else if (o.etapa === "gracias") ex.etapa = "gracias";
   if (typeof o.pre_texto === "string") ex.pre_texto = limpio(o.pre_texto, 400) || null;
   if (typeof o.gracias_texto === "string") ex.gracias_texto = limpio(o.gracias_texto, 500) || null;
-  if (typeof o.gracias_ausente === "string") ex.gracias_ausente = limpio(o.gracias_ausente, 500) || null;
   if (o.asistencia === "escaner") ex.asistencia = "escaner";
   if (typeof o.foto_url === "string" && /^(https?:|blob:|data:image\/)/.test(o.foto_url)) ex.foto_url = o.foto_url;
   ex.forma_foto = una(o.forma_foto, FORMAS_FOTO);
@@ -202,7 +200,7 @@ export function enReserva(evento: Pick<EventoTarjeta, "tipo" | "tarjeta">): bool
 /**
  * ¿La graduación está en la etapa de agradecimiento? Es el tercer momento:
  * después del evento, con el mismo enlace, el organizador le agradece a cada
- * persona: a quien fue, por acompañarlo; a quien no pudo, por su cariño.
+ * persona que fue. A quien no llegó no se le manda nada.
  */
 export function enAgradecimiento(evento: Pick<EventoTarjeta, "tipo" | "tarjeta">): boolean {
   return evento.tipo === "graduacion" && extrasDe(evento).etapa === "gracias";
@@ -210,8 +208,7 @@ export function enAgradecimiento(evento: Pick<EventoTarjeta, "tipo" | "tarjeta">
 
 /**
  * ¿Fue al evento? Si se usó el escáner en la puerta, fue quien entró con su
- * código; si no, quien confirmó. Quien estaba lejos no fue (recibe el
- * agradecimiento por su cariño).
+ * código; si no, quien confirmó. Quien estaba lejos no fue (ya recibió su carta).
  */
 export function asistioAlEvento(
   evento: Pick<EventoTarjeta, "tarjeta">,
@@ -439,58 +436,48 @@ export type TextosGracias = {
 };
 
 /**
- * El agradecimiento del tercer momento. Dos versiones: para quien fue (por
- * acompañar) y para quien no pudo ir (su cariño igual llegó). Con Dios en el
- * centro, como toda la graduación. En primera persona si habla el mismo
- * graduado; en plural si va a varios.
+ * El agradecimiento del tercer momento, para quien fue (por acompañar). Con
+ * Dios en el centro, como toda la graduación. En primera persona si habla el
+ * mismo graduado; en plural si va a varios.
  */
-export function textosGracias(evento: EventoTarjeta, trato: Trato, asistio: boolean): TextosGracias {
-  const ex = extrasDe(evento);
-  const propio = asistio ? ex.gracias_texto : ex.gracias_ausente;
+export function textosGracias(evento: EventoTarjeta, trato: Trato): TextosGracias {
   const yo = hablaElProtagonista(evento);
   const p = protagonistaDe(evento);
   return {
-    texto: propio || graciasAutomatico(evento, trato, asistio),
+    texto: extrasDe(evento).gracias_texto || graciasAutomatico(evento, trato),
     fotos: `${trato === "plural" ? "Les" : "Te"} ${yo ? "comparto" : "compartimos"} las fotos de ese día.`,
     firma: familiaDe(evento) || (p.esPersona ? p.nombre : quienInvitaHablado(evento)),
   };
 }
 
-function graciasAutomatico(evento: EventoTarjeta, trato: Trato, asistio: boolean): string {
+function graciasAutomatico(evento: EventoTarjeta, trato: Trato): string {
   const yo = hablaElProtagonista(evento);
   const pl = trato === "plural";
   const p = protagonistaDe(evento);
   const pila = p.esPersona ? p.nombre.split(/\s+/)[0] : "";
   const graduacion = yo ? "mi graduación" : pila ? `la graduación de ${pila}` : "esta graduación";
-  const acompanar = yo ? "acompañarme" : "acompañarnos";
-  const doy = yo ? "Doy" : "Damos";
-  const porVida = pl ? "por sus vidas" : "por tu vida";
-  const fuiste = pl ? "fueron" : "fuiste";
-  if (asistio) {
-    return `Gracias por ${acompanar} en ${graduacion}. ${pl ? "Su" : "Tu"} presencia hizo de ese día un recuerdo que ${yo ? "guardaré" : "guardaremos"} siempre. ${doy} gracias a Dios por este logro y ${porVida}, porque ${fuiste} parte de este camino.`;
-  }
-  return `Aunque no ${pl ? "pudieron" : "pudiste"} ${acompanar} en ${graduacion}, ${pl ? "su cariño y sus" : "tu cariño y tus"} buenos deseos llegaron hasta ${yo ? "mí" : "nosotros"}. ${doy} gracias a Dios por este logro y ${porVida}, porque también ${fuiste} parte de este camino.`;
+  return `Gracias por ${yo ? "acompañarme" : "acompañarnos"} en ${graduacion}. ${pl ? "Su" : "Tu"} presencia hizo de ese día un recuerdo que ${yo ? "guardaré" : "guardaremos"} siempre. ${yo ? "Doy" : "Damos"} gracias a Dios por este logro y ${pl ? "por sus vidas" : "por tu vida"}, porque ${pl ? "fueron" : "fuiste"} parte de este camino.`;
 }
 
 /**
- * Textos sugeridos para el agradecimiento, según la persona fue o no. El del
- * culto de acción de gracias acompaña a la pre-invitación del culto.
+ * Textos sugeridos para el agradecimiento. El del culto de acción de gracias
+ * acompaña a la pre-invitación del culto.
  */
-export function sugerenciasGracias(evento: EventoTarjeta, trato: Trato, asistio: boolean): { id: string; nombre: string; texto: string }[] {
+export function sugerenciasGracias(evento: EventoTarjeta, trato: Trato): { id: string; nombre: string; texto: string }[] {
   const yo = hablaElProtagonista(evento);
   const pl = trato === "plural";
   const p = protagonistaDe(evento);
   const pila = p.esPersona ? p.nombre.split(/\s+/)[0] : "";
-  const sinPropio = { ...evento, tarjeta: { ...extrasDe(evento), gracias_texto: null, gracias_ausente: null } };
+  const sinPropio = { ...evento, tarjeta: { ...extrasDe(evento), gracias_texto: null } };
   const culto = yo ? "el culto de acción de gracias por mi graduación" : `el culto de acción de gracias por la graduación${pila ? ` de ${pila}` : ""}`;
-  const acompanar = yo ? "acompañarme" : "acompañarnos";
   const presencia = pl ? "Su presencia y sus oraciones" : "Tu presencia y tus oraciones";
-  const texto = asistio
-    ? `Gracias por ${acompanar} en ${culto}. Fue una bendición compartir ${pl ? "con ustedes" : "contigo"} ese momento de gratitud a Dios, que hizo posible este triunfo. ${presencia} quedarán siempre en ${yo ? "mi" : "nuestro"} corazón.`
-    : `Aunque no ${pl ? "pudieron" : "pudiste"} ${acompanar} en ${culto}, ${pl ? "los" : "te"} ${yo ? "tuve" : "tuvimos"} ${pl ? "presentes" : "presente"}. Gracias por ${pl ? "su cariño y sus oraciones" : "tu cariño y tus oraciones"}: que Dios, que hizo posible este triunfo, ${pl ? "los" : "te"} bendiga siempre.`;
   return [
-    { id: "gratitud", nombre: "Gratitud a Dios", texto: textosGracias(sinPropio, trato, asistio).texto },
-    { id: "culto", nombre: "Culto de acción de gracias", texto },
+    { id: "gratitud", nombre: "Gratitud a Dios", texto: textosGracias(sinPropio, trato).texto },
+    {
+      id: "culto",
+      nombre: "Culto de acción de gracias",
+      texto: `Gracias por ${yo ? "acompañarme" : "acompañarnos"} en ${culto}. Fue una bendición compartir ${pl ? "con ustedes" : "contigo"} ese momento de gratitud a Dios, que hizo posible este triunfo. ${presencia} quedarán siempre en ${yo ? "mi" : "nuestro"} corazón.`,
+    },
   ];
 }
 
@@ -624,8 +611,8 @@ function inicialesDe(nombre: string): string {
  * que no conoce la corrección del organizador) el párrafo no lo nombra.
  */
 export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string, trato?: Trato | null, opciones: { distancia?: boolean; asistio?: boolean } = {}): DatosTarjeta {
-  // El agradecimiento llega a todos, también a quien estuvo lejos (por su cariño)
-  const gracias = enAgradecimiento(evento);
+  // El agradecimiento es solo para quien fue: a los demás, la tarjeta de siempre
+  const gracias = enAgradecimiento(evento) && !!opciones.asistio;
   const especial = !gracias && !!opciones.distancia;
   // La pre-invitación no es para quien está lejos: esa persona recibe su carta
   const reserva = !especial && enReserva(evento);
@@ -693,8 +680,8 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
       ? (evento.tipo === "graduacion" ? "Aunque estés lejos, fuiste parte de este logro." : "Aunque estés lejos, sos parte de este momento.")
       // En la pre-invitación, lo que escribió el organizador (ej. el culto de acción de gracias)
       : reserva ? textosReserva(evento, trato ?? "neutro").constancia
-      // En el agradecimiento, el de quien fue o el de quien no pudo ir
-      : gracias ? textosGracias(evento, trato ?? "neutro", !!opciones.asistio).texto
+      // En el agradecimiento, las palabras para quien fue
+      : gracias ? textosGracias(evento, trato ?? "neutro").texto
       : null,
     // La pre-invitación y el agradecimiento van en gala negro y oro, con el birrete y sin foto
     foto: gala ? null : extras.foto === false ? null : extras.foto_url || evento.imagen_url?.trim() || null,

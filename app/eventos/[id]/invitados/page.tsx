@@ -302,9 +302,11 @@ export default function AgregarInvitados() {
   // se marca aparte, para que la invitación para confirmar no figure como enviada
   const reservaActiva = !!evento && enReserva(evento);
   const esPreInvitacion = (inv: Invitado) => reservaActiva && !inv.a_distancia;
-  // Agradecimiento (tercer momento, después del evento): a todos, también a
-  // quien estuvo lejos; el texto depende de si fue o no
+  // Agradecimiento (tercer momento, después del evento): solo para quien fue;
+  // a quien no llegó no se le manda nada
   const graciasActiva = !!evento && enAgradecimiento(evento);
+  // En el agradecimiento, a quien no llegó no se le manda nada
+  const sinAgradecimiento = (inv: Invitado) => graciasActiva && !asistioInv(inv);
   const asistioInv = (inv: Invitado) => !!evento && asistioAlEvento(evento, { estado: inv.estado, presente: !!inv.id && presentes.has(inv.id), a_distancia: inv.a_distancia });
 
   function marcarEnvio(inv: Invitado, tipo: TipoEnvio) {
@@ -334,7 +336,7 @@ export default function AgregarInvitados() {
     : enviados.has(inv.token) || !!marcas[inv.token]?.enviado_at;
 
   function buildMensaje(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
-    if (graciasActiva) return armarMensajeGracias(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, asistioInv(inv));
+    if (graciasActiva) return armarMensajeGracias(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
     if (inv.a_distancia) return armarMensajeDistancia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
     if (esPreInvitacion(inv)) return armarMensajeReserva(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, trato);
     // Si el invitado elige cuántos van, no se le dice un número de lugares
@@ -589,14 +591,16 @@ export default function AgregarInvitados() {
   // Todas las tarjetas personalizadas en un ZIP (una por invitado, con su
   // saludo y, si está lejos, la de agradecimiento)
   async function descargarTodasLasTarjetas() {
-    if (!evento || zipProgreso || todosInvitados.length === 0) return;
-    setZipProgreso(`0/${todosInvitados.length}`);
+    // En el agradecimiento, solo las de quienes fueron
+    const lista = graciasActiva ? todosInvitados.filter(asistioInv) : todosInvitados;
+    if (!evento || zipProgreso || lista.length === 0) return;
+    setZipProgreso(`0/${lista.length}`);
     try {
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
-      for (let i = 0; i < todosInvitados.length; i++) {
-        const inv = todosInvitados[i];
-        setZipProgreso(`${i + 1}/${todosInvitados.length}`);
+      for (let i = 0; i < lista.length; i++) {
+        const inv = lista[i];
+        setZipProgreso(`${i + 1}/${lista.length}`);
         const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, tratoInvitado(inv), { distancia: !!inv.a_distancia, asistio: asistioInv(inv) }));
         if (blob) zip.file(`${String(i + 1).padStart(3, "0")}_${archivoTarjeta(inv, blob).name}`, blob);
       }
@@ -606,7 +610,7 @@ export default function AgregarInvitados() {
       a.download = `tarjetas_${(evento.nombre || "evento").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]+/g, "_")}.zip`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      toast.success(`Listo: ${todosInvitados.length} tarjeta${todosInvitados.length !== 1 ? "s" : ""} en el ZIP`);
+      toast.success(`Listo: ${lista.length} tarjeta${lista.length !== 1 ? "s" : ""} en el ZIP`);
     } catch {
       toast.error("No se pudieron generar las tarjetas. Probá de nuevo.");
     } finally {
@@ -687,29 +691,24 @@ export default function AgregarInvitados() {
     toast.success(etapa === "reserva"
       ? "Etapa: pre-invitación. Se manda la tarjeta con el mensaje, sin enlace."
       : etapa === "gracias"
-      ? "Etapa: agradecimiento. Los mismos enlaces ahora muestran tu mensaje y las fotos."
+      ? "Etapa: agradecimiento. Quienes fueron ven tu mensaje y las fotos en su mismo enlace."
       : "Etapa: confirmación. Los mismos enlaces ahora piden confirmar.");
   }
-  // Los dos textos del agradecimiento: para quien fue y para quien no pudo ir
-  const [graciasFueron, setGraciasFueron] = useState("");
-  const [graciasAusentes, setGraciasAusentes] = useState("");
-  const graciasFueronGuardado = evento?.tarjeta?.gracias_texto ?? "";
-  const graciasAusentesGuardado = evento?.tarjeta?.gracias_ausente ?? "";
-  useEffect(() => { setGraciasFueron(graciasFueronGuardado); }, [graciasFueronGuardado]);
-  useEffect(() => { setGraciasAusentes(graciasAusentesGuardado); }, [graciasAusentesGuardado]);
+  // El texto del agradecimiento (para quienes fueron)
+  const [graciasTexto, setGraciasTexto] = useState("");
+  const graciasTextoGuardado = evento?.tarjeta?.gracias_texto ?? "";
+  useEffect(() => { setGraciasTexto(graciasTextoGuardado); }, [graciasTextoGuardado]);
   async function guardarGracias() {
     if (!evento || cambiandoEtapa) return;
     setCambiandoEtapa(true);
     const tarjeta: ExtrasTarjeta = { ...(evento.tarjeta ?? {}) };
-    const fueron = graciasFueron.replace(/\s+/g, " ").trim();
-    const ausentes = graciasAusentes.replace(/\s+/g, " ").trim();
-    if (fueron) tarjeta.gracias_texto = fueron; else delete tarjeta.gracias_texto;
-    if (ausentes) tarjeta.gracias_ausente = ausentes; else delete tarjeta.gracias_ausente;
+    const t = graciasTexto.replace(/\s+/g, " ").trim();
+    if (t) tarjeta.gracias_texto = t; else delete tarjeta.gracias_texto;
     const { error } = await supabase.from("eventos").update({ tarjeta }).eq("id", id);
     setCambiandoEtapa(false);
-    if (error) { toast.error("No se pudieron guardar los textos. Probá de nuevo."); return; }
+    if (error) { toast.error("No se pudo guardar el texto. Probá de nuevo."); return; }
     setEvento({ ...evento, tarjeta });
-    toast.success("Listo: el agradecimiento usa estos textos.");
+    toast.success(t ? "Listo: el agradecimiento usa tu texto." : "Listo: el agradecimiento usa el texto automático.");
   }
   // Quién cuenta como que fue: los que confirmaron o los que entraron con su código
   async function cambiarAsistencia(escaner: boolean) {
@@ -722,8 +721,8 @@ export default function AgregarInvitados() {
     if (error) { toast.error("No se pudo cambiar. Probá de nuevo."); return; }
     setEvento({ ...evento, tarjeta });
   }
-  const fueron = graciasActiva ? todosInvitados.filter(asistioInv).length : 0;
-  const graciasEnviadas = todosInvitados.filter((i) => marcas[i.token]?.gracias_at).length;
+  const fueronLista = graciasActiva ? todosInvitados.filter(asistioInv) : [];
+  const graciasEnviadas = fueronLista.filter((i) => marcas[i.token]?.gracias_at).length;
   // Lo que dice la pre-invitación: el texto automático o el que escribe el organizador
   const [preTexto, setPreTexto] = useState("");
   const preTextoGuardado = evento?.tarjeta?.pre_texto ?? "";
@@ -1034,6 +1033,7 @@ export default function AgregarInvitados() {
         .estado-rechazado  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
         .estado-fue        { background: #eef2fa; color: #1f3157; border: 1px solid #c9d4ea; }
         .estado-nofue      { background: #f4f4f5; color: #52525b; border: 1px solid #e4e4e7; }
+        .inv-sin-gracias   { display: inline-flex; align-items: center; font-size: 11.5px; color: var(--text3); padding: 6px 4px; }
 
         .confirm-eliminar { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 
@@ -1238,7 +1238,7 @@ export default function AgregarInvitados() {
       {/* Envío en grupo: invitación o recordatorio */}
       {envioGrupo && (
         <EnvioEnGrupo
-          invitados={todosInvitados}
+          invitados={graciasActiva ? fueronLista : todosInvitados}
           tipoInicial={envioGrupo.tipo}
           preseleccion={envioGrupo.preseleccion}
           marcas={marcasCola}
@@ -1407,17 +1407,17 @@ export default function AgregarInvitados() {
                 </button>
                 <button type="button" role="radio" aria-checked={etapaActual === "gracias"} className={`etapa-op${etapaActual === "gracias" ? " activa" : ""}`} onClick={() => cambiarEtapa("gracias")} disabled={cambiandoEtapa}>
                   <span className="etapa-num">3</span>
-                  <span className="etapa-txt"><strong>Agradecimiento</strong><small>Después del evento: tu mensaje y las fotos.</small></span>
+                  <span className="etapa-txt"><strong>Agradecimiento</strong><small>Después del evento, a quienes fueron: tu mensaje y las fotos.</small></span>
                 </button>
               </div>
               <p className="etapa-ayuda">
                 {reservaActiva
                   ? "La pre-invitación va sin enlace: la tarjeta negro y oro con el mensaje. El enlace de cada invitado se manda en la etapa 2, para confirmar."
                   : graciasActiva
-                  ? "Cada persona recibe su agradecimiento con la tarjeta negro y oro y su enlace: ahí escucha tu mensaje, ve las fotos y te puede responder."
+                  ? "Solo quienes fueron reciben el agradecimiento: la tarjeta negro y oro y su enlace, donde escuchan tu mensaje, ven las fotos y te pueden responder. A quienes no llegaron no se les manda nada."
                   : "Cada invitado tiene un solo enlace: al cambiar de etapa, lo que ve al abrirlo cambia solo."}
                 {reservaActiva && sinDistancia > 0 && ` Pre-invitaciones enviadas: ${preEnviadas} de ${sinDistancia}.`}
-                {graciasActiva && todosInvitados.length > 0 && ` Fueron ${fueron}, no pudieron ${todosInvitados.length - fueron}. Agradecimientos enviados: ${graciasEnviadas} de ${todosInvitados.length}.`}
+                {graciasActiva && todosInvitados.length > 0 && ` Fueron ${fueronLista.length}. Agradecimientos enviados: ${graciasEnviadas} de ${fueronLista.length}.`}
               </p>
               {graciasActiva && evento && (
                 <div className="etapa-texto">
@@ -1430,40 +1430,25 @@ export default function AgregarInvitados() {
                       </div>
                     </>
                   )}
-                  <label className="field-label" htmlFor="gracias-fueron">Para quienes fueron</label>
+                  <label className="field-label" htmlFor="gracias-texto">Qué dice el agradecimiento</label>
                   <textarea
-                    id="gracias-fueron"
+                    id="gracias-texto"
                     className="field-input"
                     rows={4}
                     maxLength={500}
-                    value={graciasFueron}
-                    onChange={(e) => setGraciasFueron(e.target.value)}
-                    placeholder={textosGracias({ ...evento, tarjeta: { ...(evento.tarjeta ?? {}), gracias_texto: null } }, "neutro", true).texto}
+                    value={graciasTexto}
+                    onChange={(e) => setGraciasTexto(e.target.value)}
+                    placeholder={textosGracias({ ...evento, tarjeta: { ...(evento.tarjeta ?? {}), gracias_texto: null } }, "neutro").texto}
                   />
                   <div className="etapa-sugerencias">
-                    {sugerenciasGracias(evento, "neutro", true).map((sg) => (
-                      <button key={sg.id} type="button" className="etapa-sugerencia" onClick={() => setGraciasFueron(sg.texto)}>{sg.nombre}</button>
+                    {sugerenciasGracias(evento, "neutro").map((sg) => (
+                      <button key={sg.id} type="button" className="etapa-sugerencia" onClick={() => setGraciasTexto(sg.texto)}>{sg.nombre}</button>
                     ))}
                   </div>
-                  <label className="field-label" htmlFor="gracias-ausentes">Para quienes no pudieron ir</label>
-                  <textarea
-                    id="gracias-ausentes"
-                    className="field-input"
-                    rows={4}
-                    maxLength={500}
-                    value={graciasAusentes}
-                    onChange={(e) => setGraciasAusentes(e.target.value)}
-                    placeholder={textosGracias({ ...evento, tarjeta: { ...(evento.tarjeta ?? {}), gracias_ausente: null } }, "neutro", false).texto}
-                  />
-                  <div className="etapa-sugerencias">
-                    {sugerenciasGracias(evento, "neutro", false).map((sg) => (
-                      <button key={sg.id} type="button" className="etapa-sugerencia" onClick={() => setGraciasAusentes(sg.texto)}>{sg.nombre}</button>
-                    ))}
-                  </div>
-                  <button type="button" className="etapa-guardar" onClick={guardarGracias} disabled={cambiandoEtapa || (graciasFueron.trim() === graciasFueronGuardado && graciasAusentes.trim() === graciasAusentesGuardado)}>
-                    Guardar textos
+                  <button type="button" className="etapa-guardar" onClick={guardarGracias} disabled={cambiandoEtapa || graciasTexto.trim() === graciasTextoGuardado}>
+                    Guardar texto
                   </button>
-                  <p className="etapa-ayuda">Van en el mensaje de WhatsApp, en la tarjeta, en la pantalla y en lo que lee el avatar. Quienes estuvieron lejos reciben el de «no pudieron ir». Vacío = el texto automático.</p>
+                  <p className="etapa-ayuda">Va en el mensaje de WhatsApp, en la tarjeta, en la pantalla y en lo que lee el avatar. Vacío = el texto automático.</p>
                 </div>
               )}
               {reservaActiva && evento && (
@@ -1727,6 +1712,9 @@ export default function AgregarInvitados() {
                       }
                     </div>
                     <div className="inv-actions">
+                      {sinAgradecimiento(inv) ? (
+                        <span className="inv-sin-gracias">No fue: no recibe agradecimiento</span>
+                      ) : (<>
                       <button
                         className={`btn-action ${copiado === inv.token ? "btn-copy-done" : "btn-copy-default"}`}
                         onClick={() => copiarLink(inv.token)}
@@ -1758,6 +1746,7 @@ export default function AgregarInvitados() {
                           <span className="btn-action-txt">{yaEnviado(inv) ? "Enviado" : "WhatsApp"}</span>
                         </button>
                       )}
+                      </>)}
                     </div>
                   </div>
                 </div>
@@ -1778,7 +1767,7 @@ export default function AgregarInvitados() {
                 <button
                   type="button"
                   className="btn-varios"
-                  onClick={() => abrirEnvioGrupo("invitacion", (graciasActiva ? todosInvitados : sinConfirmar).filter((i) => !yaEnviado(i)).map((i) => i.token))}
+                  onClick={() => abrirEnvioGrupo("invitacion", (graciasActiva ? fueronLista : sinConfirmar).filter((i) => !yaEnviado(i)).map((i) => i.token))}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
                   Enviar a varios
@@ -1909,6 +1898,9 @@ export default function AgregarInvitados() {
                       )}
                     </div>
                     <div className="inv-actions">
+                      {sinAgradecimiento(inv) ? (
+                        <span className="inv-sin-gracias">No fue: no recibe agradecimiento</span>
+                      ) : (<>
                       <button
                         className={`btn-action ${copiado === inv.token ? "btn-copy-done" : "btn-copy-default"}`}
                         onClick={() => copiarLink(inv.token)}
@@ -1939,6 +1931,7 @@ export default function AgregarInvitados() {
                           <span className="btn-action-txt">{yaEnviado(inv) ? "Enviado" : "WhatsApp"}</span>
                         </button>
                       )}
+                      </>)}
                       <button
                         className="btn-action btn-eliminar"
                         aria-label={`Eliminar a ${inv.nombre}`}

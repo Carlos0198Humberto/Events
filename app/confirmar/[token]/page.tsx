@@ -1356,7 +1356,7 @@ const SILENCIO_KEY = "evorix-voz-silencio";
 
 function FloatingMascot({
   invitado, evento, token: _token, fase, setFase, hablando, leer, detener, textoActual, charIdx,
-  hayPrograma, hayMesas, silencio, setSilencio, distancia, nombresCarta, reserva, gracias, asistio,
+  hayPrograma, hayMesas, silencio, setSilencio, distancia, nombresCarta, reserva, gracias,
 }: {
   invitado: Invitado;
   evento: Evento;
@@ -1377,10 +1377,8 @@ function FloatingMascot({
   nombresCarta: string[];
   /** Pre-invitación: anuncia la fecha para apartarla, sin pedir confirmar */
   reserva: boolean;
-  /** Agradecimiento (después del evento): lee las palabras del organizador */
+  /** Agradecimiento (después del evento, a quien fue): lee las palabras del organizador */
   gracias: boolean;
-  /** En el agradecimiento: si fue (por acompañar) o no (por su cariño) */
-  asistio: boolean;
 }) {
   const [minimizado, setMinimizado] = useState(false);
   // Callado hace un rato (no entre frase y frase): se muestra chico, sin botones
@@ -1507,7 +1505,7 @@ function FloatingMascot({
     // fotos de ese día y el lugar para responderle
     if (gracias) {
       const varios = nombresCarta.length > 1;
-      const tg = textosGracias(evento, varios ? "plural" : trato, asistio);
+      const tg = textosGracias(evento, varios ? "plural" : trato);
       const autor = quien || festejado;
       pasos.push({ t: `¡Holaaa, ${primerNombre}! ${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió unas palabras de agradecimiento.`, guia: "ag-inicio" });
       pasos.push({ t: tg.texto, guia: "ag-texto" });
@@ -4180,9 +4178,9 @@ export default function ConfirmarPage() {
     setNumPersonas(inv.num_personas || 1);
     // Respondió en otra visita: se muestra su pantalla sin festejo ni voz (la
     // lluvia de birretes y las instrucciones son para el momento de confirmar)
-    // En el agradecimiento (después del evento) todos ven sus palabras, hayan
-    // confirmado, rechazado o no respondido
-    const enGraciasEv = !!ev && enAgradecimiento(ev);
+    // En el agradecimiento (después del evento) quien fue ve sus palabras; a
+    // quien no llegó no se le agradece: sigue viendo lo de la etapa anterior
+    const enGraciasEv = !!ev && enAgradecimiento(ev) && asistioAlEvento(ev, inv);
     if (inv.estado === "confirmado" && !inv.a_distancia && !enGraciasEv) {
       prevStepRef.current = "confirmado";
       setStep("confirmado");
@@ -4541,9 +4539,8 @@ export default function ConfirmarPage() {
   // Pre-invitación (graduación): mientras dure esa etapa no se confirma; quien
   // está lejos recibe su carta igual
   const enPreInvitacion = !!evento && !!invitado && !invitado.a_distancia && enReserva(evento);
-  // Agradecimiento (tercer momento): para todos, también para quien estuvo lejos
-  const enGracias = !!evento && !!invitado && enAgradecimiento(evento);
-  const asistioEvento = !!evento && !!invitado && asistioAlEvento(evento, invitado);
+  // Agradecimiento (tercer momento): solo para quien fue
+  const enGracias = !!evento && !!invitado && enAgradecimiento(evento) && asistioAlEvento(evento, invitado);
   const [quienesVan, setQuienesVan] = useState<boolean[]>([]);
   useEffect(() => {
     if (step !== "form" || !usarChips) return;
@@ -5416,7 +5413,6 @@ export default function ConfirmarPage() {
           nombresCarta={nombresEnTarjeta}
           reserva={enPreInvitacion}
           gracias={enGracias}
-          asistio={asistioEvento}
         />
       )}
 
@@ -5555,7 +5551,6 @@ export default function ConfirmarPage() {
             eventoId={invitado.evento_id}
             invitadoNombre={nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
             trato={nombresEnTarjeta.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token)}
-            asistio={asistioEvento}
             muroHref={`/muro/${invitado.evento_id}?token=${invitado.token}`}
           >
             <section className="ag-seccion" data-guia="ag-mensaje">

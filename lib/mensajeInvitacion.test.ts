@@ -164,7 +164,7 @@ describe("armarMensajeGracias", () => {
   const gracias = (extra: Partial<EventoMensaje> = {}) => grad({ ...extra, tarjeta: { etapa: "gracias", ...(extra.tarjeta ?? {}) } });
 
   it("agradece a quien fue, comparte las fotos con un solo enlace y no pide confirmar", () => {
-    const m = armarMensajeGracias(gracias(), "Rosa María Pérez", LINK, "f", true);
+    const m = armarMensajeGracias(gracias(), "Rosa María Pérez", LINK, "f");
     expect(m).toBe([
       "🎓 Graduación de Chavarría Aparicio",
       "Querida Rosa:\nGracias por acompañarme en mi graduación. Tu presencia hizo de ese día un recuerdo que guardaré siempre. Doy gracias a Dios por este logro y por tu vida, porque fuiste parte de este camino.",
@@ -175,9 +175,9 @@ describe("armarMensajeGracias", () => {
     expect(m).not.toMatch(/Confirm/);
   });
 
-  it("a quien no pudo ir le agradece su cariño", () => {
-    const m = armarMensajeGracias(gracias(), "Los López", LINK, "plural", false);
-    expect(m).toContain("Aunque no pudieron acompañarme en mi graduación, su cariño y sus buenos deseos llegaron hasta mí.");
+  it("en plural habla a todos", () => {
+    const m = armarMensajeGracias(gracias(), "Los López", LINK, "plural");
+    expect(m).toContain("Su presencia hizo de ese día un recuerdo");
     expect(m).toContain("Les comparto las fotos de ese día:");
   });
 });

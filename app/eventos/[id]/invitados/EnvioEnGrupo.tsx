@@ -36,7 +36,7 @@ type Props = {
   onCerrar: () => void;
   /** Etapa de pre-invitación: el primer envío es la pre-invitación y no hay recordatorio (no se pide confirmar) */
   reserva?: boolean;
-  /** Etapa de agradecimiento: el único envío es el agradecimiento, a todos */
+  /** Etapa de agradecimiento: el único envío es el agradecimiento (la lista llega solo con quienes fueron) */
   gracias?: boolean;
 };
 
@@ -69,7 +69,7 @@ export default function EnvioEnGrupo({ invitados, tipoInicial, preseleccion, mar
     if (gracias) {
       return [
         { clave: "sin-enviar", texto: "Sin agradecimiento", tokens: lista.filter((i) => !marcas[i.token]?.enviado_at).map((i) => i.token) },
-        { clave: "todos", texto: "Todos", tokens: lista.map((i) => i.token) },
+        { clave: "todos", texto: "Todos los que fueron", tokens: lista.map((i) => i.token) },
       ];
     }
     return tipo === "invitacion"
