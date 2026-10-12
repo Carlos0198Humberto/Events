@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
-import { armarDatosTarjeta, enReserva, sugerenciasReserva, textosReserva, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, enAgradecimiento, enReserva, sugerenciasGracias, sugerenciasReserva, textosGracias, textosReserva, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
-import { armarMensajeDia, armarMensajeDistancia, armarMensajeInvitacion, armarMensajeRecordatorio, armarMensajeReserva, diasHasta } from "@/lib/mensajeInvitacion";
+import { armarMensajeDia, armarMensajeDistancia, armarMensajeGracias, armarMensajeInvitacion, armarMensajeRecordatorio, armarMensajeReserva, diasHasta } from "@/lib/mensajeInvitacion";
 import { versiculoDe, type Versiculo } from "@/lib/versiculos";
 import EnvioEnGrupo, { type MarcasEnvio, type TipoEnvio } from "./EnvioEnGrupo";
 import VersiculoEvento from "./VersiculoEvento";
@@ -27,6 +27,9 @@ type Invitado = {
   estado?: string;
   a_distancia?: boolean | null; // invitación especial de agradecimiento (supabase-distancia.sql)
 };
+
+// Los tres momentos de la graduación
+type Etapa = "reserva" | "confirmacion" | "gracias";
 
 type Evento = {
   nombre: string;
@@ -74,6 +77,8 @@ export default function AgregarInvitados() {
   const [todosInvitados, setTodosInvitados] = useState<Invitado[]>([]);
   // Quiénes marcó cada invitado que van (columna de supabase-asistentes.sql)
   const [asistentesPorId, setAsistentesPorId] = useState<Record<string, string[]>>({});
+  // Quiénes entraron con su código el día del evento (escáner): para el agradecimiento
+  const [presentes, setPresentes] = useState<Set<string>>(new Set());
   const [loadingInvitados, setLoadingInvitados] = useState(true);
   const [eliminando, setEliminando] = useState<string | null>(null);
   const [confirmEliminar, setConfirmEliminar] = useState<string | null>(null);
@@ -198,6 +203,12 @@ export default function AgregarInvitados() {
       });
       setAsistentesPorId(mapa);
     }
+    const { data: pres, error: errPres } = await supabase
+      .from("invitados")
+      .select("id")
+      .eq("evento_id", id)
+      .eq("presente", true);
+    if (!errPres && pres) setPresentes(new Set((pres as { id: string }[]).map((r) => r.id)));
     // Marcas de enviado / recordado: las de la base (si existen las columnas)
     // y, de respaldo, las guardadas en este navegador
     const locales = marcasLocales();
@@ -213,7 +224,21 @@ export default function AgregarInvitados() {
           recordatorio_at: r.recordatorio_at ?? locales[r.token]?.recordatorio_at ?? null,
           dia_at: locales[r.token]?.dia_at ?? null, // solo existe en este navegador
           reserva_at: locales[r.token]?.reserva_at ?? null, // pre-invitación: también solo acá
+          gracias_at: locales[r.token]?.gracias_at ?? null,
         };
+      });
+    }
+    // Agradecimientos ya enviados: la tabla agradecimientos vale en cualquier compu
+    const tokenDe: Record<string, string> = {};
+    ((data as unknown as Invitado[] | null) ?? []).forEach((i) => { if (i.id) tokenDe[i.id] = i.token; });
+    const { data: agr, error: errAgr } = await supabase
+      .from("agradecimientos")
+      .select("invitado_id, enviado_at")
+      .eq("evento_id", id);
+    if (!errAgr && agr) {
+      (agr as { invitado_id: string; enviado_at: string | null }[]).forEach((r) => {
+        const tk = tokenDe[r.invitado_id];
+        if (tk) unidas[tk] = { ...unidas[tk], gracias_at: unidas[tk]?.gracias_at ?? r.enviado_at ?? new Date().toISOString() };
       });
     }
     setMarcas(unidas);
@@ -277,10 +302,14 @@ export default function AgregarInvitados() {
   // se marca aparte, para que la invitación para confirmar no figure como enviada
   const reservaActiva = !!evento && enReserva(evento);
   const esPreInvitacion = (inv: Invitado) => reservaActiva && !inv.a_distancia;
+  // Agradecimiento (tercer momento, después del evento): a todos, también a
+  // quien estuvo lejos; el texto depende de si fue o no
+  const graciasActiva = !!evento && enAgradecimiento(evento);
+  const asistioInv = (inv: Invitado) => !!evento && asistioAlEvento(evento, { estado: inv.estado, presente: !!inv.id && presentes.has(inv.id), a_distancia: inv.a_distancia });
 
   function marcarEnvio(inv: Invitado, tipo: TipoEnvio) {
     const campo = tipo === "invitacion"
-      ? (esPreInvitacion(inv) ? "reserva_at" : "enviado_at")
+      ? (esPreInvitacion(inv) ? "reserva_at" : graciasActiva ? "gracias_at" : "enviado_at")
       : tipo === "recordatorio" ? "recordatorio_at" : "dia_at";
     const ahora = new Date().toISOString();
     if (campo === "enviado_at") setEnviados((prev) => new Set(prev).add(inv.token));
@@ -291,14 +320,21 @@ export default function AgregarInvitados() {
     });
     // Si la columna todavía no existe, falla en silencio: queda la marca local
     // (el mensaje del día no tiene columna: queda solo la marca local)
-    if (inv.id && campo !== "dia_at" && campo !== "reserva_at") supabase.from("invitados").update({ [campo]: ahora }).eq("id", inv.id).then(() => {});
+    if (inv.id && campo !== "dia_at" && campo !== "reserva_at" && campo !== "gracias_at") supabase.from("invitados").update({ [campo]: ahora }).eq("id", inv.id).then(() => {});
+    // El agradecimiento queda en su tabla: así figura como enviado en cualquier compu
+    if (inv.id && campo === "gracias_at") {
+      supabase.from("agradecimientos").insert({ evento_id: id, invitado_id: inv.id, mensaje: buildMensaje(inv), canal: "whatsapp" }).then(() => {});
+    }
   }
 
-  const yaEnviado = (inv: Invitado): boolean => esPreInvitacion(inv)
+  const yaEnviado = (inv: Invitado): boolean => graciasActiva
+    ? !!marcas[inv.token]?.gracias_at
+    : esPreInvitacion(inv)
     ? !!marcas[inv.token]?.reserva_at
     : enviados.has(inv.token) || !!marcas[inv.token]?.enviado_at;
 
   function buildMensaje(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
+    if (graciasActiva) return armarMensajeGracias(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, asistioInv(inv));
     if (inv.a_distancia) return armarMensajeDistancia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
     if (esPreInvitacion(inv)) return armarMensajeReserva(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, trato);
     // Si el invitado elige cuántos van, no se le dice un número de lugares
@@ -431,7 +467,7 @@ export default function AgregarInvitados() {
       if (previa?.url) URL.revokeObjectURL(previa.url);
       return { inv, trato, blob: null, url: null };
     });
-    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia }));
+    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, asistio: asistioInv(inv) }));
     if (n !== generacionRef.current) return;
     if (!blob) {
       toast.error("No se pudo generar la tarjeta. Probá de nuevo.");
@@ -535,7 +571,7 @@ export default function AgregarInvitados() {
     ventana.document.write("<p style='font-family:sans-serif;padding:24px;color:#475569'>Preparando la tarjeta para imprimir…</p>");
     const { inv, trato } = tarjeta;
     const blob = await generarTarjetaPNG(
-      armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia }),
+      armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, asistio: asistioInv(inv) }),
       "imprimir",
       { qr: esPreInvitacion(inv) ? undefined : buildLink(inv.token) },
     );
@@ -561,7 +597,7 @@ export default function AgregarInvitados() {
       for (let i = 0; i < todosInvitados.length; i++) {
         const inv = todosInvitados[i];
         setZipProgreso(`${i + 1}/${todosInvitados.length}`);
-        const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, tratoInvitado(inv), { distancia: !!inv.a_distancia }));
+        const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, tratoInvitado(inv), { distancia: !!inv.a_distancia, asistio: asistioInv(inv) }));
         if (blob) zip.file(`${String(i + 1).padStart(3, "0")}_${archivoTarjeta(inv, blob).name}`, blob);
       }
       const contenido = await zip.generateAsync({ type: "blob" });
@@ -584,7 +620,7 @@ export default function AgregarInvitados() {
   async function tarjetaParaEstados() {
     if (!evento || generandoHistoria) return;
     setGenerandoHistoria(true);
-    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, ""), "historia");
+    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, "", null, { asistio: true }), "historia");
     setGenerandoHistoria(false);
     if (!blob) { toast.error("No se pudo generar la versión para estados."); return; }
     const archivo = new File([blob], "invitacion_para_estados.png", { type: "image/png" });
@@ -634,21 +670,60 @@ export default function AgregarInvitados() {
   const versiculoActual = versiculoDe(evento?.versiculo_texto, evento?.versiculo_cita);
 
   // Cambiar de etapa: el enlace de cada invitado es el mismo, lo que ve al
-  // abrirlo cambia solo (pre-invitación ↔ invitación para confirmar)
+  // abrirlo cambia solo (pre-invitación → confirmación → agradecimiento)
   const [cambiandoEtapa, setCambiandoEtapa] = useState(false);
-  async function cambiarEtapa(reserva: boolean) {
-    if (!evento || cambiandoEtapa || reserva === reservaActiva) return;
+  const etapaActual: Etapa = reservaActiva ? "reserva" : graciasActiva ? "gracias" : "confirmacion";
+  async function cambiarEtapa(etapa: Etapa) {
+    if (!evento || cambiandoEtapa || etapa === etapaActual) return;
     setCambiandoEtapa(true);
     const tarjeta: ExtrasTarjeta = { ...(evento.tarjeta ?? {}) };
-    if (reserva) tarjeta.etapa = "reserva"; else delete tarjeta.etapa;
+    if (etapa === "confirmacion") delete tarjeta.etapa; else tarjeta.etapa = etapa;
+    // Si se usó el escáner en la puerta, fueron los que entraron con su código
+    if (etapa === "gracias" && presentes.size > 0 && !tarjeta.asistencia) tarjeta.asistencia = "escaner";
     const { error } = await supabase.from("eventos").update({ tarjeta }).eq("id", id);
     setCambiandoEtapa(false);
     if (error) { toast.error("No se pudo cambiar la etapa. Probá de nuevo."); return; }
     setEvento({ ...evento, tarjeta });
-    toast.success(reserva
-      ? "Etapa: pre-invitación. Los enlaces muestran la fecha para apartarla."
+    toast.success(etapa === "reserva"
+      ? "Etapa: pre-invitación. Se manda la tarjeta con el mensaje, sin enlace."
+      : etapa === "gracias"
+      ? "Etapa: agradecimiento. Los mismos enlaces ahora muestran tu mensaje y las fotos."
       : "Etapa: confirmación. Los mismos enlaces ahora piden confirmar.");
   }
+  // Los dos textos del agradecimiento: para quien fue y para quien no pudo ir
+  const [graciasFueron, setGraciasFueron] = useState("");
+  const [graciasAusentes, setGraciasAusentes] = useState("");
+  const graciasFueronGuardado = evento?.tarjeta?.gracias_texto ?? "";
+  const graciasAusentesGuardado = evento?.tarjeta?.gracias_ausente ?? "";
+  useEffect(() => { setGraciasFueron(graciasFueronGuardado); }, [graciasFueronGuardado]);
+  useEffect(() => { setGraciasAusentes(graciasAusentesGuardado); }, [graciasAusentesGuardado]);
+  async function guardarGracias() {
+    if (!evento || cambiandoEtapa) return;
+    setCambiandoEtapa(true);
+    const tarjeta: ExtrasTarjeta = { ...(evento.tarjeta ?? {}) };
+    const fueron = graciasFueron.replace(/\s+/g, " ").trim();
+    const ausentes = graciasAusentes.replace(/\s+/g, " ").trim();
+    if (fueron) tarjeta.gracias_texto = fueron; else delete tarjeta.gracias_texto;
+    if (ausentes) tarjeta.gracias_ausente = ausentes; else delete tarjeta.gracias_ausente;
+    const { error } = await supabase.from("eventos").update({ tarjeta }).eq("id", id);
+    setCambiandoEtapa(false);
+    if (error) { toast.error("No se pudieron guardar los textos. Probá de nuevo."); return; }
+    setEvento({ ...evento, tarjeta });
+    toast.success("Listo: el agradecimiento usa estos textos.");
+  }
+  // Quién cuenta como que fue: los que confirmaron o los que entraron con su código
+  async function cambiarAsistencia(escaner: boolean) {
+    if (!evento || cambiandoEtapa || escaner === (evento.tarjeta?.asistencia === "escaner")) return;
+    setCambiandoEtapa(true);
+    const tarjeta: ExtrasTarjeta = { ...(evento.tarjeta ?? {}) };
+    if (escaner) tarjeta.asistencia = "escaner"; else delete tarjeta.asistencia;
+    const { error } = await supabase.from("eventos").update({ tarjeta }).eq("id", id);
+    setCambiandoEtapa(false);
+    if (error) { toast.error("No se pudo cambiar. Probá de nuevo."); return; }
+    setEvento({ ...evento, tarjeta });
+  }
+  const fueron = graciasActiva ? todosInvitados.filter(asistioInv).length : 0;
+  const graciasEnviadas = todosInvitados.filter((i) => marcas[i.token]?.gracias_at).length;
   // Lo que dice la pre-invitación: el texto automático o el que escribe el organizador
   const [preTexto, setPreTexto] = useState("");
   const preTextoGuardado = evento?.tarjeta?.pre_texto ?? "";
@@ -669,7 +744,9 @@ export default function AgregarInvitados() {
   const sinDistancia = todosInvitados.filter((i) => !i.a_distancia).length;
   // La cola mira «enviado_at» para saber a quién ya se le mandó: en la etapa de
   // pre-invitación esa marca es la de la pre-invitación
-  const marcasCola: MarcasEnvio = reservaActiva
+  const marcasCola: MarcasEnvio = graciasActiva
+    ? Object.fromEntries(todosInvitados.map((i) => [i.token, { ...marcas[i.token], enviado_at: marcas[i.token]?.gracias_at ?? null }]))
+    : reservaActiva
     ? Object.fromEntries(todosInvitados.map((i) => [i.token, esPreInvitacion(i)
       ? { ...marcas[i.token], enviado_at: marcas[i.token]?.reserva_at ?? null }
       : marcas[i.token] ?? {}]))
@@ -912,7 +989,7 @@ export default function AgregarInvitados() {
         .inv-envio { font-size: 10.5px; color: #16a34a; margin-top: 2px; font-weight: 600; }
         .etapa-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px; padding: 14px; box-shadow: var(--shadow); display: grid; gap: 10px; }
         .etapa-titulo { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
-        .etapa-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .etapa-opciones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .etapa-op { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 11px; border-radius: 14px; border: 1.5px solid var(--border-input); background: var(--surface); cursor: pointer; font-family: 'DM Sans', sans-serif; }
         .etapa-op.activa { border-color: var(--accent); background: var(--accent-soft); }
         .etapa-op:disabled { opacity: .6; cursor: wait; }
@@ -928,7 +1005,11 @@ export default function AgregarInvitados() {
         .etapa-sugerencia { padding: 6px 12px; border-radius: 99px; border: 1.5px solid var(--border-input); background: var(--accent-soft); color: var(--accent2); font: 600 12px 'DM Sans', sans-serif; cursor: pointer; }
         .etapa-guardar { justify-self: start; padding: 9px 16px; border-radius: 10px; border: none; background: var(--accent); color: white; font: 700 13px 'DM Sans', sans-serif; cursor: pointer; }
         .etapa-guardar:disabled { opacity: .5; cursor: default; }
-        @media (max-width: 360px) { .etapa-opciones { grid-template-columns: 1fr; } }
+        .etapa-sub { font-size: 12px; font-weight: 700; color: var(--text); }
+        .etapa-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .etapa-chip { padding: 6px 12px; border-radius: 99px; border: 1.5px solid var(--border-input); background: var(--surface); color: var(--text2); font: 600 12px 'DM Sans', sans-serif; cursor: pointer; }
+        .etapa-chip.activa { border-color: var(--accent); background: var(--accent-soft); color: var(--accent2); }
+        @media (max-width: 560px) { .etapa-opciones { grid-template-columns: 1fr; } }
         .recordatorio-banner { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #1D1C20, #2A2620); border: 1px solid #B4873A; border-radius: 18px; padding: 14px 14px 14px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
         .recordatorio-icono { font-size: 24px; }
         .recordatorio-cuerpo { flex: 1; min-width: 0; }
@@ -951,6 +1032,8 @@ export default function AgregarInvitados() {
         .estado-confirmado { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
         .estado-pendiente  { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
         .estado-rechazado  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .estado-fue        { background: #eef2fa; color: #1f3157; border: 1px solid #c9d4ea; }
+        .estado-nofue      { background: #f4f4f5; color: #52525b; border: 1px solid #e4e4e7; }
 
         .confirm-eliminar { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 
@@ -1160,6 +1243,7 @@ export default function AgregarInvitados() {
           preseleccion={envioGrupo.preseleccion}
           marcas={marcasCola}
           reserva={reservaActiva}
+          gracias={graciasActiva}
           tratoDe={(inv) => tratoDe(inv.nombre, inv.token)}
           urlWhatsApp={(inv, tipo) => buildWhatsAppUrl(inv as Invitado, tipo)}
           onEnviado={(inv, tipo) => marcarEnvio(inv as Invitado, tipo)}
@@ -1308,26 +1392,80 @@ export default function AgregarInvitados() {
             </div>
           )}
 
-          {/* ── Etapa de la invitación (graduación): pre-invitación → confirmación ── */}
+          {/* ── Etapa de la invitación (graduación): pre-invitación → confirmación → agradecimiento ── */}
           {evento?.tipo === "graduacion" && (
             <div className="etapa-card anim-card">
               <div className="etapa-titulo">Etapa de la invitación</div>
               <div className="etapa-opciones" role="radiogroup" aria-label="Etapa de la invitación">
-                <button type="button" role="radio" aria-checked={reservaActiva} className={`etapa-op${reservaActiva ? " activa" : ""}`} onClick={() => cambiarEtapa(true)} disabled={cambiandoEtapa}>
+                <button type="button" role="radio" aria-checked={etapaActual === "reserva"} className={`etapa-op${etapaActual === "reserva" ? " activa" : ""}`} onClick={() => cambiarEtapa("reserva")} disabled={cambiandoEtapa}>
                   <span className="etapa-num">1</span>
                   <span className="etapa-txt"><strong>Pre-invitación</strong><small>Tarjeta y mensaje, sin enlace. Para que aparten la fecha.</small></span>
                 </button>
-                <button type="button" role="radio" aria-checked={!reservaActiva} className={`etapa-op${!reservaActiva ? " activa" : ""}`} onClick={() => cambiarEtapa(false)} disabled={cambiandoEtapa}>
+                <button type="button" role="radio" aria-checked={etapaActual === "confirmacion"} className={`etapa-op${etapaActual === "confirmacion" ? " activa" : ""}`} onClick={() => cambiarEtapa("confirmacion")} disabled={cambiandoEtapa}>
                   <span className="etapa-num">2</span>
                   <span className="etapa-txt"><strong>Confirmación</strong><small>Con hora, lugar y el botón para confirmar.</small></span>
+                </button>
+                <button type="button" role="radio" aria-checked={etapaActual === "gracias"} className={`etapa-op${etapaActual === "gracias" ? " activa" : ""}`} onClick={() => cambiarEtapa("gracias")} disabled={cambiandoEtapa}>
+                  <span className="etapa-num">3</span>
+                  <span className="etapa-txt"><strong>Agradecimiento</strong><small>Después del evento: tu mensaje y las fotos.</small></span>
                 </button>
               </div>
               <p className="etapa-ayuda">
                 {reservaActiva
                   ? "La pre-invitación va sin enlace: la tarjeta negro y oro con el mensaje. El enlace de cada invitado se manda en la etapa 2, para confirmar."
+                  : graciasActiva
+                  ? "Cada persona recibe su agradecimiento con la tarjeta negro y oro y su enlace: ahí escucha tu mensaje, ve las fotos y te puede responder."
                   : "Cada invitado tiene un solo enlace: al cambiar de etapa, lo que ve al abrirlo cambia solo."}
                 {reservaActiva && sinDistancia > 0 && ` Pre-invitaciones enviadas: ${preEnviadas} de ${sinDistancia}.`}
+                {graciasActiva && todosInvitados.length > 0 && ` Fueron ${fueron}, no pudieron ${todosInvitados.length - fueron}. Agradecimientos enviados: ${graciasEnviadas} de ${todosInvitados.length}.`}
               </p>
+              {graciasActiva && evento && (
+                <div className="etapa-texto">
+                  {presentes.size > 0 && (
+                    <>
+                      <div className="etapa-sub">¿Quiénes cuentan como que fueron?</div>
+                      <div className="etapa-chips" role="radiogroup" aria-label="Quiénes fueron">
+                        <button type="button" role="radio" aria-checked={evento.tarjeta?.asistencia === "escaner"} className={`etapa-chip${evento.tarjeta?.asistencia === "escaner" ? " activa" : ""}`} onClick={() => cambiarAsistencia(true)} disabled={cambiandoEtapa}>Los que entraron con su código ({presentes.size})</button>
+                        <button type="button" role="radio" aria-checked={evento.tarjeta?.asistencia !== "escaner"} className={`etapa-chip${evento.tarjeta?.asistencia !== "escaner" ? " activa" : ""}`} onClick={() => cambiarAsistencia(false)} disabled={cambiandoEtapa}>Los que confirmaron</button>
+                      </div>
+                    </>
+                  )}
+                  <label className="field-label" htmlFor="gracias-fueron">Para quienes fueron</label>
+                  <textarea
+                    id="gracias-fueron"
+                    className="field-input"
+                    rows={4}
+                    maxLength={500}
+                    value={graciasFueron}
+                    onChange={(e) => setGraciasFueron(e.target.value)}
+                    placeholder={textosGracias({ ...evento, tarjeta: { ...(evento.tarjeta ?? {}), gracias_texto: null } }, "neutro", true).texto}
+                  />
+                  <div className="etapa-sugerencias">
+                    {sugerenciasGracias(evento, "neutro", true).map((sg) => (
+                      <button key={sg.id} type="button" className="etapa-sugerencia" onClick={() => setGraciasFueron(sg.texto)}>{sg.nombre}</button>
+                    ))}
+                  </div>
+                  <label className="field-label" htmlFor="gracias-ausentes">Para quienes no pudieron ir</label>
+                  <textarea
+                    id="gracias-ausentes"
+                    className="field-input"
+                    rows={4}
+                    maxLength={500}
+                    value={graciasAusentes}
+                    onChange={(e) => setGraciasAusentes(e.target.value)}
+                    placeholder={textosGracias({ ...evento, tarjeta: { ...(evento.tarjeta ?? {}), gracias_ausente: null } }, "neutro", false).texto}
+                  />
+                  <div className="etapa-sugerencias">
+                    {sugerenciasGracias(evento, "neutro", false).map((sg) => (
+                      <button key={sg.id} type="button" className="etapa-sugerencia" onClick={() => setGraciasAusentes(sg.texto)}>{sg.nombre}</button>
+                    ))}
+                  </div>
+                  <button type="button" className="etapa-guardar" onClick={guardarGracias} disabled={cambiandoEtapa || (graciasFueron.trim() === graciasFueronGuardado && graciasAusentes.trim() === graciasAusentesGuardado)}>
+                    Guardar textos
+                  </button>
+                  <p className="etapa-ayuda">Van en el mensaje de WhatsApp, en la tarjeta, en la pantalla y en lo que lee el avatar. Quienes estuvieron lejos reciben el de «no pudieron ir». Vacío = el texto automático.</p>
+                </div>
+              )}
               {reservaActiva && evento && (
                 <div className="etapa-texto">
                   <label className="field-label" htmlFor="pre-texto">Qué dice la pre-invitación</label>
@@ -1355,7 +1493,7 @@ export default function AgregarInvitados() {
           )}
 
           {/* ── Recordatorio: falta una semana o menos ── */}
-          {mostrarRecordatorio && !reservaActiva && (
+          {mostrarRecordatorio && !reservaActiva && !graciasActiva && (
             <div className="recordatorio-banner anim-card">
               <div className="recordatorio-icono" aria-hidden="true">⏳</div>
               <div className="recordatorio-cuerpo">
@@ -1378,7 +1516,7 @@ export default function AgregarInvitados() {
           )}
 
           {/* ── Mensaje del día: la víspera y el mismo día ── */}
-          {mostrarMensajeDia && (
+          {mostrarMensajeDia && !graciasActiva && (
             <div className="recordatorio-banner anim-card">
               <div className="recordatorio-icono" aria-hidden="true">🎉</div>
               <div className="recordatorio-cuerpo">
@@ -1640,7 +1778,7 @@ export default function AgregarInvitados() {
                 <button
                   type="button"
                   className="btn-varios"
-                  onClick={() => abrirEnvioGrupo("invitacion", sinConfirmar.filter((i) => !yaEnviado(i)).map((i) => i.token))}
+                  onClick={() => abrirEnvioGrupo("invitacion", (graciasActiva ? todosInvitados : sinConfirmar).filter((i) => !yaEnviado(i)).map((i) => i.token))}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
                   Enviar a varios
@@ -1737,6 +1875,9 @@ export default function AgregarInvitados() {
                               : inv.estado === "rechazado" ? "✗ Rechazó"
                               : "Pendiente"}
                           </span>
+                        )}
+                        {graciasActiva && (
+                          <span className={`estado-badge ${asistioInv(inv) ? "estado-fue" : "estado-nofue"}`}>{asistioInv(inv) ? "Fue" : "No fue"}</span>
                         )}
                       </div>
                       {inv.telefono

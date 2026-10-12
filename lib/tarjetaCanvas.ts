@@ -554,7 +554,7 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   } });
 
   // Invitación especial (a distancia): la dedicatoria, en cursiva clara
-  if (datos.dedicatoria && !datos.reserva) {
+  if (datos.dedicatoria && !datos.reserva && !datos.gracias) {
     ctx.font = `italic 500 34px ${SERIF}`;
     const lineasD = partirEnLineas(ctx, datos.dedicatoria, 760).slice(0, 3);
     bloques.push({ alto: lineasD.length * 44, antes: 22, dibujar: (y) => {
@@ -590,13 +590,22 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   }
   // Pre-invitación: el texto del organizador bajo la fecha y, como el «Class
   // of» de la gala, «Promoción» con el año grande
-  if (datos.dedicatoria && datos.reserva) {
-    // Hasta 7 renglones: el texto del organizador nunca se corta
-    ctx.font = `italic 500 28px ${SERIF}`;
-    const lineasT = partirEnLineas(ctx, datos.dedicatoria, 740).slice(0, 7);
-    bloques.push({ alto: lineasT.length * 38, antes: 26, dibujar: (y) => {
+  if (datos.dedicatoria && (datos.reserva || datos.gracias)) {
+    // El texto del organizador nunca se corta: si pasa de 7 renglones, la
+    // letra baja un poco (el agradecimiento admite hasta 500 caracteres)
+    let px = 28;
+    ctx.font = `italic 500 ${px}px ${SERIF}`;
+    let lineasT = partirEnLineas(ctx, datos.dedicatoria, 740);
+    if (lineasT.length > 7) {
+      px = 24;
+      ctx.font = `italic 500 ${px}px ${SERIF}`;
+      lineasT = partirEnLineas(ctx, datos.dedicatoria, 740);
+    }
+    lineasT = lineasT.slice(0, 10);
+    const paso = Math.round(px * 1.36);
+    bloques.push({ alto: lineasT.length * paso, antes: 26, dibujar: (y) => {
       lineasT.forEach((l, i) =>
-        escribir(ctx, l, cx, y + 28 + i * 38, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 28, min: 20, max: 760, color: P.textoFuerte }));
+        escribir(ctx, l, cx, y + px + i * paso, { fuente: (n) => `italic 500 ${n}px ${SERIF}`, px, min: 18, max: 760, color: P.textoFuerte }));
     } });
   }
   if (datos.aviso) {
@@ -645,7 +654,7 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
     const lado = 190;
     bloques.push({ alto: lado + 34, antes: 22, dibujar: (y) => {
       dibujarQR(ctx, qr, cx, y, lado);
-      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : datos.reserva ? "ESCANEÁ PARA VER TU PRE-INVITACIÓN" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 28,
+      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : datos.reserva ? "ESCANEÁ PARA VER TU PRE-INVITACIÓN" : datos.gracias ? "ESCANEÁ PARA VER LAS FOTOS" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 28,
         { fuente: (px) => `500 ${px}px ${CAPS}`, px: 16, min: 12, max: 760, espacio: 3, color: P.oroPlano });
     } });
   } else if (datos.invitado && datos.cta) {
@@ -884,7 +893,7 @@ function dibujarModerna(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, foto
     const lado = 180;
     bloques.push({ alto: lado + 30, antes: 20, dibujar: (y) => {
       dibujarQR(ctx, qr, cx, y, lado);
-      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : datos.reserva ? "ESCANEÁ PARA VER TU PRE-INVITACIÓN" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 26,
+      escribir(ctx, datos.especial ? "ESCANEÁ PARA VER TU INVITACIÓN" : datos.reserva ? "ESCANEÁ PARA VER TU PRE-INVITACIÓN" : datos.gracias ? "ESCANEÁ PARA VER LAS FOTOS" : "ESCANEÁ PARA CONFIRMAR TU ASISTENCIA", cx, y + lado + 26,
         { fuente: sans(500), px: 16, min: 12, max: ancho, espacio: 4, color: T.suave });
     } });
   } else if (datos.invitado) {

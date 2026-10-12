@@ -5,7 +5,7 @@
 // su evento. Si el token no existe, se devuelve una tarjeta genérica sin
 // datos personales.
 
-import { armarDatosTarjeta, type DatosTarjeta, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, type DatosTarjeta, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 
 const URL_SB = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const CLAVE = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -29,11 +29,14 @@ export async function datosPorToken(token: string): Promise<{ datos: DatosTarjet
   const generica = armarDatosTarjeta({ nombre: "Tu invitación", tipo: "otro" }, "");
   if (!/^[\w-]{6,80}$/.test(token)) return { datos: generica, encontrado: false };
 
-  // a_distancia (supabase-distancia.sql): la vista previa de la invitación especial
-  const filtro = `invitados?token=eq.${encodeURIComponent(token)}&limit=1&select=nombre,evento_id`;
+  // a_distancia (supabase-distancia.sql): la vista previa de la invitación especial;
+  // estado y presente: en el agradecimiento, si fue o no
+  type Fila = { nombre: string; evento_id: string; estado?: string | null; a_distancia?: boolean | null; presente?: boolean | null };
+  const filtro = `invitados?token=eq.${encodeURIComponent(token)}&limit=1&select=nombre,evento_id,estado`;
   const invitados =
-    (await rest<{ nombre: string; evento_id: string; a_distancia?: boolean | null }[]>(`${filtro},a_distancia`)) ??
-    (await rest<{ nombre: string; evento_id: string; a_distancia?: boolean | null }[]>(filtro));
+    (await rest<Fila[]>(`${filtro},a_distancia,presente`)) ??
+    (await rest<Fila[]>(`${filtro},a_distancia`)) ??
+    (await rest<Fila[]>(filtro));
   const inv = invitados?.[0];
   if (!inv) return { datos: generica, encontrado: false };
 
@@ -47,5 +50,5 @@ export async function datosPorToken(token: string): Promise<{ datos: DatosTarjet
     (await rest<EventoTarjeta[]>(base));
   const ev = eventos?.[0];
   if (!ev) return { datos: generica, encontrado: false };
-  return { datos: armarDatosTarjeta(ev, inv.nombre, null, { distancia: !!inv.a_distancia }), encontrado: true };
+  return { datos: armarDatosTarjeta(ev, inv.nombre, null, { distancia: !!inv.a_distancia, asistio: asistioAlEvento(ev, inv) }), encontrado: true };
 }

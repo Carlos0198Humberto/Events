@@ -7,9 +7,10 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
-import { armarDatosTarjeta, cartaDistancia, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosReserva, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, enAgradecimiento, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import InvitacionDistancia from "./InvitacionDistancia";
 import PreInvitacion from "./PreInvitacion";
+import Agradecimiento from "./Agradecimiento";
 import { IcoCamara, IcoCorazon as IcoCorazonLinea } from "@/app/components/Iconos";
 import { nombreDePila, saludoDeCarta, tratoDe } from "@/lib/tratoInvitado";
 import { citaHablada, versiculoDe } from "@/lib/versiculos";
@@ -31,6 +32,7 @@ type Invitado = {
   nombres_personas?: string | null;
   asistentes_nombres?: string[] | null; // quiénes marcó que van (supabase-asistentes.sql)
   a_distancia?: boolean | null; // invitación especial de agradecimiento (supabase-distancia.sql)
+  presente?: boolean | null; // entró con su código el día del evento (escáner)
   mesa_id?: string | null;
   mesa_nombre?: string | null; // populated by join
 };
@@ -1354,7 +1356,7 @@ const SILENCIO_KEY = "evorix-voz-silencio";
 
 function FloatingMascot({
   invitado, evento, token: _token, fase, setFase, hablando, leer, detener, textoActual, charIdx,
-  hayPrograma, hayMesas, silencio, setSilencio, distancia, nombresCarta, reserva,
+  hayPrograma, hayMesas, silencio, setSilencio, distancia, nombresCarta, reserva, gracias, asistio,
 }: {
   invitado: Invitado;
   evento: Evento;
@@ -1375,6 +1377,10 @@ function FloatingMascot({
   nombresCarta: string[];
   /** Pre-invitación: anuncia la fecha para apartarla, sin pedir confirmar */
   reserva: boolean;
+  /** Agradecimiento (después del evento): lee las palabras del organizador */
+  gracias: boolean;
+  /** En el agradecimiento: si fue (por acompañar) o no (por su cariño) */
+  asistio: boolean;
 }) {
   const [minimizado, setMinimizado] = useState(false);
   // Callado hace un rato (no entre frase y frase): se muestra chico, sin botones
@@ -1497,6 +1503,20 @@ function FloatingMascot({
     const saludoVoz = trato === "neutro"
       ? `¡Holaaa, ${primerNombre}! Esta es tu ${tipoInv}${quien ? `, que ${quien} te hace` : ""}.`
       : `¡Holaaa, ${primerNombre}! ${trato === "f" ? "Bienvenida" : trato === "m" ? "Bienvenido" : "Bienvenidos"} a ${trato === "plural" ? "su" : "tu"} ${tipoInv}${quien ? ` que ${quien} ${trato === "plural" ? "les" : "te"} hace` : ""}.`;
+    // Agradecimiento: el saludo, las palabras del organizador, la firma, las
+    // fotos de ese día y el lugar para responderle
+    if (gracias) {
+      const varios = nombresCarta.length > 1;
+      const tg = textosGracias(evento, varios ? "plural" : trato, asistio);
+      const autor = quien || festejado;
+      pasos.push({ t: `¡Holaaa, ${primerNombre}! ${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió unas palabras de agradecimiento.`, guia: "ag-inicio" });
+      pasos.push({ t: tg.texto, guia: "ag-texto" });
+      if (tg.firma) pasos.push({ t: `Con cariño, ${tg.firma}.`, guia: "ag-firma" });
+      pasos.push({ t: "Más abajo están las fotos de ese día.", guia: "ag-fotos" });
+      pasos.push({ t: `${varios ? "Pueden" : "Podés"} dejarle ${varios ? "su" : "tu"} mensaje a ${autor}.`, guia: "ag-mensaje" });
+      decir(pasos, "reposo");
+      return;
+    }
     pasos.push({ t: saludoVoz, guia: "inicio" });
 
     // Pre-invitación: que conste la invitación, la fecha para apartarla y que
@@ -2448,7 +2468,7 @@ const preferenciaAudio = { sinSonido: false };
 // fecha y un único botón. Al tocarlo se lanzan los birretes y la portada sube
 // como un telón. "Entrar sin sonido" para quien la abre en el trabajo o en el
 // bus. La invitación especial (a distancia) usa rosa viejo y letra caligráfica.
-function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonidoPrevio, especial = false, confirmado = false, reserva = false }: {
+function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonidoPrevio, especial = false, confirmado = false, reserva = false, gracias = false }: {
   invitado: Invitado;
   evento: Evento;
   nombres: string[];
@@ -2461,6 +2481,8 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   confirmado?: boolean;
   /** Pre-invitación: solo la fecha, para que la aparte (todavía no se confirma) */
   reserva?: boolean;
+  /** Agradecimiento: después del evento, las palabras del organizador y las fotos */
+  gracias?: boolean;
 }) {
   const personas = personasDe(evento);
   const protagonista = personas.protagonista;
@@ -2489,7 +2511,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   return (
     <div className={`portada${especial ? " especial" : ""}${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`}>
       <style>{`
-        ${especial ? "@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');" : ""}
+        ${especial || gracias ? "@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');" : ""}
         @keyframes ptSube{0%{opacity:0;transform:translateY(18px)}100%{opacity:1;transform:none}}
         @keyframes ptBaja{0%{opacity:0;transform:translateY(-12px)}100%{opacity:1;transform:none}}
         @keyframes ptFilete{0%{transform:scaleX(0);opacity:0}100%{transform:scaleX(1);opacity:1}}
@@ -2567,7 +2589,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
       <span className="pt-marco" aria-hidden="true" />
 
       <div className="pt-arriba">
-        <div className="pt-kicker"><i />{especial ? "Invitación especial" : reserva ? "Reservá la fecha" : "Graduación"}<i /></div>
+        <div className="pt-kicker"><i />{especial ? "Invitación especial" : reserva ? "Reservá la fecha" : gracias ? "Con gratitud" : "Graduación"}<i /></div>
         {anio && !especial && <div className="pt-promo">Promoción {anio}</div>}
       </div>
 
@@ -2585,8 +2607,9 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
           <div className="pt-emblema" aria-hidden="true"><BirreteSVG size={74} color={GRAD.navy} borla={c.texto} /></div>
         )}
         {especial && <p className="pt-script">Con gratitud</p>}
+        {gracias && <p className="pt-script">Gracias</p>}
         <p className="pt-para">Para {para}</p>
-        {personas.honor && !especial && !reserva && <p className="pt-honor">{personas.honor}</p>}
+        {personas.honor && !especial && !reserva && !gracias && <p className="pt-honor">{personas.honor}</p>}
         <h1 className={`pt-nombre${protagonista.length > 22 ? " largo" : ""}`}>{protagonista}</h1>
         {personas.carrera && <p className="pt-carrera">{personas.carrera}</p>}
         {personas.institucion && <p className="pt-institucion">{personas.institucion}</p>}
@@ -2594,6 +2617,8 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         <p className="pt-invita">
           {confirmado
             ? "Ya confirmaste tu asistencia. ¡Nos vemos!"
+            : gracias
+            ? "Unas palabras de agradecimiento y las fotos de ese día"
             : reserva
             ? (nombres.length > 1 ? "Aparten esta fecha en su agenda" : "Apartá esta fecha en tu agenda")
             : especial
@@ -2603,7 +2628,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
             : personas.esAnfitrion || evento.anfitriones ? "te invita a celebrar su graduación" : "Te invitamos a celebrar"}
         </p>
         {(fecha || hora) && !especial && (
-          <p className="pt-fecha">{reserva ? [fecha, anio].filter(Boolean).join(" de ") : [fecha, hora].filter(Boolean).join("  ·  ")}</p>
+          <p className="pt-fecha">{reserva || gracias ? [fecha, anio].filter(Boolean).join(" de ") : [fecha, hora].filter(Boolean).join("  ·  ")}</p>
         )}
       </div>
 
@@ -2611,7 +2636,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         {!confirmado && (
           <p className="pt-aviso">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14"/></svg>
-            {especial ? "Con música y tu carta leída en voz alta" : "Con música y una voz que te guía"}
+            {especial ? "Con música y tu carta leída en voz alta" : gracias ? "Con música y el mensaje leído en voz alta" : "Con música y una voz que te guía"}
           </p>
         )}
         <button
@@ -2623,7 +2648,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
           }}
           onClick={() => onEntrar(true)}
         >
-          {especial ? "Abrir mi carta" : confirmado ? "Ver mi entrada" : reserva ? "Ver mi pre-invitación" : "Abrir invitación"}
+          {especial ? "Abrir mi carta" : gracias ? "Abrir mi agradecimiento" : confirmado ? "Ver mi entrada" : reserva ? "Ver mi pre-invitación" : "Abrir invitación"}
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
         <button className="pt-silencio" onPointerDown={onSinSonidoPrevio} onClick={() => onEntrar(false)}>
@@ -4155,12 +4180,15 @@ export default function ConfirmarPage() {
     setNumPersonas(inv.num_personas || 1);
     // Respondió en otra visita: se muestra su pantalla sin festejo ni voz (la
     // lluvia de birretes y las instrucciones son para el momento de confirmar)
-    if (inv.estado === "confirmado" && !inv.a_distancia) {
+    // En el agradecimiento (después del evento) todos ven sus palabras, hayan
+    // confirmado, rechazado o no respondido
+    const enGraciasEv = !!ev && enAgradecimiento(ev);
+    if (inv.estado === "confirmado" && !inv.a_distancia && !enGraciasEv) {
       prevStepRef.current = "confirmado";
       setStep("confirmado");
       cargarMesasDisponibles(inv.evento_id);
     }
-    if (inv.estado === "rechazado" && !inv.a_distancia) {
+    if (inv.estado === "rechazado" && !inv.a_distancia && !enGraciasEv) {
       prevStepRef.current = "rechazado";
       setStep("rechazado");
     }
@@ -4513,6 +4541,9 @@ export default function ConfirmarPage() {
   // Pre-invitación (graduación): mientras dure esa etapa no se confirma; quien
   // está lejos recibe su carta igual
   const enPreInvitacion = !!evento && !!invitado && !invitado.a_distancia && enReserva(evento);
+  // Agradecimiento (tercer momento): para todos, también para quien estuvo lejos
+  const enGracias = !!evento && !!invitado && enAgradecimiento(evento);
+  const asistioEvento = !!evento && !!invitado && asistioAlEvento(evento, invitado);
   const [quienesVan, setQuienesVan] = useState<boolean[]>([]);
   useEffect(() => {
     if (step !== "form" || !usarChips) return;
@@ -5287,9 +5318,10 @@ export default function ConfirmarPage() {
           saliendo={saliendoPortada}
           onEntrar={entrarInvitacion}
           onSinSonidoPrevio={marcarSinSonido}
-          especial={!!invitado.a_distancia}
-          confirmado={invitado.estado === "confirmado" && !invitado.a_distancia}
+          especial={!!invitado.a_distancia && !enGracias}
+          confirmado={invitado.estado === "confirmado" && !invitado.a_distancia && !enGracias}
           reserva={enPreInvitacion}
+          gracias={enGracias}
         />
       )}
 
@@ -5380,9 +5412,11 @@ export default function ConfirmarPage() {
           hayMesas={mesasDisponibles.length > 0}
           silencio={silencio}
           setSilencio={setSilencio}
-          distancia={!!invitado.a_distancia}
+          distancia={!!invitado.a_distancia && !enGracias}
           nombresCarta={nombresEnTarjeta}
           reserva={enPreInvitacion}
+          gracias={enGracias}
+          asistio={asistioEvento}
         />
       )}
 
@@ -5490,7 +5524,7 @@ export default function ConfirmarPage() {
       )}
 
       <div
-        className={`page${mounted ? " vis" : ""}${destroying ? " destroying" : ""}${invitado.a_distancia && step === "vista" ? " page-distancia" : ""}`}
+        className={`page${mounted ? " vis" : ""}${destroying ? " destroying" : ""}${invitado.a_distancia && step === "vista" && !enGracias ? " page-distancia" : ""}`}
       >
         {/* Topbar — solo logo, sin links al dashboard */}
         <div className="topbar">
@@ -5514,8 +5548,34 @@ export default function ConfirmarPage() {
           />
         )}
 
+        {/* ─── VISTA: agradecimiento (tercer momento, después del evento) ─── */}
+        {step === "vista" && enGracias && (
+          <Agradecimiento
+            evento={evento}
+            eventoId={invitado.evento_id}
+            invitadoNombre={nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
+            trato={nombresEnTarjeta.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token)}
+            asistio={asistioEvento}
+            muroHref={`/muro/${invitado.evento_id}?token=${invitado.token}`}
+          >
+            <section className="ag-seccion" data-guia="ag-mensaje">
+              <h2>{nombresEnTarjeta.length > 1 ? "Su mensaje" : "Tu mensaje"}</h2>
+              {deseoPublicado ? (
+                <p className="ag-sub">¡Gracias! Tu mensaje ya está en el muro.</p>
+              ) : (
+                <DeseoFormInline
+                  invitadoId={invitado.id}
+                  eventoId={invitado.evento_id}
+                  invitadoNombre={invitado.nombre}
+                  onPublicado={() => setDeseoPublicado(true)}
+                />
+              )}
+            </section>
+          </Agradecimiento>
+        )}
+
         {/* ─── VISTA: invitado a distancia (agradecimiento, sin confirmar) ─── */}
-        {step === "vista" && invitado.a_distancia && (
+        {step === "vista" && invitado.a_distancia && !enGracias && (
           <InvitacionDistancia
             evento={evento}
             invitadoNombre={nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
@@ -5543,7 +5603,7 @@ export default function ConfirmarPage() {
         )}
 
         {/* ─── VISTA ─── */}
-        {step === "vista" && !invitado.a_distancia && !enPreInvitacion && (
+        {step === "vista" && !invitado.a_distancia && !enPreInvitacion && !enGracias && (
           <div className="wrap wrap-has-bar">
             <div className="inv-card" style={{ position: "relative" }}>
 

@@ -12,7 +12,7 @@
 // El enlace va solo en su línea y es el ÚNICO del mensaje: WhatsApp arma la
 // vista previa con el primero que encuentra.
 
-import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseGraduacion, fraseInvitacion, hablaElProtagonista, textosReserva, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
+import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseGraduacion, fraseInvitacion, hablaElProtagonista, textosGracias, textosReserva, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 import { nombreDePila, saludo, type Trato } from "@/lib/tratoInvitado";
 
 export type EventoMensaje = EventoTarjeta & { fecha_limite_confirmacion?: string | null };
@@ -164,6 +164,21 @@ export function armarMensajeReserva(evento: EventoMensaje, nombreInvitado: strin
     `${saludo(nombreDePila(nombreInvitado), trato)}:\n${t.constancia}`,
     evento.fecha ? `\u{1F5D3}\u{FE0F} ${fechaLarga(evento.fecha)}\n${t.apartar}` : t.apartar,
     t.despues,
+    firma(evento),
+  ].filter(Boolean).join("\n\n");
+}
+
+/**
+ * El agradecimiento (tercer momento, después del evento): a quien fue, por
+ * acompañar; a quien no pudo ir, por su cariño. El enlace lleva a las fotos
+ * del día y a la voz que lee el agradecimiento.
+ */
+export function armarMensajeGracias(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato, asistio: boolean): string {
+  const t = textosGracias(evento, trato, asistio);
+  return [
+    titulo(evento).texto,
+    `${saludo(nombreDePila(nombreInvitado), trato)}:\n${t.texto}`,
+    `\u{1F4F8} ${t.fotos.replace(/\.$/, ":")}\n${link}`,
     firma(evento),
   ].filter(Boolean).join("\n\n");
 }

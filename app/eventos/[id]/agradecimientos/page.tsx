@@ -711,6 +711,20 @@ export default function AgradecimientosPage() {
 
         {/* ── Content ── */}
         <div className="scroll-area">
+          {/* Graduación: el agradecimiento es la etapa 3 de Invitados (tarjeta, fotos y voz) */}
+          {evento.tipo === "graduacion" && (
+            <button
+              type="button"
+              className="anim-in"
+              onClick={() => router.push(`/eventos/${eventoId}/invitados`)}
+              style={{ display: "grid", gap: 4, width: "100%", textAlign: "left", padding: "14px 16px", marginBottom: 14, borderRadius: 16, border: "1.5px solid var(--accent)", background: "var(--accent-soft)", color: "var(--text)", fontFamily: "'DM Sans', sans-serif", cursor: "pointer" }}
+            >
+              <strong style={{ fontSize: 14 }}>En la graduación, el agradecimiento es la etapa 3</strong>
+              <span style={{ fontSize: 12.5, color: "var(--text2)", lineHeight: 1.45 }}>
+                En Invitados → Etapa de la invitación → Agradecimiento: cada persona recibe la tarjeta negro y oro, su mensaje según fue o no, las fotos y la voz. Tocá para ir.
+              </span>
+            </button>
+          )}
           {/* Stats */}
           <div className="stats-grid anim-in">
             {[

@@ -7,7 +7,11 @@ import {
   agradecimientoDe,
   cartaDistancia,
   enReserva,
+  enAgradecimiento,
+  asistioAlEvento,
+  sugerenciasGracias,
   sugerenciasReserva,
+  textosGracias,
   textosReserva,
   enInstitucion,
   quienInvitaHablado,
@@ -283,5 +287,73 @@ describe("pre-invitación (reservá la fecha)", () => {
     expect(familia.constancia).toBe("Les enviamos esta pre-invitación para dejar constancia de que los invitamos a la graduación de Carlos.");
     expect(familia.apartar).toContain("Sabemos que tienen muchas ocupaciones");
     expect(familia.firma).toBe("Familia Chavarría");
+  });
+});
+
+describe("agradecimiento (tercer momento)", () => {
+  const gracias = (extra: Partial<EventoTarjeta> = {}) => grad({ ...extra, tarjeta: { etapa: "gracias", ...(extra.tarjeta ?? {}) } });
+
+  it("solo la graduación tiene etapa de agradecimiento, y no es la pre-invitación", () => {
+    expect(enAgradecimiento(gracias())).toBe(true);
+    expect(enReserva(gracias())).toBe(false);
+    expect(enAgradecimiento(grad())).toBe(false);
+    expect(enAgradecimiento({ tipo: "boda", tarjeta: { etapa: "gracias" } })).toBe(false);
+  });
+
+  it("fue quien confirmó; con escáner, solo quien entró con su código; quien estaba lejos, no", () => {
+    expect(asistioAlEvento(gracias(), { estado: "confirmado" })).toBe(true);
+    expect(asistioAlEvento(gracias(), { estado: "rechazado" })).toBe(false);
+    expect(asistioAlEvento(gracias(), { estado: "pendiente", presente: true })).toBe(true);
+    const escaner = gracias({ tarjeta: { etapa: "gracias", asistencia: "escaner" } });
+    expect(asistioAlEvento(escaner, { estado: "confirmado", presente: false })).toBe(false);
+    expect(asistioAlEvento(escaner, { estado: "confirmado", presente: true })).toBe(true);
+    expect(asistioAlEvento(gracias(), { estado: "confirmado", a_distancia: true })).toBe(false);
+  });
+
+  it("agradece a quien fue y a quien no pudo ir, con Dios en el texto", () => {
+    const fue = textosGracias(gracias(), "f", true);
+    expect(fue.texto).toBe("Gracias por acompañarme en mi graduación. Tu presencia hizo de ese día un recuerdo que guardaré siempre. Doy gracias a Dios por este logro y por tu vida, porque fuiste parte de este camino.");
+    const noFue = textosGracias(gracias(), "f", false);
+    expect(noFue.texto).toBe("Aunque no pudiste acompañarme en mi graduación, tu cariño y tus buenos deseos llegaron hasta mí. Doy gracias a Dios por este logro y por tu vida, porque también fuiste parte de este camino.");
+    expect(fue.fotos).toBe("Te comparto las fotos de ese día.");
+  });
+
+  it("habla como familia y en plural a varios", () => {
+    const t = textosGracias(gracias({ tarjeta: { etapa: "gracias", familia: "Familia Chavarría", graduando: "Carlos Chavarría" } }), "plural", true);
+    expect(t.texto).toBe("Gracias por acompañarnos en la graduación de Carlos. Su presencia hizo de ese día un recuerdo que guardaremos siempre. Damos gracias a Dios por este logro y por sus vidas, porque fueron parte de este camino.");
+    expect(t.fotos).toBe("Les compartimos las fotos de ese día.");
+    expect(t.firma).toBe("Familia Chavarría");
+  });
+
+  it("los textos propios mandan, cada uno para su grupo", () => {
+    const ev = gracias({ tarjeta: { etapa: "gracias", gracias_texto: "Gracias por venir.", gracias_ausente: "Te extrañé." } });
+    expect(textosGracias(ev, "f", true).texto).toBe("Gracias por venir.");
+    expect(textosGracias(ev, "f", false).texto).toBe("Te extrañé.");
+    expect(extrasDe(ev).gracias_texto).toBe("Gracias por venir.");
+  });
+
+  it("sugiere la gratitud a Dios y el culto de acción de gracias", () => {
+    const fue = sugerenciasGracias(gracias({ tarjeta: { etapa: "gracias", gracias_texto: "Propio" } }), "f", true);
+    expect(fue.map((x) => x.id)).toEqual(["gratitud", "culto"]);
+    expect(fue[0].texto).toBe(textosGracias(gracias(), "f", true).texto); // la automática, no la propia
+    expect(fue[1].texto).toBe("Gracias por acompañarme en el culto de acción de gracias por mi graduación. Fue una bendición compartir contigo ese momento de gratitud a Dios, que hizo posible este triunfo. Tu presencia y tus oraciones quedarán siempre en mi corazón.");
+    const noFue = sugerenciasGracias(gracias(), "plural", false);
+    expect(noFue[1].texto).toBe("Aunque no pudieron acompañarme en el culto de acción de gracias por mi graduación, los tuve presentes. Gracias por su cariño y sus oraciones: que Dios, que hizo posible este triunfo, los bendiga siempre.");
+  });
+
+  it("la tarjeta es la gala negro y oro con «Gracias», sin hora ni lugar", () => {
+    const d = armarDatosTarjeta(gracias({ imagen_url: "https://x/foto.jpg", tarjeta: { etapa: "gracias", diseno: "moderna", paleta: "marfil" } }), "Rosa", "f", { asistio: true });
+    expect([d.gracias, d.reserva, d.especial]).toEqual([true, false, false]);
+    expect([d.diseno, d.paleta.id, d.letraNombre, d.foto]).toEqual(["gala", "negro", "mayusculas", null]);
+    expect([d.tituloScript, d.honor]).toEqual(["Gracias", "POR SER PARTE DE ESTE LOGRO"]);
+    expect(d.dedicatoria).toBe(textosGracias(gracias(), "f", true).texto);
+    expect([d.horaCorta, d.lugar, d.direccion, d.versiculo, d.aviso, d.cta]).toEqual([null, null, null, null, null, ""]);
+    expect([d.fechaCorta, d.promocion]).toEqual(["31 · OCT · 2026", "2026"]);
+  });
+
+  it("quien estuvo lejos también recibe el agradecimiento (el de no pudo ir)", () => {
+    const d = armarDatosTarjeta(gracias(), "Rosa", "f", { distancia: true, asistio: false });
+    expect([d.gracias, d.especial]).toEqual([true, false]);
+    expect(d.dedicatoria).toContain("Aunque no pudiste acompañarme");
   });
 });

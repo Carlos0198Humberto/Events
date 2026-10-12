@@ -25,6 +25,7 @@ const ANCHO_SCRIPT: Record<string, number> = {
   "Invitación": 341.4,
   "Con gratitud": 425, // estimado (invitación especial a distancia)
   "Reservá la fecha": 560, // estimado (pre-invitación)
+  "Gracias": 255, // estimado (agradecimiento)
 };
 
 // Ancho de cada carácter de Cinzel 600 a 100 px (Cinzel 500 es apenas más angosta)
@@ -176,7 +177,7 @@ async function renderModernaOG(datos: DatosTarjeta) {
   const lugar = !datos.especial ? datos.lugar?.toLocaleUpperCase("es") ?? "" : "";
   const direccion = !datos.especial ? datos.direccion ?? "" : "";
   const para = datos.invitado ? `Para ${datos.invitado}` : "";
-  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : datos.reserva ? "TOCÁ PARA VER TU PRE-INVITACIÓN" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
+  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : datos.reserva ? "TOCÁ PARA VER TU PRE-INVITACIÓN" : datos.gracias ? "TOCÁ PARA VER LAS FOTOS" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
   const fp = !datos.especial ? datos.fechaPartes : null;
   const lado = datos.horaCorta ? datos.horaCorta.toLocaleUpperCase("es") : fp?.anio ?? "";
   const fechaLinea = datos.especial ? datos.fecha ?? "" : "";
@@ -289,7 +290,7 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
   const lugar = datos.lugar?.toLocaleUpperCase("es") ?? "";
   const honor = datos.honor ? `—  ${datos.honor}  —` : "";
   const para = datos.invitado ? `Para ${datos.invitado}` : "";
-  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : datos.reserva ? "TOCÁ PARA VER TU PRE-INVITACIÓN" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
+  const cta = datos.especial ? "TOCÁ PARA VER TU INVITACIÓN ESPECIAL" : datos.reserva ? "TOCÁ PARA VER TU PRE-INVITACIÓN" : datos.gracias ? "TOCÁ PARA VER LAS FOTOS" : "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
   const dedicatoria = datos.dedicatoria ?? "";
   const versiculo = datos.versiculo ? `«${datos.versiculo.texto}»` : "";
   const cita = datos.versiculo?.cita.toLocaleUpperCase("es") ?? "";
@@ -390,7 +391,7 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
               <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 300, fontSize: 46, letterSpacing: 3, lineHeight: 1.15, padding: "0 14px", ...TEXTO_ORO }}>{datos.fechaCorta}</div>
             </div>
           )}
-          {dedicatoria && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: datos.aviso ? 20 : 24, lineHeight: 1.3, color: P.textoFuerte, maxWidth: 440, marginTop: datos.aviso ? 16 : 22 }}>{dedicatoria}</div>}
+          {dedicatoria && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: datos.aviso ? 20 : dedicatoria.length > 320 ? 18 : dedicatoria.length > 200 ? 20 : 24, lineHeight: 1.3, color: P.textoFuerte, maxWidth: 440, marginTop: datos.aviso ? 16 : 22 }}>{dedicatoria}</div>}
           {datos.aviso && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 17, lineHeight: 1.3, color: P.textoSuave, maxWidth: 440, marginTop: 8 }}>{datos.aviso}</div>}
           {datos.diaHora && !datos.especial && <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 400, fontSize: 19, letterSpacing: 4, color: P.textoSuave, marginTop: 14 }}>{datos.diaHora}</div>}
           {lugar && !datos.especial && <div style={{ display: "flex", justifyContent: "center", fontFamily: "Caps", fontWeight: 500, fontSize: pxLugar, letterSpacing: 1, lineHeight: 1.25, maxWidth: 460, marginTop: 30, ...TEXTO_ORO }}>{lugar}</div>}
