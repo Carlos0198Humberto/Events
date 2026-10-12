@@ -4541,6 +4541,8 @@ export default function ConfirmarPage() {
   const enPreInvitacion = !!evento && !!invitado && !invitado.a_distancia && enReserva(evento);
   // Agradecimiento (tercer momento): solo para quien fue
   const enGracias = !!evento && !!invitado && enAgradecimiento(evento) && asistioAlEvento(evento, invitado);
+  // Pasada la fecha (o ya en la etapa de agradecimiento) no se confirma nada
+  const eventoPaso = !!evento && (enAgradecimiento(evento) || (!!evento.fecha && !esHoyLocal(evento.fecha) && !esFuturoLocal(evento.fecha)));
   const [quienesVan, setQuienesVan] = useState<boolean[]>([]);
   useEffect(() => {
     if (step !== "form" || !usarChips) return;
@@ -6634,15 +6636,17 @@ export default function ConfirmarPage() {
           <div className="wrap rech-wrap">
             <div className="rech-card">
               <div className="rech-ico" aria-hidden="true"><IcoCorazonLinea size={40} strokeWidth={1.4} /></div>
-              <div className="rech-titulo">Te vamos a extrañar</div>
+              <div className="rech-titulo">{eventoPaso ? "Te extrañamos" : "Te vamos a extrañar"}</div>
               <OrnamentoDivider tipo={evento.tipo} />
               <p className="rech-sub" style={{ marginTop: 16 }}>
-                Gracias por avisar, <strong>{nombreDePila(invitado.nombre)}</strong>. Si tus planes cambian, todavía podés confirmar.
+                Gracias por avisar, <strong>{nombreDePila(invitado.nombre)}</strong>.{!eventoPaso && " Si tus planes cambian, todavía podés confirmar."}
               </p>
-              {/* Tocó «No podré» y al final sí puede (o fue sin querer) */}
-              <button type="button" className="rech-cambiar" onClick={handleConfirmarClick} disabled={confirmando}>
-                {confirmando ? "Confirmando…" : "Al final sí puedo ir"}
-              </button>
+              {/* Tocó «No podré» y al final sí puede (o fue sin querer); pasado el evento, ya no */}
+              {!eventoPaso && (
+                <button type="button" className="rech-cambiar" onClick={handleConfirmarClick} disabled={confirmando}>
+                  {confirmando ? "Confirmando…" : "Al final sí puedo ir"}
+                </button>
+              )}
             </div>
 
             {/* Aunque no vaya, igual puede felicitar y ver las fotos */}
