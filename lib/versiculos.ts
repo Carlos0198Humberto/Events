@@ -42,6 +42,10 @@ const POR_TIPO: Record<string, Versiculo[]> = {
   ],
 };
 
+// El de los XV años cuando el organizador no eligió otro: toda tarjeta de
+// quinceañera lleva su texto bíblico (se quita solo a propósito)
+export const VERSICULO_XV: Versiculo = POR_TIPO["quinceañera"][0];
+
 // Para la invitación especial a distancia: el único texto bíblico, la
 // bendición sacerdotal sobre quien acompañó desde lejos, al cierre de la carta.
 export const VERSICULO_BENDICION: Versiculo = {

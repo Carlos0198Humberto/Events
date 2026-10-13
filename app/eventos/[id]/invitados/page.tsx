@@ -5,10 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
-import { armarDatosTarjeta, asistioAlEvento, enAgradecimiento, enReserva, sugerenciasGracias, sugerenciasReserva, textosGracias, textosReserva, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, enAgradecimiento, enReserva, sugerenciasGracias, sugerenciasReserva, textosGracias, textosReserva, versiculoDeEvento, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
 import { armarMensajeDia, armarMensajeDistancia, armarMensajeGracias, armarMensajeInvitacion, armarMensajeRecordatorio, armarMensajeReserva, diasHasta } from "@/lib/mensajeInvitacion";
-import { versiculoDe, type Versiculo } from "@/lib/versiculos";
+import { type Versiculo } from "@/lib/versiculos";
 import EnvioEnGrupo, { type MarcasEnvio, type TipoEnvio } from "./EnvioEnGrupo";
 import VersiculoEvento from "./VersiculoEvento";
 import { ETIQUETAS_TRATO, guardarTrato, nombreDePila, saludo, tratoDe, type Trato } from "@/lib/tratoInvitado";
@@ -97,7 +97,8 @@ export default function AgregarInvitados() {
   const [zipProgreso, setZipProgreso] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
   // Tarjeta de invitación (imagen) del invitado que se está por enviar
-  const [tarjeta, setTarjeta] = useState<{ inv: Invitado; trato: Trato; blob: Blob | null; url: string | null } | null>(null);
+  // enviada = ya salió por WhatsApp: la ventana ofrece la del siguiente invitado
+  const [tarjeta, setTarjeta] = useState<{ inv: Invitado; trato: Trato; blob: Blob | null; url: string | null; enviada?: boolean } | null>(null);
   // Mensaje de la tarjeta editado a mano (null = el armado automáticamente)
   const [textoEditado, setTextoEditado] = useState<string | null>(null);
   // Cada generación lleva un número: si el trato cambia o se cierra a mitad de
@@ -520,8 +521,32 @@ export default function AgregarInvitados() {
   function enviarSoloMensaje() {
     if (!tarjeta) return;
     enviarWhatsApp(tarjeta.inv);
-    cerrarTarjeta();
+    marcarTarjetaEnviada();
   }
+
+  // ── Tarjetas de a una, en fila ────────────────────────────────────────────
+  // WhatsApp no deja que una página mande la imagen sola a un contacto: cada
+  // tarjeta sale con un toque del organizador. Después de enviar, la misma
+  // ventana ofrece la del siguiente invitado que todavía no la recibió, así
+  // se mandan todas sin volver a la lista.
+  function marcarTarjetaEnviada() {
+    setTarjeta((t) => (t ? { ...t, enviada: true } : t));
+  }
+  // Función y no constante: fueronLista se declara más abajo
+  const listaEtapa = () => (graciasActiva ? fueronLista : todosInvitados);
+  // En la confirmación, quien ya respondió tiene la invitación aunque no figure como enviada
+  const faltaEnviar = (inv: Invitado) => !yaEnviado(inv) && (reservaActiva || graciasActiva || inv.a_distancia || !inv.estado || inv.estado === "pendiente");
+  function siguienteSinEnviar(actual: Invitado): Invitado | null {
+    const lista = listaEtapa();
+    const i = lista.findIndex((x) => x.token === actual.token);
+    const orden = i < 0 ? lista : [...lista.slice(i + 1), ...lista.slice(0, i)];
+    return orden.find((x) => x.token !== actual.token && faltaEnviar(x)) ?? null;
+  }
+  function empezarTarjetas(lista: Invitado[]) {
+    const primero = lista.find(faltaEnviar) ?? lista[0];
+    if (primero) prepararTarjeta(primero);
+  }
+  const queSeEnvia = reservaActiva ? "la pre-invitación" : graciasActiva ? "el agradecimiento" : "la invitación";
 
   function archivoTarjeta(inv: Invitado, blob: Blob) {
     const nombre = inv.nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]+/g, "_");
@@ -542,7 +567,7 @@ export default function AgregarInvitados() {
     try {
       await navigator.share({ files: [archivoTarjeta(inv, blob)], text: mensajeTarjeta() });
       marcarEnvio(inv, "invitacion");
-      cerrarTarjeta();
+      marcarTarjetaEnviada();
     } catch (e) {
       if ((e as Error)?.name !== "AbortError") toast.error("No se pudo compartir. Probá descargarla.");
     }
@@ -559,6 +584,7 @@ export default function AgregarInvitados() {
     if (!copiada) descargarTarjeta();
     openWhatsApp(buildWhatsAppUrl(inv, "invitacion", mensajeTarjeta()));
     marcarEnvio(inv, "invitacion");
+    marcarTarjetaEnviada();
     toast.success(copiada ? "Tarjeta copiada: en el chat pegala con Ctrl+V" : "Tarjeta descargada: adjuntala en el chat");
   }
 
@@ -580,7 +606,7 @@ export default function AgregarInvitados() {
     copia.then((ok) => toast.success(ok
       ? `Chat de ${nombre} abierto. La tarjeta está copiada: en el chat, mantené presionado y Pegar.`
       : `Chat de ${nombre} abierto con el mensaje: el enlace ya muestra la tarjeta.`));
-    cerrarTarjeta();
+    marcarTarjetaEnviada();
   }
 
   // Tarjeta para imprimir (5×7 pulgadas, con QR a la invitación): para abuelos
@@ -691,7 +717,8 @@ export default function AgregarInvitados() {
   const sinMensajeDia = confirmados.filter((i) => !marcas[i.token]?.dia_at);
   const mostrarMensajeDia = (diasFaltan === 0 || diasFaltan === 1) && confirmados.length > 0;
 
-  const versiculoActual = versiculoDe(evento?.versiculo_texto, evento?.versiculo_cita);
+  // En los XV siempre hay uno (el de la quinceañera) salvo que se haya quitado
+  const versiculoActual = evento ? versiculoDeEvento(evento) : null;
 
   // Cambiar de etapa: el enlace de cada invitado es el mismo, lo que ve al
   // abrirlo cambia solo (pre-invitación → confirmación → agradecimiento)
@@ -772,15 +799,21 @@ export default function AgregarInvitados() {
     : marcas;
 
   async function guardarVersiculo(v: Versiculo | null) {
+    // XV años: sin elegir lleva el de la quinceañera; «ninguno» se guarda aparte
+    // para que quitarlo de verdad lo quite
+    const esXV = evento?.tipo === "quinceañera";
+    const tarjetaNueva: ExtrasTarjeta = { ...(evento?.tarjeta ?? {}) };
+    if (v) delete tarjetaNueva.sin_versiculo; else if (esXV) tarjetaNueva.sin_versiculo = true;
+    const cambiaMarca = esXV && !!tarjetaNueva.sin_versiculo !== !!evento?.tarjeta?.sin_versiculo;
     const { error } = await supabase
       .from("eventos")
-      .update({ versiculo_texto: v?.texto ?? null, versiculo_cita: v?.cita ?? null })
+      .update({ versiculo_texto: v?.texto ?? null, versiculo_cita: v?.cita ?? null, ...(cambiaMarca ? { tarjeta: tarjetaNueva } : {}) })
       .eq("id", id);
     if (error) {
       toast.error("Para guardar el versículo falta correr supabase-envios.sql en Supabase.");
       return false;
     }
-    setEvento((prev) => (prev ? { ...prev, versiculo_texto: v?.texto ?? null, versiculo_cita: v?.cita ?? null } : prev));
+    setEvento((prev) => (prev ? { ...prev, versiculo_texto: v?.texto ?? null, versiculo_cita: v?.cita ?? null, ...(cambiaMarca ? { tarjeta: tarjetaNueva } : {}) } : prev));
     toast.success(v ? "Versículo agregado a la invitación" : "Versículo quitado de la invitación");
     return true;
   }
@@ -1222,6 +1255,10 @@ export default function AgregarInvitados() {
         .tarjeta-principal { width: 100%; padding: 13px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--wa-green), var(--wa-dark)); color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 16px rgba(37,211,102,0.35); margin-bottom: 8px; }
         .tarjeta-principal:disabled { opacity: .5; cursor: wait; box-shadow: none; }
         .tarjeta-secundarias { display: flex; gap: 8px; }
+        .tarjeta-hecha { margin-bottom: 10px; animation: tarjetaHecha .35s ease both; }
+        .tarjeta-hecha-ok { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 12px; margin-bottom: 10px; border-radius: 12px; background: rgba(37,211,102,0.10); border: 1.5px solid rgba(37,211,102,0.35); color: #0F7A55; font-size: 13.5px; font-weight: 700; line-height: 1.35; }
+        .tarjeta-hecha-ok svg { flex-shrink: 0; }
+        @keyframes tarjetaHecha { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         .hero-distancia { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; text-align: center; font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.9); }
         .estado-distancia { background: #FDF2F8; color: #9D174D; border: 1px solid #FBCFE8; }
         .inv-distancia-btn { margin-top: 4px; padding: 0; border: none; background: none; font-size: 10.5px; font-weight: 700; color: var(--accent); cursor: pointer; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; }
@@ -1340,33 +1377,61 @@ export default function AgregarInvitados() {
                 <button type="button" className="tarjeta-link" onClick={() => setTextoEditado(null)}>Volver al mensaje original</button>
               )}
             </details>
+            {tarjeta.enviada ? (() => {
+              const nombre = tarjeta.inv.nombre.split(" ")[0];
+              const sig = siguienteSinEnviar(tarjeta.inv);
+              const faltan = listaEtapa().filter((i) => i.token !== tarjeta.inv.token && faltaEnviar(i)).length;
+              return (
+                <div className="tarjeta-hecha" role="status">
+                  <div className="tarjeta-hecha-ok">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                    {queSeEnvia.charAt(0).toUpperCase() + queSeEnvia.slice(1)} de {nombre} ya está en WhatsApp
+                  </div>
+                  {sig ? (
+                    <>
+                      <button className="tarjeta-principal" onClick={() => prepararTarjeta(sig)} type="button">Siguiente: {sig.nombre} →</button>
+                      <div className="tarjeta-ayuda">{faltan === 1 ? "Queda 1 invitado" : `Quedan ${faltan} invitados`} sin {queSeEnvia}.</div>
+                    </>
+                  ) : (
+                    <div className="tarjeta-ayuda">Listo: {queSeEnvia} ya les llegó a todos.</div>
+                  )}
+                  <div className="tarjeta-secundarias">
+                    <button className="btn-cancel" onClick={() => setTarjeta((t) => (t ? { ...t, enviada: false } : t))} type="button">Reenviar a {nombre}</button>
+                    <button className="btn-cancel" onClick={cerrarTarjeta} type="button">Terminar</button>
+                  </div>
+                </div>
+              );
+            })() : (<>
             <div className="tarjeta-ayuda">
-              {tarjeta.inv.telefono
-                ? <>Se abre <strong>directo el chat de {tarjeta.inv.nombre.split(" ")[0]}</strong> con el mensaje. La tarjeta queda copiada: en el chat mantené presionado y <strong>Pegar</strong> (en la compu, Ctrl+V).</>
-                : compartirEsLoPrincipal()
-                ? <>Elegí <strong>WhatsApp</strong> y el contacto: la tarjeta va con el mensaje{esPreInvitacion(tarjeta.inv) ? "." : ", y el enlace para confirmar se puede tocar."}</>
-                : <>Se copia la tarjeta y se abre el chat con el mensaje{esPreInvitacion(tarjeta.inv) ? "" : " y el enlace para confirmar"}. En el chat pegala con <strong>Ctrl+V</strong> y enviá.</>}
+              {compartirEsLoPrincipal()
+                ? <>Tocá <strong>Enviar por WhatsApp</strong>, elegí WhatsApp y a <strong>{tarjeta.inv.nombre.split(" ")[0]}</strong>: la tarjeta sale con el mensaje{esPreInvitacion(tarjeta.inv) ? "." : ", y el enlace se puede tocar."}</>
+                : tarjeta.inv.telefono
+                ? <>Se abre <strong>directo el chat de {tarjeta.inv.nombre.split(" ")[0]}</strong> con el mensaje. La tarjeta queda copiada: en el chat pegala con <strong>Ctrl+V</strong> y enviá.</>
+                : <>Se copia la tarjeta y se abre el chat con el mensaje{esPreInvitacion(tarjeta.inv) ? "" : " y el enlace"}. En el chat pegala con <strong>Ctrl+V</strong> y enviá.</>}
               {esPreInvitacion(tarjeta.inv) && <> La pre-invitación <strong>no lleva enlace</strong>: el enlace va con la invitación formal (etapa 2).</>}
             </div>
-            {tarjeta.inv.telefono
+            {compartirEsLoPrincipal()
+              ? <button className="tarjeta-principal" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">Enviar por WhatsApp</button>
+              : tarjeta.inv.telefono
               ? <button className="tarjeta-principal" onClick={enviarTarjetaAlChat} disabled={!tarjeta.blob} type="button">Enviar a {tarjeta.inv.nombre.split(" ")[0]} por WhatsApp</button>
-              : compartirEsLoPrincipal()
-              ? <button className="tarjeta-principal" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">Enviar tarjeta</button>
               : <button className="tarjeta-principal" onClick={copiarYAbrirWhatsApp} disabled={!tarjeta.blob} type="button">Copiar y abrir WhatsApp</button>}
             {tarjeta.inv.telefono && compartirEsLoPrincipal() && (
-              <button className="tarjeta-link" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">o compartir la imagen eligiendo el contacto</button>
+              <button className="tarjeta-link" onClick={enviarTarjetaAlChat} disabled={!tarjeta.blob} type="button">o abrir directo el chat de {tarjeta.inv.nombre.split(" ")[0]} (pegás la tarjeta)</button>
             )}
+            </>)}
             <button className="tarjeta-estados" onClick={imprimirTarjeta} disabled={!tarjeta.blob} type="button">
               <IcoImpresora size={16} />{esPreInvitacion(tarjeta.inv) || evento?.tarjeta?.entrada_qr === false ? "Imprimir (5×7)" : "Imprimir (5×7 con código QR)"}
             </button>
             <button className="tarjeta-estados" onClick={tarjetaParaEstados} disabled={generandoHistoria} type="button">
               {generandoHistoria ? "Preparando…" : "Versión para estados (sin nombre del invitado)"}
             </button>
-            <div className="tarjeta-secundarias">
-              <button className="btn-cancel" onClick={enviarSoloMensaje} type="button">Solo el mensaje</button>
-              <button className="btn-cancel" onClick={descargarTarjeta} disabled={!tarjeta.blob} type="button">Descargar</button>
-              <button className="btn-cancel" onClick={cerrarTarjeta} type="button">Cerrar</button>
-            </div>
+            {!tarjeta.enviada && (
+              <div className="tarjeta-secundarias">
+                <button className="btn-cancel" onClick={enviarSoloMensaje} type="button">Solo el mensaje</button>
+                <button className="btn-cancel" onClick={descargarTarjeta} disabled={!tarjeta.blob} type="button">Descargar</button>
+                <button className="btn-cancel" onClick={cerrarTarjeta} type="button">Cerrar</button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1728,12 +1793,12 @@ export default function AgregarInvitados() {
               {conTelefono.length > 0 && (
                 <button
                   className="btn-bulk"
-                  onClick={() => abrirEnvioGrupo("invitacion", conTelefono.map((i) => i.token))}
+                  onClick={() => reservaActiva ? empezarTarjetas(conTelefono) : abrirEnvioGrupo("invitacion", conTelefono.map((i) => i.token))}
                   type="button"
                 >
                   <span className="btn-bulk-shimmer" />
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.946 0C5.344 0 0 5.268 0 11.772c0 2.077.556 4.027 1.526 5.716L.057 24l6.727-1.712a11.98 11.98 0 005.162 1.168h.005C18.549 23.456 24 18.188 24 11.684 24 5.268 18.549 0 11.946 0z"/></svg>
-                  {`Enviar WhatsApp a todos (${conTelefono.length})`}
+                  {reservaActiva ? `Enviar las tarjetas de a una (${conTelefono.length})` : `Enviar WhatsApp a todos (${conTelefono.length})`}
                 </button>
               )}
 
@@ -1806,10 +1871,10 @@ export default function AgregarInvitados() {
                 <button
                   type="button"
                   className="btn-varios"
-                  onClick={() => abrirEnvioGrupo("invitacion", (graciasActiva ? fueronLista : sinConfirmar).filter((i) => !yaEnviado(i)).map((i) => i.token))}
+                  onClick={() => reservaActiva ? empezarTarjetas(todosInvitados) : abrirEnvioGrupo("invitacion", (graciasActiva ? fueronLista : sinConfirmar).filter((i) => !yaEnviado(i)).map((i) => i.token))}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
-                  Enviar a varios
+                  {reservaActiva ? "Enviar tarjetas" : "Enviar a varios"}
                 </button>
                 <button
                   onClick={handleExportarExcel}

@@ -419,6 +419,20 @@ function escribir(ctx: CanvasRenderingContext2D, texto: string, cx: number, y: n
   return ancho;
 }
 
+// Mismo número de renglones que el corte común, pero parejos: achica el ancho
+// mientras no aparezca un renglón más (así no queda una palabra sola al final)
+function partirParejo(ctx: CanvasRenderingContext2D, texto: string, max: number) {
+  const base = partirEnLineas(ctx, texto, max);
+  if (base.length < 2) return base;
+  let mejor = base;
+  for (let ancho = max - 10; ancho > max * 0.5; ancho -= 10) {
+    const prueba = partirEnLineas(ctx, texto, ancho);
+    if (prueba.length > base.length) break;
+    mejor = prueba;
+  }
+  return mejor;
+}
+
 function partirEnLineas(ctx: CanvasRenderingContext2D, texto: string, max: number) {
   const lineas: string[] = [];
   let actual = "";
@@ -1039,6 +1053,95 @@ function cintaXV(ctx: CanvasRenderingContext2D, cx: number, cy: number, ancho: n
   ctx.restore();
 }
 
+// Dorado de los adornos de los XV (tiara, brillos, filete)
+const ORO_XV = ["#F6E7B4", "#D4A94E", "#B98A34"] as const;
+
+// La tiara sobre «Quinceañera»: cinco puntas de oro con perlas y una gema
+// del color del vestido en el centro
+function tiaraXV(ctx: CanvasRenderingContext2D, cx: number, base: number, ancho: number, c: ColoresXV) {
+  const a = ancho / 2, alto = ancho * 0.4;
+  const puntas: [number, number][] = [[-0.8, 0.46], [-0.4, 0.76], [0, 1], [0.4, 0.76], [0.8, 0.46]];
+  ctx.save();
+  const oroG = ctx.createLinearGradient(cx - a, base - alto, cx + a, base);
+  oroG.addColorStop(0, ORO_XV[0]);
+  oroG.addColorStop(0.5, ORO_XV[1]);
+  oroG.addColorStop(1, ORO_XV[0]);
+  ctx.shadowColor = "rgba(150,110,40,0.28)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - a, base);
+  ctx.lineTo(cx - a, base - alto * 0.24);
+  puntas.forEach(([px, h], i) => {
+    ctx.lineTo(cx + px * a, base - alto * h);
+    const valle = i === puntas.length - 1 ? 1 : (px + puntas[i + 1][0]) / 2;
+    ctx.lineTo(cx + valle * a, base - alto * (i === puntas.length - 1 ? 0.24 : 0.34));
+  });
+  ctx.lineTo(cx + a, base);
+  ctx.quadraticCurveTo(cx, base + alto * 0.2, cx - a, base);
+  ctx.closePath();
+  ctx.fillStyle = oroG;
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = ORO_XV[2];
+  ctx.lineWidth = 1.3;
+  ctx.stroke();
+  // Filigrana: la banda de abajo
+  ctx.beginPath();
+  ctx.moveTo(cx - a * 0.94, base - alto * 0.1);
+  ctx.quadraticCurveTo(cx, base + alto * 0.08, cx + a * 0.94, base - alto * 0.1);
+  ctx.strokeStyle = "rgba(255,255,255,0.75)";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  // Perlas en las puntas
+  for (const [px, h] of puntas) {
+    const r = ancho * (h === 1 ? 0.048 : 0.036);
+    ctx.beginPath();
+    ctx.arc(cx + px * a, base - alto * h - r * 0.6, r, 0, Math.PI * 2);
+    const perla = ctx.createRadialGradient(cx + px * a - r * 0.35, base - alto * h - r, r * 0.1, cx + px * a, base - alto * h - r * 0.6, r);
+    perla.addColorStop(0, "#FFFFFF");
+    perla.addColorStop(1, "#EADFD2");
+    ctx.fillStyle = perla;
+    ctx.fill();
+    ctx.strokeStyle = ORO_XV[2];
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+  // Gema del centro
+  const gx = cx, gy = base - alto * 0.42, gr = ancho * 0.07;
+  ctx.beginPath();
+  ctx.moveTo(gx, gy - gr * 1.25);
+  ctx.lineTo(gx + gr, gy);
+  ctx.lineTo(gx, gy + gr * 1.25);
+  ctx.lineTo(gx - gr, gy);
+  ctx.closePath();
+  const gema = ctx.createLinearGradient(gx - gr, gy - gr, gx + gr, gy + gr);
+  gema.addColorStop(0, c.medio);
+  gema.addColorStop(1, c.profundo);
+  ctx.fillStyle = gema;
+  ctx.fill();
+  ctx.strokeStyle = ORO_XV[2];
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Un brillo de cuatro puntas (estrellita)
+function brilloXV(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.shadowColor = "rgba(255,255,255,0.9)";
+  ctx.shadowBlur = r * 0.8;
+  ctx.beginPath();
+  ctx.moveTo(x, y - r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.quadraticCurveTo(x, y, x, y + r);
+  ctx.quadraticCurveTo(x, y, x - r, y);
+  ctx.quadraticCurveTo(x, y, x, y - r);
+  ctx.fill();
+  ctx.restore();
+}
+
 function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: IlustracionesXV, formato: FormatoTarjeta, qr?: string) {
   const c = coloresXV(datos.tonoXV);
   const cx = W / 2;
@@ -1058,17 +1161,23 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
   ctx.strokeStyle = conAlfa(c.medio, 0.4);
   ctx.lineWidth = 2;
   ctx.strokeRect(34, 34, W - 68, H - 68);
+  ctx.strokeStyle = conAlfa(ORO_XV[1], 0.45);
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(46, 46, W - 92, H - 92);
 
   // Ramilletes de arriba, la quinceañera y, delante de su falda, los de abajo
   const tamA = 400, tamB = 470;
   ctx.drawImage(il["arriba-izq"], -26, -26, tamA, tamA);
   ctx.drawImage(il["arriba-der"], W - tamA + 26, -26, tamA, tamA);
-  const altoChica = Math.round(H * (formato === "historia" ? 0.37 : 0.43));
+  const altoChica = Math.round(H * (formato === "historia" ? 0.37 : datos.versiculo ? 0.41 : 0.43));
   const anchoChica = Math.round((altoChica * 400) / 600);
   const yChica = H - altoChica - 22;
   ctx.drawImage(il.chica, cx - anchoChica / 2, yChica, anchoChica, altoChica);
   ctx.drawImage(il["abajo-izq"], -34, H - tamB + 34, tamB, tamB);
   ctx.drawImage(il["abajo-der"], W - tamB + 34, H - tamB + 34, tamB, tamB);
+  for (const [dx, dy, r] of [[-0.42, 0.44, 11], [0.45, 0.38, 9], [-0.36, 0.72, 8], [0.4, 0.66, 12], [-0.2, 0.9, 7], [0.26, 0.88, 8]] as const) {
+    brilloXV(ctx, cx + dx * anchoChica, yChica + dy * altoChica, r, ORO_XV[1]);
+  }
 
   ctx.textBaseline = "alphabetic";
   const bloques: Bloque[] = [];
@@ -1083,7 +1192,7 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
   if (datos.versiculo) {
     const v = datos.versiculo;
     ctx.font = `italic 500 24px ${SERIF}`;
-    const lineasV = partirEnLineas(ctx, `«${v.texto}»`, 560).slice(0, 3);
+    const lineasV = partirParejo(ctx, `«${v.texto}»`, 600).slice(0, 3);
     bloques.push({ alto: lineasV.length * 32 + 26, antes: 16, dibujar: (y) => {
       lineasV.forEach((l, i) =>
         escribir(ctx, l, cx, y + 24 + i * 32, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 24, min: 18, max: 580, color: suave }));
@@ -1095,36 +1204,59 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
   }
   if (datos.invitaXV) {
     ctx.font = `italic 500 30px ${SERIF}`;
-    const lineasI = partirEnLineas(ctx, datos.invitaXV, 640).slice(0, 3);
+    const lineasI = partirParejo(ctx, datos.invitaXV, 640).slice(0, 3);
     bloques.push({ alto: lineasI.length * 40, antes: 12, dibujar: (y) => {
       lineasI.forEach((l, i) =>
         escribir(ctx, l, cx, y + 30 + i * 40, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 22, max: 660, color: tinta }));
     } });
   }
-  bloques.push({ alto: 70, antes: 20, dibujar: (y) =>
+  bloques.push({ alto: 52, antes: 18, dibujar: (y) => {
+    tiaraXV(ctx, cx, y + 44, 118, c);
+    brilloXV(ctx, cx - 100, y + 16, 10, ORO_XV[1]);
+    brilloXV(ctx, cx + 102, y + 26, 8, ORO_XV[1]);
+  } });
+  bloques.push({ alto: 70, antes: 2, dibujar: (y) =>
     escribir(ctx, "Quinceañera", cx, y + 56, { fuente: (px) => `${px}px ${SCRIPT}`, px: 72, min: 48, max: 600, color: c.texto }) });
   bloques.push(bloqueQueEntra(ctx, datos.protagonista, { alto: 140, antes: 0, base: 112, fuente: (px) => `${px}px ${SCRIPT}`, px: 150, min: 96, max: 780, color: c.texto }));
 
-  repartir(ctx, bloques, 64, yChica + 40, formato === "historia" ? 1.12 : 1);
+  repartir(ctx, bloques, 64, yChica + 14, formato === "historia" ? 1.12 : 1);
 
   // Dos columnas a los lados de la quinceañera: la recepción y la fecha
   const colAncho = Math.min(300, cx - anchoChica / 2 - 70);
   const izq = 54 + colAncho / 2;
   const der = W - 54 - colAncho / 2;
   const yCol = yChica + 70;
-  const lineasCol = (texto: string, fuente: string, max: number) => { ctx.font = fuente; return partirEnLineas(ctx, texto, max); };
   const etiqueta = (t: string, x: number, y: number) =>
     escribir(ctx, t, x, y, { fuente: (px) => `italic 600 ${px}px ${SERIF}`, px: 34, min: 24, max: colAncho, color: c.texto });
   const dato = (t: string, x: number, y: number, px = 27) =>
     escribir(ctx, t, x, y, { fuente: (n) => `500 ${n}px ${SERIF}`, px, min: 18, max: colAncho, color: tinta });
 
   let y = yCol;
+  const filete = (x: number, yl: number) => {
+    ctx.strokeStyle = conAlfa(ORO_XV[1], 0.7);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x - 46, yl);
+    ctx.lineTo(x + 46, yl);
+    ctx.stroke();
+  };
   if (datos.lugar) {
     etiqueta("Recepción", izq, y);
-    y += 42;
-    for (const l of lineasCol(datos.lugar, `500 27px ${SERIF}`, colAncho).slice(0, 2)) { dato(l, izq, y); y += 34; }
+    filete(izq, y + 16);
+    y += 52;
+    // El lugar entero, aunque sea largo: con letra más chica antes que cortarlo
+    let pxLugar = 27;
+    ctx.font = `500 ${pxLugar}px ${SERIF}`;
+    let lineasLugar = partirParejo(ctx, datos.lugar, colAncho);
+    while (lineasLugar.length > 2 && pxLugar > 20) {
+      pxLugar -= 2;
+      ctx.font = `500 ${pxLugar}px ${SERIF}`;
+      lineasLugar = partirParejo(ctx, datos.lugar, colAncho);
+    }
+    for (const l of lineasLugar.slice(0, 3)) { dato(l, izq, y, pxLugar); y += pxLugar + 7; }
     if (datos.direccion) {
-      for (const l of lineasCol(datos.direccion, `400 22px ${SANS}`, colAncho).slice(0, 2)) {
+      ctx.font = `400 22px ${SANS}`;
+      for (const l of partirParejo(ctx, datos.direccion, colAncho).slice(0, 3)) {
         escribir(ctx, l, izq, y, { fuente: (n) => `400 ${n}px ${SANS}`, px: 22, min: 16, max: colAncho, color: suave });
         y += 29;
       }
@@ -1140,15 +1272,32 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
   if (fp) {
     const semana = fp.semana.charAt(0) + fp.semana.slice(1).toLocaleLowerCase("es");
     etiqueta(semana, der, y);
-    dato(`${fp.dia} de ${fp.mes.toLocaleLowerCase("es")}`, der, y + 42);
-    dato(`de ${fp.anio}`, der, y + 76);
-    y += 76;
+    // Impresa con QR: la fecha más compacta, para que el código no caiga sobre las rosas
+    const conQR = !!qr;
+    const pxDia = conQR ? 64 : 78;
+    escribir(ctx, String(fp.dia), der, y + (conQR ? 76 : 88), { fuente: (n) => `600 ${n}px ${SERIF}`, px: pxDia, min: 44, max: colAncho, color: c.texto });
+    ctx.strokeStyle = conAlfa(ORO_XV[1], 0.7);
+    ctx.lineWidth = 1.4;
+    for (const lado of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(der + lado * (conQR ? 44 : 50), y + (conQR ? 54 : 62));
+      ctx.lineTo(der + lado * (conQR ? 84 : 92), y + (conQR ? 54 : 62));
+      ctx.stroke();
+    }
+    if (conQR) {
+      escribir(ctx, `${fp.mes.toLocaleUpperCase("es")} ${fp.anio}`, der, y + 108, { fuente: (n) => `500 ${n}px ${CAPS}`, px: 20, min: 14, max: colAncho, espacio: 3, color: tinta });
+      y += 108;
+    } else {
+      escribir(ctx, fp.mes.toLocaleUpperCase("es"), der, y + 124, { fuente: (n) => `500 ${n}px ${CAPS}`, px: 22, min: 15, max: colAncho, espacio: 4, color: tinta });
+      escribir(ctx, String(fp.anio), der, y + 154, { fuente: (n) => `500 ${n}px ${CAPS}`, px: 20, min: 14, max: colAncho, espacio: 4, color: suave });
+      y += 154;
+    }
   }
 
   // Impresa: el QR lleva a la invitación, en la columna de la fecha
   if (qr) {
-    const lado = 132;
-    dibujarQR(ctx, qr, der, y + 20, lado);
-    escribir(ctx, "ESCANEÁ PARA CONFIRMAR", der, y + lado + 44, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 14, min: 10, max: colAncho, espacio: 2, color: c.texto });
+    const lado = 124;
+    dibujarQR(ctx, qr, der, y + 16, lado);
+    escribir(ctx, "ESCANEÁ PARA CONFIRMAR", der, y + lado + 40, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 14, min: 10, max: colAncho, espacio: 2, color: c.texto });
   }
 }

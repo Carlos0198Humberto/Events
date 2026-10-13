@@ -18,8 +18,10 @@ import {
   paletaDe,
   protagonistaDe,
   tintasPlanas,
+  versiculoDeEvento,
   type EventoTarjeta,
 } from "@/lib/tarjetaInvitacion";
+import { VERSICULO_XV } from "@/lib/versiculos";
 
 const grad = (extra: Partial<EventoTarjeta> = {}): EventoTarjeta => ({
   nombre: "Graduación",
@@ -384,6 +386,16 @@ describe("tarjeta de XV años", () => {
     const d = armarDatosTarjeta(xv({ anfitriones: "Ashley" }), "Rosa", "f");
     expect(d.padres).toBeNull();
     expect(d.invitaXV).toBe("Con mucho cariño te invito a celebrar mis XV años");
+  });
+
+  it("siempre lleva versículo: el elegido o, si no hay, el de la quinceañera", () => {
+    expect(armarDatosTarjeta(xv(), "Rosa", "f").versiculo).toEqual(VERSICULO_XV);
+    const propio = xv({ versiculo_texto: "Todo lo puedo en Cristo que me fortalece.", versiculo_cita: "Filipenses 4:13" });
+    expect(versiculoDeEvento(propio)?.cita).toBe("Filipenses 4:13");
+    // Quitado a propósito: sin versículo
+    expect(versiculoDeEvento(xv({ tarjeta: { sin_versiculo: true } }))).toBeNull();
+    // Los otros tipos no reciben uno que no eligieron
+    expect(versiculoDeEvento(grad())).toBeNull();
   });
 
   it("los otros tipos de evento no llevan nada de XV", () => {

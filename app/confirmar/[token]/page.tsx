@@ -7,14 +7,14 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
-import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, enAgradecimiento, enInstitucion, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, enAgradecimiento, enInstitucion, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, versiculoDeEvento, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import InvitacionDistancia from "./InvitacionDistancia";
 import PreInvitacion from "./PreInvitacion";
 import Agradecimiento from "./Agradecimiento";
 import { coloresXV, svgDataUrl, svgRamillete } from "@/lib/ilustracionesXV";
 import { IcoCamara, IcoCorazon as IcoCorazonLinea } from "@/app/components/Iconos";
 import { nombreDePila, saludoDeCarta, tratoDe } from "@/lib/tratoInvitado";
-import { citaHablada, versiculoDe } from "@/lib/versiculos";
+import { citaHablada } from "@/lib/versiculos";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -1047,7 +1047,7 @@ function musicaBajoVoz(hablando: boolean) {
 }
 
 // ─── Frase con efecto máquina de escribir (graduación) ────────────────────────
-function TypewriterFrase({ texto }: { texto: string }) {
+function TypewriterFrase({ texto, comillas = true }: { texto: string; comillas?: boolean }) {
   const [visible, setVisible] = useState(0);
   const [arranca, setArranca] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -1071,7 +1071,7 @@ function TypewriterFrase({ texto }: { texto: string }) {
   return (
     <div ref={ref} style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 16, fontStyle: "italic", color: "var(--ink2)", marginTop: 14, lineHeight: 1.6, padding: "0 8px", minHeight: 26 }}>
       <style>{`@keyframes twBlink{0%,49%{opacity:1}50%,100%{opacity:0}}`}</style>
-      <span style={{ color: `var(--frase-acento, ${GRAD.oroMedio})`, marginRight: 4 }}>❝</span>
+      {comillas && <span style={{ color: `var(--frase-acento, ${GRAD.oroMedio})`, marginRight: 4 }}>❝</span>}
       {texto.slice(0, visible)}
       <span style={{
         display: "inline-block", width: 2, height: 18, verticalAlign: "-3px",
@@ -1080,7 +1080,7 @@ function TypewriterFrase({ texto }: { texto: string }) {
         opacity: terminado ? 0 : 1,
         transition: terminado ? "opacity .8s 1.2s" : "none",
       }} />
-      {terminado && <span style={{ color: `var(--frase-acento, ${GRAD.oroMedio})`, marginLeft: 4 }}>❞</span>}
+      {terminado && comillas && <span style={{ color: `var(--frase-acento, ${GRAD.oroMedio})`, marginLeft: 4 }}>❞</span>}
     </div>
   );
 }
@@ -1580,7 +1580,7 @@ function FloatingMascot({
       const frase = dt.invitaXV;
       pasos.push({ t: dt.padres
         ? `${dt.padres} ${frase.charAt(0).toLowerCase()}${frase.slice(1)}: los XV años de ${dt.protagonista}.`
-        : `${frase}.`, guia: "inicio" });
+        : `${frase}: los XV años de ${dt.protagonista}.`, guia: "inicio" });
     } else if (esGrad && (exT.carrera || exT.institucion)) {
       const que = `${exT.carrera ? ` de ${exT.carrera}` : ""}${exT.institucion ? ` ${enInstitucion(exT.institucion)}` : ""}`;
       const graduado = protagonistaDe(evento).esPersona ? quienInvitaHablado({ ...evento, tarjeta: { ...exT, familia: null } }) : "Nuestro graduado";
@@ -1590,15 +1590,20 @@ function FloatingMascot({
 
     // Lo que el organizador escribió para la invitación: su frase y el versículo
     if (evento.frase_evento?.trim()) pasos.push({ t: cerrarFrase(evento.frase_evento.trim()), guia: "frase" });
-    const versiculoVoz = versiculoDe(evento.versiculo_texto, evento.versiculo_cita);
+    // En los XV siempre hay versículo (el de la quinceañera si no se eligió otro)
+    const versiculoVoz = versiculoDeEvento(evento);
     if (versiculoVoz) pasos.push({ t: `${cerrarFrase(versiculoVoz.texto)} ${citaHablada(versiculoVoz.cita)}.`, guia: "versiculo" });
 
     const hora = evento.hora ? horaHablada(evento.hora) : null;
-    if (evento.fecha) pasos.push({ t: `La cita es el ${fechaHablada(evento.fecha)}${hora ? `, ${hora}` : ""}.`, guia: "fecha" });
+    const laCita = esXV ? "La recepción será el" : "La cita es el";
+    if (evento.fecha) pasos.push({ t: `${laCita} ${fechaHablada(evento.fecha)}${hora ? `, ${hora}` : ""}.`, guia: "fecha" });
     else if (hora) pasos.push({ t: `Comenzamos ${hora}.`, guia: "fecha" });
     if (evento.lugar) {
-      const mapas = evento.maps_url || esGrad ? " Abajo tenés cómo llegar." : "";
-      pasos.push({ t: `El lugar es ${cerrarFrase(evento.lugar)}${mapas}`, guia: "lugar" });
+      // Con la dirección, como en la tarjeta y en la pantalla
+      const dir = exT.direccion && !evento.lugar.includes(exT.direccion) ? `, ${exT.direccion}` : "";
+      const mapas = evento.maps_url || esGrad || esXV ? " Abajo tenés cómo llegar." : "";
+      pasos.push({ t: `El lugar es ${cerrarFrase(`${evento.lugar.trim()}${dir}`)}${mapas}`, guia: "lugar" });
+      if (exT.referencia) pasos.push({ t: `Como referencia: ${cerrarFrase(exT.referencia)}`, guia: "lugar" });
     }
 
     if (evento.vestimenta_activo && evento.vestimenta_tipo) {
@@ -5469,9 +5474,15 @@ export default function ConfirmarPage() {
     .xv-rosas{position:absolute;top:-16px;width:128px;height:128px;pointer-events:none}
     .xv-rosas-izq{left:-20px}
     .xv-rosas-der{right:-20px}
-    .xv-protagonista{position:relative;font-family:'Great Vibes',cursive;font-weight:400;font-size:clamp(60px,19vw,86px);line-height:1.05;color:var(--ink3);margin-top:8px}
-    .xv-padres{position:relative;font-family:var(--f-display,'Playfair Display'),serif;font-style:italic;font-size:16px;color:var(--ink2);margin-top:6px}
-    .xv-padres strong{font-style:normal;font-weight:600;color:var(--ink)}
+    .xv-padres{position:relative;font-family:'Great Vibes',cursive;font-weight:400;font-size:clamp(34px,10vw,44px);line-height:1.1;color:var(--ink);margin-top:4px;padding:0 54px;overflow-wrap:anywhere}
+    .xv-invita{position:relative;max-width:330px;margin:0 auto}
+    .xv-invita > div{margin-top:4px!important;font-family:var(--f-display,'Playfair Display'),serif!important;font-size:16.5px!important;color:var(--ink2)!important}
+    .xv-tiara{position:relative;display:block;width:76px;height:auto;margin:18px auto 0;filter:drop-shadow(0 2px 4px rgba(150,110,40,0.3));animation:xvTiara 3.2s ease-in-out infinite}
+    @keyframes xvTiara{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    .xv-quince{position:relative;font-family:'Great Vibes',cursive;font-size:clamp(32px,9vw,40px);line-height:1;color:var(--ink3);margin-top:4px}
+    .xv-protagonista{position:relative;font-family:'Great Vibes',cursive;font-weight:400;font-size:clamp(60px,19vw,86px);line-height:1.05;color:var(--ink3);margin-top:0;overflow-wrap:anywhere;animation:xvEscribe 1.8s cubic-bezier(.45,.05,.35,1) .5s both}
+    @keyframes xvEscribe{from{clip-path:inset(-20% 100% -20% 0)}to{clip-path:inset(-20% -10% -20% 0)}}
+    @media (prefers-reduced-motion: reduce){.xv-protagonista,.xv-tiara{animation:none}}
     .inv-tipo-badge{position:relative;font-family:var(--f-label);font-size:11px;letter-spacing:.26em;border-color:var(--border-mid);color:var(--ink3);background:rgba(255,255,255,0.75)}
     ` : ""}
   `;
@@ -5946,7 +5957,8 @@ export default function ConfirmarPage() {
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
                   <span className="inv-tipo-badge">
                     <span className="inv-tipo-badge-dot"/>
-                    <span>{tipoLabel}</span>
+                    {/* En los XV, como la cinta de su tarjeta (abajo ya dice «Quinceañera») */}
+                    <span>{evento.tipo === "quinceañera" ? "Mis XV años" : tipoLabel}</span>
                   </span>
                 </div>
 
@@ -5965,16 +5977,35 @@ export default function ConfirmarPage() {
                     </>
                   );
                 })() : evento.tipo === "quinceañera" ? (() => {
-                  // Como su tarjeta: la quinceañera en caligrafía y quienes invitan
-                  const padresXV = armarDatosTarjeta(evento, invitado.nombre, null).padres;
+                  // Lo mismo que dice su tarjeta y lee el bot: quienes invitan,
+                  // la invitación (que se va escribiendo sola), la tiara y su nombre
+                  const dtXV = armarDatosTarjeta(evento, invitado.nombre, nombresEnTarjeta.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token));
                   return (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img className="xv-rosas xv-rosas-izq" src={svgDataUrl(svgRamillete(cXV, "arriba-izq"))} alt="" aria-hidden="true" />
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img className="xv-rosas xv-rosas-der" src={svgDataUrl(svgRamillete(cXV, "arriba-der"))} alt="" aria-hidden="true" />
-                      <h1 className="xv-protagonista">{protagonistaDe(evento).nombre}</h1>
-                      {padresXV && <p className="xv-padres">Con cariño de <strong>{padresXV}</strong></p>}
+                      {dtXV.padres && <p className="xv-padres">{dtXV.padres}</p>}
+                      {dtXV.invitaXV && <div className="xv-invita"><TypewriterFrase texto={dtXV.invitaXV} comillas={false} /></div>}
+                      <svg className="xv-tiara" viewBox="-4 -4 128 60" aria-hidden="true">
+                        <defs>
+                          <linearGradient id="xvOro" x1="0" x2="1" y1="0" y2="1">
+                            <stop offset="0" stopColor="#F6E7B4" /><stop offset=".5" stopColor="#D4A94E" /><stop offset="1" stopColor="#F6E7B4" />
+                          </linearGradient>
+                          <linearGradient id="xvGema" x1="0" x2="1" y1="0" y2="1">
+                            <stop offset="0" stopColor={cXV.medio} /><stop offset="1" stopColor={cXV.profundo} />
+                          </linearGradient>
+                        </defs>
+                        <path d="M0 46L0 36.4L12 27.6L24 32.4L36 15.6L48 32.4L60 6L72 32.4L84 15.6L96 32.4L108 27.6L120 36.4L120 46Q60 54 0 46Z" fill="url(#xvOro)" stroke="#B98A34" strokeWidth="1.2" strokeLinejoin="round" />
+                        <path d="M3 43.5Q60 50 117 43.5" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1.3" />
+                        {[[12, 25.9, 2.9], [36, 13.9, 2.9], [60, 3.4, 4.3], [84, 13.9, 2.9], [108, 25.9, 2.9]].map(([x, y, r], i) => (
+                          <circle key={i} cx={x} cy={y} r={r} fill="#FFFDF8" stroke="#B98A34" strokeWidth=".8" />
+                        ))}
+                        <path d="M60 18.7L68.4 29.2L60 39.7L51.6 29.2Z" fill="url(#xvGema)" stroke="#B98A34" strokeWidth="1" />
+                      </svg>
+                      <p className="xv-quince">Quinceañera</p>
+                      <h1 className="xv-protagonista">{dtXV.protagonista}</h1>
                     </>
                   );
                 })() : (
@@ -6014,7 +6045,7 @@ export default function ConfirmarPage() {
 
                 {/* Versículo bíblico elegido por el organizador (antes solo iba en la tarjeta y el mensaje) */}
                 {(() => {
-                  const v = versiculoDe(evento.versiculo_texto, evento.versiculo_cita);
+                  const v = versiculoDeEvento(evento);
                   if (!v) return null;
                   return (
                     <figure className="inv-versiculo" data-guia="versiculo">

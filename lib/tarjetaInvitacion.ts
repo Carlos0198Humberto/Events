@@ -8,7 +8,7 @@
 // Por eso acá no hay nada de DOM ni de librerías de dibujo.
 
 import type { Trato } from "@/lib/tratoInvitado";
-import { VERSICULO_BENDICION, versiculoDe, type Versiculo } from "@/lib/versiculos";
+import { VERSICULO_BENDICION, VERSICULO_XV, versiculoDe, type Versiculo } from "@/lib/versiculos";
 import { TONOS_XV, TONOS_XV_LISTA, type TonoXV } from "@/lib/ilustracionesXV";
 
 export type EventoTarjeta = {
@@ -55,6 +55,7 @@ export type ExtrasTarjeta = {
   metal?: MetalTarjeta | null;
   letra_nombre?: LetraNombre | null;
   tono_xv?: TonoXV | null;      // XV años: color del vestido y de las rosas (null = rosa)
+  sin_versiculo?: boolean;      // XV años: true = el organizador quitó el versículo (si no, lleva uno siempre)
 };
 
 // Opciones de estilo de la tarjeta (las claves son lo que se guarda)
@@ -135,7 +136,19 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   ex.metal = una(o.metal, METALES_TARJETA);
   ex.letra_nombre = una(o.letra_nombre, LETRAS_NOMBRE);
   ex.tono_xv = una(o.tono_xv, TONOS_TARJETA_XV);
+  if (o.sin_versiculo === true) ex.sin_versiculo = true;
   return ex;
+}
+
+/**
+ * El versículo de la invitación: el que eligió el organizador. En los XV años,
+ * si no eligió ninguno, va uno para la quinceañera (toda tarjeta de XV lleva su
+ * texto bíblico); queda sin versículo solo si lo quitó a propósito.
+ */
+export function versiculoDeEvento(evento: Pick<EventoTarjeta, "tipo" | "versiculo_texto" | "versiculo_cita" | "tarjeta">): Versiculo | null {
+  const propio = versiculoDe(evento.versiculo_texto, evento.versiculo_cita);
+  if (propio) return propio;
+  return evento.tipo === "quinceañera" && !extrasDe(evento).sin_versiculo ? VERSICULO_XV : null;
 }
 
 export type DatosTarjeta = {
@@ -735,7 +748,7 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     direccion: gala ? null : direccion,
     // La especial no lleva versículo en la tarjeta (el único va dentro de la
     // carta) y la pre-invitación tampoco: es solo el aviso de la fecha
-    versiculo: especial || gala ? null : versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
+    versiculo: especial || gala ? null : versiculoDeEvento(evento),
     promocion: gala && evento.fecha ? String(fechaLocal(evento.fecha).getFullYear()) : null,
     aviso: reserva ? textosReserva(evento, trato ?? "neutro").despues : null,
     padres,
