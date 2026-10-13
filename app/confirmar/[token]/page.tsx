@@ -11,6 +11,7 @@ import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, enAgradecimiento, e
 import InvitacionDistancia from "./InvitacionDistancia";
 import PreInvitacion from "./PreInvitacion";
 import Agradecimiento from "./Agradecimiento";
+import { coloresXV, svgDataUrl, svgRamillete } from "@/lib/ilustracionesXV";
 import { IcoCamara, IcoCorazon as IcoCorazonLinea } from "@/app/components/Iconos";
 import { nombreDePila, saludoDeCarta, tratoDe } from "@/lib/tratoInvitado";
 import { citaHablada, versiculoDe } from "@/lib/versiculos";
@@ -177,12 +178,13 @@ function esHoyLocal(fecha?: string | null): boolean {
   return f.getFullYear() === h.getFullYear() && f.getMonth() === h.getMonth() && f.getDate() === h.getDate();
 }
 function formatFecha(fecha: string) {
-  return parseFechaLocal(fecha).toLocaleDateString("es-ES", {
+  const f = parseFechaLocal(fecha).toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+  return f.charAt(0).toUpperCase() + f.slice(1);
 }
 function formatFechaCorta(fecha: string) {
   return parseFechaLocal(fecha).toLocaleDateString("es-ES", {
@@ -347,6 +349,11 @@ function mezclarColor(hex: string, con: string, t: number): string {
   const a = hex.replace("#", ""), b = con.replace("#", "");
   const canal = (h: string, i: number) => parseInt(h.slice(i, i + 2), 16);
   return "#" + [0, 2, 4].map((i) => Math.round(canal(a, i) + (canal(b, i) - canal(a, i)) * t).toString(16).padStart(2, "0")).join("");
+}
+function conAlfaHex(hex: string, a: number): string {
+  const h = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  return `rgba(${r},${g},${b},${a})`;
 }
 function colorOscuro(hex: string): boolean {
   const h = hex.replace("#", "");
@@ -1403,8 +1410,11 @@ function FloatingMascot({
   }, [hablando]);
   const esCumple = evento.tipo === "cumpleaños";
   const esGrad = evento.tipo === "graduacion";
+  const esXV = evento.tipo === "quinceañera";
   const primerNombre = invitado.nombre.trim().split(" ")[0];
-  const festejado = evento.anfitriones?.trim() || (esCumple ? "el festejado" : "quien se gradúa");
+  // En los XV los anfitriones suelen ser los papás: el deseo es para la quinceañera
+  const festejado = esXV ? protagonistaDe(evento).nombre.split(/\s+/)[0]
+    : evento.anfitriones?.trim() || (esCumple ? "el festejado" : "quien se gradúa");
   // Las instrucciones finales se dicen unos segundos después de confirmar:
   // leen el número y las mesas de este ref, que para entonces ya llegaron.
   const ultimo = useRef({ invitado, hayMesas });
@@ -1627,7 +1637,7 @@ function FloatingMascot({
       }
       if (mesas && !inv.mesa_id) pasos.push({ t: "También podés elegir tu mesa en la lista.", guia: "mesa" });
       pasos.push({ t: `Si querés, subí fotos al muro y dejale un deseo a ${festejado}.`, guia: "acciones" });
-      pasos.push({ t: esCumple ? "¡Nos vemos en la fiesta!" : "¡Nos vemos en la graduación!" });
+      pasos.push({ t: esCumple ? "¡Nos vemos en la fiesta!" : esXV ? `¡Nos vemos en los XV años de ${festejado}!` : "¡Nos vemos en la graduación!" });
       decir(pasos, "reposo");
     }, 1900);
     return () => clearTimeout(t);
@@ -1663,7 +1673,7 @@ function FloatingMascot({
         }}
       >
         <style>{`@keyframes mascPulse{from{transform:scale(1)}to{transform:scale(1.12)}}`}</style>
-        <GradAvatar size={56} hablando={hablando} tipo={evento.tipo} />
+        <GradAvatar size={56} hablando={hablando} tipo={evento.tipo} tonoXV={extrasDe(evento).tono_xv} />
       </div>
     );
   }
@@ -1684,7 +1694,7 @@ function FloatingMascot({
           opacity: 0.92,
         }}
       >
-        <GradAvatar size={46} hablando={false} tipo={evento.tipo} />
+        <GradAvatar size={46} hablando={false} tipo={evento.tipo} tonoXV={extrasDe(evento).tono_xv} />
       </button>
     );
   }
@@ -1741,7 +1751,7 @@ function FloatingMascot({
 
         {/* Mascota: tocarla repite la última explicación */}
         <div className="masc-wrap" onClick={repetir} title="Tocame para repetir">
-          <GradMascot hablando={hablando} tipo={evento.tipo} />
+          <GradMascot hablando={hablando} tipo={evento.tipo} tonoXV={extrasDe(evento).tono_xv} />
         </div>
       </div>
     </>
@@ -1758,9 +1768,12 @@ function nombresDe(inv: { nombres_personas?: string | null }): string[] {
   }
 }
 
-// ─── Avatar animado: graduado (birrete/borla) o cumpleañero (gorrito/globo) ───
-function GradAvatar({ size = 64, hablando, tipo = "graduacion" }: { size?: number; hablando: boolean; tipo?: string }) {
+// ─── Avatar animado: graduado (birrete/borla), cumpleañero (gorrito/globo) o
+// quinceañera (tiara, aretes y vestido del color de su tarjeta) ───
+function GradAvatar({ size = 64, hablando, tipo = "graduacion", tonoXV = null }: { size?: number; hablando: boolean; tipo?: string; tonoXV?: string | null }) {
   const esCumple = tipo === "cumpleaños";
+  const esXV = tipo === "quinceañera";
+  const cXV = coloresXV(tonoXV);
   return (
     <svg
       width={size}
@@ -1787,8 +1800,8 @@ function GradAvatar({ size = 64, hablando, tipo = "graduacion" }: { size?: numbe
       `}</style>
       <defs>
         <linearGradient id="avBg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={esCumple ? "#F97316" : tipo === "graduacion" ? GRAD.oroOscuro : "#6366F1"} />
-          <stop offset="100%" stopColor={esCumple ? "#DB2777" : tipo === "graduacion" ? GRAD.navy : "#3730A3"} />
+          <stop offset="0%" stopColor={esCumple ? "#F97316" : esXV ? cXV.medio : tipo === "graduacion" ? GRAD.oroOscuro : "#6366F1"} />
+          <stop offset="100%" stopColor={esCumple ? "#DB2777" : esXV ? cXV.profundo : tipo === "graduacion" ? GRAD.navy : "#3730A3"} />
         </linearGradient>
         <linearGradient id="avHat" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#F472B6" />
@@ -1810,8 +1823,10 @@ function GradAvatar({ size = 64, hablando, tipo = "graduacion" }: { size?: numbe
       {/* Fondo */}
       <circle cx="32" cy="32" r="31" fill="url(#avBg)" />
       <circle cx="32" cy="32" r="31" fill="none" stroke="rgba(252,211,77,0.55)" strokeWidth="1.6" />
-      {/* Traje: toga (graduación) o remera festiva con lunares (cumpleaños) */}
-      <path d="M13 58 Q17 42 32 42 Q47 42 51 58 Z" fill={esCumple ? "#7C3AED" : "#1e1b4b"} />
+      {/* Quinceañera: el cabello largo va detrás de todo */}
+      {esXV && <path d="M16.5 31 Q16.5 13 32 13 Q47.5 13 47.5 31 L49 50 Q41 46.5 32 46.5 Q23 46.5 15 50 Z" fill="#4E2A20" />}
+      {/* Traje: toga (graduación), remera festiva con lunares (cumpleaños) o vestido (XV) */}
+      <path d="M13 58 Q17 42 32 42 Q47 42 51 58 Z" fill={esCumple ? "#7C3AED" : esXV ? cXV.fuerte : "#1e1b4b"} />
       {esCumple && (
         <>
           <circle cx="23" cy="52" r="1.7" fill="rgba(255,255,255,0.55)" />
@@ -1819,7 +1834,17 @@ function GradAvatar({ size = 64, hablando, tipo = "graduacion" }: { size?: numbe
           <circle cx="32" cy="57" r="1.5" fill="rgba(255,255,255,0.45)" />
         </>
       )}
-      <path d="M27 43 L32 51 L37 43 L32 41.5 Z" fill="#FCD34D" />
+      {esXV ? (
+        <>
+          {/* Escote con los hombros al aire y un collar */}
+          <path d="M22 42.5 Q32 47.5 42 42.5 L44 46.5 Q32 52 20 46.5 Z" fill="#F5CFB2" />
+          <path d="M19 47 Q32 52.5 45 47 L46.5 50.5 Q32 56.5 17.5 50.5 Z" fill={cXV.claro} />
+          <path d="M26 44.5 Q32 48.5 38 44.5" stroke="url(#avGold)" strokeWidth="1" fill="none" />
+          <circle cx="32" cy="48.2" r="1.4" fill="url(#avGold)" />
+        </>
+      ) : (
+        <path d="M27 43 L32 51 L37 43 L32 41.5 Z" fill="#FCD34D" />
+      )}
       <g className="av-head">
         {/* Orejas y cabeza */}
         <circle cx="19.5" cy="30" r="2.6" fill="#F8C9A0" />
@@ -1844,7 +1869,28 @@ function GradAvatar({ size = 64, hablando, tipo = "graduacion" }: { size?: numbe
         ) : (
           <path d="M28.5 36.5 Q32 39.6 35.5 36.5" stroke="#7c2d12" strokeWidth="1.7" fill="none" strokeLinecap="round" />
         )}
-        {esCumple ? (
+        {esXV ? (
+          <>
+            {/* Flequillo y mechones a los lados de la cara */}
+            <path d="M19 28 Q19.5 15 32 15 Q44.5 15 45 28 Q40 20.5 32 21.5 Q24 20.5 19 28 Z" fill="#5B3426" />
+            <path d="M19.5 24 Q15.5 34 18 46 L22 44.5 Q20 34 22.5 26 Z" fill="#5B3426" />
+            <path d="M44.5 24 Q48.5 34 46 46 L42 44.5 Q44 34 41.5 26 Z" fill="#5B3426" />
+            {/* Tiara con piedras del color del vestido */}
+            <path d="M23 18 L25.5 11.5 L28.8 15.6 L32 8 L35.2 15.6 L38.5 11.5 L41 18 Q32 15 23 18 Z" fill="url(#avGold)" />
+            <circle cx="32" cy="12.6" r="1.6" fill={cXV.fuerte} />
+            <circle cx="26" cy="15.4" r="1" fill={cXV.medio} />
+            <circle cx="38" cy="15.4" r="1" fill={cXV.medio} />
+            {/* Aretes (se mecen al hablar) */}
+            <g className="av-tassel">
+              <circle cx="20.5" cy="35.5" r="1.2" fill="url(#avGold)" />
+              <circle cx="20.5" cy="38.6" r="1.6" fill="#FFF7ED" stroke="url(#avGold)" strokeWidth=".6" />
+            </g>
+            <g className="av-tassel">
+              <circle cx="43.5" cy="35.5" r="1.2" fill="url(#avGold)" />
+              <circle cx="43.5" cy="38.6" r="1.6" fill="#FFF7ED" stroke="url(#avGold)" strokeWidth=".6" />
+            </g>
+          </>
+        ) : esCumple ? (
           <>
             {/* Gorrito de fiesta con pompón dorado */}
             <g transform="rotate(-10 32 14)">
@@ -1893,7 +1939,7 @@ function GradAvatar({ size = 64, hablando, tipo = "graduacion" }: { size?: numbe
 }
 
 // ─── Botón flotante de voz ───────────────────────────────────────────────────
-function GradMascot({ hablando, tipo = "graduacion" }: { hablando: boolean; tipo?: string }) {
+function GradMascot({ hablando, tipo = "graduacion", tonoXV = null }: { hablando: boolean; tipo?: string; tonoXV?: string | null }) {
   return (
     <div style={{ width: 64, height: 64 }}>
       <style>{`
@@ -1907,9 +1953,9 @@ function GradMascot({ hablando, tipo = "graduacion" }: { hablando: boolean; tipo
       `}</style>
       <div
         className={`vbtn ${hablando ? "talking" : "idle"}${tipo === "graduacion" ? " oro" : ""}`}
-        style={{ boxShadow: tipo === "cumpleaños" ? "0 6px 20px rgba(219,39,119,0.45)" : "0 0 0 2px rgba(201,212,234,0.75), 0 8px 24px rgba(10,15,36,0.45)" }}
+        style={{ boxShadow: tipo === "cumpleaños" || tipo === "quinceañera" ? "0 6px 20px rgba(219,39,119,0.45)" : "0 0 0 2px rgba(201,212,234,0.75), 0 8px 24px rgba(10,15,36,0.45)" }}
       >
-        <GradAvatar size={64} hablando={hablando} tipo={tipo} />
+        <GradAvatar size={64} hablando={hablando} tipo={tipo} tonoXV={tonoXV} />
       </div>
     </div>
   );
@@ -2723,10 +2769,17 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
 
   const birretes = (
     <>
-      {/* Al entrar: los birretes vuelan, como al final de la ceremonia */}
+      {/* Al entrar: los birretes vuelan, como al final de la ceremonia (en los
+          XV, corazones del color del vestido) */}
       {saliendo && [-120, -70, -30, 10, 50, 95, 135].map((dx, i) => (
         <span key={i} className="pt-birrete" style={{ ["--dx" as string]: `${dx}px`, ["--rot" as string]: `${(i % 2 ? 1 : -1) * (180 + i * 40)}deg`, animationDelay: `${i * 0.045}s`, marginLeft: -16 } as React.CSSProperties}>
-          <BirreteSVG size={i % 3 === 0 ? 40 : 30} color={i % 2 ? GRAD.navy2 : GRAD.navy} borla={c.texto} />
+          {evento.tipo === "quinceañera" ? (
+            <svg width={i % 3 === 0 ? 34 : 26} height={i % 3 === 0 ? 34 : 26} viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z" fill={i % 2 ? coloresXV(ex.tono_xv).medio : coloresXV(ex.tono_xv).fuerte} />
+            </svg>
+          ) : (
+            <BirreteSVG size={i % 3 === 0 ? 40 : 30} color={i % 2 ? GRAD.navy2 : GRAD.navy} borla={c.texto} />
+          )}
         </span>
       ))}
     </>
@@ -2765,8 +2818,8 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
       <span className="pt-marco" aria-hidden="true" />
 
       <div className="pt-arriba">
-        <div className="pt-kicker"><i />{especial ? "Invitación especial" : reserva ? "Reservá la fecha" : gracias ? "Con gratitud" : "Graduación"}<i /></div>
-        {anio && !especial && <div className="pt-promo">Promoción {anio}</div>}
+        <div className="pt-kicker"><i />{especial ? "Invitación especial" : reserva ? "Reservá la fecha" : gracias ? "Con gratitud" : evento.tipo === "quinceañera" ? "Mis XV años" : "Graduación"}<i /></div>
+        {anio && !especial && evento.tipo !== "quinceañera" && <div className="pt-promo">Promoción {anio}</div>}
       </div>
 
       <div className="pt-centro">
@@ -2779,7 +2832,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
               <img src={foto} alt="" className={fotoLista ? "lista" : ""} onLoad={() => setFotoLista(true)} onError={() => setFotoFallo(true)} />
             </div>
           </div>
-        ) : (
+        ) : evento.tipo === "quinceañera" ? null : (
           <div className="pt-emblema" aria-hidden="true"><BirreteSVG size={74} color={GRAD.navy} borla={c.texto} /></div>
         )}
         {especial && <p className="pt-script">Con gratitud</p>}
@@ -2799,6 +2852,8 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
             ? (nombres.length > 1 ? "Aparten esta fecha en su agenda" : "Apartá esta fecha en tu agenda")
             : especial
             ? "Aunque estés lejos, fuiste parte de este logro"
+            : evento.tipo === "quinceañera"
+            ? "Te invito a celebrar este mágico e inolvidable momento"
             : personas.familia
             ? `${personas.familia} te invita a celebrar este logro`
             : personas.esAnfitrion || evento.anfitriones ? "te invita a celebrar su graduación" : "Te invitamos a celebrar"}
@@ -4189,7 +4244,7 @@ export default function ConfirmarPage() {
   // del invitado: es el momento de desbloquear música y voz en iPhone.
   function entrarInvitacion(conSonido: boolean) {
     if (!evento || saliendoPortada) return;
-    const guiado = evento.tipo === "graduacion" || evento.tipo === "cumpleaños";
+    const guiado = evento.tipo === "graduacion" || evento.tipo === "cumpleaños" || evento.tipo === "quinceañera";
     if (conSonido) {
       preferenciaAudio.sinSonido = false;
       if (silencio) setSilencio(false);
@@ -4204,13 +4259,13 @@ export default function ConfirmarPage() {
       setSilencio(true);
     }
     if (guiado) desbloquearTTS();
-    if (evento.tipo === "graduacion") setSaliendoPortada(true);
+    if (evento.tipo === "graduacion" || evento.tipo === "quinceañera") setSaliendoPortada(true);
     else document.getElementById("welcome-overlay")?.classList.add("leaving");
     setTimeout(() => {
       setShowWelcome(false);
       // Solo hablar si todavía no respondió la invitación
       if (guiado) setMascotaFase(step === "confirmado" || step === "rechazado" ? "oculto" : "leyendo");
-    }, evento.tipo === "graduacion" ? 1050 : 420);
+    }, evento.tipo === "graduacion" || evento.tipo === "quinceañera" ? 1050 : 420);
   }
   const [itinerario, setItinerario] = useState<ItemItinerario[]>([]);
   // Mesa self-selection
@@ -4718,7 +4773,29 @@ export default function ConfirmarPage() {
 
 
   // ─── TEMAS (rediseño UX/UI profesional, paleta clara) ──────────────────────
+  const cXV = coloresXV(evento ? extrasDe(evento).tono_xv : null);
   const TEMAS: Record<string, string> = {
+    // XV años: el tono del vestido de su tarjeta, sobre blanco y rubor
+    xv: `
+      --gold:${cXV.fuerte};--gold-dark:${cXV.profundo};--gold-light:${cXV.claro};--gold-pale:#FFF9FB;
+      --dark:#FFF9FB;--dark2:${cXV.claro};--ink:#2E2228;--ink2:#5A4650;--ink3:${cXV.texto};
+      --cream:#FFF9FB;--cream2:${cXV.claro};--surface:#FFFFFF;
+      --on-dark:${cXV.texto};--on-dark-sub:${cXV.profundo};
+      --border:${conAlfaHex(cXV.fuerte, 0.16)};--border-mid:${conAlfaHex(cXV.fuerte, 0.32)};
+      --shadow:0 8px 28px rgba(60,20,40,0.07);--shadow-lg:0 20px 48px rgba(60,20,40,0.12);
+      --inv-head-bg:linear-gradient(180deg,#FFFFFF 0%,${conAlfaHex(cXV.claro, 0.9)} 100%);
+      --acc:${cXV.fuerte};--acc-ink:${cXV.texto};--acc-sub:${cXV.profundo};
+      --acc-soft:#FFF5F8;--acc-soft-grad:linear-gradient(135deg,#FFFFFF,${cXV.claro});
+      --acc-line:${conAlfaHex(cXV.fuerte, 0.3)};--acc-dash:${conAlfaHex(cXV.fuerte, 0.45)};--acc-wash:#FFF5F8;
+      --acc-card-bg:#FFFFFF;--acc-card-border:${conAlfaHex(cXV.fuerte, 0.3)};--acc-card-shadow:0 6px 22px rgba(60,20,40,0.06);
+      --acc-tile-bg:#FFF5F8;--acc-tile-border:${conAlfaHex(cXV.fuerte, 0.3)};--acc-dot-border:${conAlfaHex(cXV.fuerte, 0.45)};
+      --acc-inner-bg:#FFF9FB;--acc-inner-border:${conAlfaHex(cXV.fuerte, 0.12)};
+      --acc-btn:${cXV.profundo};--acc-btn-ink:#FFFFFF;
+      --acc-primary:linear-gradient(135deg,${cXV.fuerte},${cXV.profundo});--acc-primary-ink:#FFFFFF;
+      --acc-primary-shadow:0 10px 24px -10px ${conAlfaHex(cXV.profundo, 0.5)};
+      --f-display:'Playfair Display';--f-adjust:0.43;
+      --f-label:'Cinzel',Georgia,serif;
+    `,
     clasico: `
       --gold:#4F46E5;--gold-dark:#3730A3;--gold-light:#E0E7FF;--gold-pale:#EEF2FF;
       --dark:#F8FAFC;--dark2:#EEF2FF;--ink:#0F172A;--ink2:#334155;--ink3:#4F46E5;
@@ -4772,11 +4849,13 @@ export default function ConfirmarPage() {
   };
   const temaVars = evento?.tipo === "graduacion"
     ? TEMAS.graduacion
+    : evento?.tipo === "quinceañera"
+    ? TEMAS.xv
     : (TEMAS[evento?.tema ?? "clasico"] ?? TEMAS.clasico);
 
   // ─── ESTILOS ───────────────────────────────────────────────────────────────
   const styles = `
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Jost:wght@300;400;500;600;700${evento?.tipo === "graduacion" ? "&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Cinzel:wght@500;600;700" : ""}&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Jost:wght@300;400;500;600;700${evento?.tipo === "quinceañera" ? "&family=Great+Vibes" : ""}${evento?.tipo === "graduacion" || evento?.tipo === "quinceañera" ? "&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Cinzel:wght@500;600;700" : ""}&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html,body{font-family:'Jost',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0F172A}
     :root{
@@ -4822,7 +4901,7 @@ export default function ConfirmarPage() {
     .detalle-fila{display:flex;align-items:flex-start;gap:14px}
     .detalle-ico-wrap{width:38px;height:38px;border-radius:11px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(15,23,42,.05)}
     .detalle-label{font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
-    .detalle-texto{font-size:15px;color:var(--ink);font-weight:400;line-height:1.4;text-transform:capitalize}
+    .detalle-texto{font-size:15px;color:var(--ink);font-weight:400;line-height:1.4}
     .maps-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;letter-spacing:.3px;text-decoration:none;margin-top:7px;transition:opacity .15s;font-family:'Jost',sans-serif;}
     .maps-btn:hover{opacity:.85}
 
@@ -4955,7 +5034,7 @@ export default function ConfirmarPage() {
     .resumen{background:var(--cream);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px 18px;display:flex;flex-direction:column;gap:13px}
     .res-fila{display:flex;align-items:center;gap:12px}
     .res-ico{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--border-mid);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(15,23,42,.05)}
-    .res-texto{font-size:15px;color:var(--ink2);font-weight:400;text-transform:capitalize}
+    .res-texto{font-size:15px;color:var(--ink2);font-weight:400}
     .acciones-titulo{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px}
 
     /* Fotos invitado */
@@ -5367,6 +5446,18 @@ export default function ConfirmarPage() {
     .grad-para{font-size:10.5px;letter-spacing:.24em;font-weight:600}
     .entrada-kicker{letter-spacing:.26em;font-weight:600}
     ` : ""}
+    ${evento?.tipo === "quinceañera" ? `
+    /* Sin foto de portada no queda un bloque vacío: la cabecera con rosas es la portada */
+    .inv-hero-bg{display:none}
+    .inv-head{overflow:hidden;border-radius:inherit}
+    .xv-rosas{position:absolute;top:-16px;width:128px;height:128px;pointer-events:none}
+    .xv-rosas-izq{left:-20px}
+    .xv-rosas-der{right:-20px}
+    .xv-protagonista{position:relative;font-family:'Great Vibes',cursive;font-weight:400;font-size:clamp(60px,19vw,86px);line-height:1.05;color:var(--ink3);margin-top:8px}
+    .xv-padres{position:relative;font-family:var(--f-display,'Playfair Display'),serif;font-style:italic;font-size:16px;color:var(--ink2);margin-top:6px}
+    .xv-padres strong{font-style:normal;font-weight:600;color:var(--ink)}
+    .inv-tipo-badge{position:relative;font-family:var(--f-label);font-size:11px;letter-spacing:.26em;border-color:var(--border-mid);color:var(--ink3);background:rgba(255,255,255,0.75)}
+    ` : ""}
   `;
 
   if (loading)
@@ -5470,7 +5561,7 @@ export default function ConfirmarPage() {
       )}
 
       {/* ─── Graduación: portada editorial, una sola pantalla antes de la invitación ─── */}
-      {showWelcome && evento.tipo === "graduacion" && (
+      {showWelcome && (evento.tipo === "graduacion" || evento.tipo === "quinceañera") && (
         <PortadaGrad
           invitado={invitado}
           evento={evento}
@@ -5486,7 +5577,7 @@ export default function ConfirmarPage() {
       )}
 
       {/* ─── Pantalla de bienvenida con confeti (otros tipos de evento) ─── */}
-      {showWelcome && evento.tipo !== "graduacion" && (
+      {showWelcome && evento.tipo !== "graduacion" && evento.tipo !== "quinceañera" && (
         <div
           className="welcome-overlay"
           id="welcome-overlay"
@@ -5555,8 +5646,8 @@ export default function ConfirmarPage() {
         </div>
       )}
 
-      {/* ── Mascota flotante (graduación y cumpleaños) — lee la invitación sin pantalla extra ── */}
-      {evento && (evento.tipo === "graduacion" || evento.tipo === "cumpleaños") && !showWelcome && mascotaFase !== "oculto" && (
+      {/* ── Mascota flotante (graduación, XV años y cumpleaños) — lee la invitación sin pantalla extra ── */}
+      {evento && (evento.tipo === "graduacion" || evento.tipo === "cumpleaños" || evento.tipo === "quinceañera") && !showWelcome && mascotaFase !== "oculto" && (
         <FloatingMascot
           invitado={invitado}
           evento={evento}
@@ -5855,6 +5946,19 @@ export default function ConfirmarPage() {
                       <h1 className="grad-protagonista">{ps.protagonista}</h1>
                       {ps.carrera && <p className="grad-carrera">{ps.carrera}</p>}
                       {ps.institucion && <p className="grad-institucion">{ps.institucion}</p>}
+                    </>
+                  );
+                })() : evento.tipo === "quinceañera" ? (() => {
+                  // Como su tarjeta: la quinceañera en caligrafía y quienes invitan
+                  const padresXV = armarDatosTarjeta(evento, invitado.nombre, null).padres;
+                  return (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img className="xv-rosas xv-rosas-izq" src={svgDataUrl(svgRamillete(cXV, "arriba-izq"))} alt="" aria-hidden="true" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img className="xv-rosas xv-rosas-der" src={svgDataUrl(svgRamillete(cXV, "arriba-der"))} alt="" aria-hidden="true" />
+                      <h1 className="xv-protagonista">{protagonistaDe(evento).nombre}</h1>
+                      {padresXV && <p className="xv-padres">Con cariño de <strong>{padresXV}</strong></p>}
                     </>
                   );
                 })() : (

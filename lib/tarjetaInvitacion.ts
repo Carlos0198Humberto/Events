@@ -9,6 +9,7 @@
 
 import type { Trato } from "@/lib/tratoInvitado";
 import { VERSICULO_BENDICION, versiculoDe, type Versiculo } from "@/lib/versiculos";
+import { TONOS_XV, TONOS_XV_LISTA, type TonoXV } from "@/lib/ilustracionesXV";
 
 export type EventoTarjeta = {
   nombre: string;
@@ -53,11 +54,12 @@ export type ExtrasTarjeta = {
   diseno?: DisenoTarjeta | null;
   metal?: MetalTarjeta | null;
   letra_nombre?: LetraNombre | null;
+  tono_xv?: TonoXV | null;      // XV años: color del vestido y de las rosas (null = rosa)
 };
 
 // Opciones de estilo de la tarjeta (las claves son lo que se guarda)
 export type FormaFoto = "circulo" | "arco" | "retrato";
-export type DisenoTarjeta = "moderna" | "gala" | "minimal" | "floral";
+export type DisenoTarjeta = "moderna" | "gala" | "minimal" | "floral" | "xv";
 export type MetalTarjeta = "oro" | "plata" | "oro_rosa";
 export type LetraNombre = "mayusculas" | "caligrafia" | "clasica";
 export const FORMAS_FOTO: { id: FormaFoto; nombre: string }[] = [
@@ -68,7 +70,10 @@ export const DISENOS_TARJETA: { id: DisenoTarjeta; nombre: string; detalle: stri
   { id: "gala", nombre: "Gala", detalle: "Bandas de filigrana" },
   { id: "minimal", nombre: "Minimal", detalle: "Limpio, mucho aire" },
   { id: "floral", nombre: "Floral", detalle: "Ramilletes en las esquinas" },
+  { id: "xv", nombre: "Quinceañera", detalle: "Rosas y la quinceañera con su vestido (solo XV años)" },
 ];
+/** Los tonos del vestido de la tarjeta de XV años, para elegir */
+export const TONOS_TARJETA_XV = TONOS_XV_LISTA.map((id) => ({ id, nombre: TONOS_XV[id].nombre, color: TONOS_XV[id].fuerte }));
 export const METALES_TARJETA: { id: MetalTarjeta; nombre: string }[] = [
   { id: "oro", nombre: "Oro" }, { id: "plata", nombre: "Plata" }, { id: "oro_rosa", nombre: "Oro rosa" },
 ];
@@ -129,6 +134,7 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   ex.diseno = una(o.diseno, DISENOS_TARJETA);
   ex.metal = una(o.metal, METALES_TARJETA);
   ex.letra_nombre = una(o.letra_nombre, LETRAS_NOMBRE);
+  ex.tono_xv = una(o.tono_xv, TONOS_TARJETA_XV);
   return ex;
 }
 
@@ -164,6 +170,9 @@ export type DatosTarjeta = {
   versiculo: Versiculo | null; // texto bíblico elegido por el organizador
   promocion: string | null;   // "2026" (pre-invitación: «Promoción 2026», como el «Class of» de la gala)
   aviso: string | null;       // pre-invitación: que la invitación formal para confirmar llega después
+  padres: string | null;      // XV años: quienes invitan, arriba en caligrafía («Genaro & Soila»)
+  invitaXV: string | null;    // XV años: «Se complacen en invitarte a celebrar este mágico e inolvidable momento»
+  tonoXV: TonoXV | null;      // XV años: color del vestido y de las rosas
 };
 
 const TITULOS: Record<string, string> = {
@@ -277,7 +286,7 @@ export function protagonistaDe(evento: EventoTarjeta): { nombre: string; esPerso
   const graduando = extrasDe(evento).graduando;
   if (graduando) return { nombre: graduando, esPersona: true };
   const anfitriones = evento.anfitriones?.trim() || "";
-  const m = /^\s*(?:mi\s+)?(?:graduaci[oó]n|xv\s+a[nñ]os|quince\s+a[nñ]os|cumplea[nñ]os|boda)\s+(?:de|del)\s+(.+)$/i.exec(evento.nombre);
+  const m = /^\s*(?:mis?\s+)?(?:graduaci[oó]n|xv\s+a[nñ]os|quince\s+a[nñ]os|cumplea[nñ]os|boda)\s+(?:de|del)\s+(.+)$/i.exec(evento.nombre);
   const delNombre = m ? m[1].split(/\s+[—–-]\s+|[,|(]/)[0].trim() : "";
   // "Graduación de la promoción 2025" no nombra a nadie
   const pareceNombre = delNombre.length > 1 && delNombre.length <= 40 && !/\d/.test(delNombre)
@@ -653,6 +662,16 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
   }
 
   const plural = trato === "plural";
+  // XV años: invitan los papás (o la familia); si invita la misma quinceañera, su frase
+  const esXV = evento.tipo === "quinceañera";
+  const anfitrionesXV = evento.anfitriones?.trim() || "";
+  const padres = !esXV ? null
+    : extras.familia || (anfitrionesXV && normal(anfitrionesXV) !== normal(protagonista.nombre) ? anfitrionesXV : null);
+  const variosInvitan = !!padres && (/\s(?:y|&)\s|\//i.test(padres) || /^familias\s/i.test(padres));
+  const invitaXV = !esXV ? null
+    : padres ? `${variosInvitan ? "Se complacen" : "Se complace"} en ${plural ? "invitarlos" : "invitarte"} a celebrar este mágico e inolvidable momento`
+    : mayuscula(fraseInvitacion(evento, plural));
+  const xv = esXV && !gala && (extras.diseno ?? "xv") === "xv";
 
   return {
     esGraduacion,
@@ -684,10 +703,11 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
       : gracias ? textosGracias(evento, trato ?? "neutro").texto
       : null,
     // La pre-invitación y el agradecimiento van en gala negro y oro, con el birrete y sin foto
-    foto: gala ? null : extras.foto === false ? null : extras.foto_url || evento.imagen_url?.trim() || null,
+    foto: gala || xv ? null : extras.foto === false ? null : extras.foto_url || evento.imagen_url?.trim() || null,
     // La moderna pide la foto en arco y el nombre en letra clásica; los demás diseños, el círculo y las mayúsculas
     formaFoto: extras.forma_foto ?? ((extras.diseno ?? "moderna") === "moderna" ? "arco" : "circulo"),
-    diseno: gala ? "gala" : extras.diseno ?? "moderna",
+    // XV años: por defecto la tarjeta de rosas y la quinceañera
+    diseno: gala ? "gala" : xv ? "xv" : extras.diseno ?? "moderna",
     letraNombre: gala ? "mayusculas" : extras.letra_nombre ?? ((extras.diseno ?? "moderna") === "moderna" ? "clasica" : "mayusculas"),
     paleta: gala ? PALETAS_TARJETA.negro : paletaDe(evento),
     fecha,
@@ -705,6 +725,9 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     versiculo: especial || gala ? null : versiculoDe(evento.versiculo_texto, evento.versiculo_cita),
     promocion: gala && evento.fecha ? String(fechaLocal(evento.fecha).getFullYear()) : null,
     aviso: reserva ? textosReserva(evento, trato ?? "neutro").despues : null,
+    padres,
+    invitaXV,
+    tonoXV: esXV ? extras.tono_xv ?? "rosa" : null,
   };
 }
 

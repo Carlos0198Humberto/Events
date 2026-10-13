@@ -15,7 +15,7 @@ import { achicarImagen } from "@/lib/fotos";
 import { IcoCamara } from "@/app/components/Iconos";
 import {
   armarDatosTarjeta, conMetal, DISENOS_TARJETA, doradoCss, FORMAS_FOTO, FRASES_HONOR, LETRAS_NOMBRE, METALES_TARJETA,
-  PALETAS_TARJETA, paletaDe, tintasPlanas, type EventoTarjeta, type ExtrasTarjeta, type MetalTarjeta,
+  PALETAS_TARJETA, paletaDe, tintasPlanas, TONOS_TARJETA_XV, type EventoTarjeta, type ExtrasTarjeta, type MetalTarjeta,
 } from "@/lib/tarjetaInvitacion";
 
 const CARRERAS = [
@@ -70,6 +70,10 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
 
   const paletaActiva = paletaDe({ tipo, tarjeta: valor }).id;
   const datos = armarDatosTarjeta({ ...evento, tipo, tarjeta: valor }, "");
+  // XV años con el diseño de la quinceañera: lleva su dibujo y sus rosas, sin
+  // paleta, metal, foto ni frase sobre el nombre
+  const esXV = tipo === "quinceañera";
+  const xv = datos.diseno === "xv";
   const fotoInput = useRef<HTMLInputElement>(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [errorFoto, setErrorFoto] = useState("");
@@ -88,6 +92,22 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
 
   return (
     <div className="fields-group">
+      {xv && (
+        <div>
+          <label className="field-label">Color del vestido y de las rosas</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {TONOS_TARJETA_XV.map((t) => (
+              <button key={t.id} type="button" style={{ ...chip(datos.tonoXV === t.id), display: "inline-flex", alignItems: "center", gap: 7 }} onClick={() => onChange({ ...valor, tono_xv: t.id })}>
+                <span style={{ width: 18, height: 18, borderRadius: "50%", background: t.color, border: "1px solid rgba(0,0,0,0.12)" }} />
+                {t.nombre}
+              </button>
+            ))}
+          </div>
+          <p className="field-hint">La quinceañera de la tarjeta lleva el vestido de ese color, y las rosas combinan.</p>
+        </div>
+      )}
+
+      {!xv && (<>
       <div>
         <label className="field-label">Colores de la tarjeta</label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(92px,1fr))", gap: 8 }}>
@@ -123,11 +143,12 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
         </div>
         <p className="field-hint">Si no elegís, va la del tipo de evento: azul noche en graduación, blanco en bodas, rosa vino en XV años.</p>
       </div>
+      </>)}
 
       <div>
         <label className="field-label">Diseño</label>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {DISENOS_TARJETA.map((d) => (
+          {DISENOS_TARJETA.filter((d) => d.id !== "xv" || esXV).map((d) => (
             <button key={d.id} type="button" style={chip(datos.diseno === d.id)} onClick={() => onChange({ ...valor, diseno: d.id })} title={d.detalle}>
               {d.nombre}
             </button>
@@ -136,6 +157,7 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
         <p className="field-hint">{DISENOS_TARJETA.find((d) => d.id === datos.diseno)?.detalle}.</p>
       </div>
 
+      {!xv && (<>
       <div>
         <label className="field-label">Color de los detalles</label>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -196,6 +218,7 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
         )}
         <p className="field-hint">Es la línea pequeña en mayúsculas que va arriba del nombre en la tarjeta.</p>
       </div>
+      </>)}
 
       <div>
         <label className="field-label">{esGrad ? "Nombre completo del graduando" : "Nombre de quien se celebra"}</label>
@@ -243,6 +266,7 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
         </>
       )}
 
+      {!xv && (<>
       <div>
         <label className="field-label">Foto para la tarjeta</label>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -292,16 +316,17 @@ export function CamposTarjeta({ tipo, valor, onChange, evento }: Props) {
           </span>
         </label>
       )}
+      </>)}
 
       <div>
-        <label className="field-label">Familia que invita</label>
+        <label className="field-label">{xv ? "Quienes invitan (los papás)" : "Familia que invita"}</label>
         <input
           className="field-input"
           type="text"
           maxLength={70}
           value={valor.familia ?? ""}
           onChange={(e) => set("familia", e.target.value)}
-          placeholder="Ej: Familia Castillo Pérez"
+          placeholder={xv ? "Ej: Genaro y Soila (vacío = los anfitriones)" : "Ej: Familia Castillo Pérez"}
         />
         <p className="field-hint">Firma la tarjeta al pie, en letra caligráfica. Si la dejás vacía y los anfitriones son una familia, se usan ellos.</p>
       </div>

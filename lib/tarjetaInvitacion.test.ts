@@ -354,3 +354,41 @@ describe("agradecimiento (tercer momento)", () => {
     expect([lejos.gracias, lejos.especial]).toEqual([false, true]); // su carta a distancia
   });
 });
+
+describe("tarjeta de XV años", () => {
+  const xv = (extra: Partial<EventoTarjeta> = {}): EventoTarjeta => ({
+    nombre: "Mis XV años de Ashley", tipo: "quinceañera", anfitriones: "Genaro y Soila",
+    fecha: "2026-08-10", hora: "17:00:00", lugar: "Salón Los Almendros", ...extra,
+  });
+
+  it("reconoce a la quinceañera en «Mis XV años de …»", () => {
+    expect(protagonistaDe(xv()).nombre).toBe("Ashley");
+  });
+
+  it("por defecto es el diseño de la quinceañera, en rosa y sin foto", () => {
+    const d = armarDatosTarjeta(xv({ imagen_url: "https://x/foto.jpg" }), "Rosa", "f");
+    expect([d.diseno, d.tonoXV, d.foto]).toEqual(["xv", "rosa", null]);
+    expect(armarDatosTarjeta(xv({ tarjeta: { tono_xv: "lila" } }), "Rosa", "f").tonoXV).toBe("lila");
+    expect(armarDatosTarjeta(xv({ tarjeta: { diseno: "moderna" } }), "Rosa", "f").diseno).toBe("moderna");
+  });
+
+  it("invitan los papás, con la frase en plural o singular según quiénes", () => {
+    const d = armarDatosTarjeta(xv(), "Rosa", "f");
+    expect(d.padres).toBe("Genaro y Soila");
+    expect(d.invitaXV).toBe("Se complacen en invitarte a celebrar este mágico e inolvidable momento");
+    const familia = armarDatosTarjeta(xv({ anfitriones: "Familia García" }), "Los López", "plural");
+    expect(familia.invitaXV).toBe("Se complace en invitarlos a celebrar este mágico e inolvidable momento");
+  });
+
+  it("si invita la misma quinceañera, habla ella", () => {
+    const d = armarDatosTarjeta(xv({ anfitriones: "Ashley" }), "Rosa", "f");
+    expect(d.padres).toBeNull();
+    expect(d.invitaXV).toBe("Con mucho cariño te invito a celebrar mis XV años");
+  });
+
+  it("los otros tipos de evento no llevan nada de XV", () => {
+    const d = armarDatosTarjeta(grad(), "Rosa", "f");
+    expect([d.padres, d.invitaXV, d.tonoXV]).toEqual([null, null, null]);
+    expect(d.diseno).toBe("moderna");
+  });
+});

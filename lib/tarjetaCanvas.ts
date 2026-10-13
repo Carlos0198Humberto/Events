@@ -19,6 +19,7 @@
 import qrcode from "qrcode-generator";
 import { PALETAS_TARJETA, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta, type TintasPlanas } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, sello, separador } from "@/lib/ornamentosTarjeta";
+import { coloresXV, svgDataUrl, svgQuinceanera, svgRamillete, type ColoresXV, type EsquinaXV } from "@/lib/ilustracionesXV";
 
 const W = 1080;
 // Alto y paleta de la tarjeta que se está dibujando. Se fijan después de todas
@@ -41,8 +42,17 @@ const URL_FUENTES = "https://fonts.googleapis.com/css2?family=Great+Vibes&family
 const BANDA_C = 730;
 const BANDA_H = 64;
 
-/** Carga las fuentes de la tarjeta (una vez por página). */
-export async function cargarFuentesTarjeta() {
+/**
+ * Carga las fuentes de la tarjeta (una vez por página). Es UNA sola carga
+ * compartida: antes, una segunda llamada veía la hoja ya agregada, no esperaba
+ * a que llegara y dibujaba con la letra de respaldo (pasaba siempre al montar
+ * la portada dos veces, y si se armaban dos tarjetas a la vez).
+ */
+let cargaFuentes: Promise<void> | null = null;
+export function cargarFuentesTarjeta(): Promise<void> {
+  return (cargaFuentes ??= cargar());
+}
+async function cargar() {
   if (!document.querySelector(`link[data-fuentes-tarjeta]`)) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -50,6 +60,12 @@ export async function cargarFuentesTarjeta() {
     link.setAttribute("data-fuentes-tarjeta", "");
     document.head.appendChild(link);
     await new Promise((r) => { link.onload = r; link.onerror = r; setTimeout(r, 4000); });
+  }
+  // Si la hoja todavía no se aplicó, la caligrafía no aparece entre las fuentes:
+  // se reintenta un momento antes de dibujar con la de respaldo
+  for (let i = 0; i < 15; i++) {
+    try { if ((await document.fonts.load(`80px 'Great Vibes'`, "Aa")).length) break; } catch { break; }
+    await new Promise((r) => setTimeout(r, 200));
   }
   try {
     await Promise.all([
@@ -424,6 +440,8 @@ type Bloque = { alto: number; antes: number; dibujar: (y: number) => void };
 export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTarjeta = "tarjeta", opciones: { qr?: string } = {}): Promise<Blob | null> {
   await cargarFuentesTarjeta();
   const foto = datos.foto ? await cargarImagen(datos.foto) : null;
+  // XV años: los ramilletes y la quinceañera (SVG) se cargan antes de dibujar
+  const ilustraciones = datos.diseno === "xv" ? await ilustracionesXV(datos.tonoXV) : null;
   // Sin más esperas a partir de acá (ver H y P arriba)
   H = ALTO[formato];
   P = datos.paleta ?? PALETAS_TARJETA.negro;
@@ -439,6 +457,10 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
 
   if (datos.diseno === "moderna") {
     dibujarModerna(ctx, datos, foto, formato, qr);
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+  }
+  if (datos.diseno === "xv" && ilustraciones) {
+    dibujarXV(ctx, datos, ilustraciones, formato, qr);
     return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
   }
 
@@ -928,4 +950,188 @@ function marcaDeAgua(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, T: Tint
     ctx.fillText(datos.iniciales, 0, 0);
   }
   ctx.restore();
+}
+
+
+// ─── Diseño de XV años ────────────────────────────────────────────────────────
+// Papel blanco con un rubor suave, ramilletes de rosas en las cuatro esquinas,
+// una cinta arriba con «Mis XV Años», quienes invitan en caligrafía, la frase,
+// «Quinceañera» y el nombre grande; abajo, a los lados de la quinceañera de
+// espaldas con su vestido, la recepción y la fecha en dos columnas.
+
+type IlustracionesXV = Record<EsquinaXV | "chica", HTMLImageElement>;
+const cacheXV = new Map<string, Promise<IlustracionesXV | null>>();
+
+function ilustracionesXV(tono: string | null): Promise<IlustracionesXV | null> {
+  const clave = tono ?? "rosa";
+  if (!cacheXV.has(clave)) {
+    const c = coloresXV(tono);
+    const esquinas: EsquinaXV[] = ["arriba-izq", "arriba-der", "abajo-izq", "abajo-der"];
+    cacheXV.set(clave, Promise.all([
+      ...esquinas.map((e) => cargarImagen(svgDataUrl(svgRamillete(c, e)))),
+      cargarImagen(svgDataUrl(svgQuinceanera(c))),
+    ]).then((imgs) => {
+      if (imgs.some((i) => !i)) { cacheXV.delete(clave); return null; }
+      const [ai, ad, bi, bd, chica] = imgs as HTMLImageElement[];
+      return { "arriba-izq": ai, "arriba-der": ad, "abajo-izq": bi, "abajo-der": bd, chica };
+    }));
+  }
+  return cacheXV.get(clave)!;
+}
+
+function conAlfa(hex: string, a: number) {
+  const h = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// La cinta de arriba, con las puntas dobladas por detrás
+function cintaXV(ctx: CanvasRenderingContext2D, cx: number, cy: number, ancho: number, alto: number, c: ColoresXV) {
+  const x0 = cx - ancho / 2, x1 = cx + ancho / 2, y0 = cy - alto / 2, y1 = cy + alto / 2;
+  ctx.save();
+  ctx.fillStyle = conAlfa(c.medio, 0.55);
+  for (const lado of [-1, 1]) {
+    const xb = lado < 0 ? x0 : x1;
+    ctx.beginPath();
+    ctx.moveTo(xb - lado * 22, y0 + 16);
+    ctx.lineTo(xb + lado * 52, y0 + 16);
+    ctx.lineTo(xb + lado * 30, cy + 8);
+    ctx.lineTo(xb + lado * 52, y1 + 12);
+    ctx.lineTo(xb - lado * 22, y1 + 12);
+    ctx.closePath();
+    ctx.fill();
+  }
+  const g = ctx.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, "#FFFFFF");
+  g.addColorStop(1, conAlfa(c.claro, 1));
+  ctx.fillStyle = g;
+  ctx.shadowColor = conAlfa(c.profundo, 0.18);
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 4;
+  ctx.beginPath();
+  rectRedondo(ctx, x0, y0, ancho, alto, 8);
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = conAlfa(c.medio, 0.7);
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  rectRedondo(ctx, x0 + 7, y0 + 7, ancho - 14, alto - 14, 5);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: IlustracionesXV, formato: FormatoTarjeta, qr?: string) {
+  const c = coloresXV(datos.tonoXV);
+  const cx = W / 2;
+  const tinta = "#3F3438";
+  const suave = "#6E5C63";
+
+  // Papel blanco con un rubor del tono arriba y abajo
+  ctx.fillStyle = "#FFFDFC";
+  ctx.fillRect(0, 0, W, H);
+  for (const [y, r] of [[H * 0.16, H * 0.62], [H * 0.95, H * 0.5]] as const) {
+    const rubor = ctx.createRadialGradient(cx, y, 30, cx, y, r);
+    rubor.addColorStop(0, conAlfa(c.claro, 0.42));
+    rubor.addColorStop(1, conAlfa(c.claro, 0));
+    ctx.fillStyle = rubor;
+    ctx.fillRect(0, 0, W, H);
+  }
+  ctx.strokeStyle = conAlfa(c.medio, 0.4);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(34, 34, W - 68, H - 68);
+
+  // Ramilletes de arriba, la quinceañera y, delante de su falda, los de abajo
+  const tamA = 400, tamB = 470;
+  ctx.drawImage(il["arriba-izq"], -26, -26, tamA, tamA);
+  ctx.drawImage(il["arriba-der"], W - tamA + 26, -26, tamA, tamA);
+  const altoChica = Math.round(H * (formato === "historia" ? 0.37 : 0.43));
+  const anchoChica = Math.round((altoChica * 400) / 600);
+  const yChica = H - altoChica - 22;
+  ctx.drawImage(il.chica, cx - anchoChica / 2, yChica, anchoChica, altoChica);
+  ctx.drawImage(il["abajo-izq"], -34, H - tamB + 34, tamB, tamB);
+  ctx.drawImage(il["abajo-der"], W - tamB + 34, H - tamB + 34, tamB, tamB);
+
+  ctx.textBaseline = "alphabetic";
+  const bloques: Bloque[] = [];
+  bloques.push({ alto: 86, antes: 0, dibujar: (y) => {
+    cintaXV(ctx, cx, y + 43, 480, 86, c);
+    escribir(ctx, "Mis XV Años", cx, y + 62, { fuente: (px) => `${px}px ${SCRIPT}`, px: 64, min: 44, max: 400, color: c.texto });
+  } });
+  if (datos.invitado) {
+    bloques.push({ alto: 34, antes: 22, dibujar: (y) =>
+      escribir(ctx, `Para ${datos.invitado}`, cx, y + 28, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 20, max: 560, color: suave }) });
+  }
+  if (datos.versiculo) {
+    const v = datos.versiculo;
+    ctx.font = `italic 500 24px ${SERIF}`;
+    const lineasV = partirEnLineas(ctx, `«${v.texto}»`, 560).slice(0, 3);
+    bloques.push({ alto: lineasV.length * 32 + 26, antes: 16, dibujar: (y) => {
+      lineasV.forEach((l, i) =>
+        escribir(ctx, l, cx, y + 24 + i * 32, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 24, min: 18, max: 580, color: suave }));
+      escribir(ctx, v.cita.toLocaleUpperCase("es"), cx, y + lineasV.length * 32 + 20, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 16, min: 12, max: 500, espacio: 3, color: c.texto });
+    } });
+  }
+  if (datos.padres) {
+    bloques.push({ alto: 64, antes: 18, dibujar: (y) =>
+      escribir(ctx, datos.padres!, cx, y + 52, { fuente: (px) => `${px}px ${SCRIPT}`, px: 64, min: 40, max: 640, color: tinta }) });
+  }
+  if (datos.invitaXV) {
+    ctx.font = `italic 500 30px ${SERIF}`;
+    const lineasI = partirEnLineas(ctx, datos.invitaXV, 640).slice(0, 3);
+    bloques.push({ alto: lineasI.length * 40, antes: 12, dibujar: (y) => {
+      lineasI.forEach((l, i) =>
+        escribir(ctx, l, cx, y + 30 + i * 40, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 22, max: 660, color: tinta }));
+    } });
+  }
+  bloques.push({ alto: 70, antes: 20, dibujar: (y) =>
+    escribir(ctx, "Quinceañera", cx, y + 56, { fuente: (px) => `${px}px ${SCRIPT}`, px: 72, min: 48, max: 600, color: c.texto }) });
+  bloques.push({ alto: 140, antes: 0, dibujar: (y) =>
+    escribir(ctx, datos.protagonista, cx, y + 112, { fuente: (px) => `${px}px ${SCRIPT}`, px: 150, min: 84, max: 780, color: c.texto }) });
+
+  repartir(ctx, bloques, 64, yChica + 40, formato === "historia" ? 1.12 : 1);
+
+  // Dos columnas a los lados de la quinceañera: la recepción y la fecha
+  const colAncho = Math.min(300, cx - anchoChica / 2 - 70);
+  const izq = 54 + colAncho / 2;
+  const der = W - 54 - colAncho / 2;
+  const yCol = yChica + 70;
+  const lineasCol = (texto: string, fuente: string, max: number) => { ctx.font = fuente; return partirEnLineas(ctx, texto, max); };
+  const etiqueta = (t: string, x: number, y: number) =>
+    escribir(ctx, t, x, y, { fuente: (px) => `italic 600 ${px}px ${SERIF}`, px: 34, min: 24, max: colAncho, color: c.texto });
+  const dato = (t: string, x: number, y: number, px = 27) =>
+    escribir(ctx, t, x, y, { fuente: (n) => `500 ${n}px ${SERIF}`, px, min: 18, max: colAncho, color: tinta });
+
+  let y = yCol;
+  if (datos.lugar) {
+    etiqueta("Recepción", izq, y);
+    y += 42;
+    for (const l of lineasCol(datos.lugar, `500 27px ${SERIF}`, colAncho).slice(0, 2)) { dato(l, izq, y); y += 34; }
+    if (datos.direccion) {
+      for (const l of lineasCol(datos.direccion, `400 22px ${SANS}`, colAncho).slice(0, 2)) {
+        escribir(ctx, l, izq, y, { fuente: (n) => `400 ${n}px ${SANS}`, px: 22, min: 16, max: colAncho, color: suave });
+        y += 29;
+      }
+    }
+    if (datos.horaCorta) { y += 6; dato(`Hora: ${datos.horaCorta}`, izq, y); }
+  } else if (datos.horaCorta) {
+    etiqueta("Hora", izq, y);
+    dato(datos.horaCorta, izq, y + 42);
+  }
+
+  y = yCol;
+  const fp = datos.fechaPartes;
+  if (fp) {
+    const semana = fp.semana.charAt(0) + fp.semana.slice(1).toLocaleLowerCase("es");
+    etiqueta(semana, der, y);
+    dato(`${fp.dia} de ${fp.mes.toLocaleLowerCase("es")}`, der, y + 42);
+    dato(`de ${fp.anio}`, der, y + 76);
+    y += 76;
+  }
+
+  // Impresa: el QR lleva a la invitación, en la columna de la fecha
+  if (qr) {
+    const lado = 132;
+    dibujarQR(ctx, qr, der, y + 20, lado);
+    escribir(ctx, "ESCANEÁ PARA CONFIRMAR", der, y + lado + 44, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 14, min: 10, max: colAncho, espacio: 2, color: c.texto });
+  }
 }

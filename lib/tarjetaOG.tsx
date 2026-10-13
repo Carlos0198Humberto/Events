@@ -13,6 +13,7 @@
 import { ImageResponse } from "next/og";
 import { doradoCss, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, separador } from "@/lib/ornamentosTarjeta";
+import { coloresXV, svgDataUrl, svgQuinceanera, svgRamillete } from "@/lib/ilustracionesXV";
 
 export const TAM_OG = { width: 1200, height: 630 };
 
@@ -280,8 +281,70 @@ async function renderModernaOG(datos: DatosTarjeta) {
   );
 }
 
+// ─── XV años: la quinceañera y las rosas a la izquierda, el texto a la derecha ─
+async function renderXVOG(datos: DatosTarjeta) {
+  const c = coloresXV(datos.tonoXV);
+  const tinta = "#3F3438";
+  const suave = "#6E5C63";
+  const para = datos.invitado ? `Para ${datos.invitado}` : "";
+  const fp = datos.fechaPartes;
+  const semana = fp ? fp.semana.charAt(0) + fp.semana.slice(1).toLocaleLowerCase("es") : "";
+  const fecha = fp ? `${semana} ${fp.dia} de ${fp.mes.toLocaleLowerCase("es")} de ${fp.anio}${datos.horaCorta ? ` · ${datos.horaCorta}` : ""}` : "";
+  const lugar = datos.lugar ?? "";
+  const cta = "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
+  const guiones = `Mis XV AñosQuinceañera${datos.protagonista}${datos.padres ?? ""}`;
+  const [script, italica, serif, sans] = await Promise.all([
+    fuenteGoogle("Great+Vibes", guiones),
+    fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${datos.invitaXV ?? ""}`),
+    fuenteGoogle("Playfair+Display:wght@500", `${fecha}${lugar}`),
+    fuenteGoogle("Jost:wght@500", cta),
+  ]);
+  type Fuente = { name: string; data: ArrayBuffer; weight: 400 | 500; style: "normal" | "italic" };
+  const fuentes = ([
+    script && { name: "Script", data: script, weight: 400, style: "normal" },
+    italica && { name: "Serif", data: italica, weight: 500, style: "italic" },
+    serif && { name: "Serif", data: serif, weight: 500, style: "normal" },
+    sans && { name: "Sans", data: sans, weight: 500, style: "normal" },
+  ] as (Fuente | null)[]).filter((x): x is Fuente => !!x);
+  const largo = datos.protagonista.length;
+  const pxNombre = largo > 22 ? 58 : largo > 14 ? 70 : 88;
+
+  return new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", backgroundColor: "#FFFDFC",
+        backgroundImage: `radial-gradient(ellipse 60% 70% at 70% 30%, ${c.claro}88 0%, #FFFDFC00 70%)` }}>
+        <div style={{ position: "absolute", left: 20, top: 20, width: 1160, height: 590, border: `1.5px solid ${c.medio}77`, display: "flex" }} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={svgDataUrl(svgRamillete(c, "arriba-izq"))} width={300} height={300} style={{ position: "absolute", left: -30, top: -30 }} alt="" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={svgDataUrl(svgRamillete(c, "arriba-der"))} width={250} height={250} style={{ position: "absolute", left: 980, top: -26 }} alt="" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={svgDataUrl(svgQuinceanera(c))} width={360} height={540} style={{ position: "absolute", left: 90, top: 70 }} alt="" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={svgDataUrl(svgRamillete(c, "abajo-izq"))} width={300} height={300} style={{ position: "absolute", left: -36, top: 366 }} alt="" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={svgDataUrl(svgRamillete(c, "abajo-der"))} width={260} height={260} style={{ position: "absolute", left: 966, top: 396 }} alt="" />
+        <div style={{ position: "absolute", left: 470, top: 30, width: 560, height: 570, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+          <div style={{ display: "flex", padding: "4px 34px 10px", borderRadius: 8, backgroundColor: "#FFFFFF", border: `1.5px solid ${c.medio}`, boxShadow: `0 4px 14px ${c.profundo}22`,
+            fontFamily: "Script", fontSize: 46, color: c.texto }}>Mis XV Años</div>
+          {para && <div style={{ display: "flex", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 22, color: suave, marginTop: 14 }}>{para}</div>}
+          {datos.padres && <div style={{ display: "flex", fontFamily: "Script", fontSize: 44, color: tinta, marginTop: 8 }}>{datos.padres}</div>}
+          {datos.invitaXV && <div style={{ display: "flex", justifyContent: "center", maxWidth: 480, fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 20, lineHeight: 1.35, color: tinta, marginTop: 4 }}>{datos.invitaXV}</div>}
+          <div style={{ display: "flex", fontFamily: "Script", fontSize: 44, color: c.texto, marginTop: 14 }}>Quinceañera</div>
+          <div style={{ display: "flex", fontFamily: "Script", fontSize: pxNombre, lineHeight: 1.1, color: c.texto, marginTop: -6 }}>{datos.protagonista}</div>
+          {fecha && <div style={{ display: "flex", fontFamily: "Serif", fontWeight: 500, fontSize: 21, color: tinta, marginTop: 10 }}>{fecha}</div>}
+          {lugar && <div style={{ display: "flex", justifyContent: "center", maxWidth: 500, fontFamily: "Serif", fontWeight: 500, fontSize: 18, color: suave, marginTop: 4 }}>{lugar}</div>}
+          <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 500, fontSize: 12, letterSpacing: 3, color: c.texto, marginTop: 14 }}>{cta}</div>
+        </div>
+      </div>
+    ),
+    { ...TAM_OG, fonts: fuentes.length ? fuentes : undefined },
+  );
+}
+
 export async function renderTarjetaOG(datos: DatosTarjeta) {
   if (datos.diseno === "moderna") return renderModernaOG(datos);
+  if (datos.diseno === "xv") return renderXVOG(datos);
   const P = datos.paleta;
   const TEXTO_ORO = textoOro(P);
   // El nombre en la letra elegida (mayúsculas, caligrafía o clásica)
