@@ -93,6 +93,24 @@ function aWav(muestras: Float32Array, frecuencia: number): Uint8Array {
   return new Uint8Array(b.buffer);
 }
 
+// Volumen parejo y fuerte: Piper entrega la voz a unos −21 dBFS (pico ~0,4) y
+// la música le ganaba. Se lleva a ~−14 dBFS y los picos se redondean con una
+// curva suave (sin recortes que suenen a distorsión).
+function nivelar(m: Float32Array): Float32Array {
+  let suma = 0;
+  for (let i = 0; i < m.length; i++) suma += m[i] * m[i];
+  const rms = Math.sqrt(suma / Math.max(1, m.length));
+  if (!rms) return m;
+  const ganancia = Math.min(4, 0.2 / rms);
+  const salida = new Float32Array(m.length);
+  for (let i = 0; i < m.length; i++) {
+    const x = m[i] * ganancia;
+    const a = Math.abs(x);
+    salida[i] = a <= 0.85 ? x : Math.sign(x) * (0.85 + 0.15 * Math.tanh((a - 0.85) / 0.15));
+  }
+  return salida;
+}
+
 /** La frase dicha con la voz de las invitaciones, como WAV. */
 export async function sintetizar(textoOriginal: string): Promise<Uint8Array> {
   const texto = textoParaVoz(textoOriginal);
@@ -108,5 +126,5 @@ export async function sintetizar(textoOriginal: string): Promise<Uint8Array> {
     feeds.sid = new ort.Tensor("int64", BigInt64Array.from([BigInt(VOZ.hablante)]), [1]);
   }
   const salida = await sesion.run(feeds);
-  return aWav(salida.output.data as Float32Array, config.audio.sample_rate);
+  return aWav(nivelar(salida.output.data as Float32Array), config.audio.sample_rate);
 }

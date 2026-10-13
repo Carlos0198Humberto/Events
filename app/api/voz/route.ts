@@ -7,7 +7,7 @@
 // devuelve el audio.
 
 import { createClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { BUCKET_VOZ, MAX_LETRAS_VOZ, claveVoz, textoParaVoz, urlPublicaVoz } from "@/lib/vozGrabada";
 import { prepararVoz, sintetizar } from "@/lib/vozServidor";
 
@@ -18,9 +18,15 @@ export const maxDuration = 60;
 
 const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
+// Las invitaciones ya revisadas en este servidor: cada frase de un invitado no
+// vuelve a consultar la base
+const tokensValidos = new Set<string>();
+
 async function invitacionExiste(token: string): Promise<boolean> {
+  if (tokensValidos.has(token)) return true;
   const supabase = createClient(URL_SUPABASE, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
   const { data } = await supabase.from("invitados").select("id").eq("token", token).maybeSingle();
+  if (data) tokensValidos.add(token);
   return !!data;
 }
 
@@ -62,7 +68,8 @@ export async function GET(req: Request) {
 
   const clave = await claveVoz(texto);
   const publica = clave ? urlPublicaVoz(URL_SUPABASE, clave) : null;
-  if (publica) {
+  // nuevo=1: el navegador ya buscó la frase guardada y no estaba
+  if (publica && !url.searchParams.has("nuevo")) {
     const guardada = await fetch(publica, { method: "HEAD" }).catch(() => null);
     if (guardada?.ok) return NextResponse.redirect(publica, 302);
   }
@@ -75,12 +82,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No se pudo generar la voz" }, { status: 503 });
   }
 
-  // Guardarla para la próxima (con la llave de servicio, que solo vive en el servidor)
+  // Guardarla para la próxima (con la llave de servicio, que solo vive en el
+  // servidor), DESPUÉS de responder: el invitado no espera la subida
   const llave = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (clave && llave && process.env.VERCEL) {
-    const admin = createClient(URL_SUPABASE, llave, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { error } = await admin.storage.from(BUCKET_VOZ).upload(clave, audio, { contentType: "audio/wav", upsert: true, cacheControl: "31536000" });
-    if (error) console.error("[voz] no se guardó", error.message);
+    after(async () => {
+      const admin = createClient(URL_SUPABASE, llave, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { error } = await admin.storage.from(BUCKET_VOZ).upload(clave, audio, { contentType: "audio/wav", upsert: true, cacheControl: "31536000" });
+      if (error) console.error("[voz] no se guardó", error.message);
+    });
   }
 
   return new NextResponse(new Blob([audio as BlobPart], { type: "audio/wav" }), {

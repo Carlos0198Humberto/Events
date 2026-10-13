@@ -988,7 +988,7 @@ const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
 // donde hace falta: en compu y Android alcanza con audio.volume. El archivo
 // viene de Supabase Storage con CORS abierto (si no, Web Audio daría silencio).
 const MUSICA_BASE = 0.18;
-const MUSICA_CON_VOZ = 0.04;
+const MUSICA_CON_VOZ = 0.025;
 const FUNDIDO_S = 0.45;
 const ESPERA_VOLVER_MS = 1200;
 
@@ -1375,6 +1375,138 @@ type PasoGuia = { t: string; guia?: string };
 
 const SILENCIO_KEY = "evorix-voz-silencio";
 
+// El guion de la invitación (fase «leyendo»): lo que la voz dice y qué sección
+// marca. Afuera del componente para poder prepararlo apenas carga la página:
+// así la voz del servidor ya tiene las frases hechas cuando el invitado entra.
+type ContextoGuion = {
+  evento: Evento;
+  invitado: Invitado;
+  distancia: boolean;
+  nombresCarta: string[];
+  reserva: boolean;
+  gracias: boolean;
+};
+function guionLectura({ evento, invitado, distancia, nombresCarta, reserva, gracias }: ContextoGuion): { pasos: PasoGuia[]; alTerminar: FaseMascota } {
+  const esCumple = evento.tipo === "cumpleaños";
+  const esGrad = evento.tipo === "graduacion";
+  const esXV = evento.tipo === "quinceañera";
+  const primerNombre = invitado.nombre.trim().split(" ")[0];
+  const festejado = esXV ? protagonistaDe(evento).nombre.split(/\s+/)[0]
+    : evento.anfitriones?.trim() || (esCumple ? "el festejado" : "quien se gradúa");
+  const pasos: PasoGuia[] = [];
+  // Corto a propósito: la invitación ya está escrita en pantalla; la voz
+  // solo marca lo importante (cuándo, dónde, cómo confirmar).
+  // "¡Holaaa, Reina! Bienvenida a tu invitación virtual que Carlos Chavarría te hace."
+  const trato = tratoDe(invitado.nombre, invitado.token);
+  const quien = quienInvitaHablado(evento);
+  const tipoInv = distancia ? "invitación especial" : reserva ? "pre-invitación" : "invitación virtual";
+  const saludoVoz = trato === "neutro"
+    ? `¡Holaaa, ${primerNombre}! Esta es tu ${tipoInv}${quien ? `, que ${quien} te hace` : ""}.`
+    : `¡Holaaa, ${primerNombre}! ${trato === "f" ? "Bienvenida" : trato === "m" ? "Bienvenido" : "Bienvenidos"} a ${trato === "plural" ? "su" : "tu"} ${tipoInv}${quien ? ` que ${quien} ${trato === "plural" ? "les" : "te"} hace` : ""}.`;
+  // Agradecimiento: el saludo, las palabras del organizador, la firma, las
+  // fotos de ese día y el lugar para responderle
+  if (gracias) {
+    const varios = nombresCarta.length > 1;
+    const tg = textosGracias(evento, varios ? "plural" : trato);
+    const autor = quien || festejado;
+    pasos.push({ t: `¡Holaaa, ${primerNombre}! ${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió unas palabras de agradecimiento.`, guia: "ag-inicio" });
+    pasos.push({ t: tg.texto, guia: "ag-texto" });
+    if (tg.firma) pasos.push({ t: `Con cariño, ${tg.firma}.`, guia: "ag-firma" });
+    pasos.push({ t: "Más abajo están las fotos de ese día.", guia: "ag-fotos" });
+    pasos.push({ t: `${varios ? "Pueden" : "Podés"} dejarle ${varios ? "su" : "tu"} mensaje a ${autor}.`, guia: "ag-mensaje" });
+    return { pasos, alTerminar: "reposo" };
+  }
+  pasos.push({ t: saludoVoz, guia: "inicio" });
+
+  // Pre-invitación: que conste la invitación, la fecha para apartarla y que
+  // la invitación para confirmar llega después
+  if (reserva) {
+    const varios = nombresCarta.length > 1;
+    const tr = textosReserva(evento, varios ? "plural" : trato);
+    pasos.push({ t: tr.constancia, guia: "pi-constancia" });
+    if (evento.fecha) pasos.push({ t: `La fecha es el ${fechaHablada(evento.fecha)}.`, guia: "pi-fecha" });
+    pasos.push({ t: tr.apartar, guia: "pi-fecha" });
+    if (evento.fecha) pasos.push({ t: `Tocá Agendar en mi calendario para que no se ${varios ? "les" : "te"} pase.`, guia: "pi-agendar" });
+    pasos.push({ t: tr.despues, guia: "pi-despues" });
+    return { pasos, alTerminar: "reposo" };
+  }
+
+  // A distancia: no se confirma. La voz lee la carta entera, párrafo por
+  // párrafo, y la pantalla la va acompañando; al final, las fotos y el mensaje
+  if (distancia) {
+    const varios = nombresCarta.length > 1;
+    const tratoCarta = varios ? "plural" : trato;
+    const carta = cartaDistancia(evento, tratoCarta);
+    const autor = quien || festejado;
+    pasos.push({ t: `${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió esta carta.`, guia: "dl-inicio" });
+    pasos.push({ t: saludoDeCarta(varios ? nombresCarta.slice(0, 2).join(" y ") : invitado.nombre, tratoCarta), guia: "dl-saludo" });
+    carta.parrafos.forEach((p, i) => pasos.push({ t: p, guia: `dl-p${i}` }));
+    pasos.push({ t: `${carta.oracion} ${carta.bendicion.texto} ${citaHablada(carta.bendicion.cita)}.`, guia: "dl-bendicion" });
+    pasos.push({ t: `${carta.despedida} ${carta.firma}.`, guia: "dl-firma" });
+    pasos.push({ t: "Más abajo están las fotos del gran día.", guia: "dl-fotos" });
+    pasos.push({ t: `${varios ? "Pueden" : "Podés"} dejarle ${varios ? "su" : "tu"} mensaje a ${autor}.`, guia: "dl-mensaje" });
+    return { pasos, alTerminar: "reposo" };
+  }
+
+  // Lo que dice la tarjeta: a quién se celebra y quién invita (que se oiga
+  // todo lo que se ve en ella)
+  const dt = armarDatosTarjeta(evento, invitado.nombre, trato);
+  const exT = extrasDe(evento);
+  if (evento.tipo === "quinceañera" && dt.invitaXV) {
+    const frase = dt.invitaXV;
+    pasos.push({ t: dt.padres
+      ? `${dt.padres} ${frase.charAt(0).toLowerCase()}${frase.slice(1)}: los XV años de ${dt.protagonista}.`
+      : `${frase}: los XV años de ${dt.protagonista}.`, guia: "inicio" });
+  } else if (esGrad && (exT.carrera || exT.institucion)) {
+    const que = `${exT.carrera ? ` de ${exT.carrera}` : ""}${exT.institucion ? ` ${enInstitucion(exT.institucion)}` : ""}`;
+    const graduado = protagonistaDe(evento).esPersona ? quienInvitaHablado({ ...evento, tarjeta: { ...exT, familia: null } }) : "Nuestro graduado";
+    pasos.push({ t: `${graduado.charAt(0).toUpperCase()}${graduado.slice(1)} se gradúa${que}.`, guia: "inicio" });
+  }
+  if (dt.familia && evento.tipo !== "quinceañera") pasos.push({ t: `Con cariño, ${/^familia\s/i.test(dt.familia) ? `la ${dt.familia.charAt(0).toLowerCase()}${dt.familia.slice(1)}` : dt.familia}.` });
+
+  // Lo que el organizador escribió para la invitación: su frase y el versículo
+  if (evento.frase_evento?.trim()) pasos.push({ t: cerrarFrase(evento.frase_evento.trim()), guia: "frase" });
+  // En los XV siempre hay versículo (el de la quinceañera si no se eligió otro)
+  const versiculoVoz = versiculoDeEvento(evento);
+  if (versiculoVoz) pasos.push({ t: `${cerrarFrase(versiculoVoz.texto)} ${citaHablada(versiculoVoz.cita)}.`, guia: "versiculo" });
+
+  const hora = evento.hora ? horaHablada(evento.hora) : null;
+  const laCita = esXV ? "La recepción será el" : "La cita es el";
+  if (evento.fecha) pasos.push({ t: `${laCita} ${fechaHablada(evento.fecha)}${hora ? `, ${hora}` : ""}.`, guia: "fecha" });
+  else if (hora) pasos.push({ t: `Comenzamos ${hora}.`, guia: "fecha" });
+  if (evento.lugar) {
+    // Con la dirección, como en la tarjeta y en la pantalla
+    const dir = exT.direccion && !evento.lugar.includes(exT.direccion) ? `, ${exT.direccion}` : "";
+    const mapas = evento.maps_url || esGrad || esXV ? " Abajo tenés cómo llegar." : "";
+    pasos.push({ t: `El lugar es ${cerrarFrase(`${evento.lugar.trim()}${dir}`)}${mapas}`, guia: "lugar" });
+    if (exT.referencia) pasos.push({ t: `Como referencia: ${cerrarFrase(exT.referencia)}`, guia: "lugar" });
+  }
+
+  if (evento.vestimenta_activo && evento.vestimenta_tipo) {
+    const v = TIPOS_VESTIMENTA_MAP[evento.vestimenta_tipo];
+    if (v) pasos.push({ t: `El código de vestimenta es ${v.label}: ${cerrarFrase(v.desc.charAt(0).toLowerCase() + v.desc.slice(1))}`, guia: "vestimenta" });
+    if (evento.vestimenta_nota) pasos.push({ t: cerrarFrase(evento.vestimenta_nota) });
+  }
+  // Mismo orden que en la pantalla, para que el recorrido solo baje
+  const nombres = nombresDe(invitado);
+  if (nombres.length > 1) {
+    pasos.push({ t: `Esta invitación incluye a ${nombres.slice(1).map(n => n.trim().split(" ")[0]).join(" y ")}.`, guia: "acompanantes" });
+  } else if (!invitado.cupo_elije_invitado && (invitado.num_personas || 1) > 1) {
+    pasos.push({ t: `Tu invitación es para ${invitado.num_personas} personas.` });
+  }
+  const plazo = evento.fecha_limite_confirmacion && (!evento.fecha || evento.fecha_limite_confirmacion < evento.fecha)
+    ? ` antes del ${fechaHablada(evento.fecha_limite_confirmacion, false)}` : "";
+  pasos.push({ t: `Confirmá tu asistencia${plazo} con el botón de abajo, o tocá No podré si no vas a poder ir.`, guia: "confirmar" });
+  return { pasos, alTerminar: "esperando_confirm" };
+}
+
+// Las frases en que se parte un texto para leerlo (las mismas al preparar la
+// voz y al leer: así cada una cae en el mismo audio)
+function frasesParaLeer(textoOriginal: string): string[] {
+  const texto = limpiarParaVoz(textoOriginal);
+  return (texto.match(/[^.!?…]+[.!?…]*\s*/g) ?? [texto]).filter((c) => c.trim().length > 0).flatMap(partirFraseLarga);
+}
+
 function FloatingMascot({
   invitado, evento, token: _token, fase, setFase, hablando, leer, detener, textoActual, charIdx,
   hayPrograma, hayMesas, silencio, setSilencio, distancia, nombresCarta, reserva, gracias,
@@ -1515,114 +1647,8 @@ function FloatingMascot({
   // ── FASE 1: La invitación completa y cómo responderla ─────────────────────
   useEffect(() => {
     if (fase !== "leyendo") return;
-    const pasos: PasoGuia[] = [];
-    // Corto a propósito: la invitación ya está escrita en pantalla; la voz
-    // solo marca lo importante (cuándo, dónde, cómo confirmar).
-    // "¡Holaaa, Reina! Bienvenida a tu invitación virtual que Carlos Chavarría te hace."
-    const trato = tratoDe(invitado.nombre, invitado.token);
-    const quien = quienInvitaHablado(evento);
-    const tipoInv = distancia ? "invitación especial" : reserva ? "pre-invitación" : "invitación virtual";
-    const saludoVoz = trato === "neutro"
-      ? `¡Holaaa, ${primerNombre}! Esta es tu ${tipoInv}${quien ? `, que ${quien} te hace` : ""}.`
-      : `¡Holaaa, ${primerNombre}! ${trato === "f" ? "Bienvenida" : trato === "m" ? "Bienvenido" : "Bienvenidos"} a ${trato === "plural" ? "su" : "tu"} ${tipoInv}${quien ? ` que ${quien} ${trato === "plural" ? "les" : "te"} hace` : ""}.`;
-    // Agradecimiento: el saludo, las palabras del organizador, la firma, las
-    // fotos de ese día y el lugar para responderle
-    if (gracias) {
-      const varios = nombresCarta.length > 1;
-      const tg = textosGracias(evento, varios ? "plural" : trato);
-      const autor = quien || festejado;
-      pasos.push({ t: `¡Holaaa, ${primerNombre}! ${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió unas palabras de agradecimiento.`, guia: "ag-inicio" });
-      pasos.push({ t: tg.texto, guia: "ag-texto" });
-      if (tg.firma) pasos.push({ t: `Con cariño, ${tg.firma}.`, guia: "ag-firma" });
-      pasos.push({ t: "Más abajo están las fotos de ese día.", guia: "ag-fotos" });
-      pasos.push({ t: `${varios ? "Pueden" : "Podés"} dejarle ${varios ? "su" : "tu"} mensaje a ${autor}.`, guia: "ag-mensaje" });
-      decir(pasos, "reposo");
-      return;
-    }
-    pasos.push({ t: saludoVoz, guia: "inicio" });
-
-    // Pre-invitación: que conste la invitación, la fecha para apartarla y que
-    // la invitación para confirmar llega después
-    if (reserva) {
-      const varios = nombresCarta.length > 1;
-      const tr = textosReserva(evento, varios ? "plural" : trato);
-      pasos.push({ t: tr.constancia, guia: "pi-constancia" });
-      if (evento.fecha) pasos.push({ t: `La fecha es el ${fechaHablada(evento.fecha)}.`, guia: "pi-fecha" });
-      pasos.push({ t: tr.apartar, guia: "pi-fecha" });
-      if (evento.fecha) pasos.push({ t: `Tocá Agendar en mi calendario para que no se ${varios ? "les" : "te"} pase.`, guia: "pi-agendar" });
-      pasos.push({ t: tr.despues, guia: "pi-despues" });
-      decir(pasos, "reposo");
-      return;
-    }
-
-    // A distancia: no se confirma. La voz lee la carta entera, párrafo por
-    // párrafo, y la pantalla la va acompañando; al final, las fotos y el mensaje
-    if (distancia) {
-      const varios = nombresCarta.length > 1;
-      const tratoCarta = varios ? "plural" : trato;
-      const carta = cartaDistancia(evento, tratoCarta);
-      const autor = quien || festejado;
-      pasos.push({ t: `${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió esta carta.`, guia: "dl-inicio" });
-      pasos.push({ t: saludoDeCarta(varios ? nombresCarta.slice(0, 2).join(" y ") : invitado.nombre, tratoCarta), guia: "dl-saludo" });
-      carta.parrafos.forEach((p, i) => pasos.push({ t: p, guia: `dl-p${i}` }));
-      pasos.push({ t: `${carta.oracion} ${carta.bendicion.texto} ${citaHablada(carta.bendicion.cita)}.`, guia: "dl-bendicion" });
-      pasos.push({ t: `${carta.despedida} ${carta.firma}.`, guia: "dl-firma" });
-      pasos.push({ t: "Más abajo están las fotos del gran día.", guia: "dl-fotos" });
-      pasos.push({ t: `${varios ? "Pueden" : "Podés"} dejarle ${varios ? "su" : "tu"} mensaje a ${autor}.`, guia: "dl-mensaje" });
-      decir(pasos, "reposo");
-      return;
-    }
-
-    // Lo que dice la tarjeta: a quién se celebra y quién invita (que se oiga
-    // todo lo que se ve en ella)
-    const dt = armarDatosTarjeta(evento, invitado.nombre, trato);
-    const exT = extrasDe(evento);
-    if (evento.tipo === "quinceañera" && dt.invitaXV) {
-      const frase = dt.invitaXV;
-      pasos.push({ t: dt.padres
-        ? `${dt.padres} ${frase.charAt(0).toLowerCase()}${frase.slice(1)}: los XV años de ${dt.protagonista}.`
-        : `${frase}: los XV años de ${dt.protagonista}.`, guia: "inicio" });
-    } else if (esGrad && (exT.carrera || exT.institucion)) {
-      const que = `${exT.carrera ? ` de ${exT.carrera}` : ""}${exT.institucion ? ` ${enInstitucion(exT.institucion)}` : ""}`;
-      const graduado = protagonistaDe(evento).esPersona ? quienInvitaHablado({ ...evento, tarjeta: { ...exT, familia: null } }) : "Nuestro graduado";
-      pasos.push({ t: `${graduado.charAt(0).toUpperCase()}${graduado.slice(1)} se gradúa${que}.`, guia: "inicio" });
-    }
-    if (dt.familia && evento.tipo !== "quinceañera") pasos.push({ t: `Con cariño, ${/^familia\s/i.test(dt.familia) ? `la ${dt.familia.charAt(0).toLowerCase()}${dt.familia.slice(1)}` : dt.familia}.` });
-
-    // Lo que el organizador escribió para la invitación: su frase y el versículo
-    if (evento.frase_evento?.trim()) pasos.push({ t: cerrarFrase(evento.frase_evento.trim()), guia: "frase" });
-    // En los XV siempre hay versículo (el de la quinceañera si no se eligió otro)
-    const versiculoVoz = versiculoDeEvento(evento);
-    if (versiculoVoz) pasos.push({ t: `${cerrarFrase(versiculoVoz.texto)} ${citaHablada(versiculoVoz.cita)}.`, guia: "versiculo" });
-
-    const hora = evento.hora ? horaHablada(evento.hora) : null;
-    const laCita = esXV ? "La recepción será el" : "La cita es el";
-    if (evento.fecha) pasos.push({ t: `${laCita} ${fechaHablada(evento.fecha)}${hora ? `, ${hora}` : ""}.`, guia: "fecha" });
-    else if (hora) pasos.push({ t: `Comenzamos ${hora}.`, guia: "fecha" });
-    if (evento.lugar) {
-      // Con la dirección, como en la tarjeta y en la pantalla
-      const dir = exT.direccion && !evento.lugar.includes(exT.direccion) ? `, ${exT.direccion}` : "";
-      const mapas = evento.maps_url || esGrad || esXV ? " Abajo tenés cómo llegar." : "";
-      pasos.push({ t: `El lugar es ${cerrarFrase(`${evento.lugar.trim()}${dir}`)}${mapas}`, guia: "lugar" });
-      if (exT.referencia) pasos.push({ t: `Como referencia: ${cerrarFrase(exT.referencia)}`, guia: "lugar" });
-    }
-
-    if (evento.vestimenta_activo && evento.vestimenta_tipo) {
-      const v = TIPOS_VESTIMENTA_MAP[evento.vestimenta_tipo];
-      if (v) pasos.push({ t: `El código de vestimenta es ${v.label}: ${cerrarFrase(v.desc.charAt(0).toLowerCase() + v.desc.slice(1))}`, guia: "vestimenta" });
-      if (evento.vestimenta_nota) pasos.push({ t: cerrarFrase(evento.vestimenta_nota) });
-    }
-    // Mismo orden que en la pantalla, para que el recorrido solo baje
-    const nombres = nombresDe(invitado);
-    if (nombres.length > 1) {
-      pasos.push({ t: `Esta invitación incluye a ${nombres.slice(1).map(n => n.trim().split(" ")[0]).join(" y ")}.`, guia: "acompanantes" });
-    } else if (!invitado.cupo_elije_invitado && (invitado.num_personas || 1) > 1) {
-      pasos.push({ t: `Tu invitación es para ${invitado.num_personas} personas.` });
-    }
-    const plazo = evento.fecha_limite_confirmacion && (!evento.fecha || evento.fecha_limite_confirmacion < evento.fecha)
-      ? ` antes del ${fechaHablada(evento.fecha_limite_confirmacion, false)}` : "";
-    pasos.push({ t: `Confirmá tu asistencia${plazo} con el botón de abajo, o tocá No podré si no vas a poder ir.`, guia: "confirmar" });
-    decir(pasos, "esperando_confirm");
+    const { pasos, alTerminar } = guionLectura({ evento, invitado, distancia, nombresCarta, reserva, gracias });
+    decir(pasos, alTerminar);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fase]);
 
@@ -1999,7 +2025,8 @@ function audioDeFrase(token: string, frase: string): Promise<string> {
         const r = await fetch(urlPublicaVoz(base, clave)).catch(() => null);
         if (r?.ok) return URL.createObjectURL(await r.blob());
       }
-      const r = await fetch(`/api/voz?i=${encodeURIComponent(token)}&t=${encodeURIComponent(t)}`);
+      // nuevo=1: el almacenamiento ya se revisó, el servidor no lo vuelve a mirar
+      const r = await fetch(`/api/voz?i=${encodeURIComponent(token)}&t=${encodeURIComponent(t)}${clave ? "&nuevo=1" : ""}`);
       if (!r.ok) throw new Error(`voz ${r.status}`);
       return URL.createObjectURL(await r.blob());
     })();
@@ -2007,6 +2034,14 @@ function audioDeFrase(token: string, frase: string): Promise<string> {
     p.catch(() => audiosVoz.delete(t)); // la próxima vez se vuelve a pedir
   }
   return p;
+}
+
+// Todas las frases de una lectura, en fila: el servidor genera una por vez, así
+// que pedirlas de a una (sin esperar a que suene la anterior) es lo más rápido
+async function prepararFrases(token: string, frases: string[]) {
+  for (const f of frases) {
+    try { await audioDeFrase(token, f); } catch { return; }
+  }
 }
 
 function conLimite<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -2070,7 +2105,7 @@ function sonarFrase(url: string, mudo: boolean, avance: (fraccion: number) => vo
         fuente.connect(g).connect(ctx.destination);
         const t0 = ctx.currentTime;
         fuente.onended = () => { if (reloj) clearInterval(reloj); if (!parado) terminar(); };
-        reloj = setInterval(() => avance(Math.min(1, (ctx.currentTime - t0) / buf.duration)), 120);
+        reloj = setInterval(() => avance(Math.min(1, (ctx.currentTime - t0) / buf.duration)), 100);
         fuente.start();
       } catch { if (!parado) fallar(); }
     })();
@@ -2079,11 +2114,12 @@ function sonarFrase(url: string, mudo: boolean, avance: (fraccion: number) => vo
   const a = reproductorDeVoz();
   a.muted = mudo;
   a.src = url;
-  a.ontimeupdate = () => { if (!parado && a.duration) avance(Math.min(1, a.currentTime / a.duration)); };
-  a.onended = () => { if (!parado) terminar(); };
-  a.onerror = () => { if (!parado) fallar(); };
-  a.play().catch(() => { if (!parado) fallar(); });
-  return { parar() { parado = true; a.pause(); } };
+  const reloj = setInterval(() => { if (!parado && a.duration) avance(Math.min(1, a.currentTime / a.duration)); }, 100);
+  a.ontimeupdate = null;
+  a.onended = () => { clearInterval(reloj); if (!parado) terminar(); };
+  a.onerror = () => { clearInterval(reloj); if (!parado) fallar(); };
+  a.play().catch(() => { clearInterval(reloj); if (!parado) fallar(); });
+  return { parar() { parado = true; clearInterval(reloj); a.pause(); } };
 }
 
 // ─── TTS — Lee la invitación en voz alta (con sincronización palabra a palabra) ─
@@ -2200,7 +2236,7 @@ function useTTS(token?: string) {
     // Una frase muy larga (la bendición, un párrafo de la carta) se parte en
     // la última coma o punto y coma antes de ~150 letras: Chrome corta una
     // locución de más de ~15 segundos y la carta quedaba a medias.
-    const chunks = (texto.match(/[^.!?…]+[.!?…]*\s*/g) ?? [texto]).filter(c => c.trim().length > 0).flatMap(partirFraseLarga);
+    const chunks = frasesParaLeer(texto);
     const pausaTras = (parte: string) => /[.!?…]["»”]?\s*$/.test(parte) ? 180 : 60;
     let idx = 0;
     let offset = 0;
@@ -2291,6 +2327,7 @@ function useTTS(token?: string) {
       let i = 0;
       let off = 0;
       const pedir = (k: number) => (k < chunks.length ? audioDeFrase(tk, chunks[k]) : null);
+      prepararFrases(tk, chunks);
       const aTelefono = () => {
         if (sesion !== sesionRef.current) return;
         fallasVoz.current++;
@@ -4424,13 +4461,26 @@ export default function ConfirmarPage() {
   }, [loading, step, evento?.id]);
   const { hablando, leer, detener, textoActual, charIdx, silencio, setSilencio } = useTTS(token);
 
-  // La voz del servidor arranca mientras el invitado mira la portada: así la
-  // primera frase no espera a que el motor se encienda
+  // Mientras el invitado mira la portada, la voz del servidor ya va armando
+  // la lectura entera, frase por frase: al tocar «Abrir invitación» habla sin
+  // esperas. Después se deja el motor encendido para lo que sigue (confirmar).
   const guiadoVoz = evento?.tipo === "graduacion" || evento?.tipo === "cumpleaños" || evento?.tipo === "quinceañera";
+  const vozPreparada = useRef(false);
   useEffect(() => {
-    if (token && guiadoVoz) calentarVoz(token);
+    if (!token || !guiadoVoz || !evento || !invitado || vozPreparada.current) return;
+    vozPreparada.current = true;
+    if (step === "confirmado" || step === "rechazado") { calentarVoz(token); return; }
+    const { pasos } = guionLectura({
+      evento, invitado,
+      distancia: !!invitado.a_distancia && !enGracias,
+      nombresCarta: nombresEnTarjeta,
+      reserva: enPreInvitacion,
+      gracias: enGracias,
+    });
+    const texto = pasos.map((p) => limpiarParaVoz(p.t)).filter(Boolean).join(" ");
+    prepararFrases(token, frasesParaLeer(texto)).then(() => calentarVoz(token));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, guiadoVoz]);
+  }, [token, guiadoVoz, evento?.id, invitado?.id]);
 
   // "Entrar sin sonido": se marca en el pointerdown, antes que el desbloqueo
   // global de audio (que escucha el primer toque) llegue a encender la música.

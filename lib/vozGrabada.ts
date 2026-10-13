@@ -10,7 +10,7 @@
 // MISMO nombre para la misma frase.
 
 export const VOZ = {
-  id: "sharvard-f-v1",
+  id: "sharvard-f-v2", // v2: con el volumen nivelado (la v1 salía baja)
   modelo: "es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx",
   hablante: 1, // Sharvard tiene dos personas: 0 = hombre, 1 = mujer
   idioma: "es-419", // eSpeak con seseo, como se habla acá

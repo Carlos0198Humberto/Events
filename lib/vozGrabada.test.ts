@@ -17,7 +17,7 @@ describe("la voz de las invitaciones", () => {
     const a = await claveVoz("¡Holaaa, Rosa!");
     const b = await claveVoz("¡Hola,  Rosa!");
     expect(a).toBe(b);
-    expect(a).toMatch(/^voz\/sharvard-f-v1\/[0-9a-f]{64}\.wav$/);
+    expect(a).toMatch(new RegExp(`^voz/${VOZ.id}/[0-9a-f]{64}\\.wav$`));
     expect(await claveVoz("¡Hola, Juan!")).not.toBe(a);
   });
 
