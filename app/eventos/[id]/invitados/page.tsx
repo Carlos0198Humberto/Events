@@ -166,16 +166,19 @@ export default function AgregarInvitados() {
       })();
       cargarTodosInvitados();
     }
-    // Cargar plan del usuario
+    // Cargar plan del usuario. El administrador no tiene límite: antes solo se
+    // leía `plan`, y como su perfil quedó en «free» le cortaba a los 10 invitados.
+    // Con "*" la consulta no falla si la columna plan todavía no existe.
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
       supabase
         .from("profiles")
-        .select("plan")
+        .select("*")
         .eq("id", user.id)
         .single()
         .then(({ data }) => {
-          if (data?.plan) setUserPlan(data.plan as "free" | "pro");
+          if (data?.es_admin || data?.plan === "pro") setUserPlan("pro");
+          else if (data?.plan) setUserPlan(data.plan as "free" | "pro");
         });
     });
   }, [id]);
