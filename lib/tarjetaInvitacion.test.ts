@@ -382,6 +382,13 @@ describe("tarjeta de XV años", () => {
     expect(familia.invitaXV).toBe("Se complace en invitarlos a celebrar este mágico e inolvidable momento");
   });
 
+  it("cierra con «Te esperamos» (o «Te espero» si invita ella)", () => {
+    expect(armarDatosTarjeta(xv(), "Rosa", "f").esperamosXV).toBe("Te esperamos");
+    expect(armarDatosTarjeta(xv(), "Los López", "plural").esperamosXV).toBe("Los esperamos");
+    expect(armarDatosTarjeta(xv({ anfitriones: "Ashley" }), "Rosa", "f").esperamosXV).toBe("Te espero");
+    expect(armarDatosTarjeta(grad(), "Rosa", "f").esperamosXV).toBeNull();
+  });
+
   it("si invita la misma quinceañera, habla ella", () => {
     const d = armarDatosTarjeta(xv({ anfitriones: "Ashley" }), "Rosa", "f");
     expect(d.padres).toBeNull();

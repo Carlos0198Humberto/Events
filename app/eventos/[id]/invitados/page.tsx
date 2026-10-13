@@ -609,7 +609,7 @@ export default function AgregarInvitados() {
     marcarTarjetaEnviada();
   }
 
-  // Tarjeta para imprimir (5×7 pulgadas, con QR a la invitación): para abuelos
+  // Tarjeta para imprimir (5×7 pulgadas, sin código QR): para abuelos
   // o quien no usa WhatsApp. Se abre lista para imprimir o guardar como PDF.
   async function imprimirTarjeta() {
     if (!evento || !tarjeta) return;
@@ -618,11 +618,10 @@ export default function AgregarInvitados() {
     if (!ventana) { toast.error("Permití las ventanas emergentes para imprimir."); return; }
     ventana.document.write("<p style='font-family:sans-serif;padding:24px;color:#475569'>Preparando la tarjeta para imprimir…</p>");
     const { inv, trato } = tarjeta;
-    const blob = await generarTarjetaPNG(
-      armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, asistio: asistioInv(inv) }),
-      "imprimir",
-      { qr: esPreInvitacion(inv) || evento.tarjeta?.entrada_qr === false ? undefined : buildLink(inv.token) },
-    );
+    // Sin código QR: la tarjeta impresa es para verse bonita, y sin el enlace
+    // del mensaje tampoco dice «confirmá en el enlace»
+    const datosImp = armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, asistio: asistioInv(inv) });
+    const blob = await generarTarjetaPNG({ ...datosImp, cta: "" }, "imprimir");
     if (!blob) { ventana.close(); toast.error("No se pudo preparar la tarjeta para imprimir."); return; }
     const src = await new Promise<string>((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.readAsDataURL(blob); });
     const titulo = `Tarjeta de ${inv.nombre}`.replace(/[<>&"]/g, "");
@@ -1420,7 +1419,7 @@ export default function AgregarInvitados() {
             )}
             </>)}
             <button className="tarjeta-estados" onClick={imprimirTarjeta} disabled={!tarjeta.blob} type="button">
-              <IcoImpresora size={16} />{esPreInvitacion(tarjeta.inv) || evento?.tarjeta?.entrada_qr === false ? "Imprimir (5×7)" : "Imprimir (5×7 con código QR)"}
+              <IcoImpresora size={16} />Imprimir (5×7)
             </button>
             <button className="tarjeta-estados" onClick={tarjetaParaEstados} disabled={generandoHistoria} type="button">
               {generandoHistoria ? "Preparando…" : "Versión para estados (sin nombre del invitado)"}

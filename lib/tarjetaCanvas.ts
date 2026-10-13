@@ -13,8 +13,9 @@
 // nombre. La moderna es otra composición: foto grande arriba, colores lisos,
 // dos familias de letra y la fecha en bloque, como la papelería de imprenta.
 //
-// La tarjeta digital no lleva QR: la confirmación es el enlace del mensaje que
-// la acompaña, que en WhatsApp sí se puede tocar. La impresa sí lo lleva.
+// La tarjeta no lleva QR: la confirmación es el enlace del mensaje que la
+// acompaña, que en WhatsApp sí se puede tocar. La impresa tampoco (el
+// organizador lo pidió así); `qr` queda como opción de quien la genere.
 
 import qrcode from "qrcode-generator";
 import { PALETAS_TARJETA, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta, type TintasPlanas } from "@/lib/tarjetaInvitacion";
@@ -498,7 +499,7 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
     return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
   }
   if (datos.diseno === "xv" && ilustraciones) {
-    dibujarXV(ctx, datos, ilustraciones, formato, qr);
+    dibujarXV(ctx, datos, ilustraciones, formato);
     return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
   }
 
@@ -1142,11 +1143,37 @@ function brilloXV(ctx: CanvasRenderingContext2D, x: number, y: number, r: number
   ctx.restore();
 }
 
-function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: IlustracionesXV, formato: FormatoTarjeta, qr?: string) {
+// Un renglón con su etiqueta en otro color, centrado: «Lugar: Salón Los Almendros»
+function renglonConEtiqueta(ctx: CanvasRenderingContext2D, etiqueta: string, texto: string, cx: number, y: number, px: number, colorEtiqueta: string, color: string) {
+  const fEtiqueta = `600 ${px}px ${SERIF}`, fTexto = `500 ${px}px ${SERIF}`;
+  ctx.font = fEtiqueta;
+  const aE = etiqueta ? ctx.measureText(`${etiqueta} `).width : 0;
+  ctx.font = fTexto;
+  const aT = ctx.measureText(texto).width;
+  let x = cx - (aE + aT) / 2;
+  ctx.textAlign = "left";
+  if (etiqueta) {
+    ctx.font = fEtiqueta;
+    ctx.fillStyle = colorEtiqueta;
+    ctx.fillText(`${etiqueta} `, x, y);
+    x += aE;
+  }
+  ctx.font = fTexto;
+  ctx.fillStyle = color;
+  ctx.fillText(texto, x, y);
+  ctx.textAlign = "center";
+}
+
+// La tarjeta de XV: todo el texto en una sola columna centrada, en orden
+// (como la papelería de imprenta), con la quinceañera de fondo, suave, y los
+// ramilletes en las esquinas, donde nunca hay letras. Sin QR: la tarjeta es
+// para verse bonita; se confirma con el enlace del mensaje.
+function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: IlustracionesXV, formato: FormatoTarjeta) {
   const c = coloresXV(datos.tonoXV);
   const cx = W / 2;
   const tinta = "#3F3438";
   const suave = "#6E5C63";
+  const ancho = 720; // ningún renglón pasa de acá: los ramilletes quedan libres
 
   // Papel blanco con un rubor del tono arriba y abajo
   ctx.fillStyle = "#FFFDFC";
@@ -1158,6 +1185,26 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
     ctx.fillStyle = rubor;
     ctx.fillRect(0, 0, W, H);
   }
+
+  // La quinceañera de fondo, grande y lavada (como una marca de agua): se ve
+  // el vestido, pero ni el pelo oscuro queda detrás de las letras con fuerza
+  const altoChica = Math.round(H * (formato === "historia" ? 0.6 : 0.7));
+  const anchoChica = Math.round((altoChica * 400) / 600);
+  const lavada = document.createElement("canvas");
+  lavada.width = anchoChica;
+  lavada.height = altoChica;
+  const lc = lavada.getContext("2d");
+  if (lc) {
+    lc.drawImage(il.chica, 0, 0, anchoChica, altoChica);
+    lc.globalCompositeOperation = "source-atop";
+    lc.fillStyle = "rgba(255,253,252,0.76)";
+    lc.fillRect(0, 0, anchoChica, altoChica);
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.drawImage(lavada, cx - anchoChica / 2, H - altoChica - 36);
+    ctx.restore();
+  }
+
   ctx.strokeStyle = conAlfa(c.medio, 0.4);
   ctx.lineWidth = 2;
   ctx.strokeRect(34, 34, W - 68, H - 68);
@@ -1165,19 +1212,12 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
   ctx.lineWidth = 1.2;
   ctx.strokeRect(46, 46, W - 92, H - 92);
 
-  // Ramilletes de arriba, la quinceañera y, delante de su falda, los de abajo
-  const tamA = 400, tamB = 470;
-  ctx.drawImage(il["arriba-izq"], -26, -26, tamA, tamA);
-  ctx.drawImage(il["arriba-der"], W - tamA + 26, -26, tamA, tamA);
-  const altoChica = Math.round(H * (formato === "historia" ? 0.37 : datos.versiculo ? 0.41 : 0.43));
-  const anchoChica = Math.round((altoChica * 400) / 600);
-  const yChica = H - altoChica - 22;
-  ctx.drawImage(il.chica, cx - anchoChica / 2, yChica, anchoChica, altoChica);
-  ctx.drawImage(il["abajo-izq"], -34, H - tamB + 34, tamB, tamB);
-  ctx.drawImage(il["abajo-der"], W - tamB + 34, H - tamB + 34, tamB, tamB);
-  for (const [dx, dy, r] of [[-0.42, 0.44, 11], [0.45, 0.38, 9], [-0.36, 0.72, 8], [0.4, 0.66, 12], [-0.2, 0.9, 7], [0.26, 0.88, 8]] as const) {
-    brilloXV(ctx, cx + dx * anchoChica, yChica + dy * altoChica, r, ORO_XV[1]);
-  }
+  // Ramilletes: grandes arriba, chicos abajo (justo en las esquinas)
+  const tamA = 380, tamB = 290;
+  ctx.drawImage(il["arriba-izq"], -30, -30, tamA, tamA);
+  ctx.drawImage(il["arriba-der"], W - tamA + 30, -30, tamA, tamA);
+  ctx.drawImage(il["abajo-izq"], -40, H - tamB + 40, tamB, tamB);
+  ctx.drawImage(il["abajo-der"], W - tamB + 40, H - tamB + 40, tamB, tamB);
 
   ctx.textBaseline = "alphabetic";
   const bloques: Bloque[] = [];
@@ -1186,28 +1226,28 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
     escribir(ctx, "Mis XV Años", cx, y + 62, { fuente: (px) => `${px}px ${SCRIPT}`, px: 64, min: 44, max: 400, color: c.texto });
   } });
   if (datos.invitado) {
-    bloques.push({ alto: 34, antes: 22, dibujar: (y) =>
-      escribir(ctx, `Para ${datos.invitado}`, cx, y + 28, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 20, max: 560, color: suave }) });
+    bloques.push({ alto: 34, antes: 20, dibujar: (y) =>
+      escribir(ctx, `Para ${datos.invitado}`, cx, y + 28, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 20, max: 600, color: suave }) });
   }
   if (datos.versiculo) {
     const v = datos.versiculo;
     ctx.font = `italic 500 24px ${SERIF}`;
-    const lineasV = partirParejo(ctx, `«${v.texto}»`, 600).slice(0, 3);
-    bloques.push({ alto: lineasV.length * 32 + 26, antes: 16, dibujar: (y) => {
+    const lineasV = partirParejo(ctx, `«${v.texto}»`, 620).slice(0, 3);
+    bloques.push({ alto: lineasV.length * 32 + 26, antes: 14, dibujar: (y) => {
       lineasV.forEach((l, i) =>
-        escribir(ctx, l, cx, y + 24 + i * 32, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 24, min: 18, max: 580, color: suave }));
+        escribir(ctx, l, cx, y + 24 + i * 32, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 24, min: 18, max: 640, color: suave }));
       escribir(ctx, v.cita.toLocaleUpperCase("es"), cx, y + lineasV.length * 32 + 20, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 16, min: 12, max: 500, espacio: 3, color: c.texto });
     } });
   }
   if (datos.padres) {
-    bloques.push(bloqueQueEntra(ctx, datos.padres, { alto: 64, antes: 18, base: 52, fuente: (px) => `${px}px ${SCRIPT}`, px: 64, min: 40, max: 640, color: tinta }));
+    bloques.push(bloqueQueEntra(ctx, datos.padres, { alto: 64, antes: 18, base: 52, fuente: (px) => `${px}px ${SCRIPT}`, px: 64, min: 40, max: 680, color: tinta }));
   }
   if (datos.invitaXV) {
     ctx.font = `italic 500 30px ${SERIF}`;
-    const lineasI = partirParejo(ctx, datos.invitaXV, 640).slice(0, 3);
-    bloques.push({ alto: lineasI.length * 40, antes: 12, dibujar: (y) => {
+    const lineasI = partirParejo(ctx, datos.invitaXV, 660).slice(0, 3);
+    bloques.push({ alto: lineasI.length * 40, antes: 8, dibujar: (y) => {
       lineasI.forEach((l, i) =>
-        escribir(ctx, l, cx, y + 30 + i * 40, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 22, max: 660, color: tinta }));
+        escribir(ctx, l, cx, y + 30 + i * 40, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 22, max: 680, color: tinta }));
     } });
   }
   bloques.push({ alto: 52, antes: 18, dibujar: (y) => {
@@ -1217,87 +1257,67 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
   } });
   bloques.push({ alto: 70, antes: 2, dibujar: (y) =>
     escribir(ctx, "Quinceañera", cx, y + 56, { fuente: (px) => `${px}px ${SCRIPT}`, px: 72, min: 48, max: 600, color: c.texto }) });
-  bloques.push(bloqueQueEntra(ctx, datos.protagonista, { alto: 140, antes: 0, base: 112, fuente: (px) => `${px}px ${SCRIPT}`, px: 150, min: 96, max: 780, color: c.texto }));
+  bloques.push(bloqueQueEntra(ctx, datos.protagonista, { alto: 140, antes: 0, base: 112, fuente: (px) => `${px}px ${SCRIPT}`, px: 150, min: 96, max: ancho, color: c.texto }));
 
-  repartir(ctx, bloques, 64, yChica + 14, formato === "historia" ? 1.12 : 1);
-
-  // Dos columnas a los lados de la quinceañera: la recepción y la fecha
-  const colAncho = Math.min(300, cx - anchoChica / 2 - 70);
-  const izq = 54 + colAncho / 2;
-  const der = W - 54 - colAncho / 2;
-  const yCol = yChica + 70;
-  const etiqueta = (t: string, x: number, y: number) =>
-    escribir(ctx, t, x, y, { fuente: (px) => `italic 600 ${px}px ${SERIF}`, px: 34, min: 24, max: colAncho, color: c.texto });
-  const dato = (t: string, x: number, y: number, px = 27) =>
-    escribir(ctx, t, x, y, { fuente: (n) => `500 ${n}px ${SERIF}`, px, min: 18, max: colAncho, color: tinta });
-
-  let y = yCol;
-  const filete = (x: number, yl: number) => {
-    ctx.strokeStyle = conAlfa(ORO_XV[1], 0.7);
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(x - 46, yl);
-    ctx.lineTo(x + 46, yl);
-    ctx.stroke();
-  };
-  if (datos.lugar) {
-    etiqueta("Recepción", izq, y);
-    filete(izq, y + 16);
-    y += 52;
-    // El lugar entero, aunque sea largo: con letra más chica antes que cortarlo
-    let pxLugar = 27;
-    ctx.font = `500 ${pxLugar}px ${SERIF}`;
-    let lineasLugar = partirParejo(ctx, datos.lugar, colAncho);
-    while (lineasLugar.length > 2 && pxLugar > 20) {
-      pxLugar -= 2;
-      ctx.font = `500 ${pxLugar}px ${SERIF}`;
-      lineasLugar = partirParejo(ctx, datos.lugar, colAncho);
-    }
-    for (const l of lineasLugar.slice(0, 3)) { dato(l, izq, y, pxLugar); y += pxLugar + 7; }
-    if (datos.direccion) {
-      ctx.font = `400 22px ${SANS}`;
-      for (const l of partirParejo(ctx, datos.direccion, colAncho).slice(0, 3)) {
-        escribir(ctx, l, izq, y, { fuente: (n) => `400 ${n}px ${SANS}`, px: 22, min: 16, max: colAncho, color: suave });
-        y += 29;
-      }
-    }
-    if (datos.horaCorta) { y += 6; dato(`Hora: ${datos.horaCorta}`, izq, y); }
-  } else if (datos.horaCorta) {
-    etiqueta("Hora", izq, y);
-    dato(datos.horaCorta, izq, y + 42);
-  }
-
-  y = yCol;
+  // El día, la fecha y la hora en una fila, separados por filetes:
+  // «Sábado | NOVIEMBRE 21 2026 | 6:00 p. m.»
   const fp = datos.fechaPartes;
-  if (fp) {
-    const semana = fp.semana.charAt(0) + fp.semana.slice(1).toLocaleLowerCase("es");
-    etiqueta(semana, der, y);
-    // Impresa con QR: la fecha más compacta, para que el código no caiga sobre las rosas
-    const conQR = !!qr;
-    const pxDia = conQR ? 64 : 78;
-    escribir(ctx, String(fp.dia), der, y + (conQR ? 76 : 88), { fuente: (n) => `600 ${n}px ${SERIF}`, px: pxDia, min: 44, max: colAncho, color: c.texto });
-    ctx.strokeStyle = conAlfa(ORO_XV[1], 0.7);
-    ctx.lineWidth = 1.4;
-    for (const lado of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(der + lado * (conQR ? 44 : 50), y + (conQR ? 54 : 62));
-      ctx.lineTo(der + lado * (conQR ? 84 : 92), y + (conQR ? 54 : 62));
-      ctx.stroke();
-    }
-    if (conQR) {
-      escribir(ctx, `${fp.mes.toLocaleUpperCase("es")} ${fp.anio}`, der, y + 108, { fuente: (n) => `500 ${n}px ${CAPS}`, px: 20, min: 14, max: colAncho, espacio: 3, color: tinta });
-      y += 108;
-    } else {
-      escribir(ctx, fp.mes.toLocaleUpperCase("es"), der, y + 124, { fuente: (n) => `500 ${n}px ${CAPS}`, px: 22, min: 15, max: colAncho, espacio: 4, color: tinta });
-      escribir(ctx, String(fp.anio), der, y + 154, { fuente: (n) => `500 ${n}px ${CAPS}`, px: 20, min: 14, max: colAncho, espacio: 4, color: suave });
-      y += 154;
-    }
+  if (fp || datos.horaCorta) {
+    bloques.push({ alto: fp ? 150 : 50, antes: 26, dibujar: (y) => {
+      const lado = (t: string, x: number, yy: number) =>
+        escribir(ctx, t, x, yy, { fuente: (px) => `italic 600 ${px}px ${SERIF}`, px: 36, min: 24, max: 200, color: c.texto });
+      if (!fp) { lado(datos.horaCorta!, cx, y + 40); return; }
+      const semana = fp.semana.charAt(0) + fp.semana.slice(1).toLocaleLowerCase("es");
+      const sep = 122;
+      ctx.strokeStyle = conAlfa(c.medio, 0.75);
+      ctx.lineWidth = 1.6;
+      for (const s of datos.horaCorta ? [-1, 1] : [-1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + s * sep, y + 14);
+        ctx.lineTo(cx + s * sep, y + 136);
+        ctx.stroke();
+      }
+      escribir(ctx, fp.mes.toLocaleUpperCase("es"), cx, y + 34, { fuente: (n) => `500 ${n}px ${CAPS}`, px: 24, min: 16, max: 2 * sep - 24, espacio: 4, color: tinta });
+      escribir(ctx, String(fp.dia), cx, y + 112, { fuente: (n) => `600 ${n}px ${SERIF}`, px: 80, min: 56, max: 2 * sep - 30, color: c.texto });
+      escribir(ctx, String(fp.anio), cx, y + 144, { fuente: (n) => `500 ${n}px ${CAPS}`, px: 19, min: 14, max: 2 * sep - 30, espacio: 4, color: suave });
+      lado(semana, cx - sep - 110, y + 88);
+      if (datos.horaCorta) lado(datos.horaCorta, cx + sep + 110, y + 88);
+    } });
   }
 
-  // Impresa: el QR lleva a la invitación, en la columna de la fecha
-  if (qr) {
-    const lado = 124;
-    dibujarQR(ctx, qr, der, y + 16, lado);
-    escribir(ctx, "ESCANEÁ PARA CONFIRMAR", der, y + lado + 40, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 14, min: 10, max: colAncho, espacio: 2, color: c.texto });
+  // El lugar entero (nunca cortado: si es largo, letra más chica) y su dirección
+  if (datos.lugar) {
+    let px = 30;
+    let lineasL: string[] = [];
+    for (; px >= 22; px -= 2) {
+      ctx.font = `500 ${px}px ${SERIF}`;
+      lineasL = partirParejo(ctx, `Lugar: ${datos.lugar}`, ancho);
+      if (lineasL.length <= 2) break;
+    }
+    px = Math.max(px, 22);
+    ctx.font = `400 23px ${SANS}`;
+    const lineasD = datos.direccion ? partirParejo(ctx, datos.direccion, ancho - 60).slice(0, 2) : [];
+    const pasoL = px + 10;
+    bloques.push({ alto: lineasL.length * pasoL + lineasD.length * 31, antes: 24, dibujar: (y) => {
+      lineasL.forEach((l, i) => {
+        const conEtiqueta = i === 0 && l.startsWith("Lugar: ");
+        renglonConEtiqueta(ctx, conEtiqueta ? "Lugar:" : "", conEtiqueta ? l.slice(7) : l, cx, y + px + i * pasoL, px, c.texto, tinta);
+      });
+      lineasD.forEach((l, i) =>
+        escribir(ctx, l, cx, y + lineasL.length * pasoL + 22 + i * 31, { fuente: (n) => `400 ${n}px ${SANS}`, px: 23, min: 16, max: ancho - 40, color: suave }));
+    } });
   }
+
+  // Confirmar: en la digital, con el enlace del mensaje (la impresa no lo dice)
+  if (datos.invitado && datos.cta && formato !== "imprimir") {
+    bloques.push({ alto: 22, antes: 22, dibujar: (y) =>
+      escribir(ctx, datos.cta.toLocaleUpperCase("es"), cx, y + 18, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 15, min: 11, max: ancho - 60, espacio: 3, color: suave }) });
+  }
+
+  if (datos.esperamosXV) {
+    bloques.push({ alto: 84, antes: 16, dibujar: (y) =>
+      escribir(ctx, datos.esperamosXV!, cx, y + 66, { fuente: (px) => `${px}px ${SCRIPT}`, px: 84, min: 56, max: 600, color: c.texto }) });
+  }
+
+  repartir(ctx, bloques, 66, H - 70, formato === "historia" ? 1.14 : 1);
 }

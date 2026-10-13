@@ -185,6 +185,7 @@ export type DatosTarjeta = {
   aviso: string | null;       // pre-invitación: que la invitación formal para confirmar llega después
   padres: string | null;      // XV años: quienes invitan, arriba en caligrafía («Genaro & Soila»)
   invitaXV: string | null;    // XV años: «Se complacen en invitarte a celebrar este mágico e inolvidable momento»
+  esperamosXV: string | null; // XV años: el cierre en caligrafía («Te esperamos», «Los esperamos», «Te espero»)
   tonoXV: TonoXV | null;      // XV años: color del vestido y de las rosas
 };
 
@@ -697,6 +698,8 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
   const invitaXV = !esXV ? null
     : padres ? `${variosInvitan ? "Se complacen" : "Se complace"} en ${plural ? "invitarlos" : "invitarte"} a celebrar este mágico e inolvidable momento`
     : mayuscula(fraseInvitacion(evento, plural));
+  // Si invita la misma quinceañera, habla ella: «Te espero»
+  const esperamosXV = !esXV ? null : `${plural ? "Los" : "Te"} ${padres ? "esperamos" : "espero"}`;
   const xv = esXV && !gala && (extras.diseno ?? "xv") === "xv";
 
   return {
@@ -753,6 +756,7 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     aviso: reserva ? textosReserva(evento, trato ?? "neutro").despues : null,
     padres,
     invitaXV,
+    esperamosXV,
     tonoXV: esXV ? extras.tono_xv ?? "rosa" : null,
   };
 }
