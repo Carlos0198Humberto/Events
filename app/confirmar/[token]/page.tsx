@@ -7,7 +7,7 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
-import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, enAgradecimiento, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, enAgradecimiento, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import InvitacionDistancia from "./InvitacionDistancia";
 import PreInvitacion from "./PreInvitacion";
 import Agradecimiento from "./Agradecimiento";
@@ -341,6 +341,19 @@ function sonidoCelebracion() {
 
 // ─── Confetti para pantalla de bienvenida (determinista, sin random) ─────────
 // Monograma del graduado: "Andrea Castillo" → "AC"
+// Mezcla un color con otro (t = cuánto del segundo): para el sobre y el fondo
+// de la portada, en el tono de la tarjeta
+function mezclarColor(hex: string, con: string, t: number): string {
+  const a = hex.replace("#", ""), b = con.replace("#", "");
+  const canal = (h: string, i: number) => parseInt(h.slice(i, i + 2), 16);
+  return "#" + [0, 2, 4].map((i) => Math.round(canal(a, i) + (canal(b, i) - canal(a, i)) * t).toString(16).padStart(2, "0")).join("");
+}
+function colorOscuro(hex: string): boolean {
+  const h = hex.replace("#", "");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
+}
+
 function iniciales(nombre?: string | null): string {
   const partes = (nombre || "").trim().split(/\s+/).filter(p => p.length > 1 || /[A-ZÁÉÍÓÚÑ]/.test(p));
   return partes.slice(0, 2).map(p => p.charAt(0).toUpperCase()).join("");
@@ -1932,7 +1945,8 @@ function useTTS() {
     if (fallbackTimer.current) { clearInterval(fallbackTimer.current); fallbackTimer.current = null; }
   }
 
-  // Elegir la voz en español más natural disponible, con acento latinoamericano.
+  // Elegir la voz en español más natural disponible, con acento latinoamericano
+  // y de mujer: la guía habla como una aeromoza (clara, cálida y pausada).
   // Orden: neurales de Edge ("Natural") > Google (Chrome/Android) > Siri/mejoradas
   // de Apple > el resto. Las de escritorio de Windows (Helena, Sabina…) suenan
   // robóticas, y macOS/iOS traen voces de juguete (Eddy, Grandma…) que nunca van.
@@ -1946,7 +1960,9 @@ function useTTS() {
       if (/natural|neural/.test(n)) p += 10;
       if (n.includes("google")) p += 7;
       if (/premium|enhanced|mejorada|siri/.test(n)) p += 6;
-      if (/paulina|m[oó]nica|dalia|lorena|rodrigo|jorge|marisol/.test(n)) p += 2;
+      // Voces de mujer conocidas (Edge, Apple, Android) primero; las de hombre, al final
+      if (/dalia|paloma|elvira|salome|catalina|lorena|paulina|m[oó]nica|marisol|camila|ximena|larissa|renata|beatriz|valentina|elena|luciana|soledad|isabela|female|mujer/.test(n)) p += 4;
+      if (/jorge|juan|diego|rodrigo|ra[uú]l|[aá]lvaro|carlos|pablo|gonzalo|enrique|tom[aá]s|alonso|gerardo|andr[eé]s|cristian|emilio|federico|jos[eé]|mateo|santiago|alfredo|dar[ií]o|eduardo|pedro|miguel|male\b|hombre/.test(n)) p -= 5;
       if (lang !== "es-es") p += 3;                 // acento latinoamericano
       if (/^es-(mx|us|419|sv)$/.test(lang)) p += 1;
       if (!v.localService) p += 2;                  // las de la nube suenan mejor
@@ -1984,8 +2000,9 @@ function useTTS() {
     boundaryFired.current = false;
 
     // Karaoke por tiempo (iOS no dispara onboundary): estimación continua.
-    // Velocidad casi normal y tono sin tocar: estirar una voz neural la vuelve metálica.
-    const rate = 0.95;
+    // Algo más pausada que lo normal, como una aeromoza; el tono sin tocar:
+    // estirar una voz neural la vuelve metálica.
+    const rate = 0.92;
     const charsPorSeg = 13.5 * rate;
     const t0 = Date.now();
     fallbackTimer.current = setInterval(() => {
@@ -2046,7 +2063,9 @@ function useTTS() {
         idx++;
         offset = chunkOffset + parte.length;
         if (boundaryFired.current) setCharIdx(offset);
-        hablarSiguiente();
+        // Una pausa breve al terminar cada oración, como una locutora; entre
+        // los pedazos de una frase larga, casi nada
+        setTimeout(hablarSiguiente, /[.!?…]["»”]?\s*$/.test(parte) ? 260 : 80);
       };
       u.onend = siguiente;
       u.onerror = (ev: SpeechSynthesisErrorEvent) => {
@@ -2500,15 +2519,74 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   const forma = ex.forma_foto ?? "arco";
   const [fotoLista, setFotoLista] = useState(false);
   const [fotoFallo, setFotoFallo] = useState(false);
+
+  // La portada es la misma tarjeta que recibió el invitado (con su nombre),
+  // que sale de un sobre. Si el celular no la logra armar a tiempo, queda la
+  // portada de siempre.
+  const datosTarjeta = useMemo(
+    () => armarDatosTarjeta(evento, invitado.nombre, nombres.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token), { distancia: especial, asistio: gracias }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const [tarjetaUrl, setTarjetaUrl] = useState<string | null>(null);
+  const [fase, setFase] = useState<"cargando" | "abriendo" | "lista" | "fallo">("cargando");
+  const faseRef = useRef(fase);
+  faseRef.current = fase;
+  const timersSobre = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => {
+    let vivo = true;
+    let url: string | null = null;
+    (async () => {
+      try {
+        const { generarTarjetaPNG } = await import("@/lib/tarjetaCanvas");
+        const blob = await generarTarjetaPNG(datosTarjeta);
+        if (!vivo || faseRef.current === "fallo") return;
+        if (!blob) { setFase("fallo"); return; }
+        url = URL.createObjectURL(blob);
+        setTarjetaUrl(url);
+      } catch { if (vivo) setFase("fallo"); }
+    })();
+    // Sin tarjeta a los 7 s (celular lento): la portada de siempre
+    const tope = setTimeout(() => { if (vivo && !url) setFase("fallo"); }, 7000);
+    const timers = timersSobre.current;
+    return () => { vivo = false; clearTimeout(tope); timers.forEach(clearTimeout); if (url) URL.revokeObjectURL(url); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const montadaEn = useRef(Date.now());
+  function tarjetaCargada() {
+    if (faseRef.current !== "cargando") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setFase("lista"); return; }
+    // El sobre se ve cerrado un momento antes de abrirse
+    timersSobre.current.push(setTimeout(() => {
+      setFase("abriendo");
+      timersSobre.current.push(setTimeout(() => setFase("lista"), 1350));
+    }, Math.max(150, 900 - (Date.now() - montadaEn.current))));
+  }
+  const fondoTarjeta = datosTarjeta.diseno === "moderna" ? tintasPlanas(datosTarjeta.paleta).fondo : datosTarjeta.paleta.fondo;
+  const tarjetaOscura = colorOscuro(fondoTarjeta);
+  const acento = datosTarjeta.paleta.oroPlano;
+  const varsSobre = (tarjetaOscura
+    ? {
+      "--pt-fondo": mezclarColor(fondoTarjeta, "#000000", 0.25), "--pt-centro": mezclarColor(fondoTarjeta, "#FFFFFF", 0.1),
+      "--pt-sobre": mezclarColor(fondoTarjeta, "#FFFFFF", 0.08), "--pt-frente": mezclarColor(fondoTarjeta, "#FFFFFF", 0.13),
+      "--pt-solapa": mezclarColor(fondoTarjeta, "#FFFFFF", 0.19), "--pt-borde": "rgba(255,255,255,0.12)",
+      "--pt-texto": "#FFFFFF", "--pt-suave": "rgba(255,255,255,0.72)", "--pt-cta-bg": "#FFFFFF", "--pt-cta-tx": fondoTarjeta,
+      "--pt-acento": acento, "--pt-acento-claro": mezclarColor(acento, "#FFFFFF", 0.4), "--pt-sello-tx": fondoTarjeta,
+    }
+    : {
+      "--pt-fondo": GRAD.perla, "--pt-centro": "#FFFFFF",
+      "--pt-sobre": "#FFFFFF", "--pt-frente": "#F4F6FA", "--pt-solapa": "#EBEFF6", "--pt-borde": "rgba(21,32,57,0.12)",
+      "--pt-texto": GRAD.tinta, "--pt-suave": "#5B6378", "--pt-cta-bg": "#152039", "--pt-cta-tx": "#FFFFFF",
+      "--pt-acento": acento, "--pt-acento-claro": mezclarColor(acento, "#FFFFFF", 0.4), "--pt-sello-tx": "#FFFFFF",
+    }) as React.CSSProperties;
+
   // Colores lisos, como la tarjeta moderna: tinta azul marino (rosa viejo en
   // la especial) para el texto chico, un tono suave para filetes y marco
   const c = especial
     ? { texto: "#8E5546", deco: "#CDA99F", claro: "#EAD9D4", luz: "rgba(142,85,70,0.05)", sombra: "rgba(90,50,40,0.28)", boton: "#8E5546" }
     : { texto: "#2D4372", deco: "#A9B4CA", claro: "#D5DCE9", luz: "rgba(45,67,114,0.05)", sombra: "rgba(21,32,57,0.28)", boton: "#152039" };
 
-  return (
-    <div className={`portada${especial ? " especial" : ""}${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`}>
-      <style>{`
+  const cssPortada = `
         ${especial || gracias ? "@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');" : ""}
         @keyframes ptSube{0%{opacity:0;transform:translateY(18px)}100%{opacity:1;transform:none}}
         @keyframes ptBaja{0%{opacity:0;transform:translateY(-12px)}100%{opacity:1;transform:none}}
@@ -2582,7 +2660,107 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
           .pt-cta::after,.pt-emblema,.pt-retrato{animation:none}
           .pt-arriba,.pt-script,.pt-para,.pt-honor,.pt-nombre,.pt-carrera,.pt-institucion,.pt-filete,.pt-invita,.pt-fecha,.pt-abajo{animation:none}
         }
-      `}</style>
+      
+        /* ── Portada con la tarjeta: sale de un sobre ── */
+        .portada.portada-tarjeta{background:radial-gradient(ellipse 85% 60% at 50% 36%,var(--pt-centro) 0%,var(--pt-fondo) 78%);color:var(--pt-texto)}
+        .pt-escena{--w:min(84vw,360px,calc((100dvh - 230px) / 1.35));position:relative;width:calc(var(--w) * 1.08);height:calc(var(--w) * 1.35);
+          margin:auto auto 0;flex-shrink:0;perspective:1200px}
+        .pt-tarjeta{position:absolute;left:50%;top:0;width:var(--w);height:calc(var(--w) * 1.25);margin-left:calc(var(--w) / -2);z-index:2;
+          border-radius:8px;box-shadow:0 26px 54px -20px rgba(0,0,0,0.6);transform-origin:50% 0;
+          transform:translateY(calc(var(--w) * 0.62)) scale(.55);transition:transform .9s .35s cubic-bezier(.2,.8,.2,1)}
+        .pt-sobre{position:absolute;left:0;width:100%;top:calc(var(--w) * 0.5906);height:calc(var(--w) * 0.7344);border-radius:6px;transition:transform .6s ease,opacity .6s ease}
+        .pt-sobre-atras{z-index:1;background:var(--pt-sobre);box-shadow:0 20px 44px -18px rgba(0,0,0,0.55);border:1px solid var(--pt-borde)}
+        .pt-sobre-frente{z-index:3;background:linear-gradient(172deg,var(--pt-frente),var(--pt-sobre));clip-path:polygon(0 0,50% 54%,100% 0,100% 100%,0 100%)}
+        .pt-sobre-solapa{z-index:4;height:calc(var(--w) * 0.4406);border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--pt-solapa),var(--pt-frente));
+          clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:50% 0;transition:transform .6s ease,opacity .6s ease,z-index 0s .3s}
+        .pt-sobre-sello{position:absolute;z-index:5;left:50%;top:calc(var(--w) * 0.97);width:calc(var(--w) * 0.17);height:calc(var(--w) * 0.17);
+          margin:calc(var(--w) * -0.085) 0 0 calc(var(--w) * -0.085);border-radius:50%;display:grid;place-items:center;
+          background:radial-gradient(circle at 35% 30%,var(--pt-acento-claro),var(--pt-acento));color:var(--pt-sello-tx);
+          font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:calc(var(--w) * 0.06);letter-spacing:.02em;
+          box-shadow:0 5px 12px rgba(0,0,0,0.35);transition:transform .35s ease,opacity .35s ease}
+        @keyframes ptFlota{0%,100%{translate:0 0}50%{translate:0 -5px}}
+        .fase-cargando .pt-sobre,.fase-cargando .pt-sobre-sello{animation:ptFlota 2.4s ease-in-out infinite}
+        .fase-abriendo .pt-sobre-sello,.fase-lista .pt-sobre-sello{opacity:0;transform:scale(1.4)}
+        .fase-abriendo .pt-sobre-solapa{transform:rotateX(180deg);z-index:1}
+        .fase-abriendo .pt-tarjeta{transform:translateY(calc(var(--w) * 0.06)) scale(.74)}
+        .fase-lista .pt-tarjeta{transform:none;transition:transform .8s cubic-bezier(.2,.8,.2,1)}
+        .fase-lista .pt-sobre{transform:translateY(calc(var(--w) * 0.3));opacity:0;pointer-events:none}
+        .fase-lista .pt-sobre-solapa{transform:translateY(calc(var(--w) * 0.3)) rotateX(180deg);z-index:1}
+        .portada-tarjeta .pt-abajo{margin-top:18px;margin-bottom:auto}
+        .portada-tarjeta .pt-aviso,.portada-tarjeta .pt-silencio{color:var(--pt-suave)}
+        .portada-tarjeta .pt-cta{background:var(--pt-cta-bg);color:var(--pt-cta-tx)}
+        @media (prefers-reduced-motion: reduce){
+          .pt-tarjeta,.pt-sobre,.pt-sobre-solapa,.pt-sobre-sello{transition:none;animation:none}
+        }
+      `;
+
+  const abajo = (
+      <div className="pt-abajo">
+        {!confirmado && (
+          <p className="pt-aviso">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14"/></svg>
+            {especial ? "Con música y tu carta leída en voz alta" : gracias ? "Con música y el mensaje leído en voz alta" : "Con música y una voz que te guía"}
+          </p>
+        )}
+        <button
+          className="pt-cta"
+          onTouchStart={() => {
+            // iOS: desbloquear audio en el touchstart (antes del click)
+            const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
+            if (typeof fn === "function") (fn as () => void)();
+          }}
+          onClick={() => onEntrar(true)}
+        >
+          {especial ? "Abrir mi carta" : gracias ? "Abrir mi agradecimiento" : confirmado ? "Ver mi entrada" : reserva ? "Ver mi pre-invitación" : "Abrir invitación"}
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button className="pt-silencio" onPointerDown={onSinSonidoPrevio} onClick={() => onEntrar(false)}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+          Entrar sin sonido
+        </button>
+      </div>
+  );
+
+  const birretes = (
+    <>
+      {/* Al entrar: los birretes vuelan, como al final de la ceremonia */}
+      {saliendo && [-120, -70, -30, 10, 50, 95, 135].map((dx, i) => (
+        <span key={i} className="pt-birrete" style={{ ["--dx" as string]: `${dx}px`, ["--rot" as string]: `${(i % 2 ? 1 : -1) * (180 + i * 40)}deg`, animationDelay: `${i * 0.045}s`, marginLeft: -16 } as React.CSSProperties}>
+          <BirreteSVG size={i % 3 === 0 ? 40 : 30} color={i % 2 ? GRAD.navy2 : GRAD.navy} borla={c.texto} />
+        </span>
+      ))}
+    </>
+  );
+
+  // La tarjeta misma, saliendo de un sobre (si no se pudo armar, la portada de siempre)
+  if (fase !== "fallo") {
+    return (
+      <div className={`portada portada-tarjeta${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`} style={varsSobre}>
+        <style>{cssPortada}</style>
+        <div className={`pt-escena fase-${fase}`}>
+          <div className="pt-sobre pt-sobre-atras" aria-hidden="true" />
+          {tarjetaUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              className="pt-tarjeta"
+              src={tarjetaUrl}
+              alt={`Tarjeta de invitación para ${invitado.nombre}: ${datosTarjeta.tituloScript}, ${protagonista}${datosTarjeta.fecha ? `, ${datosTarjeta.fecha}` : ""}`}
+              onLoad={tarjetaCargada}
+            />
+          )}
+          <div className="pt-sobre pt-sobre-frente" aria-hidden="true" />
+          <div className="pt-sobre pt-sobre-solapa" aria-hidden="true" />
+          <div className="pt-sobre-sello" aria-hidden="true">{mono}</div>
+        </div>
+        {abajo}
+        {birretes}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`portada${especial ? " especial" : ""}${saliendo ? " saliendo" : ""}`} role="dialog" aria-label={`Invitación de ${protagonista}`}>
+      <style>{cssPortada}</style>
 
       <span className="pt-marco" aria-hidden="true" />
 
@@ -2630,37 +2808,9 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
         )}
       </div>
 
-      <div className="pt-abajo">
-        {!confirmado && (
-          <p className="pt-aviso">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14"/></svg>
-            {especial ? "Con música y tu carta leída en voz alta" : gracias ? "Con música y el mensaje leído en voz alta" : "Con música y una voz que te guía"}
-          </p>
-        )}
-        <button
-          className="pt-cta"
-          onTouchStart={() => {
-            // iOS: desbloquear audio en el touchstart (antes del click)
-            const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
-            if (typeof fn === "function") (fn as () => void)();
-          }}
-          onClick={() => onEntrar(true)}
-        >
-          {especial ? "Abrir mi carta" : gracias ? "Abrir mi agradecimiento" : confirmado ? "Ver mi entrada" : reserva ? "Ver mi pre-invitación" : "Abrir invitación"}
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </button>
-        <button className="pt-silencio" onPointerDown={onSinSonidoPrevio} onClick={() => onEntrar(false)}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
-          Entrar sin sonido
-        </button>
-      </div>
+      {abajo}
 
-      {/* Al entrar: los birretes vuelan, como al final de la ceremonia */}
-      {saliendo && [-120, -70, -30, 10, 50, 95, 135].map((dx, i) => (
-        <span key={i} className="pt-birrete" style={{ ["--dx" as string]: `${dx}px`, ["--rot" as string]: `${(i % 2 ? 1 : -1) * (180 + i * 40)}deg`, animationDelay: `${i * 0.045}s`, marginLeft: -16 } as React.CSSProperties}>
-          <BirreteSVG size={i % 3 === 0 ? 40 : 30} color={i % 2 ? GRAD.navy2 : GRAD.navy} borla={c.texto} />
-        </span>
-      ))}
+      {birretes}
     </div>
   );
 }
@@ -4006,7 +4156,9 @@ export default function ConfirmarPage() {
   useEffect(() => {
     if (loading || step !== "vista") return;
     if (typeof IntersectionObserver === "undefined") return;
-    const els = Array.from(document.querySelectorAll(".inv-body > *"));
+    // La invitación, la pre-invitación, el agradecimiento y la carta a distancia:
+    // cada bloque entra cuando llega a la pantalla
+    const els = Array.from(document.querySelectorAll(".inv-body > *, .pi-cuerpo > *, .ag-cuerpo > *, .ag-seccion, .dist-seccion"));
     if (!els.length) return;
     const io = new IntersectionObserver(
       (entries) => {
@@ -5046,6 +5198,15 @@ export default function ConfirmarPage() {
 
     /* ── Pulido visual: aparición al hacer scroll ── */
     .rv-prep{opacity:0;transform:translateY(22px)}
+    /* La cabecera de cada pantalla entra escalonada, elemento por elemento */
+    @keyframes rvHero{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+    .inv-head>*,.pi-hero>*,.ag-hero>*{animation:rvHero .75s cubic-bezier(.22,1,.36,1) both}
+    .inv-head>*:nth-child(2),.pi-hero>*:nth-child(2),.ag-hero>*:nth-child(2){animation-delay:.1s}
+    .inv-head>*:nth-child(3),.pi-hero>*:nth-child(3),.ag-hero>*:nth-child(3){animation-delay:.2s}
+    .inv-head>*:nth-child(4),.pi-hero>*:nth-child(4),.ag-hero>*:nth-child(4){animation-delay:.3s}
+    .inv-head>*:nth-child(5),.pi-hero>*:nth-child(5),.ag-hero>*:nth-child(5){animation-delay:.4s}
+    .inv-head>*:nth-child(n+6),.pi-hero>*:nth-child(n+6),.ag-hero>*:nth-child(n+6){animation-delay:.5s}
+    @media (prefers-reduced-motion: reduce){.inv-head>*,.pi-hero>*,.ag-hero>*{animation:none}}
     .rv-prep.rv-in{opacity:1;transform:translateY(0);transition:opacity .7s ease,transform .7s cubic-bezier(.22,1,.36,1)}
     @media (prefers-reduced-motion: reduce){.rv-prep{opacity:1;transform:none}}
     /* ── Ken Burns: la foto principal respira lentamente ── */
