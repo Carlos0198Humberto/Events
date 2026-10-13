@@ -497,6 +497,23 @@ export default function AgregarInvitados() {
     setTarjeta(null);
   }
 
+  // Con la tarjeta abierta, el botón «atrás» del teléfono la cierra en vez de
+  // salir de Invitados: se agrega un paso al historial y se escucha la vuelta
+  const cerrarTarjetaRef = useRef(cerrarTarjeta);
+  cerrarTarjetaRef.current = cerrarTarjeta;
+  const tarjetaAbierta = !!tarjeta;
+  useEffect(() => {
+    if (!tarjetaAbierta) return;
+    window.history.pushState({ ...window.history.state, evorixTarjeta: true }, "");
+    const alVolver = () => cerrarTarjetaRef.current();
+    window.addEventListener("popstate", alVolver);
+    return () => {
+      window.removeEventListener("popstate", alVolver);
+      // Se cerró con un botón: se saca el paso que se agregó
+      if (window.history.state?.evorixTarjeta) window.history.back();
+    };
+  }, [tarjetaAbierta]);
+
   function enviarSoloMensaje() {
     if (!tarjeta) return;
     enviarWhatsApp(tarjeta.inv);
@@ -575,7 +592,7 @@ export default function AgregarInvitados() {
     const blob = await generarTarjetaPNG(
       armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, asistio: asistioInv(inv) }),
       "imprimir",
-      { qr: esPreInvitacion(inv) ? undefined : buildLink(inv.token) },
+      { qr: esPreInvitacion(inv) || evento.tarjeta?.entrada_qr === false ? undefined : buildLink(inv.token) },
     );
     if (!blob) { ventana.close(); toast.error("No se pudo preparar la tarjeta para imprimir."); return; }
     const src = await new Promise<string>((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.readAsDataURL(blob); });
@@ -1171,7 +1188,17 @@ export default function AgregarInvitados() {
 
         /* ── Tarjeta de invitación ── */
         .tarjeta-card { background: var(--surface); border-radius: 24px; padding: 18px 18px 16px; max-width: 400px; width: 100%; max-height: calc(100dvh - 40px); overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.28); border: 1.5px solid var(--border); text-align: center; }
-        .tarjeta-titulo { font-family: 'Cormorant Garamond', serif; font-size: 21px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+        .tarjeta-titulo { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* Arriba y siempre a la vista: volver y cerrar (antes solo había «Cerrar» al fondo) */
+        .tarjeta-barra { position: sticky; top: -18px; z-index: 2; display: flex; align-items: center; gap: 8px; margin: -18px -18px 12px; padding: 12px 12px 10px; background: var(--surface); border-bottom: 1px solid var(--border); }
+        .tarjeta-volver { display: inline-flex; align-items: center; gap: 4px; padding: 8px 10px; border-radius: 10px; border: 1.5px solid var(--border-input); background: var(--surface); color: var(--text2); font: 600 13px 'DM Sans', sans-serif; cursor: pointer; flex-shrink: 0; }
+        .tarjeta-x { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; border: none; background: var(--surface2); color: var(--text2); cursor: pointer; flex-shrink: 0; }
+        /* En el celular, la tarjeta ocupa la pantalla entera */
+        @media (max-width: 560px) {
+          .overlay-tarjeta { padding: 0; align-items: stretch; }
+          .overlay-tarjeta .tarjeta-card { max-width: none; max-height: none; height: 100dvh; border-radius: 0; border: none; padding: 18px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+          .overlay-tarjeta .tarjeta-barra { margin: -18px -16px 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px; }
+        }
         .tarjeta-marco { position: relative; width: min(100%, calc(46dvh * 1080 / 1350)); aspect-ratio: 1080 / 1350; margin: 0 auto 12px; border-radius: 12px; overflow: hidden; background: #0D0D0F; box-shadow: 0 6px 22px rgba(0,0,0,0.25); }
         .tarjeta-marco img { display: block; width: 100%; height: 100%; object-fit: contain; }
         .tarjeta-cargando { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #E2C46A; font-size: 13px; font-weight: 600; }
@@ -1263,9 +1290,18 @@ export default function AgregarInvitados() {
 
       {/* Vista previa de la tarjeta antes de enviarla */}
       {tarjeta && (
-        <div className="overlay" onClick={(e) => { if (e.target === e.currentTarget) cerrarTarjeta(); }}>
+        <div className="overlay overlay-tarjeta" onClick={(e) => { if (e.target === e.currentTarget) cerrarTarjeta(); }}>
           <div className="tarjeta-card" role="dialog" aria-modal="true" aria-label={`Tarjeta de invitación de ${tarjeta.inv.nombre}`}>
-            <div className="tarjeta-titulo">Tarjeta para {tarjeta.inv.nombre}</div>
+            <div className="tarjeta-barra">
+              <button type="button" className="tarjeta-volver" onClick={cerrarTarjeta}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
+                Volver
+              </button>
+              <div className="tarjeta-titulo">Tarjeta para {tarjeta.inv.nombre.split(" ")[0]}</div>
+              <button type="button" className="tarjeta-x" onClick={cerrarTarjeta} aria-label="Cerrar la tarjeta">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
             <div className="tarjeta-marco">
               {tarjeta.url
                 ? <img src={tarjeta.url} alt={`Tarjeta de invitación para ${tarjeta.inv.nombre}`} />
@@ -1318,7 +1354,7 @@ export default function AgregarInvitados() {
               <button className="tarjeta-link" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">o compartir la imagen eligiendo el contacto</button>
             )}
             <button className="tarjeta-estados" onClick={imprimirTarjeta} disabled={!tarjeta.blob} type="button">
-              <IcoImpresora size={16} />{esPreInvitacion(tarjeta.inv) ? "Imprimir (5×7)" : "Imprimir (5×7 con código QR)"}
+              <IcoImpresora size={16} />{esPreInvitacion(tarjeta.inv) || evento?.tarjeta?.entrada_qr === false ? "Imprimir (5×7)" : "Imprimir (5×7 con código QR)"}
             </button>
             <button className="tarjeta-estados" onClick={tarjetaParaEstados} disabled={generandoHistoria} type="button">
               {generandoHistoria ? "Preparando…" : "Versión para estados (sin nombre del invitado)"}
