@@ -9,6 +9,16 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // La voz de las invitaciones (/api/voz): ONNX Runtime en WebAssembly se carga
+  // desde node_modules, con sus .wasm al lado (no se empaqueta)
+  serverExternalPackages: ["onnxruntime-web"],
+  outputFileTracingIncludes: {
+    "/api/voz": [
+      "./node_modules/onnxruntime-web/dist/ort.node.min.mjs",
+      "./node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs",
+      "./node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm",
+    ],
+  },
   typescript: {
     // Los errores de tipo no bloquean el build (se resuelven por separado)
     ignoreBuildErrors: true,

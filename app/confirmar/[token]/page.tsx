@@ -15,6 +15,7 @@ import { coloresXV, svgDataUrl, svgRamillete } from "@/lib/ilustracionesXV";
 import { IcoCamara, IcoCorazon as IcoCorazonLinea } from "@/app/components/Iconos";
 import { nombreDePila, saludoDeCarta, tratoDe } from "@/lib/tratoInvitado";
 import { citaHablada } from "@/lib/versiculos";
+import { claveVoz, textoParaVoz, urlPublicaVoz } from "@/lib/vozGrabada";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -1982,8 +1983,113 @@ function GradMascot({ hablando, tipo = "graduacion", tonoXV = null }: { hablando
   );
 }
 
+// ─── La voz elegida para todas las invitaciones (Sharvard, de Piper) ──────────
+// Cada frase llega ya hecha: del almacenamiento si alguien ya la necesitó, o de
+// /api/voz, que la genera y la guarda. Si el servidor tarda o falla, la lectura
+// sigue con la voz del teléfono: la guía nunca se queda callada.
+const audiosVoz = new Map<string, Promise<string>>(); // frase → URL del audio
+function audioDeFrase(token: string, frase: string): Promise<string> {
+  const t = textoParaVoz(frase);
+  let p = audiosVoz.get(t);
+  if (!p) {
+    p = (async () => {
+      const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const clave = base ? await claveVoz(t) : null;
+      if (base && clave) {
+        const r = await fetch(urlPublicaVoz(base, clave)).catch(() => null);
+        if (r?.ok) return URL.createObjectURL(await r.blob());
+      }
+      const r = await fetch(`/api/voz?i=${encodeURIComponent(token)}&t=${encodeURIComponent(t)}`);
+      if (!r.ok) throw new Error(`voz ${r.status}`);
+      return URL.createObjectURL(await r.blob());
+    })();
+    audiosVoz.set(t, p);
+    p.catch(() => audiosVoz.delete(t)); // la próxima vez se vuelve a pedir
+  }
+  return p;
+}
+
+function conLimite<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((ok, mal) => {
+    const t = setTimeout(() => mal(new Error("tarde")), ms);
+    p.then((v) => { clearTimeout(t); ok(v); }, (e) => { clearTimeout(t); mal(e); });
+  });
+}
+
+// Un solo reproductor para la voz: en iPhone se «abre» dentro del toque del
+// invitado y después ya puede sonar solo
+let reproductorVoz: HTMLAudioElement | null = null;
+function reproductorDeVoz(): HTMLAudioElement {
+  reproductorVoz ??= new Audio();
+  reproductorVoz.preload = "auto";
+  return reproductorVoz;
+}
+let silencioCorto: string | null = null;
+function desbloquearVozGrabada() {
+  try {
+    if (!silencioCorto) {
+      // 0,1 s de silencio (8 kHz, 16 bits)
+      const n = 800, d = new DataView(new ArrayBuffer(44 + n * 2));
+      const t = (o: number, x: string) => { for (let i = 0; i < x.length; i++) d.setUint8(o + i, x.charCodeAt(i)); };
+      t(0, "RIFF"); d.setUint32(4, 36 + n * 2, true); t(8, "WAVE"); t(12, "fmt "); d.setUint32(16, 16, true);
+      d.setUint16(20, 1, true); d.setUint16(22, 1, true); d.setUint32(24, 8000, true); d.setUint32(28, 16000, true);
+      d.setUint16(32, 2, true); d.setUint16(34, 16, true); t(36, "data"); d.setUint32(40, n * 2, true);
+      silencioCorto = URL.createObjectURL(new Blob([d], { type: "audio/wav" }));
+    }
+    const a = reproductorDeVoz();
+    a.muted = true;
+    a.src = silencioCorto;
+    a.play().then(() => { a.pause(); a.muted = false; }, () => { a.muted = false; });
+  } catch { /* opcional */ }
+}
+
+/** Arranca el motor de voz del servidor mientras el invitado mira la portada. */
+function calentarVoz(token: string) {
+  fetch(`/api/voz?i=${encodeURIComponent(token)}&calentar=1`).catch(() => { /* sin red: ya avisará la lectura */ });
+}
+
+// Suena una frase grabada. En iPhone, si la música pasa por el mezclador, la
+// voz va por el mismo mezclador (Web Audio): dos <audio> a la vez pueden
+// pausarse entre sí. En el resto, con el reproductor de la voz.
+type Sonando = { parar(): void };
+function sonarFrase(url: string, mudo: boolean, avance: (fraccion: number) => void, terminar: () => void, fallar: () => void): Sonando {
+  let parado = false;
+  if (mezcla) {
+    const { ctx } = mezcla;
+    let fuente: AudioBufferSourceNode | null = null;
+    let reloj: ReturnType<typeof setInterval> | null = null;
+    (async () => {
+      try {
+        const buf = await ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
+        if (parado) return;
+        await ctx.resume().catch(() => {});
+        const g = ctx.createGain();
+        g.gain.value = mudo ? 0 : 1;
+        fuente = ctx.createBufferSource();
+        fuente.buffer = buf;
+        fuente.connect(g).connect(ctx.destination);
+        const t0 = ctx.currentTime;
+        fuente.onended = () => { if (reloj) clearInterval(reloj); if (!parado) terminar(); };
+        reloj = setInterval(() => avance(Math.min(1, (ctx.currentTime - t0) / buf.duration)), 120);
+        fuente.start();
+      } catch { if (!parado) fallar(); }
+    })();
+    return { parar() { parado = true; if (reloj) clearInterval(reloj); try { fuente?.stop(); } catch { /* ya terminó */ } } };
+  }
+  const a = reproductorDeVoz();
+  a.muted = mudo;
+  a.src = url;
+  a.ontimeupdate = () => { if (!parado && a.duration) avance(Math.min(1, a.currentTime / a.duration)); };
+  a.onended = () => { if (!parado) terminar(); };
+  a.onerror = () => { if (!parado) fallar(); };
+  a.play().catch(() => { if (!parado) fallar(); });
+  return { parar() { parado = true; a.pause(); } };
+}
+
 // ─── TTS — Lee la invitación en voz alta (con sincronización palabra a palabra) ─
-function useTTS() {
+// Con `token`, habla con la voz elegida (grabada en el servidor); sin él, o si
+// esa voz no llega, con la del teléfono.
+function useTTS(token?: string) {
   const [hablando, setHablando] = useState(false);
   const [listo, setListo] = useState(false);
   // Texto que se está leyendo + índice del carácter actual (para karaoke)
@@ -2043,6 +2149,10 @@ function useTTS() {
 
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sesionRef = useRef(0); // invalida callbacks de lecturas viejas/canceladas
+  // La frase grabada que está sonando, y cuántas veces falló la voz del
+  // servidor: después de dos, en esta visita habla el teléfono
+  const sonando = useRef<Sonando | null>(null);
+  const fallasVoz = useRef(0);
 
   function limpiarTimers() {
     limpiarFallback();
@@ -2055,6 +2165,8 @@ function useTTS() {
     const texto = limpiarParaVoz(textoOriginal);
     const sesion = ++sesionRef.current;
     try { ss.cancel(); } catch {}
+    sonando.current?.parar();
+    sonando.current = null;
     limpiarTimers();
     // Bajar música mientras habla (en silencio no hace falta)
     if (!silencioRef.current) musicaBajoVoz(true);
@@ -2066,22 +2178,16 @@ function useTTS() {
     setCharIdx(0);
     boundaryFired.current = false;
 
-    // Karaoke por tiempo (iOS no dispara onboundary): estimación continua.
     // Pausada y señorial, como una aeromoza: apenas más lenta y un punto más
     // grave. Sin pasarse: estirar mucho una voz neural la vuelve metálica.
     const rate = 0.95;
     const charsPorSeg = 13.5 * rate;
-    const t0 = Date.now();
-    fallbackTimer.current = setInterval(() => {
-      if (sesion !== sesionRef.current) return;
-      if (boundaryFired.current) return; // los eventos reales toman el control
-      setCharIdx(Math.min(texto.length, Math.floor(((Date.now() - t0) / 1000) * charsPorSeg)));
-    }, 200);
 
     const fin = () => {
       if (sesion !== sesionRef.current) return;
       sesionRef.current++;
       limpiarTimers();
+      sonando.current = null;
       setHablando(false);
       setTextoActual("");
       setCharIdx(0);
@@ -2095,6 +2201,7 @@ function useTTS() {
     // la última coma o punto y coma antes de ~150 letras: Chrome corta una
     // locución de más de ~15 segundos y la carta quedaba a medias.
     const chunks = (texto.match(/[^.!?…]+[.!?…]*\s*/g) ?? [texto]).filter(c => c.trim().length > 0).flatMap(partirFraseLarga);
+    const pausaTras = (parte: string) => /[.!?…]["»”]?\s*$/.test(parte) ? 180 : 60;
     let idx = 0;
     let offset = 0;
     // Una sola voz por lectura: si las voces llegan tarde se toma la primera
@@ -2132,7 +2239,7 @@ function useTTS() {
         if (boundaryFired.current) setCharIdx(offset);
         // Una pausa breve al terminar cada oración, como una locutora; entre
         // los pedazos de una frase larga, casi nada
-        setTimeout(hablarSiguiente, /[.!?…]["»”]?\s*$/.test(parte) ? 180 : 60);
+        setTimeout(hablarSiguiente, pausaTras(parte));
       };
       u.onend = siguiente;
       u.onerror = (ev: SpeechSynthesisErrorEvent) => {
@@ -2146,24 +2253,86 @@ function useTTS() {
       } catch { siguiente(); }
     };
 
-    // Vigilante de arranque: antes de arrancar, porque cada frase lo reemplaza
-    // por el suyo al empezar (si se pusiera después, pisaría al de la primera)
-    watchdog.current = setTimeout(fin, 8000);
-
-    // Arrancar SIN esperar indefinidamente las voces:
-    // en iOS getVoices() llega vacío y onvoiceschanged puede no dispararse jamás.
-    let arrancado = false;
-    const arrancar = () => {
-      if (arrancado || sesion !== sesionRef.current) return;
-      arrancado = true;
-      hablarSiguiente();
+    // La voz del teléfono desde la frase `desde` (también si la grabada no llega)
+    const conTelefono = (desde: number, desdeOffset: number) => {
+      if (sesion !== sesionRef.current) return;
+      idx = desde;
+      offset = desdeOffset;
+      // Karaoke por tiempo (iOS no dispara onboundary): estimación continua
+      const t0 = Date.now();
+      fallbackTimer.current = setInterval(() => {
+        if (sesion !== sesionRef.current) return;
+        if (boundaryFired.current) return; // los eventos reales toman el control
+        setCharIdx(Math.min(texto.length, desdeOffset + Math.floor(((Date.now() - t0) / 1000) * charsPorSeg)));
+      }, 200);
+      // Vigilante de arranque: antes de arrancar, porque cada frase lo reemplaza
+      // por el suyo al empezar (si se pusiera después, pisaría al de la primera)
+      watchdog.current = setTimeout(fin, 8000);
+      // Arrancar SIN esperar indefinidamente las voces:
+      // en iOS getVoices() llega vacío y onvoiceschanged puede no dispararse jamás.
+      let arrancado = false;
+      const arrancar = () => {
+        if (arrancado || sesion !== sesionRef.current) return;
+        arrancado = true;
+        hablarSiguiente();
+      };
+      if (ss.getVoices().length) {
+        arrancar();
+      } else {
+        ss.onvoiceschanged = arrancar;
+        setTimeout(arrancar, 300); // iOS: hablar igual con la voz por defecto
+      }
     };
-    if (ss.getVoices().length) {
-      arrancar();
-    } else {
-      ss.onvoiceschanged = arrancar;
-      setTimeout(arrancar, 300); // iOS: hablar igual con la voz por defecto
-    }
+
+    // La voz elegida: frase por frase, con la que sigue ya pedida mientras
+    // suena la actual. La primera puede tardar si el servidor recién arranca:
+    // pasado el límite, sigue el teléfono desde esa misma frase.
+    const conGrabada = (tk: string) => {
+      let i = 0;
+      let off = 0;
+      const pedir = (k: number) => (k < chunks.length ? audioDeFrase(tk, chunks[k]) : null);
+      const aTelefono = () => {
+        if (sesion !== sesionRef.current) return;
+        fallasVoz.current++;
+        sonando.current?.parar();
+        sonando.current = null;
+        if (watchdog.current) { clearTimeout(watchdog.current); watchdog.current = null; }
+        conTelefono(i, off);
+      };
+      const siguiente = async () => {
+        if (sesion !== sesionRef.current) return;
+        if (i >= chunks.length) { fin(); return; }
+        const parte = chunks[i];
+        const chunkOffset = texto.indexOf(parte, off) >= 0 ? texto.indexOf(parte, off) : off;
+        const actual = pedir(i)!;
+        pedir(i + 1);
+        let url: string;
+        try { url = await conLimite(actual, i === 0 ? 9000 : 15000); }
+        catch { aTelefono(); return; }
+        if (sesion !== sesionRef.current) return;
+        // Si el audio se traba, sigue el teléfono
+        if (watchdog.current) clearTimeout(watchdog.current);
+        watchdog.current = setTimeout(aTelefono, 30000);
+        sonando.current = sonarFrase(
+          url,
+          silencioRef.current,
+          (f) => { if (sesion === sesionRef.current) setCharIdx(chunkOffset + Math.floor(parte.length * f)); },
+          () => {
+            if (sesion !== sesionRef.current) return;
+            i++;
+            off = chunkOffset + parte.length;
+            setCharIdx(off);
+            pedir(i + 1);
+            setTimeout(siguiente, pausaTras(parte));
+          },
+          aTelefono,
+        );
+      };
+      siguiente();
+    };
+
+    if (token && fallasVoz.current < 2) conGrabada(token);
+    else conTelefono(0, 0);
 
     setListo(true);
   }
@@ -2171,6 +2340,8 @@ function useTTS() {
   function detener() {
     sesionRef.current++; // invalida cualquier lectura en curso
     try { window.speechSynthesis?.cancel(); } catch {}
+    sonando.current?.parar();
+    sonando.current = null;
     setHablando(false);
     setTextoActual("");
     setCharIdx(0);
@@ -4251,7 +4422,15 @@ export default function ConfirmarPage() {
     return () => io.disconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, step, evento?.id]);
-  const { hablando, leer, detener, textoActual, charIdx, silencio, setSilencio } = useTTS();
+  const { hablando, leer, detener, textoActual, charIdx, silencio, setSilencio } = useTTS(token);
+
+  // La voz del servidor arranca mientras el invitado mira la portada: así la
+  // primera frase no espera a que el motor se encienda
+  const guiadoVoz = evento?.tipo === "graduacion" || evento?.tipo === "cumpleaños" || evento?.tipo === "quinceañera";
+  useEffect(() => {
+    if (token && guiadoVoz) calentarVoz(token);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, guiadoVoz]);
 
   // "Entrar sin sonido": se marca en el pointerdown, antes que el desbloqueo
   // global de audio (que escucha el primer toque) llegue a encender la música.
@@ -4279,7 +4458,7 @@ export default function ConfirmarPage() {
       marcarSinSonido();
       setSilencio(true);
     }
-    if (guiado) desbloquearTTS();
+    if (guiado) { desbloquearTTS(); desbloquearVozGrabada(); }
     if (evento.tipo === "graduacion" || evento.tipo === "quinceañera") setSaliendoPortada(true);
     else document.getElementById("welcome-overlay")?.classList.add("leaving");
     setTimeout(() => {
@@ -5661,7 +5840,7 @@ export default function ConfirmarPage() {
               const fn = (window as unknown as Record<string, unknown>).__unlockAudio;
               if (typeof fn === "function") (fn as () => void)();
               // iOS: desbloquear también la voz (speechSynthesis) dentro del gesto
-              if (evento.tipo === "cumpleaños") desbloquearTTS();
+              if (evento.tipo === "cumpleaños") { desbloquearTTS(); desbloquearVozGrabada(); }
             }}
             onClick={() => entrarInvitacion(true)}
           >

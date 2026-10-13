@@ -19,6 +19,7 @@
 // agrega peso al resto de la app.
 
 import { useEffect, useRef, useState } from "react";
+import { VOZ } from "@/lib/vozGrabada";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // import() en tiempo de ejecución, sin que el bundler lo toque
@@ -320,6 +321,7 @@ export default function ProbadorDeVoces() {
         .pv-detalle{font-size:12.5px;color:var(--pv-suave);margin-top:2px}
         .pv-estado{font-size:12px;color:var(--pv-suave);margin-top:6px}
         .pv-estado.ok{color:var(--pv-ok);font-weight:700}
+        .pv-elegida{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:var(--pv-acento);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.02em;vertical-align:2px}
         .pv-estado.error{color:#DC2626;font-weight:700}
         .pv-barra{height:5px;border-radius:99px;background:var(--pv-borde);overflow:hidden;margin-top:6px}
         .pv-barra span{display:block;height:100%;background:var(--pv-acento);transition:width .2s}
@@ -351,7 +353,10 @@ export default function ProbadorDeVoces() {
             return (
               <div key={v.id} className={`pv-voz${sonando === v.id ? " sonando" : ""}`}>
                 <div className="pv-info">
-                  <div className="pv-nombre">{v.nombre}</div>
+                  <div className="pv-nombre">
+                    {v.nombre}
+                    {v.modelo === VOZ.modelo && v.hablante === VOZ.hablante && <span className="pv-elegida">La de tus invitaciones</span>}
+                  </div>
                   <div className="pv-detalle">{v.detalle} · {v.peso}</div>
                   {e?.error && <div className="pv-estado error">{e.error}</div>}
                   {enCurso && (
