@@ -286,7 +286,8 @@ export function protagonistaDe(evento: EventoTarjeta): { nombre: string; esPerso
   const graduando = extrasDe(evento).graduando;
   if (graduando) return { nombre: graduando, esPersona: true };
   const anfitriones = evento.anfitriones?.trim() || "";
-  const m = /^\s*(?:mis?\s+)?(?:graduaci[oó]n|xv\s+a[nñ]os|quince\s+a[nñ]os|cumplea[nñ]os|boda)\s+(?:de|del)\s+(.+)$/i.exec(evento.nombre);
+  // «Graduación de Luis», «XV años de Sofía», «XV de Sofía», «15 años de Sofía», «Quinceañera de Sofía»…
+  const m = /^\s*(?:mis?\s+)?(?:graduaci[oó]n|(?:xv|15|quince)(?:\s+a[nñ]os)?|quincea[nñ]era|cumplea[nñ]os|boda)\s+(?:de|del)\s+(.+)$/i.exec(evento.nombre);
   const delNombre = m ? m[1].split(/\s+[—–-]\s+|[,|(]/)[0].trim() : "";
   // "Graduación de la promoción 2025" no nombra a nadie
   const pareceNombre = delNombre.length > 1 && delNombre.length <= 40 && !/\d/.test(delNombre)
@@ -308,9 +309,23 @@ export function familiaDe(evento: EventoTarjeta): string | null {
   const propia = extrasDe(evento).familia;
   if (propia) return propia;
   const anf = evento.anfitriones?.trim() || "";
-  if (!anf || !esFamilia(anf)) return null;
+  if (!anf) return null;
   const p = protagonistaDe(evento);
-  return p.esPersona ? anf : null;
+  // Si el nombre grande ya es la familia, no se repite abajo
+  if (!p.esPersona) return null;
+  if (esFamilia(anf)) return anf;
+  // Personas que invitan (los papás, «Genaro y Soila»): van si no son el mismo
+  // festejado. Antes solo se mostraban las que empezaban con «Familia».
+  return mismaPersona(anf, p.nombre) ? null : anf;
+}
+
+// «Carlos Chavarría» y «Carlos Humberto Chavarría Aparicio» son la misma persona
+function mismaPersona(a: string, b: string): boolean {
+  const x = normal(a), y = normal(b);
+  if (!x || !y) return false;
+  if (x === y || x.includes(y) || y.includes(x)) return true;
+  const tx = x.split(" "), ty = y.split(" ");
+  return tx[0] === ty[0] && tx.slice(1).some((t) => t.length > 2 && ty.includes(t));
 }
 
 /**
@@ -664,9 +679,7 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
   const plural = trato === "plural";
   // XV años: invitan los papás (o la familia); si invita la misma quinceañera, su frase
   const esXV = evento.tipo === "quinceañera";
-  const anfitrionesXV = evento.anfitriones?.trim() || "";
-  const padres = !esXV ? null
-    : extras.familia || (anfitrionesXV && normal(anfitrionesXV) !== normal(protagonista.nombre) ? anfitrionesXV : null);
+  const padres = esXV ? familiaDe(evento) : null;
   const variosInvitan = !!padres && (/\s(?:y|&)\s|\//i.test(padres) || /^familias\s/i.test(padres));
   const invitaXV = !esXV ? null
     : padres ? `${variosInvitan ? "Se complacen" : "Se complace"} en ${plural ? "invitarlos" : "invitarte"} a celebrar este mágico e inolvidable momento`

@@ -392,3 +392,21 @@ describe("tarjeta de XV años", () => {
     expect(d.diseno).toBe("moderna");
   });
 });
+
+describe("el nombre y quién invita siempre aparecen", () => {
+  it("reconoce a la quinceañera en «XV de…», «15 años de…» y «Quinceañera de…»", () => {
+    for (const nombre of ["XV de Ashley", "15 años de Ashley", "Quinceañera de Ashley", "XV años de Ashley"]) {
+      expect(protagonistaDe({ nombre, tipo: "quinceañera", anfitriones: "Genaro y Soila" }).nombre).toBe("Ashley");
+    }
+  });
+
+  it("los papás que invitan aparecen aunque no empiecen con «Familia»", () => {
+    expect(familiaDe({ nombre: "XV años de Ashley", tipo: "quinceañera", anfitriones: "Genaro y Soila" })).toBe("Genaro y Soila");
+    expect(familiaDe({ nombre: "Graduación de Luis", tipo: "graduacion", anfitriones: "Carlos y María Pérez" })).toBe("Carlos y María Pérez");
+  });
+
+  it("no repite al festejado como si fuera quien invita", () => {
+    expect(familiaDe({ nombre: "Graduación", tipo: "graduacion", anfitriones: "Carlos Chavarría", tarjeta: { graduando: "Carlos Humberto Chavarría Aparicio" } })).toBeNull();
+    expect(familiaDe({ nombre: "Graduación", tipo: "graduacion", anfitriones: "Carlos Humberto Chavarría Aparicio" })).toBeNull();
+  });
+});

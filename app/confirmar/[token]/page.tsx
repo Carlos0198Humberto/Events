@@ -7,7 +7,7 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
-import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, enAgradecimiento, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, enAgradecimiento, enInstitucion, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import InvitacionDistancia from "./InvitacionDistancia";
 import PreInvitacion from "./PreInvitacion";
 import Agradecimiento from "./Agradecimiento";
@@ -1572,6 +1572,22 @@ function FloatingMascot({
       return;
     }
 
+    // Lo que dice la tarjeta: a quién se celebra y quién invita (que se oiga
+    // todo lo que se ve en ella)
+    const dt = armarDatosTarjeta(evento, invitado.nombre, trato);
+    const exT = extrasDe(evento);
+    if (evento.tipo === "quinceañera" && dt.invitaXV) {
+      const frase = dt.invitaXV;
+      pasos.push({ t: dt.padres
+        ? `${dt.padres} ${frase.charAt(0).toLowerCase()}${frase.slice(1)}: los XV años de ${dt.protagonista}.`
+        : `${frase}.`, guia: "inicio" });
+    } else if (esGrad && (exT.carrera || exT.institucion)) {
+      const que = `${exT.carrera ? ` de ${exT.carrera}` : ""}${exT.institucion ? ` ${enInstitucion(exT.institucion)}` : ""}`;
+      const graduado = protagonistaDe(evento).esPersona ? quienInvitaHablado({ ...evento, tarjeta: { ...exT, familia: null } }) : "Nuestro graduado";
+      pasos.push({ t: `${graduado.charAt(0).toUpperCase()}${graduado.slice(1)} se gradúa${que}.`, guia: "inicio" });
+    }
+    if (dt.familia && evento.tipo !== "quinceañera") pasos.push({ t: `Con cariño, ${/^familia\s/i.test(dt.familia) ? `la ${dt.familia.charAt(0).toLowerCase()}${dt.familia.slice(1)}` : dt.familia}.` });
+
     // Lo que el organizador escribió para la invitación: su frase y el versículo
     if (evento.frase_evento?.trim()) pasos.push({ t: cerrarFrase(evento.frase_evento.trim()), guia: "frase" });
     const versiculoVoz = versiculoDe(evento.versiculo_texto, evento.versiculo_cita);
@@ -2046,9 +2062,9 @@ function useTTS() {
     boundaryFired.current = false;
 
     // Karaoke por tiempo (iOS no dispara onboundary): estimación continua.
-    // Algo más pausada que lo normal, como una aeromoza; el tono sin tocar:
-    // estirar una voz neural la vuelve metálica.
-    const rate = 0.92;
+    // Pausada y señorial, como una aeromoza: apenas más lenta y un punto más
+    // grave. Sin pasarse: estirar mucho una voz neural la vuelve metálica.
+    const rate = 0.95;
     const charsPorSeg = 13.5 * rate;
     const t0 = Date.now();
     fallbackTimer.current = setInterval(() => {
@@ -2093,7 +2109,7 @@ function useTTS() {
       const u = new SpeechSynthesisUtterance(parte);
       u.lang = "es-MX"; // sin lista de voces (iOS al arrancar): pedir acento latino
       u.rate = rate;
-      u.pitch = 1;
+      u.pitch = 0.96;
       u.volume = silencioRef.current ? 0 : 1;
       if (!voz) voz = mejorVozEs();
       if (voz) { u.voice = voz; u.lang = voz.lang; }
@@ -2111,7 +2127,7 @@ function useTTS() {
         if (boundaryFired.current) setCharIdx(offset);
         // Una pausa breve al terminar cada oración, como una locutora; entre
         // los pedazos de una frase larga, casi nada
-        setTimeout(hablarSiguiente, /[.!?…]["»”]?\s*$/.test(parte) ? 260 : 80);
+        setTimeout(hablarSiguiente, /[.!?…]["»”]?\s*$/.test(parte) ? 180 : 60);
       };
       u.onend = siguiente;
       u.onerror = (ev: SpeechSynthesisErrorEvent) => {

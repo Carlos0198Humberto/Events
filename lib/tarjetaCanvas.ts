@@ -433,6 +433,30 @@ function partirEnLineas(ctx: CanvasRenderingContext2D, texto: string, max: numbe
 
 type Bloque = { alto: number; antes: number; dibujar: (y: number) => void };
 
+// El nombre o quién invita: en un renglón si entra con la letra achicada hasta
+// `min`; si no, en dos renglones parejos. Nunca se sale de la tarjeta (antes un
+// nombre o una familia largos quedaban cortados en los costados).
+function bloqueQueEntra(ctx: CanvasRenderingContext2D, texto: string, o: Opciones & { alto: number; antes: number; base: number }): Bloque {
+  const espacio = o.espacio ?? 0;
+  ctx.font = o.fuente(o.min);
+  let lineas = [texto];
+  const palabras = texto.split(/\s+/);
+  if (anchoTexto(ctx, texto, espacio) > o.max && palabras.length > 1) {
+    let mejor = Infinity;
+    for (let i = 1; i < palabras.length; i++) {
+      const a = palabras.slice(0, i).join(" "), b = palabras.slice(i).join(" ");
+      const ancho = Math.max(anchoTexto(ctx, a, espacio), anchoTexto(ctx, b, espacio));
+      if (ancho < mejor) { mejor = ancho; lineas = [a, b]; }
+    }
+  }
+  const paso = lineas.length > 1 ? o.alto * 0.86 : o.alto;
+  return {
+    alto: o.alto + paso * (lineas.length - 1),
+    antes: o.antes,
+    dibujar: (y) => lineas.forEach((l, i) => escribir(ctx, l, W / 2, y + o.base + i * paso, o)),
+  };
+}
+
 /**
  * Genera la tarjeta: 1080×1350 (va con el mensaje), 1080×1920 (para estados) o
  * la de imprimir (5×7 pulgadas con `qr`, el enlace de la invitación).
@@ -540,14 +564,11 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
 
   // El nombre en la letra elegida: mayúsculas elegantes, caligrafía o clásica
   if (datos.letraNombre === "caligrafia") {
-    bloques.push({ alto: 86, antes: 10, dibujar: (y) =>
-      escribir(ctx, datos.protagonista, cx, y + 70, { fuente: (px) => `${px}px ${SCRIPT}`, px: 92, min: 54, max: 800, color: "oro" }) });
+    bloques.push(bloqueQueEntra(ctx, datos.protagonista, { alto: 86, antes: 10, base: 70, fuente: (px) => `${px}px ${SCRIPT}`, px: 92, min: 54, max: 800, color: "oro" }));
   } else if (datos.letraNombre === "clasica") {
-    bloques.push({ alto: 66, antes: 14, dibujar: (y) =>
-      escribir(ctx, datos.protagonista, cx, y + 56, { fuente: (px) => `500 ${px}px ${SERIF}`, px: 66, min: 36, max: 800, color: "oro" }) });
+    bloques.push(bloqueQueEntra(ctx, datos.protagonista, { alto: 66, antes: 14, base: 56, fuente: (px) => `500 ${px}px ${SERIF}`, px: 66, min: 36, max: 800, color: "oro" }));
   } else {
-    bloques.push({ alto: 62, antes: 14, dibujar: (y) =>
-      escribir(ctx, datos.protagonista.toLocaleUpperCase("es"), cx, y + 54, { fuente: (px) => `600 ${px}px ${CAPS}`, px: datos.diseno === "minimal" ? 68 : 62, min: 34, max: 760, espacio: 2, color: "oro" }) });
+    bloques.push(bloqueQueEntra(ctx, datos.protagonista.toLocaleUpperCase("es"), { alto: 62, antes: 14, base: 54, fuente: (px) => `600 ${px}px ${CAPS}`, px: datos.diseno === "minimal" ? 68 : 62, min: 34, max: 760, espacio: 2, color: "oro" }));
   }
 
   // De qué se gradúa y dónde: la carrera en cursiva clara, la institución en mayúsculas finas
@@ -686,8 +707,7 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
 
   // Quién invita, firmado en caligrafía como en una tarjeta impresa
   if (datos.familia) {
-    bloques.push({ alto: 64, antes: 26, dibujar: (y) =>
-      escribir(ctx, datos.familia!, cx, y + 52, { fuente: (px) => `${px}px ${SCRIPT}`, px: 66, min: 40, max: 780, color: "oro" }) });
+    bloques.push(bloqueQueEntra(ctx, datos.familia, { alto: 64, antes: 26, base: 52, fuente: (px) => `${px}px ${SCRIPT}`, px: 66, min: 40, max: 780, color: "oro" }));
   }
 
 
@@ -924,8 +944,7 @@ function dibujarModerna(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, foto
   }
 
   if (datos.familia) {
-    bloques.push({ alto: 60, antes: 22, dibujar: (y) =>
-      escribir(ctx, datos.familia!, cx, y + 48, { fuente: (px) => `${px}px ${SCRIPT}`, px: 62, min: 40, max: ancho, color: T.tinta }) });
+    bloques.push(bloqueQueEntra(ctx, datos.familia, { alto: 60, antes: 22, base: 48, fuente: (px) => `${px}px ${SCRIPT}`, px: 62, min: 40, max: ancho, color: T.tinta }));
   }
 
   const arriba = foto ? INTERIOR + altoFoto + 44 : 100;
@@ -1072,8 +1091,7 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
     } });
   }
   if (datos.padres) {
-    bloques.push({ alto: 64, antes: 18, dibujar: (y) =>
-      escribir(ctx, datos.padres!, cx, y + 52, { fuente: (px) => `${px}px ${SCRIPT}`, px: 64, min: 40, max: 640, color: tinta }) });
+    bloques.push(bloqueQueEntra(ctx, datos.padres, { alto: 64, antes: 18, base: 52, fuente: (px) => `${px}px ${SCRIPT}`, px: 64, min: 40, max: 640, color: tinta }));
   }
   if (datos.invitaXV) {
     ctx.font = `italic 500 30px ${SERIF}`;
@@ -1085,8 +1103,7 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
   }
   bloques.push({ alto: 70, antes: 20, dibujar: (y) =>
     escribir(ctx, "Quinceañera", cx, y + 56, { fuente: (px) => `${px}px ${SCRIPT}`, px: 72, min: 48, max: 600, color: c.texto }) });
-  bloques.push({ alto: 140, antes: 0, dibujar: (y) =>
-    escribir(ctx, datos.protagonista, cx, y + 112, { fuente: (px) => `${px}px ${SCRIPT}`, px: 150, min: 84, max: 780, color: c.texto }) });
+  bloques.push(bloqueQueEntra(ctx, datos.protagonista, { alto: 140, antes: 0, base: 112, fuente: (px) => `${px}px ${SCRIPT}`, px: 150, min: 96, max: 780, color: c.texto }));
 
   repartir(ctx, bloques, 64, yChica + 40, formato === "historia" ? 1.12 : 1);
 
