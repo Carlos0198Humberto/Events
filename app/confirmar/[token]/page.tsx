@@ -7,7 +7,7 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
-import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, vinculoDe, enAgradecimiento, enInstitucion, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, versiculoDeEvento, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, vinculoDe, enAgradecimiento, enInstitucion, enReserva, extrasDe, familiaDe, nombreEnPartes, partesPadres, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, versiculoDeEvento, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import InvitacionDistancia from "./InvitacionDistancia";
 import PreInvitacion from "./PreInvitacion";
 import Agradecimiento from "./Agradecimiento";
@@ -952,29 +952,19 @@ function OrnamentoDivider({ tipo }: { tipo: string }) {
   }
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <div
-        style={{
-          flex: 1,
-          height: 1,
-          background:
-            "linear-gradient(to right, transparent, rgba(79,70,229,0.4))",
-        }}
-      />
-      <svg width="8" height="8" viewBox="0 0 8 8" fill="#4F46E5" opacity="0.6">
+      <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, var(--border-mid))" }} />
+      <svg width="8" height="8" viewBox="0 0 8 8" style={{ fill: "var(--gold)" }} opacity="0.6">
         <rect x="2" y="0" width="4" height="4" transform="rotate(45 4 4)" />
       </svg>
-      <div
-        style={{
-          flex: 1,
-          height: 1,
-          background:
-            "linear-gradient(to left, transparent, rgba(79,70,229,0.4))",
-        }}
-      />
+      <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, var(--border-mid))" }} />
     </div>
   );
 }
 
+
+// Si el invitado mueve la pantalla mientras habla la voz, se lo deja mirar
+// tranquilo este tiempo antes de volver a seguirla
+const PAUSA_MANUAL_MS = 4500;
 
 // ─── Ref global de audio para control de volumen desde TTS ───────────────────
 const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
@@ -988,10 +978,12 @@ const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
 // que iOS respeta. Se arma dentro del primer toque (iOS lo exige) y solo
 // donde hace falta: en compu y Android alcanza con audio.volume. El archivo
 // viene de Supabase Storage con CORS abierto (si no, Web Audio daría silencio).
-const MUSICA_BASE = 0.18;
-const MUSICA_CON_VOZ = 0.025;
+// Una canción comercial llega masterizada muy fuerte y la voz grabada no: la
+// música va bien de fondo (antes 0,18 y 0,025 se oía por encima de la voz)
+const MUSICA_BASE = 0.1;
+const MUSICA_CON_VOZ = 0.012;
 const FUNDIDO_S = 0.45;
-const ESPERA_VOLVER_MS = 1200;
+const ESPERA_VOLVER_MS = 2500;
 
 let volumenControlable: boolean | null = null;
 function puedeControlarVolumen() {
@@ -1470,6 +1462,8 @@ function guionLectura({ evento, invitado, distancia, nombresCarta, reserva, grac
   // En los XV siempre hay versículo (el de la quinceañera si no se eligió otro)
   const versiculoVoz = versiculoDeEvento(evento);
   if (versiculoVoz) pasos.push({ t: `${cerrarFrase(versiculoVoz.texto)} ${citaHablada(versiculoVoz.cita)}.`, guia: "versiculo" });
+  // El mensaje que el organizador escribió para los invitados
+  if (evento.mensaje_invitacion?.trim()) pasos.push({ t: cerrarFrase(evento.mensaje_invitacion.trim().replace(/\s*\n+\s*/g, " ")), guia: "mensaje" });
 
   const hora = evento.hora ? horaHablada(evento.hora) : null;
   const laCita = esXV ? "La recepción será el" : "La cita es el";
@@ -1561,7 +1555,10 @@ function FloatingMascot({
   const pasosRef = useRef<PasoGuia[]>([]);
   const pasoIdx = useRef(0);
   const guiaActual = useRef<string | null>(null);
-  const usuarioMovio = useRef(false);
+  // Cuándo tocó la pantalla el invitado: unos segundos se lo deja mirar
+  // tranquilo y después la pantalla vuelve a seguir a la voz (antes, un solo
+  // toque la dejaba quieta hasta el final)
+  const movioEn = useRef(0);
   const ultimoGuion = useRef<{ pasos: PasoGuia[]; alTerminar: FaseMascota } | null>(null);
   const finRef = useRef<FaseMascota>("esperando_confirm");
 
@@ -1573,15 +1570,35 @@ function FloatingMascot({
     if (!el) return;
     el.classList.add("guia-activa");
     // La barra de decisión es fija: se marca pero no hay nada que scrollear
-    if (el.closest(".decision-bar") || usuarioMovio.current) return;
-    // Centrar en el espacio que queda libre entre la barra de arriba y
-    // los subtítulos + barra de abajo (no en el centro de la pantalla)
+    if (el.closest(".decision-bar") || Date.now() - movioEn.current < PAUSA_MANUAL_MS) return;
+    llevarA(el, 0, true);
+  }
+
+  // Mientras la voz sigue en la misma sección, la pantalla la acompaña: una
+  // sección alta (la cabecera de XV, una carta) se recorre a medida que se lee
+  function seguir(guia: string, leido: number) {
+    if (Date.now() - movioEn.current < PAUSA_MANUAL_MS) return;
+    const el = document.querySelector<HTMLElement>(`[data-guia="${guia}"]`);
+    if (!el || el.closest(".decision-bar")) return;
+    llevarA(el, leido, false);
+  }
+
+  // En el espacio que queda libre entre la barra de arriba y los subtítulos +
+  // barra de abajo: centrada si entra entera; si es más alta, de arriba a
+  // abajo según lo leído (0 a 1)
+  function llevarA(el: HTMLElement, leido: number, alLlegar: boolean) {
     const r = el.getBoundingClientRect();
     const arriba = 64, abajo = 240;
     const libre = window.innerHeight - arriba - abajo;
-    const destino = r.height >= libre
-      ? r.top + window.scrollY - arriba - 8
-      : r.top + window.scrollY - arriba - (libre - r.height) / 2;
+    let destino: number;
+    if (r.height >= libre) {
+      destino = r.top + window.scrollY - arriba - 8 + (r.height - libre * 0.7) * Math.min(1, Math.max(0, leido));
+    } else {
+      // Ya se ve entera: no se mueve (salvo al llegar a una sección nueva)
+      if (!alLlegar && r.top >= arriba && r.bottom <= window.innerHeight - abajo) return;
+      destino = r.top + window.scrollY - arriba - (libre - r.height) / 2;
+    }
+    if (!alLlegar && Math.abs(destino - window.scrollY) < 28) return;
     window.scrollTo({ top: Math.max(0, destino), behavior: "smooth" });
   }
 
@@ -1591,14 +1608,14 @@ function FloatingMascot({
     pasoIdx.current = 0;
     finRef.current = alTerminar;
     if (recordar) ultimoGuion.current = { pasos: limpios, alTerminar };
-    usuarioMovio.current = false;
+    movioEn.current = 0;
     guiaActual.current = null;
     leer(limpios.map(p => p.t).join(" "), () => { marcar(null); setFase(alTerminar); });
   }
 
   // El invitado toma el control del scroll → no pelear con él
   useEffect(() => {
-    const tomar = () => { usuarioMovio.current = true; };
+    const tomar = () => { movioEn.current = Date.now(); };
     window.addEventListener("touchmove", tomar, { passive: true });
     window.addEventListener("wheel", tomar, { passive: true });
     return () => {
@@ -1608,19 +1625,33 @@ function FloatingMascot({
     };
   }, []);
 
-  // Qué paso se está diciendo ahora (por su posición en el texto leído)
+  // Qué paso se está diciendo ahora (por su posición en el texto leído) y
+  // cuánto se leyó de su sección, para que la pantalla vaya bajando con la voz
   useEffect(() => {
     if (!hablando || !textoActual) return;
+    const pasos = pasosRef.current;
+    const pos: number[] = [];
+    const seccion: (string | null)[] = []; // un paso sin sección sigue mostrando la anterior
     let desde = 0;
-    let guia: string | null = null;
-    pasosRef.current.forEach((p, i) => {
+    pasos.forEach((p, i) => {
       const at = textoActual.indexOf(p.t, desde);
-      if (at < 0 || at > charIdx) return;
-      pasoIdx.current = i;
-      guia = p.guia ?? guia; // un paso sin sección sigue mostrando la anterior
-      desde = at + p.t.length;
+      pos.push(at);
+      if (at >= 0) desde = at + p.t.length;
+      seccion.push(p.guia ?? (i > 0 ? seccion[i - 1] : null));
     });
-    if (guia !== guiaActual.current) marcar(guia);
+    let i = -1;
+    pasos.forEach((_, k) => { if (pos[k] >= 0 && pos[k] <= charIdx) i = k; });
+    if (i < 0) return;
+    pasoIdx.current = i;
+    const guia = seccion[i];
+    if (guia !== guiaActual.current) { marcar(guia); return; }
+    if (!guia) return;
+    // La sección puede abarcar varios pasos seguidos
+    let a = i, b = i;
+    while (a > 0 && seccion[a - 1] === guia && pos[a - 1] >= 0) a--;
+    while (b < pasos.length - 1 && seccion[b + 1] === guia && pos[b + 1] >= 0) b++;
+    const inicio = pos[a], fin = pos[b] + pasos[b].t.length;
+    seguir(guia, fin > inicio ? (charIdx - inicio) / (fin - inicio) : 0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [charIdx, textoActual, hablando]);
 
@@ -2062,6 +2093,7 @@ function reproductorDeVoz(): HTMLAudioElement {
 }
 let silencioCorto: string | null = null;
 function desbloquearVozGrabada() {
+  prepararContextoVoz();
   try {
     if (!silencioCorto) {
       // 0,1 s de silencio (8 kHz, 16 bits)
@@ -2084,43 +2116,77 @@ function calentarVoz(token: string) {
   fetch(`/api/voz?i=${encodeURIComponent(token)}&calentar=1`).catch(() => { /* sin red: ya avisará la lectura */ });
 }
 
-// Suena una frase grabada. En iPhone, si la música pasa por el mezclador, la
-// voz va por el mismo mezclador (Web Audio): dos <audio> a la vez pueden
-// pausarse entre sí. En el resto, con el reproductor de la voz.
+// La voz grabada viene bastante más baja que una canción comercial: se la
+// sube con Web Audio y un compresor evita que sature. En iPhone va por el
+// mismo mezclador de la música (dos <audio> a la vez pueden pausarse entre
+// sí); en el resto, por un contexto propio que se arma en el toque que abre
+// la invitación. Sin Web Audio, el reproductor de siempre (sin realce).
+const VOZ_REALCE = 1.9;
+let ctxVoz: AudioContext | null = null;
+function prepararContextoVoz() {
+  if (ctxVoz || !puedeControlarVolumen()) return; // iPhone: el mezclador de la música
+  try {
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (AC) ctxVoz = new AC();
+    ctxVoz?.resume().catch(() => {});
+  } catch { ctxVoz = null; }
+}
+
 type Sonando = { parar(): void };
 function sonarFrase(url: string, mudo: boolean, avance: (fraccion: number) => void, terminar: () => void, fallar: () => void): Sonando {
   let parado = false;
-  if (mezcla) {
-    const { ctx } = mezcla;
-    let fuente: AudioBufferSourceNode | null = null;
-    let reloj: ReturnType<typeof setInterval> | null = null;
-    (async () => {
-      try {
-        const buf = await ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
-        if (parado) return;
-        await ctx.resume().catch(() => {});
-        const g = ctx.createGain();
-        g.gain.value = mudo ? 0 : 1;
-        fuente = ctx.createBufferSource();
-        fuente.buffer = buf;
-        fuente.connect(g).connect(ctx.destination);
-        const t0 = ctx.currentTime;
-        fuente.onended = () => { if (reloj) clearInterval(reloj); if (!parado) terminar(); };
-        reloj = setInterval(() => avance(Math.min(1, (ctx.currentTime - t0) / buf.duration)), 100);
-        fuente.start();
-      } catch { if (!parado) fallar(); }
-    })();
-    return { parar() { parado = true; if (reloj) clearInterval(reloj); try { fuente?.stop(); } catch { /* ya terminó */ } } };
-  }
-  const a = reproductorDeVoz();
-  a.muted = mudo;
-  a.src = url;
-  const reloj = setInterval(() => { if (!parado && a.duration) avance(Math.min(1, a.currentTime / a.duration)); }, 100);
-  a.ontimeupdate = null;
-  a.onended = () => { clearInterval(reloj); if (!parado) terminar(); };
-  a.onerror = () => { clearInterval(reloj); if (!parado) fallar(); };
-  a.play().catch(() => { clearInterval(reloj); if (!parado) fallar(); });
-  return { parar() { parado = true; clearInterval(reloj); a.pause(); } };
+  let respaldo: Sonando | null = null;
+  const conElemento = (): Sonando => {
+    const a = reproductorDeVoz();
+    a.muted = mudo;
+    a.src = url;
+    const reloj = setInterval(() => { if (!parado && a.duration) avance(Math.min(1, a.currentTime / a.duration)); }, 100);
+    a.ontimeupdate = null;
+    a.onended = () => { clearInterval(reloj); if (!parado) terminar(); };
+    a.onerror = () => { clearInterval(reloj); if (!parado) fallar(); };
+    a.play().catch(() => { clearInterval(reloj); if (!parado) fallar(); });
+    return { parar() { clearInterval(reloj); a.pause(); } };
+  };
+  const ctx = mezcla?.ctx ?? ctxVoz;
+  if (!ctx) return conElemento();
+  let fuente: AudioBufferSourceNode | null = null;
+  let reloj: ReturnType<typeof setInterval> | null = null;
+  (async () => {
+    try {
+      await ctx.resume().catch(() => {});
+      // Fuera de un toque el navegador puede no dejarlo sonar: el reproductor de siempre
+      if (ctx.state !== "running" && !mezcla) { if (!parado) respaldo = conElemento(); return; }
+      const buf = await ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
+      if (parado) return;
+      const g = ctx.createGain();
+      g.gain.value = mudo ? 0 : VOZ_REALCE;
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -16;
+      comp.knee.value = 10;
+      comp.ratio.value = 4;
+      comp.attack.value = 0.004;
+      comp.release.value = 0.22;
+      fuente = ctx.createBufferSource();
+      fuente.buffer = buf;
+      fuente.connect(g).connect(comp).connect(ctx.destination);
+      const t0 = ctx.currentTime;
+      fuente.onended = () => { if (reloj) clearInterval(reloj); if (!parado) terminar(); };
+      reloj = setInterval(() => avance(Math.min(1, (ctx.currentTime - t0) / buf.duration)), 100);
+      fuente.start();
+    } catch {
+      if (parado) return;
+      // iPhone pasa a la voz del teléfono (como antes); el resto prueba el reproductor
+      if (mezcla) fallar(); else respaldo = conElemento();
+    }
+  })();
+  return {
+    parar() {
+      parado = true;
+      if (reloj) clearInterval(reloj);
+      try { fuente?.stop(); } catch { /* ya terminó */ }
+      respaldo?.parar();
+    },
+  };
 }
 
 // ─── TTS — Lee la invitación en voz alta (con sincronización palabra a palabra) ─
@@ -2840,7 +2906,8 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   }
   const fondoTarjeta = datosTarjeta.diseno === "moderna" ? tintasPlanas(datosTarjeta.paleta).fondo : datosTarjeta.paleta.fondo;
   const tarjetaOscura = colorOscuro(fondoTarjeta);
-  const acento = datosTarjeta.paleta.oroPlano;
+  // XV: el sello en el tono del vestido (rosa), no en dorado
+  const acento = datosTarjeta.diseno === "xv" ? coloresXV(datosTarjeta.tonoXV).fuerte : datosTarjeta.paleta.oroPlano;
   const varsSobre = (tarjetaOscura
     ? {
       "--pt-fondo": mezclarColor(fondoTarjeta, "#000000", 0.25), "--pt-centro": mezclarColor(fondoTarjeta, "#FFFFFF", 0.1),
@@ -5133,7 +5200,8 @@ export default function ConfirmarPage() {
     .inv-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-mid);box-shadow:0 8px 48px rgba(15,23,42,.13),0 2px 8px rgba(15,23,42,.06);overflow:hidden;animation:riseUp .6s cubic-bezier(.22,1,.36,1) both;}
     /* Hero foto — limpia, sin overlays ni texto encima */
     .inv-hero{position:relative;overflow:hidden;width:100%;background:var(--dark)}
-    .inv-hero-foto{width:100%;height:100%;object-fit:cover;display:block;object-position:center top;}
+    .inv-hero-foto{width:100%;height:auto;object-fit:contain;display:block}
+    .inv-hero-relleno{position:absolute;inset:-30px;background-size:cover;background-position:center;filter:blur(26px) saturate(1.15);transform:scale(1.08);opacity:.9}
     .inv-hero-bg{min-height:200px;background:linear-gradient(160deg,var(--dark) 0%,var(--dark2) 100%)}
     /* Sección debajo del hero */
     .inv-tipo-badge{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid rgba(79,70,229,0.35);border-radius:99px;padding:5px 14px 5px 10px;font-family:'Jost',sans-serif;font-size:12px;font-weight:600;color:var(--ink3);letter-spacing:1.2px;text-transform:uppercase;}
@@ -5195,7 +5263,11 @@ export default function ConfirmarPage() {
     @keyframes mwave{0%,100%{transform:scaleY(0.5)}50%{transform:scaleY(1)}}
 
     /* Mensaje */
-    .inv-mensaje{background:var(--cream);border-left:3px solid var(--gold);border-radius:0 12px 12px 0;padding:14px 18px;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:17px;font-style:italic;color:var(--ink2);line-height:1.7}
+    .inv-mensaje{position:relative;margin:16px 2px 8px;padding:20px 20px 18px;border-radius:18px;background:var(--surface);border:1px solid var(--border-mid);box-shadow:var(--shadow);text-align:center}
+    .inv-mensaje::before{content:"“";position:absolute;left:50%;top:-18px;transform:translateX(-50%);width:36px;height:36px;border-radius:50%;background:var(--surface);border:1px solid var(--border-mid);
+      font-family:var(--f-display,'Cormorant Garamond'),serif;font-size:34px;line-height:46px;color:var(--gold)}
+    .inv-mensaje-kicker{font-family:var(--f-label,'Jost'),sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--ink3);margin:6px 0 10px}
+    .inv-mensaje-texto{font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:18px;font-style:italic;color:var(--ink2);line-height:1.65;white-space:pre-line;text-wrap:pretty}
     /* Deadline */
     .inv-deadline{background:#fef8f0;border:1px solid rgba(180,83,9,0.2);border-radius:var(--r-sm);padding:12px 15px;display:flex;align-items:center;gap:10px}
     .deadline-text{font-size:14px;color:#92400e;font-weight:500;line-height:1.4}
@@ -5541,7 +5613,7 @@ export default function ConfirmarPage() {
     @media (prefers-reduced-motion: reduce){.rv-prep{opacity:1;transform:none}}
     /* ── Ken Burns: la foto principal respira lentamente ── */
     @keyframes heroKen{0%{transform:scale(1.03) translateY(0)}100%{transform:scale(1.12) translateY(-8px)}}
-    .inv-hero-foto{animation:heroKen 16s ease-in-out infinite alternate}
+    .inv-hero-relleno{animation:heroKen 16s ease-in-out infinite alternate}
     /* ── Destello que recorre el badge del tipo de evento ── */
     .inv-tipo-badge{position:relative;overflow:hidden}
     .inv-tipo-badge::after{content:"";position:absolute;top:0;bottom:0;width:45%;
@@ -5701,19 +5773,41 @@ export default function ConfirmarPage() {
     /* Sin foto de portada no queda un bloque vacío: la cabecera con rosas es la portada */
     .inv-hero-bg{display:none}
     .inv-head{overflow:hidden;border-radius:inherit}
-    .xv-rosas{position:absolute;top:-16px;width:128px;height:128px;pointer-events:none}
-    .xv-rosas-izq{left:-20px}
-    .xv-rosas-der{right:-20px}
-    .xv-padres{position:relative;font-family:'Great Vibes',cursive;font-weight:400;font-size:clamp(34px,10vw,44px);line-height:1.1;color:var(--ink);margin-top:4px;padding:0 54px;overflow-wrap:anywhere}
+    .xv-rosas{position:absolute;top:-20px;width:104px;height:104px;pointer-events:none}
+    .xv-rosas-izq{left:-22px}
+    .xv-rosas-der{right:-22px}
+    .xv-padres{position:relative;display:flex;flex-direction:column;align-items:center;margin:14px -8px 4px;padding:0}
+    .xv-padre{font-family:var(--f-display,'Playfair Display'),serif;font-style:italic;font-weight:500;font-size:clamp(16px,4.6vw,20px);line-height:1.32;color:var(--ink);text-wrap:balance}
+    .xv-padres-y{font-family:'Great Vibes',cursive;font-size:30px;line-height:1.05;color:var(--ink3)}
     .xv-invita{position:relative;max-width:330px;margin:0 auto}
     .xv-invita > div{margin-top:4px!important;font-family:var(--f-display,'Playfair Display'),serif!important;font-size:16.5px!important;color:var(--ink2)!important}
     .xv-tiara{position:relative;display:block;width:76px;height:auto;margin:18px auto 0;filter:drop-shadow(0 2px 4px rgba(150,110,40,0.3));animation:xvTiara 3.2s ease-in-out infinite}
     @keyframes xvTiara{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
     .xv-quince{position:relative;font-family:'Great Vibes',cursive;font-size:clamp(32px,9vw,40px);line-height:1;color:var(--ink3);margin-top:4px}
-    .xv-protagonista{position:relative;font-family:'Great Vibes',cursive;font-weight:400;font-size:clamp(60px,19vw,86px);line-height:1.05;color:var(--ink3);margin-top:0;overflow-wrap:anywhere;animation:xvEscribe 1.8s cubic-bezier(.45,.05,.35,1) .5s both}
+    .xv-protagonista{position:relative;display:flex;flex-direction:column;align-items:center;margin-top:0;font-weight:400;animation:xvEscribe 1.8s cubic-bezier(.45,.05,.35,1) .5s both}
+    .xv-nombres{font-family:'Great Vibes',cursive;font-weight:400;font-size:clamp(56px,17vw,80px);line-height:1.04;color:var(--ink3);text-wrap:balance;overflow-wrap:anywhere}
+    .xv-apellidos{margin-top:8px;font-family:var(--f-label,'Cinzel'),serif;font-weight:600;font-size:clamp(12px,3.7vw,14.5px);letter-spacing:.32em;padding-left:.32em;text-transform:uppercase;color:var(--ink2)}
     @keyframes xvEscribe{from{clip-path:inset(-20% 100% -20% 0)}to{clip-path:inset(-20% -10% -20% 0)}}
     @media (prefers-reduced-motion: reduce){.xv-protagonista,.xv-tiara{animation:none}}
     .inv-tipo-badge{position:relative;font-family:var(--f-label);font-size:11px;letter-spacing:.26em;border-color:var(--border-mid);color:var(--ink3);background:rgba(255,255,255,0.75)}
+    /* Lo que quedaba en índigo (íconos, cuenta regresiva, botones): en el tono del vestido */
+    .detalle-ico-wrap,.res-ico{background:#FFFFFF;border-color:var(--border-mid)}
+    .detalle-ico-wrap svg [stroke="#4F46E5"],.res-ico svg [stroke="#4F46E5"],.btn-accion-ico svg [stroke="#4F46E5"]{stroke:var(--gold)}
+    .detalle-ico-wrap svg [fill="#4F46E5"],.res-ico svg [fill="#4F46E5"]{fill:var(--gold)}
+    .countdown-wrap{background:linear-gradient(150deg,#FFFFFF 0%,var(--cream2) 100%);border-color:var(--border-mid)}
+    .countdown-label{color:var(--ink3)}
+    .countdown-block{border-color:var(--border)}
+    .decision-bar{border-top-color:var(--border);box-shadow:0 -8px 32px ${conAlfaHex(cXV.profundo, 0.12)}}
+    .btn-si:hover{box-shadow:0 10px 28px -4px ${conAlfaHex(cXV.profundo, 0.45)}}
+    .spinner,.tarjeta-spinner{border-color:var(--border-mid);border-top-color:var(--gold)}
+    .conf-check{background:var(--gold-pale);border-color:var(--border-mid)}
+    .qr-entry-card{border-color:var(--border-mid)}
+    .tu-mesa-icon,.mesa-picker-ico,.mesa-confirmed-ico{background:var(--gold-pale);border-color:var(--border-mid);color:var(--gold)}
+    .mesa-row-badge--free{background:var(--gold-pale);border-color:var(--border-mid)}
+    .mesa-row-arrow{color:var(--gold)}
+    .btn-accion-full:hover,.btn-wa:hover,.btn-cerrar:hover{border-color:var(--border-mid)}
+    .btn-accion-full:active,.btn-wa:active,.btn-cerrar:active{background:var(--gold);border-color:var(--gold);color:#FFFFFF}
+    .lightbox-dot{background:var(--border-mid)}
     ` : ""}
   `;
 
@@ -6120,22 +6214,26 @@ export default function ConfirmarPage() {
               {/* ── HERO: foto limpia sin texto encima ── */}
               {evento.imagen_url ? (
                 <div className="inv-hero" style={{ position:"relative", overflow:"hidden", borderRadius:"0 0 28px 28px" }}>
-                  {/* Imagen con zoom sutil */}
+                  {/* La foto ENTERA (vertical u horizontal), sin recortar: lo que
+                      sobra a los lados lo llena la misma foto desenfocada */}
+                  <div className="inv-hero-relleno" aria-hidden="true" style={{ backgroundImage: `url("${evento.imagen_url}")` }} />
                   <img
                     src={evento.imagen_url}
                     className="inv-hero-foto"
                     alt={evento.nombre}
-                    style={{ width:"100%", display:"block", maxHeight:400, objectFit:"cover", objectPosition:"center top", transform:"scale(1.03)" }}
+                    style={{ position:"relative", width:"100%", height:"auto", maxHeight:"min(78vh, 640px)", objectFit:"contain", display:"block", margin:"0 auto" }}
                   />
 
-                  {/* Vignette general siempre */}
-                  <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.35) 100%)", pointerEvents:"none" }}/>
+                  {/* Vignette suave */}
+                  <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.18) 100%)", pointerEvents:"none" }}/>
 
-                  {/* Degradado inferior para texto */}
-                  <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"55%", background:"linear-gradient(to top, rgba(10,10,30,0.82) 0%, transparent 100%)", pointerEvents:"none" }}/>
+                  {/* Degradado inferior para el texto (en graduación y XV la foto va limpia) */}
+                  {evento.tipo !== "graduacion" && evento.tipo !== "quinceañera" && (
+                    <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"55%", background:"linear-gradient(to top, rgba(10,10,30,0.82) 0%, transparent 100%)", pointerEvents:"none" }}/>
+                  )}
 
-                  {/* Nombre del evento sobre la foto (graduación: solo la promoción; el nombre va abajo, grande) */}
-                  {evento.tipo === "graduacion" ? null : (
+                  {/* Nombre del evento sobre la foto (graduación y XV: abajo, en la cabecera) */}
+                  {evento.tipo === "graduacion" || evento.tipo === "quinceañera" ? null : (
                     <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"18px 20px 20px", pointerEvents:"none" }}>
                       <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize:22, fontWeight:700, color:"white", lineHeight:1.2, textShadow:"0 2px 12px rgba(0,0,0,0.5)", marginBottom:4 }}>
                         {evento.nombre}
@@ -6217,7 +6315,18 @@ export default function ConfirmarPage() {
                       <img className="xv-rosas xv-rosas-izq" src={svgDataUrl(svgRamillete(cXV, "arriba-izq"))} alt="" aria-hidden="true" />
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img className="xv-rosas xv-rosas-der" src={svgDataUrl(svgRamillete(cXV, "arriba-der"))} alt="" aria-hidden="true" />
-                      {dtXV.padres && <p className="xv-padres">{dtXV.padres}</p>}
+                      {/* Quienes invitan, uno por renglón (de corrido, el nombre de la mamá quedaba partido) */}
+                      {dtXV.padres && (() => {
+                        const padres = partesPadres(dtXV.padres);
+                        return (
+                          <p className="xv-padres">
+                            {padres.flatMap((n, i) => [
+                              ...(i > 0 && i === padres.length - 1 ? [<span key={`y${i}`} className="xv-padres-y">y</span>] : []),
+                              <span key={`p${i}`} className="xv-padre">{n}</span>,
+                            ])}
+                          </p>
+                        );
+                      })()}
                       {dtXV.invitaXV && <div className="xv-invita"><TypewriterFrase texto={dtXV.invitaXV} comillas={false} /></div>}
                       <svg className="xv-tiara" viewBox="-4 -4 128 60" aria-hidden="true">
                         <defs>
@@ -6236,7 +6345,16 @@ export default function ConfirmarPage() {
                         <path d="M60 18.7L68.4 29.2L60 39.7L51.6 29.2Z" fill="url(#xvGema)" stroke="#B98A34" strokeWidth="1" />
                       </svg>
                       <p className="xv-quince">Quinceañera</p>
-                      <h1 className="xv-protagonista">{dtXV.protagonista}</h1>
+                      {/* Sus nombres en caligrafía y los apellidos debajo, en versalitas */}
+                      {(() => {
+                        const n = nombreEnPartes(dtXV.protagonista);
+                        return (
+                          <h1 className="xv-protagonista">
+                            <span className="xv-nombres">{n.nombres}</span>
+                            {n.apellidos && <span className="xv-apellidos">{n.apellidos}</span>}
+                          </h1>
+                        );
+                      })()}
                     </>
                   );
                 })() : (
@@ -6291,6 +6409,14 @@ export default function ConfirmarPage() {
                 {/* 1️⃣ Música — autoplay, siempre arriba */}
                 {evento.musica_url && (
                   <MusicPlayer url={evento.musica_url} nombre={evento.musica_nombre} />
+                )}
+
+                {/* El mensaje que el organizador escribió para los invitados */}
+                {evento.mensaje_invitacion?.trim() && (
+                  <div className="inv-mensaje" data-guia="mensaje">
+                    <p className="inv-mensaje-kicker">{nombresEnTarjeta.length > 1 ? "Un mensaje para ustedes" : "Un mensaje para vos"}</p>
+                    <p className="inv-mensaje-texto">{evento.mensaje_invitacion.trim()}</p>
+                  </div>
                 )}
 
                 {/* Carrusel de fotos del graduado — solo graduación */}
@@ -7218,137 +7344,40 @@ export default function ConfirmarPage() {
         )}
       </div>
 
-      {/* ─── Ficha Evorix (se muestra al cerrar la tarjeta) ─── */}
+      {/* ─── Al cerrar: un agradecimiento con los colores del evento (sin publicidad) ─── */}
       {showEvorixPromo && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 9999,
-          background: "#FFFFFF",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          padding: "48px 16px 32px",
-          overflow: "hidden",
-        }}>
+        <div className="despedida" role="dialog" aria-label="Gracias">
           <style>{`
-            @keyframes fadeInPromo { from{opacity:0;transform:translateY(20px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
-            @keyframes promoGlow1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-18px,28px) scale(1.07)} 66%{transform:translate(14px,-18px) scale(0.95)} }
-            @keyframes promoGlow2 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(22px,-30px) scale(1.09)} 70%{transform:translate(-8px,18px) scale(0.93)} }
-            @keyframes promoRingExp { 0%{transform:scale(0.82);opacity:.7} 100%{transform:scale(2.0);opacity:0} }
-            @keyframes promoLogoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
-            @keyframes promoMountLogo { from{opacity:0;transform:translateY(28px) scale(0.92)} to{opacity:1;transform:translateY(0) scale(1)} }
-            @keyframes promoMountCard { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-            @keyframes promoMountFoot { from{opacity:0} to{opacity:1} }
-            @keyframes promoShimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
-            .promo-glow { position:absolute;pointer-events:none;border-radius:50%;filter:blur(90px) }
-            .promo-glow-1 { width:280px;height:280px;top:-60px;right:-40px;background:radial-gradient(circle,rgba(79,70,229,0.13) 0%,transparent 70%);animation:promoGlow1 9s ease-in-out infinite }
-            .promo-glow-2 { width:220px;height:220px;bottom:60px;left:-60px;background:radial-gradient(circle,rgba(129,140,248,0.10) 0%,transparent 70%);animation:promoGlow2 11s ease-in-out infinite }
-            .promo-glow-3 { width:180px;height:180px;bottom:-30px;right:10px;background:radial-gradient(circle,rgba(99,102,241,0.08) 0%,transparent 70%);animation:promoGlow1 13s ease-in-out infinite reverse }
-            .promo-logo-ring { position:absolute;border-radius:50%;border:1.5px solid rgba(79,70,229,0.18);animation:promoRingExp 3s ease-out infinite;width:68px;height:68px }
-            .promo-logo-ring-2 { animation-delay:1s }
-            .promo-logo-ring-3 { animation-delay:2s }
-            .promo-logo-pulse { position:relative;z-index:2;animation:promoLogoPulse 3.5s ease-in-out infinite;filter:drop-shadow(0 4px 20px rgba(79,70,229,0.20)) }
-            .promo-logo-name { font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:32px;font-weight:600;letter-spacing:-1.2px;color:#0F172A;line-height:1;text-align:center }
-            .promo-logo-name span { color:#4F46E5 }
-            .promo-logo-tag { font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:#64748B;margin-top:3px;text-align:center }
-            .promo-card-box { background:#FFFFFF;border:1.5px solid #E5E7F0;border-radius:24px;padding:28px 24px;box-shadow:0 14px 40px -10px rgba(15,23,42,0.10);width:100%;max-width:380px }
-            .promo-feat-row { display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:rgba(79,70,229,0.06);border:1px solid #E5E7F0;margin-bottom:8px }
-            .promo-feat-ic { width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;color:#4F46E5;flex-shrink:0;font-size:15px }
-            .promo-feat-lbl { font-size:13px;font-weight:600;color:#0F172A;line-height:1.25 }
-            .promo-feat-desc { font-size:11.5px;color:#64748B;line-height:1.35 }
-            .promo-btn-main { width:100%;padding:15px;border-radius:14px;border:none;background:linear-gradient(135deg,#4F46E5,#3730A3);color:#fff;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;letter-spacing:.3px;cursor:pointer;margin-top:4px;box-shadow:0 10px 30px -6px rgba(79,70,229,0.38),0 4px 12px rgba(79,70,229,0.18);transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden;min-height:50px;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px }
-            .promo-btn-main:hover { transform:translateY(-2px);box-shadow:0 10px 34px rgba(79,70,229,0.28) }
-            .promo-btn-main:active { transform:scale(0.97) }
-            .promo-btn-shimmer { position:absolute;inset:0;border-radius:inherit;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,0.22) 50%,transparent 62%);background-size:200% 100%;animation:promoShimmer 3.5s ease-in-out infinite }
-            .promo-btn-sec { width:100%;padding:12px;border:1.5px solid #E5E7F0;border-radius:14px;background:transparent;color:#64748B;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .2s,border-color .2s }
-            .promo-btn-sec:hover { color:#4F46E5;border-color:rgba(79,70,229,0.3) }
-            .promo-wrap-logo { animation:promoMountLogo .7s cubic-bezier(.22,1,.36,1) .1s both }
-            .promo-wrap-card { animation:promoMountCard .6s cubic-bezier(.22,1,.36,1) .26s both }
-            .promo-wrap-foot { animation:promoMountFoot .5s cubic-bezier(.22,1,.36,1) .42s both }
+            .despedida{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:32px 20px;
+              background:radial-gradient(120% 80% at 50% 0%,var(--cream2,#F1F5F9) 0%,var(--cream,#FFFFFF) 60%);animation:despedidaEntra .5s ease both}
+            .despedida-caja{width:100%;max-width:360px;text-align:center;background:var(--surface,#FFFFFF);border:1px solid var(--border-mid);border-radius:24px;
+              padding:34px 24px 24px;box-shadow:var(--shadow-lg)}
+            .despedida-kicker{font-family:var(--f-label,'Jost'),sans-serif;font-size:11px;font-weight:600;letter-spacing:.26em;text-transform:uppercase;color:var(--ink3)}
+            .despedida-titulo{margin-top:12px;font-family:var(--f-display,'Cormorant Garamond'),serif;font-size-adjust:var(--f-adjust,none);font-size:30px;font-weight:600;line-height:1.15;color:var(--ink)}
+            .despedida-texto{margin-top:10px;font-size:15px;line-height:1.55;color:var(--ink2)}
+            .despedida-filete{width:56px;height:1px;margin:20px auto;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+            .despedida-btn{width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#FFFFFF;
+              font-family:'Jost',sans-serif;font-size:15px;font-weight:600;cursor:pointer}
+            .despedida-sec{width:100%;margin-top:10px;padding:12px;border:1.5px solid var(--border-mid);border-radius:14px;background:transparent;color:var(--ink2);
+              font-family:'Jost',sans-serif;font-size:13.5px;font-weight:500;cursor:pointer}
+            @keyframes despedidaEntra{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+            @media (prefers-reduced-motion: reduce){.despedida{animation:none}}
           `}</style>
-
-          {/* Glows animados */}
-          <div className="promo-glow promo-glow-1" />
-          <div className="promo-glow promo-glow-2" />
-          <div className="promo-glow promo-glow-3" />
-
-          <div style={{ width: "100%", maxWidth: 380, position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-
-            {/* Logo área */}
-            <div className="promo-wrap-logo" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, marginBottom: 24 }}>
-              <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 80, height: 80 }}>
-                <div className="promo-logo-ring" />
-                <div className="promo-logo-ring promo-logo-ring-2" />
-                <div className="promo-logo-ring promo-logo-ring-3" />
-                <div className="promo-logo-pulse"><AppLogo size={58} /></div>
-              </div>
-              <div>
-                <div className="promo-logo-name">Evori<span>x</span></div>
-                <div className="promo-logo-tag">Invitaciones · Fotos · Recuerdos</div>
-              </div>
-            </div>
-
-            {/* Card */}
-            <div className="promo-card-box promo-wrap-card">
-              <div style={{ fontFamily: "var(--f-display,'Cormorant Garamond'),serif", fontSizeAdjust: "var(--f-adjust,none)", fontSize: 22, fontWeight: 600, color: "#0F172A", marginBottom: 4, letterSpacing: "-0.3px" }}>
-                ¡Creá tu propio evento!
-              </div>
-              <p style={{ fontSize: 13, color: "#64748B", marginBottom: 20, lineHeight: 1.55 }}>
-                Gestiona invitaciones digitales elegantes, recibí confirmaciones y conservá cada recuerdo.
-              </p>
-
-              <div className="promo-feat-row">
-                <div className="promo-feat-ic">
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-                      <rect x="2" y="4" width="16" height="13" rx="2"/>
-                      <path d="M2 7l8 5 8-5"/>
-                    </svg>
-                  </div>
-                <div>
-                  <div className="promo-feat-lbl">Invitaciones por WhatsApp</div>
-                  <div className="promo-feat-desc">Personalizadas y con confirmación en un toque</div>
-                </div>
-              </div>
-              <div className="promo-feat-row">
-                <div className="promo-feat-ic">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-                      <circle cx="12" cy="13" r="3"/>
-                    </svg>
-                  </div>
-                <div>
-                  <div className="promo-feat-lbl">Muro de fotos en vivo</div>
-                  <div className="promo-feat-desc">Todas las fotos del evento, en tiempo real</div>
-                </div>
-              </div>
-              <div className="promo-feat-row" style={{ marginBottom: 20 }}>
-                <div className="promo-feat-ic">
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-                      <rect x="2" y="2" width="6" height="6" rx="1"/>
-                      <rect x="12" y="2" width="6" height="6" rx="1"/>
-                      <rect x="2" y="12" width="6" height="6" rx="1"/>
-                      <path d="M12 12h6v6h-6z"/>
-                    </svg>
-                  </div>
-                <div>
-                  <div className="promo-feat-lbl">Mesas y QR de entrada</div>
-                  <div className="promo-feat-desc">Asignación y registro de asistentes</div>
-                </div>
-              </div>
-
-              <button className="promo-btn-main" onClick={() => window.location.href = "/"}>
-                <span className="promo-btn-shimmer" />
-                Crear mi evento gratis
-              </button>
-              <button className="promo-btn-sec" onClick={() => { window.close(); setTimeout(() => { window.location.href = "whatsapp://"; }, 200); }}>
-                Cerrar
-              </button>
-            </div>
-
-            {/* Footer */}
-            <div className="promo-wrap-foot" style={{ textAlign: "center", marginTop: 16, opacity: 0.55 }}>
-              <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "1.8px", textTransform: "uppercase", color: "#64748B", fontFamily: "'DM Sans',sans-serif" }}>
-                Humb3rsec 2026
-              </p>
-            </div>
-
+          <div className="despedida-caja">
+            <p className="despedida-kicker">{evento.tipo === "quinceañera" ? "Mis XV años" : tipoLabel}</p>
+            <p className="despedida-titulo">¡Gracias, {nombreDePila(invitado.nombre)}!</p>
+            <p className="despedida-texto">
+              {invitado.estado === "confirmado" && fechaFmt
+                ? <>Te esperamos el <strong>{fechaFmt}</strong>.</>
+                : "Gracias por responder la invitación."}
+            </p>
+            <div className="despedida-filete" aria-hidden="true" />
+            <button className="despedida-btn" onClick={() => window.location.reload()}>
+              Volver a la invitación
+            </button>
+            <button className="despedida-sec" onClick={() => { window.close(); setTimeout(() => { window.location.href = "whatsapp://"; }, 200); }}>
+              Cerrar
+            </button>
           </div>
         </div>
       )}

@@ -18,7 +18,7 @@
 // organizador lo pidió así); `qr` queda como opción de quien la genere.
 
 import qrcode from "qrcode-generator";
-import { PALETAS_TARJETA, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta, type TintasPlanas } from "@/lib/tarjetaInvitacion";
+import { PALETAS_TARJETA, nombreEnPartes, partesPadres, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta, type TintasPlanas } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, sello, separador } from "@/lib/ornamentosTarjeta";
 import { coloresXV, svgDataUrl, svgQuinceanera, svgRamillete, type ColoresXV, type EsquinaXV } from "@/lib/ilustracionesXV";
 
@@ -1239,8 +1239,27 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
       escribir(ctx, v.cita.toLocaleUpperCase("es"), cx, y + lineasV.length * 32 + 20, { fuente: (px) => `500 ${px}px ${CAPS}`, px: 16, min: 12, max: 500, espacio: 3, color: c.texto });
     } });
   }
+  // Quienes invitan, uno por renglón y con una «y» en caligrafía entre ellos:
+  // escritos de corrido, el nombre de la mamá quedaba partido en dos renglones
   if (datos.padres) {
-    bloques.push(bloqueQueEntra(ctx, datos.padres, { alto: 64, antes: 18, base: 52, fuente: (px) => `${px}px ${SCRIPT}`, px: 64, min: 40, max: 680, color: tinta }));
+    const padres = partesPadres(datos.padres);
+    const fuentePadres = (px: number) => `italic 500 ${px}px ${SERIF}`;
+    if (padres.length === 1) {
+      bloques.push(bloqueQueEntra(ctx, padres[0], { alto: 46, antes: 18, base: 36, fuente: fuentePadres, px: 36, min: 26, max: 680, color: tinta }));
+    } else {
+      const RENGLON = 46, Y = 44;
+      bloques.push({ alto: padres.length * RENGLON + Y + (padres.length - 2) * 8, antes: 18, dibujar: (y) => {
+        let yy = y;
+        padres.forEach((nombre, i) => {
+          if (i > 0 && i === padres.length - 1) {
+            escribir(ctx, "y", cx, yy + 28, { fuente: (px) => `${px}px ${SCRIPT}`, px: 46, min: 34, max: 120, color: c.texto });
+            yy += Y;
+          } else if (i > 0) yy += 8;
+          escribir(ctx, nombre, cx, yy + 36, { fuente: fuentePadres, px: 36, min: 24, max: 680, color: tinta });
+          yy += RENGLON;
+        });
+      } });
+    }
   }
   if (datos.invitaXV) {
     ctx.font = `italic 500 30px ${SERIF}`;
@@ -1257,7 +1276,15 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
   } });
   bloques.push({ alto: 70, antes: 2, dibujar: (y) =>
     escribir(ctx, "Quinceañera", cx, y + 56, { fuente: (px) => `${px}px ${SCRIPT}`, px: 72, min: 48, max: 600, color: c.texto }) });
-  bloques.push(bloqueQueEntra(ctx, datos.protagonista, { alto: 140, antes: 0, base: 112, fuente: (px) => `${px}px ${SCRIPT}`, px: 150, min: 96, max: ancho, color: c.texto }));
+  // Sus nombres en caligrafía y los apellidos debajo, en versalitas (todo el
+  // nombre en caligrafía gigante ocupaba dos renglones pesados)
+  const nombreXV = nombreEnPartes(datos.protagonista);
+  bloques.push(bloqueQueEntra(ctx, nombreXV.nombres, { alto: 140, antes: 0, base: 112, fuente: (px) => `${px}px ${SCRIPT}`, px: 150, min: 96, max: ancho, color: c.texto }));
+  if (nombreXV.apellidos) {
+    const apellidos = nombreXV.apellidos.toLocaleUpperCase("es");
+    bloques.push({ alto: 38, antes: 4, dibujar: (y) =>
+      escribir(ctx, apellidos, cx, y + 30, { fuente: (px) => `600 ${px}px ${CAPS}`, px: 30, min: 20, max: ancho - 40, espacio: 8, color: tinta }) });
+  }
 
   // El día, la fecha y la hora en una fila, separados por filetes:
   // «Sábado | NOVIEMBRE 21 2026 | 6:00 p. m.»

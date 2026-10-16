@@ -4,6 +4,8 @@ import {
   extrasDe,
   familiaDe,
   fraseInvitacion,
+  nombreEnPartes,
+  partesPadres,
   agradecimientoDe,
   cartaDistancia,
   dedicatoriaDistancia,
@@ -424,6 +426,22 @@ describe("el nombre y quién invita siempre aparecen", () => {
     for (const nombre of ["XV de Ashley", "15 años de Ashley", "Quinceañera de Ashley", "XV años de Ashley"]) {
       expect(protagonistaDe({ nombre, tipo: "quinceañera", anfitriones: "Genaro y Soila" }).nombre).toBe("Ashley");
     }
+  });
+
+  it("los papás van uno por renglón; una familia queda entera", () => {
+    expect(partesPadres("Genaro Alexander Hernández y Soila Elizabeth Martínez de Hernández"))
+      .toEqual(["Genaro Alexander Hernández", "Soila Elizabeth Martínez de Hernández"]);
+    expect(partesPadres("Genaro & Soila")).toEqual(["Genaro", "Soila"]);
+    expect(partesPadres("Luis Pérez / Ana Ruiz")).toEqual(["Luis Pérez", "Ana Ruiz"]);
+    expect(partesPadres("Familia Hernández y Martínez")).toEqual(["Familia Hernández y Martínez"]);
+    expect(partesPadres("Soila Martínez")).toEqual(["Soila Martínez"]);
+  });
+
+  it("el nombre de la quinceañera: nombres en grande y apellidos aparte", () => {
+    expect(nombreEnPartes("Cesia Abigail Hernández Martínez")).toEqual({ nombres: "Cesia Abigail", apellidos: "Hernández Martínez" });
+    expect(nombreEnPartes("Cesia Hernández Martínez")).toEqual({ nombres: "Cesia", apellidos: "Hernández Martínez" });
+    expect(nombreEnPartes("Cesia Abigail de la Cruz")).toEqual({ nombres: "Cesia Abigail", apellidos: "de la Cruz" });
+    expect(nombreEnPartes("Cesia")).toEqual({ nombres: "Cesia", apellidos: null });
   });
 
   it("los papás que invitan aparecen aunque no empiecen con «Familia»", () => {

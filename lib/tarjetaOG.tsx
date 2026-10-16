@@ -11,7 +11,7 @@
 // trazados que dibuja el canvas (lib/ornamentosTarjeta.ts).
 
 import { ImageResponse } from "next/og";
-import { doradoCss, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
+import { doradoCss, nombreEnPartes, partesPadres, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, separador } from "@/lib/ornamentosTarjeta";
 import { coloresXV, svgDataUrl, svgQuinceanera, svgRamillete } from "@/lib/ilustracionesXV";
 
@@ -292,11 +292,16 @@ async function renderXVOG(datos: DatosTarjeta) {
   const fecha = fp ? `${semana} ${fp.dia} de ${fp.mes.toLocaleLowerCase("es")} de ${fp.anio}${datos.horaCorta ? ` · ${datos.horaCorta}` : ""}` : "";
   const lugar = datos.lugar ?? "";
   const cta = "TOCÁ PARA CONFIRMAR TU ASISTENCIA";
-  const guiones = `Mis XV AñosQuinceañera${datos.protagonista}${datos.padres ?? ""}`;
+  // Quienes invitan, uno por renglón; la quinceañera: nombres en caligrafía y
+  // apellidos en versalitas (lo mismo que la tarjeta y la invitación)
+  const padres = datos.padres ? partesPadres(datos.padres) : [];
+  const nombreXV = nombreEnPartes(datos.protagonista);
+  const apellidos = nombreXV.apellidos?.toLocaleUpperCase("es") ?? "";
+  const guiones = `Mis XV AñosQuinceañera${nombreXV.nombres}y`;
   const [script, italica, serif, sans] = await Promise.all([
     fuenteGoogle("Great+Vibes", guiones),
-    fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${datos.invitaXV ?? ""}`),
-    fuenteGoogle("Playfair+Display:wght@500", `${fecha}${lugar}`),
+    fuenteGoogle("Playfair+Display:ital,wght@1,500", `${para}${datos.invitaXV ?? ""}${padres.join("")}`),
+    fuenteGoogle("Playfair+Display:wght@500", `${fecha}${lugar}${apellidos}`),
     fuenteGoogle("Jost:wght@500", cta),
   ]);
   type Fuente = { name: string; data: ArrayBuffer; weight: 400 | 500; style: "normal" | "italic" };
@@ -306,7 +311,7 @@ async function renderXVOG(datos: DatosTarjeta) {
     serif && { name: "Serif", data: serif, weight: 500, style: "normal" },
     sans && { name: "Sans", data: sans, weight: 500, style: "normal" },
   ] as (Fuente | null)[]).filter((x): x is Fuente => !!x);
-  const largo = datos.protagonista.length;
+  const largo = nombreXV.nombres.length;
   const pxNombre = largo > 22 ? 58 : largo > 14 ? 70 : 88;
 
   return new ImageResponse(
@@ -328,10 +333,18 @@ async function renderXVOG(datos: DatosTarjeta) {
           <div style={{ display: "flex", padding: "4px 34px 10px", borderRadius: 8, backgroundColor: "#FFFFFF", border: `1.5px solid ${c.medio}`, boxShadow: `0 4px 14px ${c.profundo}22`,
             fontFamily: "Script", fontSize: 46, color: c.texto }}>Mis XV Años</div>
           {para && <div style={{ display: "flex", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 22, color: suave, marginTop: 14 }}>{para}</div>}
-          {datos.padres && <div style={{ display: "flex", fontFamily: "Script", fontSize: 44, color: tinta, marginTop: 8 }}>{datos.padres}</div>}
+          {padres.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 8 }}>
+              {padres.flatMap((n, i) => [
+                ...(i > 0 && i === padres.length - 1 ? [<div key={`y${i}`} style={{ display: "flex", fontFamily: "Script", fontSize: 26, lineHeight: 1, color: c.texto }}>y</div>] : []),
+                <div key={`p${i}`} style={{ display: "flex", fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 21, lineHeight: 1.3, color: tinta }}>{n}</div>,
+              ])}
+            </div>
+          )}
           {datos.invitaXV && <div style={{ display: "flex", justifyContent: "center", maxWidth: 480, fontFamily: "Serif", fontStyle: "italic", fontWeight: 500, fontSize: 20, lineHeight: 1.35, color: tinta, marginTop: 4 }}>{datos.invitaXV}</div>}
           <div style={{ display: "flex", fontFamily: "Script", fontSize: 44, color: c.texto, marginTop: 14 }}>Quinceañera</div>
-          <div style={{ display: "flex", fontFamily: "Script", fontSize: pxNombre, lineHeight: 1.1, color: c.texto, marginTop: -6 }}>{datos.protagonista}</div>
+          <div style={{ display: "flex", fontFamily: "Script", fontSize: pxNombre, lineHeight: 1.1, color: c.texto, marginTop: -6 }}>{nombreXV.nombres}</div>
+          {apellidos && <div style={{ display: "flex", fontFamily: "Serif", fontWeight: 500, fontSize: 16, letterSpacing: 5, color: tinta, marginTop: -2 }}>{apellidos}</div>}
           {fecha && <div style={{ display: "flex", fontFamily: "Serif", fontWeight: 500, fontSize: 21, color: tinta, marginTop: 10 }}>{fecha}</div>}
           {lugar && <div style={{ display: "flex", justifyContent: "center", maxWidth: 500, fontFamily: "Serif", fontWeight: 500, fontSize: 18, color: suave, marginTop: 4 }}>{lugar}</div>}
           <div style={{ display: "flex", fontFamily: "Sans", fontWeight: 500, fontSize: 12, letterSpacing: 3, color: c.texto, marginTop: 14 }}>{cta}</div>

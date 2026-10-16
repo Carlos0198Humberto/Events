@@ -353,6 +353,37 @@ export function protagonistaDe(evento: EventoTarjeta): { nombre: string; esPerso
 const esFamilia = (s: string) => /^(?:la\s+)?fam(?:ilia|ilias|\.)\s/i.test(s.trim());
 
 /**
+ * Quienes invitan, uno por renglón: «Genaro Hernández y Soila Martínez de
+ * Hernández» → ["Genaro Hernández", "Soila Martínez de Hernández"]. Escritos
+ * de corrido, el nombre de la mamá quedaba partido entre dos renglones. Una
+ * familia («Familia Hernández») o un solo nombre quedan enteros.
+ */
+export function partesPadres(padres: string): string[] {
+  const t = padres.trim().replace(/\s+/g, " ");
+  if (!t) return [];
+  if (esFamilia(t)) return [t];
+  const partes = t.split(/\s+(?:y|&|e)\s+|\s*\/\s*/i).map((p) => p.trim()).filter(Boolean);
+  return partes.length >= 2 && partes.length <= 3 ? partes : [t];
+}
+
+const PARTICULAS = /^(?:de|del|la|las|los|y)$/i;
+
+/**
+ * El nombre de la quinceañera en dos partes: los nombres van grandes, en
+ * caligrafía, y los apellidos debajo, en versalitas. Todo el nombre en
+ * caligrafía gigante («Cesia / Abigail / Hernández / Martínez») ocupaba cuatro
+ * renglones. Con cuatro palabras o más, los dos últimos son los apellidos
+ * (con su «de la» si lo llevan); con dos o tres, el primero es el nombre.
+ */
+export function nombreEnPartes(nombre: string): { nombres: string; apellidos: string | null } {
+  const p = nombre.trim().split(/\s+/).filter(Boolean);
+  if (p.length <= 1) return { nombres: p[0] ?? "", apellidos: null };
+  let corte = p.length >= 4 ? p.length - 2 : 1;
+  while (corte > 1 && PARTICULAS.test(p[corte - 1])) corte--;
+  return { nombres: p.slice(0, corte).join(" "), apellidos: p.slice(corte).join(" ") };
+}
+
+/**
  * Quién invita, para firmar la tarjeta: "Familia Castillo Pérez". Es el campo
  * propio si existe; si no, los anfitriones cuando son una familia y no son ya
  * el protagonista (si la familia está escrita en grande, no se repite abajo).
