@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AppLogo } from "@/app/components/AppLogo";
 import { achicarImagen } from "@/lib/fotos";
 import { CamposDireccion, CamposTarjeta, extrasParaGuardar } from "@/app/components/CamposTarjeta";
-import { cartaDistancia, extrasDe, VINCULOS_DISTANCIA, type ExtrasTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
+import { cartaDistancia, extrasDe, MAX_CARTA, VINCULOS_DISTANCIA, type ExtrasTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
 import { transmisionDe } from "@/lib/transmision";
 
 type Evento = {
@@ -120,8 +120,15 @@ function ImagenUploader({
 
 // ── Mini uploader de audio ─────────────────────────────────────────────────────
 function AudioUploader({
-  currentUrl, eventoId, onUploaded,
-}: { currentUrl?: string | null; eventoId: string; onUploaded: (url: string) => void }) {
+  currentUrl, eventoId, onUploaded, onQuitar, prefijo = "musica", etiqueta = "Archivo de música",
+}: {
+  currentUrl?: string | null; eventoId: string;
+  /** La URL pública y el nombre del archivo que eligió */
+  onUploaded: (url: string, archivo: string) => void;
+  onQuitar?: () => void;
+  prefijo?: string;
+  etiqueta?: string;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [nombre, setNombre] = useState("");
@@ -131,7 +138,7 @@ function AudioUploader({
     if (currentUrl) {
       const parts = currentUrl.split("/");
       setNombre(decodeURIComponent(parts[parts.length - 1]));
-    }
+    } else setNombre("");
   }, [currentUrl]);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -140,18 +147,19 @@ function AudioUploader({
     if (file.size > 20 * 1024 * 1024) { setErr("Máx 20 MB"); return; }
     setErr(""); setSubiendo(true);
     const ext = file.name.split(".").pop() ?? "mp3";
-    const path = `${eventoId}/musica-${Date.now()}.${ext}`;
+    const path = `${eventoId}/${prefijo}-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage.from("musica-eventos").upload(path, file, { upsert: true, contentType: file.type });
     if (upErr) { setErr("Error al subir audio"); setSubiendo(false); return; }
     const { data } = supabase.storage.from("musica-eventos").getPublicUrl(path);
     setNombre(file.name);
-    onUploaded(data.publicUrl);
+    onUploaded(data.publicUrl, file.name);
     setSubiendo(false);
+    e.target.value = "";
   }
 
   return (
     <div>
-      <label className="field-label">Archivo de música</label>
+      <label className="field-label">{etiqueta}</label>
       <div style={{ display:"flex", gap:8, alignItems:"center" }}>
         <div style={{ flex:1, border:"2px solid var(--border-mid)", borderRadius:11, padding:"10px 12px", background:"var(--accent-soft)", fontSize:13, color: nombre ? "var(--text)" : "var(--text3)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
           {nombre || "Ningún archivo seleccionado"}
@@ -162,8 +170,18 @@ function AudioUploader({
           disabled={subiendo}
           style={{ flexShrink:0, padding:"10px 14px", borderRadius:11, border:"none", background:"var(--accent)", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}
         >
-          {subiendo ? "..." : "Subir"}
+          {subiendo ? "..." : currentUrl ? "Cambiar" : "Subir"}
         </button>
+        {currentUrl && onQuitar && !subiendo && (
+          <button
+            type="button"
+            onClick={onQuitar}
+            aria-label="Quitar la canción"
+            style={{ flexShrink:0, padding:"10px 12px", borderRadius:11, border:"1.5px solid var(--border-mid)", background:"transparent", color:"var(--danger)", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}
+          >
+            Quitar
+          </button>
+        )}
       </div>
       {currentUrl && !subiendo && (
         <audio controls src={currentUrl} style={{ width:"100%", marginTop:8, height:36 }} />
@@ -675,7 +693,7 @@ export default function EditarEvento() {
                         <textarea
                           className="field-input field-textarea"
                           rows={valor ? 10 : 4}
-                          maxLength={1500}
+                          maxLength={MAX_CARTA}
                           value={valor}
                           onChange={(e) => setExtras({ ...extras, [campo]: e.target.value })}
                           placeholder={sugerida.parrafos[0]}
@@ -825,6 +843,46 @@ export default function EditarEvento() {
                   {avisoVideo && <p className="field-hint" style={{ color: "var(--danger)", fontWeight: 700 }}>{avisoVideo}</p>}
                   <p className="field-hint">Un minuto alcanza: un saludo o un resumen del día. Recordá tocar <strong>Guardar</strong> al final.</p>
                 </div>
+              </div>
+            </div>
+
+            {/* ── 4f. La canción del muro: otra, no la de la invitación ── */}
+            <div className="section-card">
+              <p className="section-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+                Canción del muro
+              </p>
+              <p className="field-hint" style={{ marginBottom: 10 }}>
+                Una canción propia para el <strong>muro</strong>, distinta de la de la invitación: suena de fondo mientras ven las fotos y dejan sus deseos.
+                Va bajita y se baja sola cuando alguien escucha un mensaje de voz o un video. Si no subís ninguna, el muro queda en silencio.
+              </p>
+              <div className="fields-group">
+                <AudioUploader
+                  eventoId={eventoId}
+                  currentUrl={extras.muro_musica ?? null}
+                  prefijo="muro-musica"
+                  etiqueta="Archivo de la canción"
+                  onUploaded={(url, archivo) => setExtras((ex) => ({
+                    ...ex,
+                    muro_musica: url,
+                    // El nombre del archivo como punto de partida ("Gracias - Marcos Witt.mp3" → "Gracias - Marcos Witt")
+                    muro_musica_nombre: ex.muro_musica_nombre?.trim() ? ex.muro_musica_nombre : archivo.replace(/\.[a-z0-9]+$/i, "").replace(/[_]+/g, " ").trim(),
+                  }))}
+                  onQuitar={() => setExtras((ex) => ({ ...ex, muro_musica: null, muro_musica_nombre: null }))}
+                />
+                {extras.muro_musica && (
+                  <div>
+                    <label className="field-label">Nombre de la canción</label>
+                    <input
+                      className="field-input"
+                      maxLength={120}
+                      value={extras.muro_musica_nombre ?? ""}
+                      onChange={(e) => setExtras({ ...extras, muro_musica_nombre: e.target.value })}
+                      placeholder="Ej.: Gracias — Marcos Witt"
+                    />
+                    <p className="field-hint">Se ve en el botón de la música del muro. Recordá tocar <strong>Guardar</strong> al final.</p>
+                  </div>
+                )}
               </div>
             </div>
 

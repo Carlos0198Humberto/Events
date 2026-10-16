@@ -1,7 +1,8 @@
 "use client";
 // ─── Música de fondo del muro ─────────────────────────────────────────────────
 //
-// La misma canción de la invitación. Los navegadores no dejan sonar nada sin
+// La canción propia del muro (la sube el organizador al editar el evento),
+// distinta de la de la invitación. Los navegadores no dejan sonar nada sin
 // un gesto: arranca con el primer toque en la página (salvo que la persona la
 // haya apagado antes, eso se recuerda). Cualquier audio o video de la página
 // que empiece a sonar —un deseo grabado, el video del anfitrión— es una voz: la

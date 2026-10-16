@@ -157,10 +157,12 @@ describe("invitados a distancia", () => {
 
   it("la carta agradece en primera persona, habla del estudio y cierra con la bendición", () => {
     const c = cartaDistancia(grad(), "f");
-    expect(c.parrafos).toHaveLength(4);
+    expect(c.parrafos).toHaveLength(6);
     expect(c.parrafos[0]).toBe("Hoy quiero detenerme a darte las gracias. Después de años de estudio, llegó el día de mi graduación, y este logro no es solo mío: también lleva tu nombre.");
     expect(c.parrafos[1]).toContain("en los semestres más difíciles, en las noches de estudio y en cada examen");
-    expect(c.parrafos[2]).toContain("cuando reciba mi título. Por eso preparé esta invitación especial para vos");
+    expect(c.parrafos[2]).toContain("saber que alguien creía en mí, aunque estuviera lejos, hizo toda la diferencia.");
+    expect(c.parrafos[3]).toContain("cuando reciba mi título. Por eso preparé esta invitación especial para vos");
+    expect(c.parrafos[4]).toContain("Este título es el cierre de una etapa y el comienzo de muchas otras");
     expect(c.oracion).toBe("Y esta es mi oración por vos:");
     expect(c.bendicion.cita).toBe("Números 6:24-26");
     expect(c.despedida).toBe("Con todo mi cariño y gratitud,");
@@ -176,8 +178,11 @@ describe("invitados a distancia", () => {
   it("la carta habla como familia y en plural a varios", () => {
     const c = cartaDistancia(grad({ tarjeta: { familia: "Familia Chavarría", graduando: "Carlos Chavarría", carrera: "Ingeniería Civil" } }), "plural");
     expect(c.parrafos[0]).toContain("Hoy queremos detenernos a darles las gracias. Después de años de estudio, Carlos se gradúa de Ingeniería Civil");
-    expect(c.parrafos[2]).toContain("cuando Carlos reciba su título. Por eso preparamos esta invitación especial para ustedes: para que vean las fotos");
-    expect(c.parrafos[3]).toContain("Le pedimos a Dios que les devuelva");
+    expect(c.parrafos[2]).toContain("saber que alguien creía en Carlos");
+    expect(c.parrafos[3]).toContain("cuando Carlos reciba su título. Por eso preparamos esta invitación especial para ustedes: para que vean las fotos");
+    expect(c.parrafos[4]).toContain("vamos a llevar con nosotros su cariño");
+    expect(c.parrafos[5]).toContain("Le pedimos a Dios que les devuelva");
+    expect(c.parrafos[5]).toContain("que llene sus hogares de paz.");
     expect(c.oracion).toBe("Y esta es nuestra oración por ustedes:");
     expect(c.firma).toBe("Familia Chavarría");
   });
@@ -442,11 +447,23 @@ describe("invitados a distancia por vínculo", () => {
 
   it("a la familia: el logro es de toda la familia y la oración pide unidad", () => {
     const c = cartaDistancia(grad(), "f", "familia");
-    expect(c.parrafos[0]).toBe("Hoy quiero detenerme a darte las gracias. Después de años de estudio, llegó el día de mi graduación, y este logro no es solo mío: es de toda la familia, y también lleva tu nombre.");
+    expect(c.parrafos).toHaveLength(6);
+    expect(c.parrafos[0]).toBe("Hoy quiero detenerme a darte las gracias. Después de años de estudio, llegó el día de mi graduación, y cuando miro hacia atrás no puedo dejar de pensar en vos. Este logro no es solo mío: es de toda la familia, y también lleva tu nombre.");
     expect(c.parrafos[1]).toContain("Somos familia, y eso no lo cambia ninguna distancia.");
-    expect(c.parrafos[2]).toContain("como estuviste siempre. Por eso preparé esta invitación especial para vos");
-    expect(c.parrafos[3]).toContain("que mantenga unida a nuestra familia");
+    expect(c.parrafos[2]).toContain("en quienes, como vos, nunca dejaron de creer en mí.");
+    expect(c.parrafos[3]).toContain("Me hubiera encantado tenerte cerca ese día, abrazarte y celebrar juntos.");
+    expect(c.parrafos[3]).toContain("como estuviste siempre. Por eso preparé esta invitación especial para vos");
+    expect(c.parrafos[4]).toContain("este título también es tuyo: es el fruto de una familia que se quiere, que ora unida y que nunca se rinde.");
+    expect(c.parrafos[5]).toContain("Le pido a Dios que te bendiga");
+    expect(c.parrafos[5]).toContain("que mantenga unida a nuestra familia");
     expect(c.oracion).toBe("Y esta es mi oración por vos:");
+    expect(c.despedida).toBe("Con todo mi amor y gratitud,");
+    // A varios: "los bendiga" (objeto directo), "tenerlos cerca", "es de ustedes"
+    const v = cartaDistancia(grad({ tarjeta: { familia: "Familia Chavarría", graduando: "Carlos Chavarría" } }), "plural", "familia");
+    expect(v.parrafos[2]).toContain("nunca dejaron de creer en Carlos.");
+    expect(v.parrafos[3]).toContain("Nos hubiera encantado tenerlos cerca ese día, abrazarlos");
+    expect(v.parrafos[4]).toContain("este título también es de ustedes");
+    expect(v.parrafos[5]).toContain("Le pedimos a Dios que los bendiga");
   });
 
   it("a los amigos: la amistad como regalo de Dios, en plural cuando son varios", () => {
@@ -454,15 +471,28 @@ describe("invitados a distancia por vínculo", () => {
     expect(c.parrafos[0]).toContain("Hoy queremos detenernos a darles las gracias.");
     expect(c.parrafos[0]).toContain("su amistad fue un regalo de Dios.");
     expect(c.parrafos[1]).toContain("por escucharnos cuando más lo necesitábamos");
-    expect(c.parrafos[2]).toContain("A los buenos amigos no los separa la distancia.");
-    expect(c.parrafos[3]).toContain("que nuestra amistad siga creciendo");
+    expect(c.parrafos[1]).toContain("por estar presentes aun desde lejos.");
+    expect(c.parrafos[2]).toContain("Cuando Carlos dudó de sí, su amistad le recordó de lo que era capaz");
+    expect(c.parrafos[2]).toContain("su alegría fue tan grande como la de Carlos.");
+    expect(c.parrafos[3]).toContain("A los buenos amigos no los separa la distancia:");
+    expect(c.parrafos[4]).toContain("gracias por una amistad que vale más que cualquier título.");
+    expect(c.parrafos[5]).toContain("que nuestra amistad siga creciendo");
+    expect(c.despedida).toBe("Con el cariño de siempre,");
+    const yo = cartaDistancia(grad(), "m", "amigos");
+    expect(yo.parrafos[2]).toContain("Cuando dudé de mí, tu amistad me recordó de lo que era capaz; cuando quise rendirme, tus palabras me dieron ánimo para seguir; y cuando por fin vi la meta cerca, tu alegría fue tan grande como la mía.");
   });
 
   it("a los hermanos en Cristo: sus oraciones, la comunión y la oración que los nombra", () => {
     const c = cartaDistancia(grad(), "m", "hermanos");
-    expect(c.parrafos[0]).toContain("y sé que detrás de este logro están tus oraciones.");
+    expect(c.parrafos[0]).toContain("y sé que detrás de este logro, además del esfuerzo, están tus oraciones.");
     expect(c.parrafos[1]).toContain("Doy gracias a Dios por tu vida y por la comunión que tenemos en Cristo.");
-    expect(c.parrafos[2]).toContain("en mi corazón y en mis oraciones cuando reciba mi título");
+    expect(c.parrafos[2]).toContain("Pero el Señor nunca me soltó de su mano");
+    expect(c.parrafos[2]).toContain("puso en mi camino a hermanos como vos, que intercedieron por mí sin que yo siquiera lo pidiera.");
+    expect(c.parrafos[3]).toContain("en mi corazón y en mis oraciones cuando reciba mi título");
+    expect(c.parrafos[4]).toContain("un testimonio de la fidelidad de Dios, y quiero que toda la gloria sea para Él.");
+    expect(c.parrafos[5]).toContain("que llene tu casa de su paz y que te siga usando para bendecir a muchos.");
+    expect(cartaDistancia(grad(), "f", "hermanos").parrafos[2]).toContain("a hermanas como vos");
+    expect(cartaDistancia(grad(), "plural", "hermanos").parrafos[5]).toContain("que llene sus hogares de su paz y que los siga usando");
     expect(c.oracion).toBe("Y esta es mi oración por vos, hermano:");
     expect(c.despedida).toBe("Con amor fraternal en Cristo,");
     expect(cartaDistancia(grad(), "f", "hermanos").oracion).toBe("Y esta es mi oración por vos, hermana:");

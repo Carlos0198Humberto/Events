@@ -120,11 +120,11 @@ function VisorAnfitrion({ items, indice, onCambiar, onCerrar }: { items: Item[];
 }
 
 const ESTILOS = `
-@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600&display=swap');
 .ga{margin:2px 0 18px}
 .ga-cab{text-align:center;margin-bottom:10px}
-.ga-titulo{font-family:'Great Vibes',cursive;font-size:30px;line-height:1.1;-webkit-background-clip:text;background-clip:text;color:transparent}
-.ga-de{font-family:'Playfair Display',Georgia,serif;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#64748B;margin-top:2px}
+.ga-titulo{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:28px;line-height:1.15;padding:0 .1em;-webkit-background-clip:text;background-clip:text;color:transparent}
+.ga-de{font-family:'DM Sans',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#64748B;margin-top:4px}
 .ga-carril{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 2px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .ga-carril::-webkit-scrollbar{display:none}
 .ga-item{position:relative;flex:0 0 auto;width:min(62vw,230px);aspect-ratio:4/5;border-radius:18px;overflow:hidden;border:4px solid #fff;padding:0;cursor:pointer;scroll-snap-align:center;

@@ -51,6 +51,8 @@ export type ExtrasTarjeta = {
   transmision_titulo?: string | null; // "Culto de acción de gracias" (null = "Transmisión en vivo")
   muro_galeria?: boolean;         // true = el muro muestra las fotos del anfitrión (fotos_anfitrion) y su video
   muro_video?: string | null;     // video corto del anfitrión para el muro
+  muro_musica?: string | null;    // canción de fondo del muro, distinta de la de la invitación (null = el muro en silencio)
+  muro_musica_nombre?: string | null; // "Gracias — Marcos Witt"
   entrada_qr?: boolean;         // false = sin entrada con código QR al confirmar
   etapa?: "reserva" | "gracias" | null; // "reserva" = pre-invitación (apartá la fecha); "gracias" = agradecimiento después del evento; sin valor = invitación para confirmar
   pre_texto?: string | null;    // lo que dice la pre-invitación, escrito por el organizador (null = el automático)
@@ -110,6 +112,8 @@ export const FRASES_HONOR: Record<string, string[]> = {
 
 const limpio = (v: unknown, max = 120) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
 // Igual, pero respeta los saltos de línea: cada línea es un párrafo
+/** Largo máximo de una carta a distancia escrita por el organizador */
+export const MAX_CARTA = 3000;
 const limpioParrafos = (v: unknown, max: number) => (typeof v === "string"
   ? v.split(/\n+/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean).join("\n").slice(0, max)
   : "");
@@ -146,16 +150,18 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   if (typeof o.honor === "string") ex.honor = limpio(o.honor, 48);
   if (typeof o.foto === "boolean") ex.foto = o.foto;
   if (typeof o.paleta === "string") ex.paleta = limpio(o.paleta, 20) || null;
-  if (typeof o.agradecimiento === "string") ex.agradecimiento = limpioParrafos(o.agradecimiento, 1500) || null;
+  if (typeof o.agradecimiento === "string") ex.agradecimiento = limpioParrafos(o.agradecimiento, MAX_CARTA) || null;
   for (const v of VINCULOS_DISTANCIA) {
     const k = `carta_${v.id}` as const;
-    if (typeof o[k] === "string") ex[k] = limpioParrafos(o[k], 1500) || null;
+    if (typeof o[k] === "string") ex[k] = limpioParrafos(o[k], MAX_CARTA) || null;
   }
   // Solo un enlace web: nada de "javascript:" ni texto suelto
   if (typeof o.transmision === "string" && /^https:\/\/[^\s]+$/i.test(o.transmision.trim())) ex.transmision = limpio(o.transmision, 300);
   if (typeof o.transmision_titulo === "string") ex.transmision_titulo = limpio(o.transmision_titulo, 80) || null;
   if (o.muro_galeria === true) ex.muro_galeria = true;
   if (typeof o.muro_video === "string" && /^https:\/\/[^\s]+$/i.test(o.muro_video.trim())) ex.muro_video = limpio(o.muro_video, 400);
+  if (typeof o.muro_musica === "string" && /^https:\/\/[^\s]+$/i.test(o.muro_musica.trim())) ex.muro_musica = limpio(o.muro_musica, 400);
+  if (typeof o.muro_musica_nombre === "string") ex.muro_musica_nombre = limpio(o.muro_musica_nombre, 120) || null;
   if (o.entrada_qr === false) ex.entrada_qr = false;
   if (o.etapa === "reserva") ex.etapa = "reserva";
   else if (o.etapa === "gracias") ex.etapa = "gracias";
@@ -588,10 +594,23 @@ export function cartaDistancia(evento: EventoTarjeta, trato: Trato, vinculo: Vin
   const pila = p.esPersona ? p.nombre.split(/\s+/)[0] : "";
   // Lo que cambia entre "vos" y "ustedes"
   const t = pl
-    ? { te: "les", tu: "su", tus: "sus", vos: "ustedes", diste: "dieron", estes: "estén", vas: "van", veas: "vean", vivas: "vivan", sembraste: "sembraron", estuviste: "estuvieron" }
-    : { te: "te", tu: "tu", tus: "tus", vos: "vos", diste: "diste", estes: "estés", vas: "vas", veas: "veas", vivas: "vivas", sembraste: "sembraste", estuviste: "estuviste" };
+    ? {
+      te: "les", tu: "su", tus: "sus", vos: "ustedes", diste: "dieron", estes: "estén", vas: "van", veas: "vean", vivas: "vivan",
+      sembraste: "sembraron", estuviste: "estuvieron", sepas: "sepan", tuyo: "de ustedes", tenerte: "tenerlos", abrazarte: "abrazarlos",
+      lo: "los", presente: "presentes", casa: "sus hogares",
+    }
+    : {
+      te: "te", tu: "tu", tus: "tus", vos: "vos", diste: "diste", estes: "estés", vas: "vas", veas: "veas", vivas: "vivas",
+      sembraste: "sembraste", estuviste: "estuviste", sepas: "sepas", tuyo: "tuyo", tenerte: "tenerte", abrazarte: "abrazarte",
+      lo: "te", presente: "presente", casa: "tu casa",
+    };
+  // Quien escribe: el graduado ("me", "mi") o su familia ("nos", "nuestro")
   const me = yo ? "me" : "nos";
-  const corazon = yo ? "mi corazón" : "nuestro corazón";
+  const mi = yo ? "mi" : "nuestro";
+  const corazon = `${mi} corazón`;
+  // En quién se creyó: "en mí", "en Carlos" (lo escribe la familia) o "en nosotros"
+  const enMi = yo ? "mí" : pila || "nosotros";
+  const quiero = yo ? "quiero" : "queremos";
   const hoy = `${yo ? "Hoy quiero detenerme" : "Hoy queremos detenernos"} a dar${t.te} las gracias.`;
   const preparamos = `Por eso ${yo ? "preparé" : "preparamos"} esta invitación especial para ${t.vos}: para que ${t.veas} las fotos de este día y lo ${t.vivas} ${yo ? "conmigo" : "con nosotros"} desde donde ${t.estes}.`;
   const estudio = grad
@@ -607,48 +626,75 @@ export function cartaDistancia(evento: EventoTarjeta, trato: Trato, vinculo: Vin
   let despedida = yo ? "Con todo mi cariño y gratitud," : "Con todo nuestro cariño y gratitud,";
 
   if (vinculo === "familia") {
-    carta = [
-      grad
-        ? `${hoy} Después de años de estudio, ${estudio}, y este logro ${yo ? "no es solo mío: es de toda la familia" : "es de toda la familia"}, y también lleva ${t.tu} nombre.`
-        : `${hoy} Este día tan especial es de toda la familia, y también lleva ${t.tu} nombre.`,
-      `Somos familia, y eso no lo cambia ninguna distancia. Cada llamada, cada consejo, cada oración y cada muestra de cariño que ${me} ${t.diste} desde lejos ${me} ${grad ? "sostuvieron en los semestres más difíciles" : "acompañaron hasta acá"} y ${me} recordaron de dónde ${yo ? "vengo" : "venimos"}.`,
-      `Aunque no ${t.estes} en ${ocasion}, ${t.vas} a estar en ${corazon} ${titulo}, como ${t.estuviste} siempre. ${preparamos}`,
-    ];
-    cierre = `${pido} a Dios que ${t.te} bendiga, que guarde cada uno de ${t.tus} pasos y que mantenga unida a nuestra familia, aunque estemos lejos.`;
+    carta = grad
+      ? [
+        `${hoy} Después de años de estudio, ${estudio}, y cuando ${yo ? "miro" : "miramos"} hacia atrás no ${yo ? "puedo" : "podemos"} dejar de pensar en ${t.vos}. Este logro ${yo ? "no es solo mío: es de toda la familia" : "es de toda la familia"}, y también lleva ${t.tu} nombre.`,
+        `Somos familia, y eso no lo cambia ninguna distancia. Puede haber kilómetros, fronteras y horarios distintos entre nosotros, pero el cariño sigue intacto. Cada llamada, cada consejo, cada oración y cada muestra de cariño que ${me} ${t.diste} desde lejos ${me} sostuvieron en los semestres más difíciles y ${me} recordaron de dónde ${yo ? "vengo" : "venimos"}.`,
+        `Hubo noches de desvelo, exámenes que parecían imposibles y días en que el cansancio pesaba más que las ganas. En esos momentos ${yo ? "pensaba" : "pensábamos"} en la familia y en quienes, como ${t.vos}, nunca dejaron de creer en ${enMi}. Eso ${me} daba fuerzas para dar un paso más.`,
+        `${yo ? "Me" : "Nos"} hubiera encantado ${t.tenerte} cerca ese día, ${t.abrazarte} y celebrar juntos. Aunque no ${t.estes} en ${ocasion}, ${t.vas} a estar en ${corazon} ${titulo}, como ${t.estuviste} siempre. ${preparamos}`,
+        `Ojalá muy pronto podamos sentarnos juntos a la mesa, ver estas fotos y contarnos todo lo que la distancia no nos dejó compartir. Mientras tanto, ${quiero} que ${t.sepas} que este título también es ${t.tuyo}: es el fruto de una familia que se quiere, que ora unida y que nunca se rinde.`,
+      ]
+      : [
+        `${hoy} Este día tan especial es de toda la familia, y también lleva ${t.tu} nombre.`,
+        `Somos familia, y eso no lo cambia ninguna distancia. Puede haber kilómetros, fronteras y horarios distintos entre nosotros, pero el cariño sigue intacto. Cada llamada, cada consejo, cada oración y cada muestra de cariño que ${me} ${t.diste} desde lejos ${me} acompañaron hasta acá y ${me} recordaron de dónde ${yo ? "vengo" : "venimos"}.`,
+        `${yo ? "Me" : "Nos"} hubiera encantado ${t.tenerte} cerca ese día, ${t.abrazarte} y celebrar juntos. Aunque no ${t.estes} en ${ocasion}, ${t.vas} a estar en ${corazon} ${titulo}, como ${t.estuviste} siempre. ${preparamos}`,
+        `Ojalá muy pronto podamos sentarnos juntos a la mesa, ver estas fotos y contarnos todo lo que la distancia no nos dejó compartir. Mientras tanto, ${quiero} que ${t.sepas} que este día también es ${t.tuyo}, porque es el fruto de una familia que se quiere y que ora unida.`,
+      ];
+    cierre = `${pido} a Dios que ${t.lo} bendiga, que guarde cada uno de ${t.tus} pasos, que ${t.te} dé salud y que mantenga unida a nuestra familia, aunque estemos lejos, hasta el día en que podamos volver a abrazarnos.`;
+    despedida = yo ? "Con todo mi amor y gratitud," : "Con todo nuestro amor y gratitud,";
   } else if (vinculo === "amigos") {
+    // Lo que vivió el graduado, contado por él mismo o por su familia
+    const g = yo
+      ? { dudo: "dudé de mí", le: "me", capaz: "era capaz", rendirse: "quise rendirme", vio: "vi", suya: "la mía" }
+      : pila
+        ? { dudo: `${pila} dudó de sí`, le: "le", capaz: "era capaz", rendirse: "quiso rendirse", vio: "vio", suya: `la de ${pila}` }
+        : { dudo: "dudamos", le: "nos", capaz: "éramos capaces", rendirse: "quisimos rendirnos", vio: "vimos", suya: "la nuestra" };
     carta = [
       grad
-        ? `${hoy} Después de años de estudio, ${estudio}, y en todo este camino ${t.tu} amistad fue un regalo de Dios.`
-        : `${hoy} En este día tan especial no ${yo ? "quiero" : "queremos"} dejar de decir${t.te} cuánto vale ${t.tu} amistad.`,
-      `Gracias por cada mensaje de ánimo, por escuchar${me} cuando más ${yo ? "lo necesitaba" : "lo necesitábamos"}, por cada oración y por estar presente aun desde lejos. ${grad ? `Esas palabras ${me} sostuvieron en los semestres más difíciles y en cada examen.` : `Esas palabras ${me} acompañaron hasta acá.`}`,
-      `A los buenos amigos no los separa la distancia. Aunque no ${t.estes} en ${ocasion}, ${t.vas} a estar en ${corazon} ${titulo}. ${preparamos}`,
+        ? `${hoy} Después de años de estudio, ${estudio}, y al mirar atrás ${yo ? "descubro" : "descubrimos"} que en todo este camino ${t.tu} amistad fue un regalo de Dios.`
+        : `${hoy} En este día tan especial no ${quiero} dejar de decir${t.te} cuánto vale ${t.tu} amistad.`,
+      `Gracias por cada mensaje de ánimo, por escuchar${me} cuando más ${yo ? "lo necesitaba" : "lo necesitábamos"}, por las ocurrencias que ${me} sacaron una sonrisa en los días pesados, por cada oración y por estar ${t.presente} aun desde lejos. ${grad ? `Ese cariño ${me} sostuvo en los semestres más difíciles y en cada examen.` : `Ese cariño ${me} acompañó hasta acá.`}`,
+      grad
+        ? `Dicen que los amigos de verdad se conocen en los momentos difíciles, y así fue. Cuando ${g.dudo}, ${t.tu} amistad ${g.le} recordó de lo que ${g.capaz}; cuando ${g.rendirse}, ${t.tus} palabras ${g.le} dieron ánimo para seguir; y cuando por fin ${g.vio} la meta cerca, ${t.tu} alegría fue tan grande como ${g.suya}.`
+        : `Dicen que los amigos de verdad se conocen en los momentos difíciles, y así fue: en cada etapa, ${t.tu} amistad fue apoyo, alegría y compañía.`,
+      `A los buenos amigos no los separa la distancia: pueden pasar meses sin vernos y, al reencontrarnos, todo sigue igual. Aunque no ${t.estes} en ${ocasion}, ${t.vas} a estar en ${corazon} ${titulo}. ${preparamos}`,
+      `Ojalá muy pronto podamos celebrarlo juntos, con un café de por medio y todas las historias que tenemos pendientes. Hasta entonces, gracias por una amistad que ${grad ? "vale más que cualquier título" : "es un verdadero tesoro"}.`,
     ];
-    cierre = `${pido} a Dios que ${t.te} devuelva multiplicado todo el cariño que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos y que nuestra amistad siga creciendo por muchos años más.`;
+    cierre = `${pido} a Dios que ${t.te} devuelva multiplicado todo el cariño que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos, que cumpla los sueños de ${t.tu} corazón y que nuestra amistad siga creciendo por muchos años más.`;
+    despedida = "Con el cariño de siempre,";
   } else if (vinculo === "hermanos") {
     const hermano = trato === "f" ? "hermana" : trato === "m" ? "hermano" : pl ? "hermanos" : "";
+    const hermanosComo = `${trato === "f" ? "hermanas" : "hermanos"} como ${t.vos}`;
     carta = [
       grad
-        ? `${hoy} Después de años de estudio, ${estudio}, y ${yo ? "sé" : "sabemos"} que detrás de este logro están ${t.tus} oraciones.`
+        ? `${hoy} Después de años de estudio, ${estudio}, y ${yo ? "sé" : "sabemos"} que detrás de este logro, además del esfuerzo, están ${t.tus} oraciones.`
         : `${hoy} ${yo ? "Sé" : "Sabemos"} que en este día tan especial también están ${t.tus} oraciones.`,
       `${yo ? "Doy" : "Damos"} gracias a Dios por ${pl ? "sus vidas" : "tu vida"} y por la comunión que tenemos en Cristo. Cada oración, cada palabra de fe y cada muestra de amor fraternal que ${me} ${t.diste}, aun desde lejos, ${me} ${grad ? "sostuvieron en los momentos más difíciles" : "acompañaron hasta acá"} y ${me} recordaron que el Señor es fiel.`,
+      grad
+        ? `No fueron años fáciles. Hubo semestres en que las fuerzas no alcanzaban y días en que el futuro parecía incierto. Pero el Señor nunca ${me} soltó de su mano: abrió puertas, ${me} dio sabiduría para cada examen y puso en ${mi} camino a ${hermanosComo}, que intercedieron por ${yo ? "mí sin que yo siquiera lo pidiera" : "nosotros sin que siquiera lo pidiéramos"}.`
+        : `El Señor ha sido fiel en cada etapa del camino, y en ese camino puso a ${hermanosComo}, que interceden en silencio y sostienen con su fe.`,
       `La distancia no separa a quienes somos uno en Cristo. Aunque no ${t.estes} en ${ocasion}, ${t.vas} a estar en ${corazon} y en ${yo ? "mis" : "nuestras"} oraciones ${titulo}. ${preparamos}`,
+      `${grad ? "Este título es" : "Este día es"}, ante todo, un testimonio de la fidelidad de Dios, y ${quiero} que toda la gloria sea para Él. Sigamos unidos en la oración, sirviendo al mismo Señor, hasta el día en que podamos volver a adorarlo juntos.`,
     ];
-    cierre = `${pido} al Señor que ${t.te} devuelva multiplicada cada oración, que guarde cada uno de ${t.tus} pasos y que llene ${t.tu} casa de su paz.`;
+    cierre = `${pido} al Señor que ${t.te} devuelva multiplicada cada oración, que guarde cada uno de ${t.tus} pasos, que llene ${t.casa} de su paz y que ${t.lo} siga usando para bendecir a muchos.`;
     oracion = `Y esta es ${yo ? "mi" : "nuestra"} oración por ${t.vos}${hermano ? `, ${hermano}` : ""}:`;
     despedida = "Con amor fraternal en Cristo,";
   } else if (grad) {
     carta = [
       `${hoy} Después de años de estudio, ${estudio}, y este logro ${yo ? `no es solo mío: también lleva ${t.tu} nombre` : `también lleva ${t.tu} nombre`}.`,
       `Cada palabra de aliento, cada oración y cada muestra de cariño que ${me} ${t.diste}, aun desde lejos, ${me} sostuvieron en los semestres más difíciles, en las noches de estudio y en cada examen, y ${me} dieron fuerzas para llegar a la meta.`,
+      `Hubo días en que el cansancio pesaba más que las ganas y metas que parecían demasiado lejanas. En esos momentos, saber que alguien creía en ${enMi}, aunque estuviera lejos, hizo toda la diferencia. Hoy ${yo ? "puedo" : "podemos"} decirlo con gratitud: valió la pena cada esfuerzo.`,
       `La distancia nunca pudo separarnos. Aunque no ${t.estes} en la ceremonia, ${t.vas} a estar en ${corazon} ${titulo}. ${preparamos}`,
+      `Este título es el cierre de una etapa y el comienzo de muchas otras, y en cada una de ellas ${yo ? "voy a llevar conmigo" : "vamos a llevar con nosotros"} ${t.tu} cariño. Ojalá muy pronto podamos celebrarlo juntos.`,
     ];
-    cierre = `${pido} a Dios que ${t.te} devuelva multiplicado todo el bien que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos y que llene ${t.tu} casa de paz.`;
+    cierre = `${pido} a Dios que ${t.te} devuelva multiplicado todo el bien que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos y que llene ${t.casa} de paz.`;
   } else {
     carta = [
       `${hoy} Este día tan especial también lleva ${t.tu} nombre. Cada palabra de aliento, cada oración y cada muestra de cariño que ${me} ${t.diste}, aun desde lejos, ${me} acompañaron hasta acá.`,
+      `Hay días que se guardan para siempre en el corazón, y este es uno de ellos. Por eso no ${yo ? "quería" : "queríamos"} que pasara sin decir${t.te} cuánto significa ${t.tu} cariño.`,
       `La distancia nunca pudo separarnos. Aunque no ${t.estes} en la celebración, ${t.vas} a estar en ${corazon} en cada momento. ${preparamos}`,
     ];
-    cierre = `${pido} a Dios que ${t.te} devuelva multiplicado todo el bien que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos y que llene ${t.tu} casa de paz.`;
+    cierre = `${pido} a Dios que ${t.te} devuelva multiplicado todo el bien que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos y que llene ${t.casa} de paz.`;
   }
 
   // La carta que escribió el organizador: la de ese vínculo o, si no hay, la general
