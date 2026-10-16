@@ -11,16 +11,31 @@
 // El archivo viene de Supabase Storage con CORS abierto: el <audio> necesita
 // crossOrigin="anonymous" o Web Audio daría silencio.
 
-export const MUSICA_BASE = 0.18;
-export const MUSICA_BAJO_VOZ = 0.025;
+export const MUSICA_BASE = 0.12;
+export const MUSICA_BAJO_VOZ = 0.01;
 const FUNDIDO_S = 0.45;
 const ESPERA_VOLVER_MS = 1200;
 
+/** iPhone, iPad (también el iPad que se presenta como Mac) y cualquier navegador de iOS */
+export function esIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
 let volumenControlable: boolean | null = null;
-function puedeControlarVolumen() {
+/**
+ * ¿Alcanza con audio.volume? En iPhone y iPad NO: el volumen puede "aceptarse"
+ * al leerlo y aun así sonar al 100 %. Por eso iOS se reconoce por el
+ * dispositivo y siempre va por el mezclador (antes se decidía solo con la
+ * prueba de leer el volumen, y la música tapaba la voz en el iPhone).
+ */
+export function puedeControlarVolumen(): boolean {
   if (volumenControlable === null) {
-    try { const a = new Audio(); a.volume = 0.5; volumenControlable = Math.abs(a.volume - 0.5) < 0.01; }
-    catch { volumenControlable = true; }
+    if (esIOS()) volumenControlable = false;
+    else {
+      try { const a = new Audio(); a.volume = 0.5; volumenControlable = Math.abs(a.volume - 0.5) < 0.01; }
+      catch { volumenControlable = true; }
+    }
   }
   return volumenControlable;
 }

@@ -1,5 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+
+// Solo para quien organiza (panel, eventos, administración). Un invitado que
+// abre su invitación o el muro no ve el aviso de «Agregar a pantalla de
+// inicio» ni la pantalla completa forzada.
+const DEL_ORGANIZADOR = /^\/(dashboard|eventos|admin)(\/|$)/;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function detectOS(): "ios" | "android" | "other" {
@@ -23,8 +29,11 @@ function isStandalone(): boolean {
 export default function FullscreenManager() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const ruta = usePathname() ?? "";
+  const paraOrganizador = DEL_ORGANIZADOR.test(ruta);
 
   useEffect(() => {
+    if (!paraOrganizador) { setShowPrompt(false); return; }
     // Already running as installed PWA → nothing to do
     if (isStandalone()) return;
 
@@ -57,7 +66,7 @@ export default function FullscreenManager() {
       const timer = setTimeout(() => setShowPrompt(true), 3000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [paraOrganizador]);
 
   function dismiss() {
     setLeaving(true);
@@ -65,7 +74,7 @@ export default function FullscreenManager() {
     setTimeout(() => setShowPrompt(false), 380);
   }
 
-  if (!showPrompt) return null;
+  if (!showPrompt || !paraOrganizador) return null;
 
   return (
     <>

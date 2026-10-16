@@ -16,6 +16,7 @@ import { IcoCamara, IcoCorazon as IcoCorazonLinea } from "@/app/components/Icono
 import { nombreDePila, saludoDeCarta, tratoDe } from "@/lib/tratoInvitado";
 import { citaHablada } from "@/lib/versiculos";
 import { claveVoz, textoParaVoz, urlPublicaVoz } from "@/lib/vozGrabada";
+import { puedeControlarVolumen } from "@/lib/musicaFondo";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Invitado = {
@@ -980,19 +981,13 @@ const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
 // viene de Supabase Storage con CORS abierto (si no, Web Audio daría silencio).
 // Una canción comercial llega masterizada muy fuerte y la voz grabada no: la
 // música va bien de fondo (antes 0,18 y 0,025 se oía por encima de la voz)
-const MUSICA_BASE = 0.1;
-const MUSICA_CON_VOZ = 0.012;
+const MUSICA_BASE = 0.07;
+const MUSICA_CON_VOZ = 0.008;
 const FUNDIDO_S = 0.45;
 const ESPERA_VOLVER_MS = 2500;
 
-let volumenControlable: boolean | null = null;
-function puedeControlarVolumen() {
-  if (volumenControlable === null) {
-    try { const a = new Audio(); a.volume = 0.5; volumenControlable = Math.abs(a.volume - 0.5) < 0.01; }
-    catch { volumenControlable = true; }
-  }
-  return volumenControlable;
-}
+// puedeControlarVolumen (lib/musicaFondo): en iPhone y iPad siempre es «no»,
+// así que la música va por el mezclador y de verdad queda de fondo
 
 let mezcla: { ctx: AudioContext; ganancia: GainNode } | null = null;
 /** iPhone: conecta la música a un mezclador. Llamar dentro de un toque. */
@@ -2492,16 +2487,21 @@ function MusicPlayer({ url, nombre }: { url: string; nombre?: string | null }) {
     // Si el audio no está reproduciendo todavía, intentar arrancar
     // (salvo que el invitado haya entrado sin sonido: ahí arranca solo si toca el reproductor)
     if (a.paused && !preferenciaAudio.sinSonido) {
-      a.muted = false;
-      a.play().then(() => setPlaying(true)).catch(() => {
-        // Fallback: esperar próximo gesto
-        const onInteract = () => {
-          a.muted = false;
-          a.play().then(() => setPlaying(true)).catch(() => {});
-        };
+      // Próximo toque: ahí iPhone arma el mezclador (volumen de fondo real)
+      const onInteract = () => {
+        prepararMezcla();
+        a.muted = false;
+        a.play().then(() => setPlaying(true)).catch(() => {});
+      };
+      const esperarGesto = () => {
         document.addEventListener("click", onInteract, { once: true });
         document.addEventListener("touchstart", onInteract, { once: true });
-      });
+      };
+      if (!puedeControlarVolumen() && !mezcla) esperarGesto();
+      else {
+        a.muted = false;
+        a.play().then(() => setPlaying(true)).catch(esperarGesto);
+      }
     }
 
     return () => {
@@ -2906,9 +2906,20 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   }
   const fondoTarjeta = datosTarjeta.diseno === "moderna" ? tintasPlanas(datosTarjeta.paleta).fondo : datosTarjeta.paleta.fondo;
   const tarjetaOscura = colorOscuro(fondoTarjeta);
-  // XV: el sello en el tono del vestido (rosa), no en dorado
-  const acento = datosTarjeta.diseno === "xv" ? coloresXV(datosTarjeta.tonoXV).fuerte : datosTarjeta.paleta.oroPlano;
-  const varsSobre = (tarjetaOscura
+  // XV: la portada en el tono del vestido (rosa claro), no en vino oscuro: el
+  // sobre rosado, el sello y el botón en el tono fuerte (nada dorado/ocre)
+  const xvSobre = datosTarjeta.diseno === "xv" ? coloresXV(datosTarjeta.tonoXV) : null;
+  const acento = xvSobre ? xvSobre.profundo : datosTarjeta.paleta.oroPlano;
+  const varsSobre = (xvSobre
+    ? {
+      "--pt-fondo": mezclarColor(xvSobre.claro, "#FFFFFF", 0.15), "--pt-centro": "#FFFFFF",
+      "--pt-sobre": xvSobre.medio, "--pt-frente": mezclarColor(xvSobre.medio, "#FFFFFF", 0.22),
+      "--pt-solapa": mezclarColor(xvSobre.medio, "#FFFFFF", 0.38), "--pt-borde": conAlfaHex(xvSobre.fuerte, 0.35),
+      "--pt-texto": xvSobre.texto, "--pt-suave": xvSobre.profundo,
+      "--pt-cta-bg": `linear-gradient(135deg,${xvSobre.fuerte},${xvSobre.profundo})`, "--pt-cta-tx": "#FFFFFF",
+      "--pt-acento": acento, "--pt-acento-claro": mezclarColor(acento, "#FFFFFF", 0.35), "--pt-sello-tx": "#FFFFFF",
+    }
+    : tarjetaOscura
     ? {
       "--pt-fondo": mezclarColor(fondoTarjeta, "#000000", 0.25), "--pt-centro": mezclarColor(fondoTarjeta, "#FFFFFF", 0.1),
       "--pt-sobre": mezclarColor(fondoTarjeta, "#FFFFFF", 0.08), "--pt-frente": mezclarColor(fondoTarjeta, "#FFFFFF", 0.13),
@@ -4643,17 +4654,19 @@ export default function ConfirmarPage() {
       const audio = getAudio();
       if (!audio) return;
       // Intentar muted autoplay (Chrome lo permite; iOS lo bloqueará)
+      const esperarGesto = () => {
+        document.addEventListener("touchstart", unlock, { capture: true, once: true });
+        document.addEventListener("mousedown", unlock, { capture: true, once: true });
+      };
+      // iPhone: sin mezclador (se arma en un toque) la música sonaría al 100 %
+      if (!puedeControlarVolumen()) { esperarGesto(); return; }
       audio.muted = true;
       audio.play()
         .then(() => {
           if (preferenciaAudio.sinSonido) { audio.pause(); return; }
           audio.muted = false; desbloqueado = true;
         })
-        .catch(() => {
-          // Bloqueado — esperar primer gesto
-          document.addEventListener("touchstart", unlock, { capture: true, once: true });
-          document.addEventListener("mousedown", unlock, { capture: true, once: true });
-        });
+        .catch(esperarGesto);
     };
 
     const timer = setTimeout(tryImmediate, 80);
