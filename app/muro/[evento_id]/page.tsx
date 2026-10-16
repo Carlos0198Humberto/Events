@@ -9,6 +9,10 @@ import {
   type FotoMuro, type TemaMuro, type ReaccionFila,
   MiniaturaFoto, VisorFoto, EstilosGaleria, miniatura,
 } from "./GaleriaFotos";
+import TransmisionEnVivo from "@/app/components/TransmisionEnVivo";
+import GaleriaAnfitrion from "./GaleriaAnfitrion";
+import MusicaMuro from "./MusicaMuro";
+import { hablaElProtagonista, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 type Foto = FotoMuro;
@@ -24,7 +28,16 @@ type Evento = {
   lugar?: string;
   muro_abierto?: boolean;
   tema?: string | null; // clasico | rosado | esmeralda (el mismo de la invitación)
-  tarjeta?: { graduando?: string | null; carrera?: string | null } | null; // supabase-tarjeta.sql
+  // supabase-tarjeta.sql; transmision = enlace del culto en vivo; muro_galeria/muro_video =
+  // el espacio del anfitrión en el muro (todo se carga al editar el evento)
+  tarjeta?: {
+    graduando?: string | null; carrera?: string | null;
+    transmision?: string | null; transmision_titulo?: string | null;
+    muro_galeria?: boolean; muro_video?: string | null;
+  } | null;
+  musica_url?: string | null;   // la misma canción de la invitación, de fondo
+  musica_nombre?: string | null;
+  fotos_anfitrion?: string[] | null; // supabase-distancia.sql
 };
 type Deseo = {
   id: string;
@@ -1430,13 +1443,13 @@ export default function MuroPublico() {
   async function cargarDatos() {
     // Con el tema (para pintar el muro como la invitación); si la columna no
     // existe todavía, se pide sin ella
-    const cols = "id,nombre,tipo,fecha,anfitriones,organizador_id,imagen_url,frase_evento,lugar,muro_abierto";
+    const cols = "id,nombre,tipo,fecha,anfitriones,organizador_id,imagen_url,frase_evento,lugar,muro_abierto,musica_url,musica_nombre";
     // (y con los datos de la tarjeta: nombre del graduando y carrera)
     let ev: Evento | null = null;
-    for (const extra of [",tema,tarjeta", ",tema", ""]) {
+    for (const extra of [",tema,tarjeta,fotos_anfitrion", ",tema,tarjeta", ",tema", ""]) {
       const { data, error } = await supabase.from("eventos").select(`${cols}${extra}`).eq("id", eventoId).single();
       if (!error) { ev = data as unknown as Evento; break; }
-      if (!/tema|tarjeta/i.test(error.message || "")) break; // no existe el evento: no tiene sentido reintentar
+      if (!/tema|tarjeta|fotos_anfitrion/i.test(error.message || "")) break; // no existe el evento: no tiene sentido reintentar
     }
     if (ev) setEvento(ev);
     await Promise.all([cargarFotos(), cargarDeseos()]);
@@ -1841,16 +1854,29 @@ export default function MuroPublico() {
       </main>
     );
 
-  const _soloFechaMuro = (evento.fecha || "").split("T")[0];
-  const [_yMuro, _mMuro, _dMuro] = _soloFechaMuro.split("-").map((n) => parseInt(n, 10));
   // Quién firma los mensajes del ramo: los novios de ESTE evento (antes había
   // un nombre fijo que salía en las bodas de todos los clientes)
   const firmaNovios = bodaCivil?.nombres?.trim() || evento.anfitriones?.trim() || "los novios";
-  const fechaFmt = new Date(_yMuro, (_mMuro || 1) - 1, _dMuro || 1).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+
+  // El título del muro: «Muro de graduación» / «de Carlos». Cambia con la
+  // pestaña («Deseos de graduación») y reemplaza la foto chica y el texto de antes
+  const eventoTarjeta = { nombre: evento.nombre, tipo: evento.tipo, anfitriones: evento.anfitriones, tarjeta: evento.tarjeta } as EventoTarjeta;
+  const prota = protagonistaDe(eventoTarjeta);
+  const pila = prota.esPersona ? prota.nombre.split(/\s+/)[0] : "";
+  const QUE_SE_CELEBRA: Record<string, string> = { graduacion: "graduación", quinceañera: "XV años", boda: "boda", cumpleaños: "cumpleaños" };
+  const que = QUE_SE_CELEBRA[evento.tipo];
+  const tituloMuro = lang === "en"
+    ? { script: vista === "deseos" ? "Wishes" : vista === "albumes" ? "Albums" : "Photo wall", nombre: pila ? `for ${pila}` : evento.nombre }
+    : {
+        script: vista === "deseos" ? (que ? `Deseos de ${que}` : "Deseos") : vista === "albumes" ? (que ? `Álbumes de ${que}` : "Álbumes") : (que ? `Muro de ${que}` : "Muro del evento"),
+        nombre: pila ? `de ${pila}` : evento.nombre,
+      };
+  // El espacio del anfitrión: «Mis fotos de graduación» si habla el graduado
+  const yoAnfitrion = hablaElProtagonista(eventoTarjeta);
+  const espacioAnfitrion = {
+    titulo: evento.tipo === "graduacion" ? (yoAnfitrion ? "Mis fotos de graduación" : "Fotos de graduación") : (yoAnfitrion ? "Mis fotos" : "Nuestras fotos"),
+    de: pila && !yoAnfitrion ? `de ${pila}` : null,
+  };
 
   return (
     <main
@@ -1866,7 +1892,7 @@ export default function MuroPublico() {
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700;800&family=Great+Vibes&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         html,body{overflow-x:hidden;-webkit-text-size-adjust:100%;max-width:100vw}
         body{font-family:'DM Sans',sans-serif;background:var(--m-bg,#FAFBFF)}
@@ -2083,6 +2109,16 @@ export default function MuroPublico() {
         .boda-video-deco-b::after { bottom: -2px; right: -2px; transform: rotate(-15deg) scale(-1); }
         .boda-deco-ring-left { position: absolute; left: -14px; top: 50%; transform: translateY(-50%); }
         .boda-deco-ring-right { position: absolute; right: -14px; top: 50%; transform: translateY(-50%); }
+        /* ── Título del muro ── */
+        .mt-titulo { position: relative; z-index: 1; padding: 6px 4px 4px; }
+        .mt-script { font-family: 'Great Vibes', cursive; font-size: clamp(40px, 12vw, 54px); line-height: 1.05; color: #FFFFFF; text-shadow: 0 2px 18px rgba(0,0,0,0.35); }
+        .mt-script.oro { background: linear-gradient(100deg, #B8954A 0%, #F3DFA4 38%, #C9A35A 62%, #F3DFA4 100%); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 2px 10px rgba(0,0,0,0.35)); }
+        .mt-nombre { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(22px, 6.5vw, 30px); font-weight: 600; letter-spacing: 0.02em; margin-top: 2px; text-shadow: 0 2px 12px rgba(0,0,0,0.35); }
+        .mt-filete { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 12px auto 10px; }
+        .mt-filete i { display: block; width: 54px; height: 1px; background: linear-gradient(90deg, transparent, rgba(230,207,142,0.9)); }
+        .mt-filete i:last-child { background: linear-gradient(90deg, rgba(230,207,142,0.9), transparent); }
+        .mt-filete b { display: block; width: 7px; height: 7px; transform: rotate(45deg); background: #E6CF8E; }
+        .mt-cuenta { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.8; }
         /* ── Botón ramo ── */
         .boda-ramo-section { margin: 20px 14px 0; background: linear-gradient(135deg,#fff0f6,#fdf2f8); border: 1.5px solid rgba(236,72,153,0.2); border-radius: 20px; padding: 18px 16px; text-align: center; }
         .boda-ramo-btn { width: 100%; border: none; background: linear-gradient(135deg,#ec4899,#be185d); border-radius: 16px; padding: 15px 16px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px; font-family: 'DM Sans',sans-serif; box-shadow: 0 6px 24px rgba(236,72,153,0.35); transition: all .15s; -webkit-tap-highlight-color: transparent; }
@@ -2161,71 +2197,14 @@ export default function MuroPublico() {
           </div>
         </div>
 
-        {/* ── Evento info ── */}
-        <div style={{ position:"relative", zIndex:1 }}>
-          {/* Retrato: la foto de portada nítida, con la cara centrada */}
-          {evento.imagen_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={evento.imagen_url}
-              alt={evento.tarjeta?.graduando || evento.anfitriones || evento.nombre}
-              style={{
-                width: 104, height: 104, borderRadius: "50%", objectFit: "cover", objectPosition: "center 28%",
-                display: "block", margin: "0 auto 12px",
-                border: `3px solid ${evento.tipo === "graduacion" ? "#E6CF8E" : "rgba(255,255,255,0.9)"}`,
-                boxShadow: "0 10px 30px rgba(0,0,0,0.35), 0 0 0 6px rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.12)",
-              }}
-            />
-          )}
-          {/* Badge tipo evento */}
-          <div style={{ display:"inline-flex", alignItems:"center", gap:5, background:"rgba(255,255,255,0.18)", backdropFilter:"blur(8px)", borderRadius:20, padding:"4px 12px", marginBottom:10, fontSize:10, fontWeight:700, letterSpacing:"1.2px", textTransform:"uppercase", border:"1px solid rgba(255,255,255,0.25)" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> Muro del evento
-          </div>
-          <h1 style={{ fontSize:26, fontWeight:800, marginBottom:4, lineHeight:1.1, fontFamily:"'Playfair Display',serif", textShadow:"0 2px 12px rgba(0,0,0,0.3)" }}>
-            {evento.nombre}
-          </h1>
-          {(evento.tarjeta?.graduando || evento.anfitriones) && (
-            <p style={{ fontSize:14, opacity:0.95, marginBottom:2, fontWeight:600 }}>{evento.tarjeta?.graduando || evento.anfitriones}</p>
-          )}
-          {evento.tarjeta?.carrera && (
-            <p style={{ fontSize:12.5, fontStyle:"italic", opacity:0.85, marginBottom:4, fontFamily:"'Playfair Display',serif", color: evento.tipo === "graduacion" ? "#E6CF8E" : undefined }}>{evento.tarjeta.carrera}</p>
-          )}
-          {evento.frase_evento && (
-            <p style={{ fontSize:12, fontStyle:"italic", opacity:0.78, fontFamily:"'Playfair Display',serif", marginBottom:6 }}>❝ {evento.frase_evento} ❞</p>
-          )}
-          <p style={{ fontSize:10.5, opacity:0.65, letterSpacing:"0.3px" }}>
-            {fechaFmt}{evento.lugar ? ` · ${evento.lugar}` : ""}
+        {/* ── Título: «Muro de graduación · de Carlos»; en Deseos, «Deseos de graduación» ── */}
+        <div className="mt-titulo">
+          <p className={`mt-script${evento.tipo === "graduacion" ? " oro" : ""}`}>{tituloMuro.script}</p>
+          <h1 className="mt-nombre">{tituloMuro.nombre}</h1>
+          <div className="mt-filete" aria-hidden="true"><i /><b /><i /></div>
+          <p className="mt-cuenta">
+            {fotos.length} {fotos.length === 1 ? t.foto1 : t.fotos} · {deseos.length} {deseos.length === 1 ? t.deseo1 : t.deseos}
           </p>
-
-          {/* Stats */}
-          <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:14 }}>
-            {([
-              { num:fotos.length, label:fotos.length === 1 ? t.foto1 : t.fotos, svg:(
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-                  <circle cx="12" cy="13" r="3"/>
-                </svg>
-              )},
-              { num:deseos.length, label:deseos.length === 1 ? t.deseo1 : t.deseos, svg:(
-                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round">
-                  <path d="M3 4h14a1 1 0 011 1v8a1 1 0 01-1 1H6l-4 3V5a1 1 0 011-1z"/>
-                </svg>
-              )},
-              { num:albumes.length, label:albumes.length === 1 ? t.participante1 : t.participantes, svg:(
-                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round">
-                  <path d="M13 15c0-2.2-1.3-4-3-4s-3 1.8-3 4M7 7a3 3 0 106 0 3 3 0 00-6 0M16 15c0-1.8-1-3.3-2.5-4M17 6.5a2.5 2.5 0 010 5"/>
-                </svg>
-              )},
-            ] as const).map((s,i)=>(
-              <div key={i} style={{ background:"rgba(255,255,255,0.16)", backdropFilter:"blur(8px)", borderRadius:14, padding:"8px 14px", textAlign:"center", border:"1px solid rgba(255,255,255,0.22)", minWidth:68 }}>
-                <div style={{ display:"flex", justifyContent:"center", marginBottom:4 }}>{s.svg}</div>
-                <div style={{ fontSize:18, fontWeight:800, lineHeight:1, fontFamily:"'Playfair Display',serif" }}>{s.num}</div>
-                <div style={{ fontSize:9, opacity:0.8, marginTop:2, letterSpacing:"0.3px" }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-
           {invId && pasoJourney === 5 && (
             <div style={{ marginTop: 10, background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 10, padding: "7px 12px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600 }}>
               {Ico.check(12, "white")} <span>{t.completaste} {invNombre}</span>
@@ -2280,6 +2259,24 @@ export default function MuroPublico() {
 
       {/* ══ CONTENIDO ══ */}
       <div style={{ padding: "12px 10px 0", maxWidth: 600, margin: "0 auto", paddingBottom: esOrg ? "var(--nav-total-height, 100px)" : invId ? "160px" : "100px", width: "100%", boxSizing: "border-box" }}>
+        {/* ── Transmisión en vivo del culto: arriba de las fotos ── */}
+        {vista === "fotos" && evento.tarjeta?.transmision && (
+          <div style={{ marginBottom: 14 }}>
+            <TransmisionEnVivo enlace={evento.tarjeta.transmision} titulo={evento.tarjeta.transmision_titulo} fecha={evento.fecha} />
+          </div>
+        )}
+
+        {/* ── El espacio del anfitrión: sus fotos y su video (si lo activó) ── */}
+        {vista === "fotos" && evento.tarjeta?.muro_galeria === true && (
+          <GaleriaAnfitrion
+            titulo={espacioAnfitrion.titulo}
+            de={espacioAnfitrion.de}
+            fotos={Array.isArray(evento.fotos_anfitrion) ? evento.fotos_anfitrion.filter((u): u is string => typeof u === "string") : []}
+            video={evento.tarjeta?.muro_video ?? null}
+            dorado={tema.destaque}
+          />
+        )}
+
         {/* ── FOTOS ── */}
         {vista === "fotos" &&
           (fotos.length === 0 ? (
@@ -3228,6 +3225,11 @@ export default function MuroPublico() {
 
       </div>
 
+
+      {/* Música de fondo: la de la invitación; la voz siempre por encima */}
+      {evento.musica_url && (
+        <MusicaMuro url={evento.musica_url} nombre={evento.musica_nombre} abajo={esOrg ? "var(--nav-total-height, 100px)" : invId ? "160px" : "100px"} />
+      )}
 
       {/* Lightbox */}
       {fotoActiva !== null && fotosOrden[fotoActiva] && (

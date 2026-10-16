@@ -7,14 +7,20 @@
 // con sus padres) y las del muro, y un lugar para dejar su mensaje. El
 // formulario del mensaje y el regalo llegan como `children` desde la página.
 //
-// Identidad propia, distinta de la invitación de asistencia: papel blanco,
-// rosa viejo y letra caligráfica, como una carta escrita a mano.
+// Identidad propia, distinta de la invitación de asistencia: papel blanco y
+// letra caligráfica, como una carta escrita a mano. En graduación, azul noche
+// y dorado con laureles y birretes de fondo (lo académico); en los demás
+// eventos, rosa viejo.
+//
+// La carta cambia según a quién va (familia, amigos, hermanos en Cristo), y si
+// el organizador cargó la transmisión del culto, se puede ver desde acá.
 
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  cartaDistancia, extrasDe, fechaLarga, horaCorta, protagonistaDe,
-  type EventoTarjeta, type FormaFoto,
+  cartaDistancia, extrasDe, fechaLarga, hablaElProtagonista, horaCorta, protagonistaDe,
+  type EventoTarjeta, type FormaFoto, type VinculoDistancia,
 } from "@/lib/tarjetaInvitacion";
+import TransmisionEnVivo from "@/app/components/TransmisionEnVivo";
 import { saludoDeCarta, type Trato } from "@/lib/tratoInvitado";
 import { BIRRETE } from "@/lib/ornamentosTarjeta";
 import { IcoCalendario, IcoCamara, IcoFlecha, IcoUbicacion } from "@/app/components/Iconos";
@@ -23,14 +29,25 @@ type Props = {
   evento: EventoTarjeta & { fotos_anfitrion?: string[] | null };
   invitadoNombre: string;
   trato: Trato;
+  vinculo?: VinculoDistancia | null;
   muro: { href: string; urls: string[]; total: number } | null;
   children?: ReactNode;
 };
 
-export default function InvitacionDistancia({ evento, invitadoNombre, trato, muro, children }: Props) {
+// "A mi familia", "A nuestros amigos"…: a quién va la carta, arriba de todo
+function dedicadaA(vinculo: VinculoDistancia | null, yo: boolean): string | null {
+  if (vinculo === "familia") return yo ? "A mi familia" : "A nuestra familia";
+  if (vinculo === "amigos") return yo ? "A mis amigos" : "A nuestros amigos";
+  if (vinculo === "hermanos") return yo ? "A mis hermanos en Cristo" : "A nuestros hermanos en Cristo";
+  return null;
+}
+
+export default function InvitacionDistancia({ evento, invitadoNombre, trato, vinculo = null, muro, children }: Props) {
   const p = protagonistaDe(evento);
   const ex = extrasDe(evento);
-  const carta = cartaDistancia(evento, trato);
+  const graduacion = evento.tipo === "graduacion";
+  const carta = cartaDistancia(evento, trato, vinculo);
+  const paraQuien = dedicadaA(vinculo, hablaElProtagonista(evento));
   const saludoCarta = saludoDeCarta(invitadoNombre, trato);
   const foto = ex.foto === false ? null : ex.foto_url || evento.imagen_url?.trim() || null;
   const forma: FormaFoto = ex.forma_foto ?? "arco";
@@ -47,8 +64,9 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
   const [abierta, setAbierta] = useState<number | null>(null);
 
   return (
-    <div className="dl-wrap">
+    <div className={`dl-wrap${graduacion ? " grad" : ""}`}>
       <style>{ESTILOS}</style>
+      {graduacion && <style>{ESTILOS_GRADUACION}</style>}
 
       <article className="dl-carta">
         <span className="dl-marco" aria-hidden="true" />
@@ -56,6 +74,7 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
 
         <header className="dl-cab" data-guia="dl-inicio">
           <p className="dl-kicker"><i />Invitación especial<i /></p>
+          {paraQuien && <p className="dl-para">{paraQuien}</p>}
           {foto && (
             <figure className={`dl-retrato ${forma}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -95,6 +114,13 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, mur
               <p><span className="dl-ico"><IcoUbicacion size={17} /></span><span>{lugar}{direccion && <small>{direccion}</small>}</span></p>
             )}
           </div>
+        </section>
+      )}
+
+      {ex.transmision && (
+        <section className="dist-seccion">
+          <h2>{ex.transmision_titulo || "Míralo en vivo"}</h2>
+          <TransmisionEnVivo enlace={ex.transmision} titulo={ex.transmision_titulo} fecha={evento.fecha} />
         </section>
       )}
 
@@ -254,6 +280,7 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dl-kicker{display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:var(--rg)}
 .dl-kicker i{display:block;width:26px;height:1px;background:linear-gradient(90deg,transparent,var(--rg2))}
 .dl-kicker i:last-child{background:linear-gradient(90deg,var(--rg2),transparent)}
+.dl-para{margin-top:8px;font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:16px;color:var(--tinta2)}
 .dl-retrato{margin:22px auto 0;width:min(48vw,180px);box-shadow:0 14px 30px -16px rgba(34,37,46,.45)}
 .dl-retrato img{display:block;width:100%;object-fit:cover;object-position:50% 22%;background:var(--rg4)}
 .dl-retrato.circulo,.dl-retrato.circulo img{border-radius:50%}
@@ -316,4 +343,63 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dist-visor-cuenta{position:absolute;bottom:max(16px,env(safe-area-inset-bottom,16px));left:0;right:0;text-align:center;color:rgba(255,255,255,.8);font-size:13px;font-weight:600}
 @media (max-width:360px){.dl-carta{padding:30px 20px 28px}.dl-texto>p:not(.dl-saludo):not(.dl-oracion):not(.dl-despedida):not(.dl-firma){font-size:18.5px}}
 @media (prefers-reduced-motion:reduce){.dl-carta,.dist-seccion{animation:none}}
+`;
+
+// ── Graduación: laureles dorados en las esquinas y birretes de fondo ─────────
+const ORO = "#B8954A";
+const svgUrl = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+
+// Rama de laurel que abraza la esquina superior izquierda: un tallo curvo y
+// hojas alternadas a cada lado
+function laurel(espejo: boolean): string {
+  const hojas: string[] = [];
+  for (let i = 1; i <= 11; i++) {
+    const t = i / 12;
+    // Tallo: curva cuadrática de (12,188) a (188,12) con el codo en (16,16)
+    const x = (1 - t) * (1 - t) * 12 + 2 * (1 - t) * t * 16 + t * t * 188;
+    const y = (1 - t) * (1 - t) * 188 + 2 * (1 - t) * t * 16 + t * t * 12;
+    const dx = 2 * (1 - t) * (16 - 12) + 2 * t * (188 - 16);
+    const dy = 2 * (1 - t) * (16 - 188) + 2 * t * (12 - 16);
+    const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+    const lado = i % 2 ? 1 : -1;
+    const tam = 9 + 4 * Math.sin(Math.PI * t);
+    hojas.push(`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${tam.toFixed(1)}" ry="${(tam * 0.38).toFixed(1)}" transform="rotate(${(ang + lado * 38).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}) translate(${(tam * 0.85).toFixed(1)} 0)"/>`);
+  }
+  const g = `<g fill="${ORO}" fill-opacity=".42" stroke="none">${hojas.join("")}</g>`
+    + `<path d="M12 188Q16 16 188 12" fill="none" stroke="${ORO}" stroke-opacity=".55" stroke-width="1.6" stroke-linecap="round"/>`
+    + `<circle cx="188" cy="12" r="2.6" fill="${ORO}" fill-opacity=".6"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">${espejo ? `<g transform="translate(200 0) scale(-1 1)">${g}</g>` : g}</svg>`;
+}
+
+// Patrón muy suave: un birrete de línea y estrellitas en los cruces
+function patronBirretes(): string {
+  const b = `<g transform="translate(70 66) scale(.12)" fill="none" stroke="${ORO}" stroke-width="14" stroke-linejoin="round" stroke-linecap="round">`
+    + `<path d="${BIRRETE.casquete}"/><path d="${BIRRETE.tablero}"/><path d="${BIRRETE.cordon}"/></g>`;
+  const estrella = (cx: number, cy: number) =>
+    `<path d="M${cx} ${cy - 4.5}L${cx + 1.2} ${cy - 1.2}L${cx + 4.5} ${cy}L${cx + 1.2} ${cy + 1.2}L${cx} ${cy + 4.5}L${cx - 1.2} ${cy + 1.2}L${cx - 4.5} ${cy}L${cx - 1.2} ${cy - 1.2}Z"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><g opacity=".2">${b}`
+    + `<g fill="${ORO}">${estrella(0, 0)}${estrella(140, 0)}${estrella(0, 140)}${estrella(140, 140)}</g>`
+    + `<g fill="${ORO}"><circle cx="70" cy="0" r="1.4"/><circle cx="0" cy="70" r="1.4"/><circle cx="140" cy="70" r="1.4"/><circle cx="70" cy="140" r="1.4"/></g></g></svg>`;
+}
+
+// Azul noche para leer, dorado para adornar; el fondo es perla azulada (no crema)
+const ESTILOS_GRADUACION = `
+html:has(.dl-wrap.grad),body:has(.dl-wrap.grad){background:#EEF2F7}
+.page.page-distancia:has(.dl-wrap.grad){background-color:#EEF2F7;background-repeat:no-repeat,no-repeat,repeat,no-repeat;
+  background-position:left top,right top,center top,center;background-size:200px 200px,200px 200px,140px 140px,cover;
+  background-image:${svgUrl(laurel(false))},${svgUrl(laurel(true))},${svgUrl(patronBirretes())},linear-gradient(180deg,#F8FAFC 0%,#EEF2F7 100%)}
+.page-distancia:has(.dl-wrap.grad) .topbar{border-bottom-color:rgba(184,149,74,.35)}
+.page-distancia:has(.dl-wrap.grad) .topbar-sub{color:#1E3A5F}
+.dl-wrap.grad{--rg:#1E3A5F;--rg2:#B8954A;--rg3:#D6DEEA;--rg4:#EEF2F7;--tinta:#16213A;--tinta2:#4A5568}
+.dl-wrap.grad .dl-marco{border:1px solid rgba(184,149,74,.55);box-shadow:inset 0 0 0 4px #FFFFFF,inset 0 0 0 5px rgba(184,149,74,.28)}
+.dl-wrap.grad .dl-script{background:linear-gradient(100deg,#8A672C,#C9A35A 35%,#8A672C 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.dl-wrap.grad .dl-firma,.dl-wrap.grad .dl-saludo{color:#1E3A5F}
+.dl-wrap.grad .dl-bendicion{border-color:rgba(184,149,74,.45)}
+.dl-wrap.grad .dl-bendicion::before{background:#B8954A}
+.dl-wrap.grad .dl-kicker,.dl-wrap.grad .dl-institucion,.dl-wrap.grad .dl-bendicion cite{color:#8A6A2C}
+.dl-wrap.grad .dl-marca{color:#B8954A;opacity:.09}
+.dl-wrap.grad .dist-seccion h2::after{background:linear-gradient(90deg,rgba(184,149,74,.6),transparent)}
+.dl-wrap.grad .dl-datos,.dl-wrap.grad .dl-muro{border-color:rgba(30,58,95,.16)}
+.dl-wrap.grad .dl-ico{background:#E8EEF6;color:#1E3A5F}
+.dl-wrap.grad .dist-vacio{border-color:rgba(184,149,74,.6)}
 `;

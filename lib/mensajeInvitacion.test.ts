@@ -181,3 +181,27 @@ describe("armarMensajeGracias", () => {
     expect(m).toContain("Les comparto las fotos de ese día:");
   });
 });
+
+describe("armarMensajeDistancia por vínculo", () => {
+  const ev = () => grad({ tarjeta: { carrera: "Ingeniería en Sistemas Informáticos", institucion: "Universidad de El Salvador" } });
+
+  it("a la familia, a los amigos y a los hermanos en Cristo les agradece distinto", () => {
+    const familia = armarMensajeDistancia(ev(), "Rosa", LINK, "f", "familia");
+    expect(familia).toContain("y aunque estés lejos, sos parte de esta familia y de este logro.");
+    expect(familia).toContain("Gracias por tu cariño de familia, tus llamadas y tus oraciones.");
+    const amigos = armarMensajeDistancia(ev(), "Juan", LINK, "m", "amigos");
+    expect(amigos).toContain("y aunque estés lejos, tu amistad fue parte de este logro.");
+    expect(amigos).toContain("Gracias por tu amistad y por estar siempre.");
+    const hermanos = armarMensajeDistancia(ev(), "Los Pérez", LINK, "plural", "hermanos");
+    expect(hermanos).toContain("y aunque estén lejos, sus oraciones fueron parte de este logro.");
+    expect(hermanos).toContain("gracias a Dios por sus vidas y por la comunión que tenemos en Cristo.");
+    for (const m of [familia, amigos, hermanos]) {
+      expect(m).toContain(LINK);
+      expect(m.replace(LINK, "")).not.toMatch(/[*_]/);
+    }
+  });
+
+  it("sin vínculo queda el mensaje de siempre", () => {
+    expect(armarMensajeDistancia(ev(), "Rosa", LINK, "f")).toContain("y aunque estés lejos, fuiste parte de este logro. Gracias por tu cariño y tu apoyo.");
+  });
+});

@@ -68,3 +68,12 @@ export function IcoWhatsApp({ size = 16, ...rest }: Props) {
     </svg>
   );
 }
+
+/** Messenger también va relleno (marca). */
+export function IcoMessenger({ size = 16, ...rest }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...rest}>
+      <path d="M12 0C5.24 0 0 4.95 0 11.64c0 3.5 1.43 6.52 3.77 8.61.2.18.31.42.32.68l.07 2.14a.96.96 0 0 0 1.34.85l2.39-1.05a.96.96 0 0 1 .64-.05c1.1.3 2.27.46 3.47.46 6.76 0 12-4.95 12-11.64S18.76 0 12 0Zm7.2 8.96-3.52 5.6a1.8 1.8 0 0 1-2.6.48l-2.8-2.1a.72.72 0 0 0-.87 0l-3.79 2.87c-.5.38-1.16-.22-.82-.75l3.52-5.6a1.8 1.8 0 0 1 2.6-.48l2.8 2.1c.26.2.61.2.87 0l3.79-2.87c.5-.38 1.16.22.82.75Z" />
+    </svg>
+  );
+}

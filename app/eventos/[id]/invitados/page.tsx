@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
-import { armarDatosTarjeta, asistioAlEvento, enAgradecimiento, enReserva, sugerenciasGracias, sugerenciasReserva, textosGracias, textosReserva, versiculoDeEvento, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, enAgradecimiento, enReserva, sugerenciasGracias, sugerenciasReserva, textosGracias, textosReserva, versiculoDeEvento, vinculoDe, VINCULOS_DISTANCIA, type ExtrasTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
 import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
 import { armarMensajeDia, armarMensajeDistancia, armarMensajeGracias, armarMensajeInvitacion, armarMensajeRecordatorio, armarMensajeReserva, diasHasta } from "@/lib/mensajeInvitacion";
 import { type Versiculo } from "@/lib/versiculos";
@@ -14,7 +14,7 @@ import VersiculoEvento from "./VersiculoEvento";
 import { ETIQUETAS_TRATO, guardarTrato, nombreDePila, saludo, tratoDe, type Trato } from "@/lib/tratoInvitado";
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { toast } from "@/app/components/Toast";
-import { IcoCarta, IcoCelular, IcoCheck, IcoEnlace, IcoImpresora, IcoPapelera, IcoPersonas, IcoWhatsApp } from "@/app/components/Iconos";
+import { IcoCarta, IcoCelular, IcoCheck, IcoEnlace, IcoImpresora, IcoPapelera, IcoMessenger, IcoPersonas, IcoWhatsApp } from "@/app/components/Iconos";
 
 
 type Invitado = {
@@ -26,6 +26,7 @@ type Invitado = {
   cupo_elije_invitado?: boolean;
   estado?: string;
   a_distancia?: boolean | null; // invitación especial de agradecimiento (supabase-distancia.sql)
+  vinculo?: VinculoDistancia | null; // familia | amigos | hermanos: qué carta recibe (supabase-vinculo.sql)
 };
 
 // Los tres momentos de la graduación
@@ -67,6 +68,10 @@ export default function AgregarInvitados() {
   const [aDistancia, setADistancia] = useState(false);
   // false si todavía no se corrió supabase-distancia.sql
   const [distanciaOk, setDistanciaOk] = useState(true);
+  // A quién va la carta a distancia del que se está agregando, y si existe la
+  // columna (supabase-vinculo.sql)
+  const [vinculoNuevo, setVinculoNuevo] = useState<VinculoDistancia>("familia");
+  const [vinculoOk, setVinculoOk] = useState(true);
   // Leer localStorage solo en el cliente (evita hydration mismatch)
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
@@ -98,7 +103,7 @@ export default function AgregarInvitados() {
   const [busqueda, setBusqueda] = useState("");
   // Tarjeta de invitación (imagen) del invitado que se está por enviar
   // enviada = ya salió por WhatsApp: la ventana ofrece la del siguiente invitado
-  const [tarjeta, setTarjeta] = useState<{ inv: Invitado; trato: Trato; blob: Blob | null; url: string | null; enviada?: boolean } | null>(null);
+  const [tarjeta, setTarjeta] = useState<{ inv: Invitado; trato: Trato; blob: Blob | null; url: string | null; enviada?: boolean; canal?: "whatsapp" | "messenger" } | null>(null);
   // Mensaje de la tarjeta editado a mano (null = el armado automáticamente)
   const [textoEditado, setTextoEditado] = useState<string | null>(null);
   // Cada generación lleva un número: si el trato cambia o se cierra a mitad de
@@ -186,10 +191,13 @@ export default function AgregarInvitados() {
 
   async function cargarTodosInvitados() {
     setLoadingInvitados(true);
-    // Con a_distancia (supabase-distancia.sql); sin la columna, la lista carga igual
+    // Con a_distancia (supabase-distancia.sql) y vinculo (supabase-vinculo.sql);
+    // sin las columnas, la lista carga igual
     const columnas = "id, nombre, token, telefono, num_personas, cupo_elije_invitado, estado";
     const consulta = (cols: string) => supabase.from("invitados").select(cols).eq("evento_id", id).order("created_at", { ascending: true });
-    let { data, error: errLista } = await consulta(`${columnas}, a_distancia`);
+    let { data, error: errLista } = await consulta(`${columnas}, a_distancia, vinculo`);
+    setVinculoOk(!errLista);
+    if (errLista) ({ data, error: errLista } = await consulta(`${columnas}, a_distancia`));
     setDistanciaOk(!errLista);
     if (errLista) ({ data } = await consulta(columnas));
     if (data) setTodosInvitados(data as unknown as Invitado[]);
@@ -341,7 +349,7 @@ export default function AgregarInvitados() {
 
   function buildMensaje(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
     if (graciasActiva) return armarMensajeGracias(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
-    if (inv.a_distancia) return armarMensajeDistancia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
+    if (inv.a_distancia) return armarMensajeDistancia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, vinculoDe(inv.vinculo));
     if (esPreInvitacion(inv)) return armarMensajeReserva(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, trato);
     // Si el invitado elige cuántos van, no se le dice un número de lugares
     const personas = inv.cupo_elije_invitado ? null : inv.num_personas ?? null;
@@ -376,6 +384,20 @@ export default function AgregarInvitados() {
     toast.success(nuevo ? `${inv.nombre.split(" ")[0]} recibe ahora la invitación especial a distancia` : `${inv.nombre.split(" ")[0]} vuelve a la invitación normal`);
   }
 
+  async function cambiarVinculo(inv: Invitado, vinculo: VinculoDistancia | null) {
+    if (!inv.id) return;
+    const { error } = await supabase.from("invitados").update({ vinculo }).eq("id", inv.id);
+    if (error) {
+      toast.error(/vinculo/i.test(error.message || "") ? "Falta correr supabase-vinculo.sql" : "No se pudo cambiar. Probá de nuevo.");
+      return;
+    }
+    const cambiar = (lista: Invitado[]) => lista.map((i) => (i.id === inv.id ? { ...i, vinculo } : i));
+    setTodosInvitados(cambiar);
+    setAgregados(cambiar);
+    const v = VINCULOS_DISTANCIA.find((x) => x.id === vinculo);
+    toast.success(`${inv.nombre} recibe la carta ${v ? `para ${v.nombre.toLowerCase()}` : "general"}`);
+  }
+
   async function handleAgregar() {
     setLoading(true);
     setError("");
@@ -401,7 +423,7 @@ export default function AgregarInvitados() {
         telefono: telefono.trim() || null,
         num_personas: personas ?? 1,
         cupo_elije_invitado: elige,
-        ...(aDistancia ? { a_distancia: true } : {}),
+        ...(aDistancia ? { a_distancia: true, ...(vinculoOk ? { vinculo: vinculoNuevo } : {}) } : {}),
       })
       .select()
       .single();
@@ -420,6 +442,7 @@ export default function AgregarInvitados() {
         cupo_elije_invitado: elige,
         estado: "pendiente",
         a_distancia: aDistancia,
+        vinculo: aDistancia && vinculoOk ? vinculoNuevo : null,
       };
       setAgregados((prev) => [...prev, nuevo]);
       setTodosInvitados((prev) => [...prev, nuevo]);
@@ -473,7 +496,7 @@ export default function AgregarInvitados() {
       if (previa?.url) URL.revokeObjectURL(previa.url);
       return { inv, trato, blob: null, url: null };
     });
-    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, asistio: asistioInv(inv) }));
+    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, vinculo: inv.vinculo ?? null, asistio: asistioInv(inv) }));
     if (n !== generacionRef.current) return;
     if (!blob) {
       toast.error("No se pudo generar la tarjeta. Probá de nuevo.");
@@ -529,8 +552,8 @@ export default function AgregarInvitados() {
   // tarjeta sale con un toque del organizador. Después de enviar, la misma
   // ventana ofrece la del siguiente invitado que todavía no la recibió, así
   // se mandan todas sin volver a la lista.
-  function marcarTarjetaEnviada() {
-    setTarjeta((t) => (t ? { ...t, enviada: true } : t));
+  function marcarTarjetaEnviada(canal: "whatsapp" | "messenger" = "whatsapp") {
+    setTarjeta((t) => (t ? { ...t, enviada: true, canal } : t));
   }
   // Función y no constante: fueronLista se declara más abajo
   const listaEtapa = () => (graciasActiva ? fueronLista : todosInvitados);
@@ -609,6 +632,73 @@ export default function AgregarInvitados() {
     marcarTarjetaEnviada();
   }
 
+  // ── Messenger ─────────────────────────────────────────────────────────────
+  // Messenger no usa número de teléfono: a la persona se la elige dentro de
+  // Messenger. Va el mensaje con el enlace, y Messenger arma solo la vista
+  // previa con la tarjeta (lee la misma imagen que WhatsApp). En el celular se
+  // comparte con la hoja del sistema (ahí se elige Messenger); en la compu se
+  // copia el mensaje y se abre Messenger en Facebook para pegarlo. Facebook no
+  // deja que una página escriba el mensaje sola sin una app registrada, y su
+  // diálogo oficial de enviar no funciona en celulares.
+  function copiarTextoYa(texto: string): boolean {
+    // Copia sin esperar: después se abre otra pestaña, y con la página sin
+    // foco el portapapeles moderno falla
+    const area = document.createElement("textarea");
+    area.value = texto;
+    area.setAttribute("readonly", "");
+    area.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    area.remove();
+    return ok;
+  }
+
+  async function enviarPorMessenger(inv: Invitado, texto: string, imagen: Blob | null = null): Promise<boolean> {
+    const nombre = inv.nombre.split(" ")[0];
+    const tactil = window.matchMedia("(pointer: coarse)").matches;
+    if (tactil && typeof navigator.share === "function") {
+      try {
+        // Sin enlace (pre-invitación) la imagen es lo que se ve: ahí va adjunta
+        const archivos = imagen ? [archivoTarjeta(inv, imagen)] : null;
+        if (archivos && navigator.canShare?.({ files: archivos })) await navigator.share({ files: archivos, text: texto });
+        else await navigator.share({ text: texto });
+        marcarEnvio(inv, "invitacion");
+        return true;
+      } catch (e) {
+        if ((e as Error)?.name === "AbortError") return false;
+        // Si el teléfono no pudo compartir, se sigue como en la compu
+      }
+    }
+    const copiado = copiarTextoYa(texto);
+    const ventana = window.open("https://www.facebook.com/messages/new", "_blank");
+    if (ventana) { try { ventana.opener = null; } catch { /* otra pestaña */ } }
+    marcarEnvio(inv, "invitacion");
+    const listo = `Mensaje copiado. En Messenger elegí a ${nombre} y pegalo (Ctrl+V): la tarjeta aparece sola con el enlace.`;
+    const sinCopia = `No se pudo copiar el mensaje: abrí la tarjeta de ${nombre} y copialo desde «Ver o editar el mensaje».`;
+    if (copiado) toast.success(listo);
+    // Segundo intento con el portapapeles moderno; si tampoco, se dice la verdad
+    else if (navigator.clipboard) navigator.clipboard.writeText(texto).then(() => toast.success(listo), () => toast.error(sinCopia));
+    else toast.error(sinCopia);
+    if (!ventana) toast.error("Permití las ventanas emergentes o entrá a facebook.com/messages.");
+    return true;
+  }
+
+  async function enviarTarjetaMessenger() {
+    if (!tarjeta?.blob) return;
+    const { inv, blob } = tarjeta;
+    const ok = await enviarPorMessenger(inv, mensajeTarjeta(), esPreInvitacion(inv) ? blob : null);
+    if (ok) marcarTarjetaEnviada("messenger");
+  }
+
+  // Desde la fila, para quien no tiene número: el mensaje con su enlace (la
+  // pre-invitación no lleva enlace, así que abre la tarjeta para mandar la imagen)
+  function enviarFilaMessenger(inv: Invitado) {
+    if (esPreInvitacion(inv)) prepararTarjeta(inv);
+    else enviarPorMessenger(inv, buildMensaje(inv));
+  }
+
   // Tarjeta para imprimir (5×7 pulgadas, sin código QR): para abuelos
   // o quien no usa WhatsApp. Se abre lista para imprimir o guardar como PDF.
   async function imprimirTarjeta() {
@@ -620,7 +710,7 @@ export default function AgregarInvitados() {
     const { inv, trato } = tarjeta;
     // Sin código QR: la tarjeta impresa es para verse bonita, y sin el enlace
     // del mensaje tampoco dice «confirmá en el enlace»
-    const datosImp = armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, asistio: asistioInv(inv) });
+    const datosImp = armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, vinculo: inv.vinculo ?? null, asistio: asistioInv(inv) });
     const blob = await generarTarjetaPNG({ ...datosImp, cta: "" }, "imprimir");
     if (!blob) { ventana.close(); toast.error("No se pudo preparar la tarjeta para imprimir."); return; }
     const src = await new Promise<string>((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.readAsDataURL(blob); });
@@ -646,7 +736,7 @@ export default function AgregarInvitados() {
       for (let i = 0; i < lista.length; i++) {
         const inv = lista[i];
         setZipProgreso(`${i + 1}/${lista.length}`);
-        const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, tratoInvitado(inv), { distancia: !!inv.a_distancia, asistio: asistioInv(inv) }));
+        const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, tratoInvitado(inv), { distancia: !!inv.a_distancia, vinculo: inv.vinculo ?? null, asistio: asistioInv(inv) }));
         if (blob) zip.file(`${String(i + 1).padStart(3, "0")}_${archivoTarjeta(inv, blob).name}`, blob);
       }
       const contenido = await zip.generateAsync({ type: "blob" });
@@ -1262,6 +1352,16 @@ export default function AgregarInvitados() {
         .estado-distancia { background: #FDF2F8; color: #9D174D; border: 1px solid #FBCFE8; }
         .inv-distancia-btn { margin-top: 4px; padding: 0; border: none; background: none; font-size: 10.5px; font-weight: 700; color: var(--accent); cursor: pointer; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; }
         .toggle-distancia { background: #FDF2F8; border-color: #FBCFE8; }
+        .vinculo-elegir { margin-top: -4px; padding: 10px 12px; border-radius: 14px; background: #FDF2F8; border: 1.5px solid #FBCFE8; }
+        .vinculo-label { display: block; font-size: 11.5px; font-weight: 700; color: #9D174D; margin-bottom: 8px; }
+        .vinculo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .vinculo-chip { padding: 7px 12px; border-radius: 999px; border: 1.5px solid #FBCFE8; background: #fff; color: #831843; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .vinculo-chip.activo { background: #9D174D; border-color: #9D174D; color: #fff; }
+        .inv-vinculo { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--text2); }
+        .inv-vinculo select { font-size: 11px; font-weight: 700; padding: 3px 6px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--surface); color: var(--text); font-family: inherit; }
+        .btn-messenger { color: white; background: linear-gradient(135deg, #00B2FF, #006AFF); border-color: #0062E6; }
+        .tarjeta-messenger { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 12px; border: none; background: linear-gradient(135deg, #00B2FF, #006AFF); color: white; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 16px rgba(0,106,255,0.30); margin-bottom: 10px; }
+        .tarjeta-messenger:disabled { opacity: .5; cursor: wait; box-shadow: none; }
         .tarjeta-estados { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px; border-radius: 12px; border: 1.5px dashed rgba(79,70,229,0.35); background: rgba(79,70,229,0.05); color: #3730A3; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-bottom: 8px; }
         .tarjeta-estados:disabled { opacity: .6; cursor: wait; }
         .tarjeta-link { display: block; width: 100%; margin: -2px 0 10px; padding: 4px; border: none; background: none; font-size: 12px; font-weight: 600; color: var(--accent2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-family: inherit; }
@@ -1384,7 +1484,7 @@ export default function AgregarInvitados() {
                 <div className="tarjeta-hecha" role="status">
                   <div className="tarjeta-hecha-ok">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
-                    {queSeEnvia.charAt(0).toUpperCase() + queSeEnvia.slice(1)} de {nombre} ya está en WhatsApp
+                    {queSeEnvia.charAt(0).toUpperCase() + queSeEnvia.slice(1)} de {nombre} ya está en {tarjeta.canal === "messenger" ? "Messenger" : "WhatsApp"}
                   </div>
                   {sig ? (
                     <>
@@ -1401,22 +1501,36 @@ export default function AgregarInvitados() {
                 </div>
               );
             })() : (<>
-            <div className="tarjeta-ayuda">
-              {compartirEsLoPrincipal()
-                ? <>Tocá <strong>Enviar por WhatsApp</strong>, elegí WhatsApp y a <strong>{tarjeta.inv.nombre.split(" ")[0]}</strong>: la tarjeta sale con el mensaje{esPreInvitacion(tarjeta.inv) ? "." : ", y el enlace se puede tocar."}</>
-                : tarjeta.inv.telefono
-                ? <>Se abre <strong>directo el chat de {tarjeta.inv.nombre.split(" ")[0]}</strong> con el mensaje. La tarjeta queda copiada: en el chat pegala con <strong>Ctrl+V</strong> y enviá.</>
-                : <>Se copia la tarjeta y se abre el chat con el mensaje{esPreInvitacion(tarjeta.inv) ? "" : " y el enlace"}. En el chat pegala con <strong>Ctrl+V</strong> y enviá.</>}
-              {esPreInvitacion(tarjeta.inv) && <> La pre-invitación <strong>no lleva enlace</strong>: el enlace va con la invitación formal (etapa 2).</>}
-            </div>
-            {compartirEsLoPrincipal()
-              ? <button className="tarjeta-principal" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">Enviar por WhatsApp</button>
-              : tarjeta.inv.telefono
-              ? <button className="tarjeta-principal" onClick={enviarTarjetaAlChat} disabled={!tarjeta.blob} type="button">Enviar a {tarjeta.inv.nombre.split(" ")[0]} por WhatsApp</button>
-              : <button className="tarjeta-principal" onClick={copiarYAbrirWhatsApp} disabled={!tarjeta.blob} type="button">Copiar y abrir WhatsApp</button>}
-            {tarjeta.inv.telefono && compartirEsLoPrincipal() && (
-              <button className="tarjeta-link" onClick={enviarTarjetaAlChat} disabled={!tarjeta.blob} type="button">o abrir directo el chat de {tarjeta.inv.nombre.split(" ")[0]} (pegás la tarjeta)</button>
-            )}
+            {(() => {
+              const nombre = tarjeta.inv.nombre.split(" ")[0];
+              const pre = esPreInvitacion(tarjeta.inv);
+              const tactil = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+              return (
+                <>
+                  <div className="tarjeta-ayuda">
+                    {tarjeta.inv.telefono
+                      // Con número: directo a su chat, sin buscar el contacto. WhatsApp no
+                      // deja que una página adjunte la imagen: queda copiada para pegarla
+                      ? <>Se abre <strong>directo el chat de {nombre}</strong> con el mensaje{pre ? "" : <> y el enlace, que ya muestra la tarjeta</>}. Para mandar también la imagen, en el chat {tactil ? <>mantené presionado y <strong>Pegar</strong></> : <>pegala con <strong>Ctrl+V</strong></>}.</>
+                      : compartirEsLoPrincipal()
+                      ? <>Tocá <strong>Enviar por WhatsApp</strong>, elegí WhatsApp y a <strong>{nombre}</strong>: la tarjeta sale con el mensaje{pre ? "." : ", y el enlace se puede tocar."}</>
+                      : <>Se copia la tarjeta y se abre el chat con el mensaje{pre ? "" : " y el enlace"}. En el chat pegala con <strong>Ctrl+V</strong> y enviá.</>}
+                    {pre && <> La pre-invitación <strong>no lleva enlace</strong>: el enlace va con la invitación formal (etapa 2).</>}
+                  </div>
+                  {tarjeta.inv.telefono
+                    ? <button className="tarjeta-principal" onClick={enviarTarjetaAlChat} disabled={!tarjeta.blob} type="button">Enviar a {nombre} por WhatsApp</button>
+                    : compartirEsLoPrincipal()
+                    ? <button className="tarjeta-principal" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">Enviar por WhatsApp</button>
+                    : <button className="tarjeta-principal" onClick={copiarYAbrirWhatsApp} disabled={!tarjeta.blob} type="button">Copiar y abrir WhatsApp</button>}
+                  {tarjeta.inv.telefono && compartirEsLoPrincipal() && (
+                    <button className="tarjeta-link" onClick={compartirTarjeta} disabled={!tarjeta.blob} type="button">o compartir la imagen eligiendo el contacto</button>
+                  )}
+                  <button className="tarjeta-messenger" onClick={enviarTarjetaMessenger} disabled={!tarjeta.blob} type="button">
+                    <IcoMessenger size={17} />Enviar por Messenger
+                  </button>
+                </>
+              );
+            })()}
             </>)}
             <button className="tarjeta-estados" onClick={imprimirTarjeta} disabled={!tarjeta.blob} type="button">
               <IcoImpresora size={16} />Imprimir (5×7)
@@ -1711,6 +1825,26 @@ export default function AgregarInvitados() {
                 </div>
               )}
 
+              {distanciaOk && aDistancia && vinculoOk && (
+                <div className="vinculo-elegir" role="radiogroup" aria-label="Quién es">
+                  <span className="vinculo-label">¿Quién es? Cada uno recibe su propia carta</span>
+                  <div className="vinculo-chips">
+                    {VINCULOS_DISTANCIA.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={vinculoNuevo === v.id}
+                        className={`vinculo-chip${vinculoNuevo === v.id ? " activo" : ""}`}
+                        onClick={() => setVinculoNuevo(v.id)}
+                      >
+                        {v.nombre}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {!cupoElijeInvitado && !aDistancia && (
                 <div>
                   <label className="field-label">Cantidad de lugares</label>
@@ -1849,6 +1983,17 @@ export default function AgregarInvitados() {
                           <span className="btn-action-txt">{yaEnviado(inv) ? "Enviado" : "WhatsApp"}</span>
                         </button>
                       )}
+                      {!inv.telefono && (
+                        <button
+                          className={`btn-action ${yaEnviado(inv) ? "btn-wa-done" : "btn-messenger"}`}
+                          onClick={() => enviarFilaMessenger(inv)}
+                          type="button"
+                          aria-label={`Enviar por Messenger a ${inv.nombre}`}
+                        >
+                          {yaEnviado(inv) ? <IcoCheck size={14} strokeWidth={2.4} /> : <IcoMessenger size={14} />}
+                          <span className="btn-action-txt">{yaEnviado(inv) ? "Enviado" : "Messenger"}</span>
+                        </button>
+                      )}
                       </>)}
                     </div>
                   </div>
@@ -1956,7 +2101,7 @@ export default function AgregarInvitados() {
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <div className="inv-name">{inv.nombre}</div>
                         {inv.a_distancia ? (
-                          <span className="estado-badge estado-distancia"><IcoCarta size={11} strokeWidth={2.2} />A distancia</span>
+                          <span className="estado-badge estado-distancia"><IcoCarta size={11} strokeWidth={2.2} />A distancia{inv.vinculo ? ` · ${VINCULOS_DISTANCIA.find((v) => v.id === inv.vinculo)?.corto ?? ""}` : ""}</span>
                         ) : inv.estado && (
                           <span className={`estado-badge ${
                             inv.estado === "confirmado" ? "estado-confirmado"
@@ -1983,6 +2128,15 @@ export default function AgregarInvitados() {
                             ? "Elige cuántos van"
                             : `${inv.num_personas ?? 1} lugar${(inv.num_personas ?? 1) !== 1 ? "es" : ""}`}
                         </div>
+                      )}
+                      {inv.a_distancia && vinculoOk && inv.id && (
+                        <label className="inv-vinculo">
+                          Carta para
+                          <select value={inv.vinculo ?? ""} onChange={(e) => cambiarVinculo(inv, vinculoDe(e.target.value))}>
+                            <option value="">General</option>
+                            {VINCULOS_DISTANCIA.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+                          </select>
+                        </label>
                       )}
                       {distanciaOk && inv.id && (
                         <button type="button" className="inv-distancia-btn" onClick={() => alternarDistancia(inv)}>
@@ -2032,6 +2186,17 @@ export default function AgregarInvitados() {
                         >
                           {yaEnviado(inv) ? <IcoCheck size={14} strokeWidth={2.4} /> : <IcoWhatsApp size={14} />}
                           <span className="btn-action-txt">{yaEnviado(inv) ? "Enviado" : "WhatsApp"}</span>
+                        </button>
+                      )}
+                      {!inv.telefono && (
+                        <button
+                          className={`btn-action ${yaEnviado(inv) ? "btn-wa-done" : "btn-messenger"}`}
+                          onClick={() => enviarFilaMessenger(inv)}
+                          type="button"
+                          aria-label={`Enviar por Messenger a ${inv.nombre}`}
+                        >
+                          {yaEnviado(inv) ? <IcoCheck size={14} strokeWidth={2.4} /> : <IcoMessenger size={14} />}
+                          <span className="btn-action-txt">{yaEnviado(inv) ? "Enviado" : "Messenger"}</span>
                         </button>
                       )}
                       </>)}

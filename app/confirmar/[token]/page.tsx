@@ -7,7 +7,7 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
-import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, enAgradecimiento, enInstitucion, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, versiculoDeEvento, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, vinculoDe, enAgradecimiento, enInstitucion, enReserva, extrasDe, familiaDe, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, versiculoDeEvento, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import InvitacionDistancia from "./InvitacionDistancia";
 import PreInvitacion from "./PreInvitacion";
 import Agradecimiento from "./Agradecimiento";
@@ -34,6 +34,7 @@ type Invitado = {
   nombres_personas?: string | null;
   asistentes_nombres?: string[] | null; // quiénes marcó que van (supabase-asistentes.sql)
   a_distancia?: boolean | null; // invitación especial de agradecimiento (supabase-distancia.sql)
+  vinculo?: string | null; // familia | amigos | hermanos: qué carta recibe a distancia (supabase-vinculo.sql)
   presente?: boolean | null; // entró con su código el día del evento (escáner)
   mesa_id?: string | null;
   mesa_nombre?: string | null; // populated by join
@@ -1436,7 +1437,7 @@ function guionLectura({ evento, invitado, distancia, nombresCarta, reserva, grac
   if (distancia) {
     const varios = nombresCarta.length > 1;
     const tratoCarta = varios ? "plural" : trato;
-    const carta = cartaDistancia(evento, tratoCarta);
+    const carta = cartaDistancia(evento, tratoCarta, vinculoDe(invitado.vinculo));
     const autor = quien || festejado;
     pasos.push({ t: `${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió esta carta.`, guia: "dl-inicio" });
     pasos.push({ t: saludoDeCarta(varios ? nombresCarta.slice(0, 2).join(" y ") : invitado.nombre, tratoCarta), guia: "dl-saludo" });
@@ -2799,7 +2800,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   // que sale de un sobre. Si el celular no la logra armar a tiempo, queda la
   // portada de siempre.
   const datosTarjeta = useMemo(
-    () => armarDatosTarjeta(evento, invitado.nombre, nombres.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token), { distancia: especial, asistio: gracias }),
+    () => armarDatosTarjeta(evento, invitado.nombre, nombres.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token), { distancia: especial, vinculo: vinculoDe(invitado.vinculo), asistio: gracias }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -6085,6 +6086,7 @@ export default function ConfirmarPage() {
             evento={evento}
             invitadoNombre={nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
             trato={nombresEnTarjeta.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token)}
+            vinculo={vinculoDe(invitado.vinculo)}
             muro={{ href: `/muro/${invitado.evento_id}?token=${invitado.token}`, urls: muroPreview?.urls ?? [], total: muroPreview?.total ?? 0 }}
           >
             <section className="dist-seccion" data-guia="dl-mensaje">

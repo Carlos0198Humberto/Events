@@ -6,6 +6,8 @@ import {
   fraseInvitacion,
   agradecimientoDe,
   cartaDistancia,
+  dedicatoriaDistancia,
+  vinculoDe,
   enReserva,
   enAgradecimiento,
   asistioAlEvento,
@@ -427,5 +429,71 @@ describe("el nombre y quién invita siempre aparecen", () => {
   it("no repite al festejado como si fuera quien invita", () => {
     expect(familiaDe({ nombre: "Graduación", tipo: "graduacion", anfitriones: "Carlos Chavarría", tarjeta: { graduando: "Carlos Humberto Chavarría Aparicio" } })).toBeNull();
     expect(familiaDe({ nombre: "Graduación", tipo: "graduacion", anfitriones: "Carlos Humberto Chavarría Aparicio" })).toBeNull();
+  });
+});
+
+describe("invitados a distancia por vínculo", () => {
+  const carlos = () => grad({ tarjeta: { graduando: "Carlos Humberto Chavarría Aparicio" } });
+
+  it("solo acepta los tres vínculos", () => {
+    expect([vinculoDe("familia"), vinculoDe("amigos"), vinculoDe("hermanos"), vinculoDe("primos"), vinculoDe(null)])
+      .toEqual(["familia", "amigos", "hermanos", null, null]);
+  });
+
+  it("a la familia: el logro es de toda la familia y la oración pide unidad", () => {
+    const c = cartaDistancia(grad(), "f", "familia");
+    expect(c.parrafos[0]).toBe("Hoy quiero detenerme a darte las gracias. Después de años de estudio, llegó el día de mi graduación, y este logro no es solo mío: es de toda la familia, y también lleva tu nombre.");
+    expect(c.parrafos[1]).toContain("Somos familia, y eso no lo cambia ninguna distancia.");
+    expect(c.parrafos[2]).toContain("como estuviste siempre. Por eso preparé esta invitación especial para vos");
+    expect(c.parrafos[3]).toContain("que mantenga unida a nuestra familia");
+    expect(c.oracion).toBe("Y esta es mi oración por vos:");
+  });
+
+  it("a los amigos: la amistad como regalo de Dios, en plural cuando son varios", () => {
+    const c = cartaDistancia(grad({ tarjeta: { familia: "Familia Chavarría", graduando: "Carlos Chavarría" } }), "plural", "amigos");
+    expect(c.parrafos[0]).toContain("Hoy queremos detenernos a darles las gracias.");
+    expect(c.parrafos[0]).toContain("su amistad fue un regalo de Dios.");
+    expect(c.parrafos[1]).toContain("por escucharnos cuando más lo necesitábamos");
+    expect(c.parrafos[2]).toContain("A los buenos amigos no los separa la distancia.");
+    expect(c.parrafos[3]).toContain("que nuestra amistad siga creciendo");
+  });
+
+  it("a los hermanos en Cristo: sus oraciones, la comunión y la oración que los nombra", () => {
+    const c = cartaDistancia(grad(), "m", "hermanos");
+    expect(c.parrafos[0]).toContain("y sé que detrás de este logro están tus oraciones.");
+    expect(c.parrafos[1]).toContain("Doy gracias a Dios por tu vida y por la comunión que tenemos en Cristo.");
+    expect(c.parrafos[2]).toContain("en mi corazón y en mis oraciones cuando reciba mi título");
+    expect(c.oracion).toBe("Y esta es mi oración por vos, hermano:");
+    expect(c.despedida).toBe("Con amor fraternal en Cristo,");
+    expect(cartaDistancia(grad(), "f", "hermanos").oracion).toBe("Y esta es mi oración por vos, hermana:");
+    expect(cartaDistancia(grad(), "neutro", "hermanos").oracion).toBe("Y esta es mi oración por vos:");
+    expect(cartaDistancia(grad(), "plural", "hermanos").oracion).toBe("Y esta es mi oración por ustedes, hermanos:");
+  });
+
+  it("fuera de una graduación no habla de estudio", () => {
+    const c = cartaDistancia({ nombre: "Mis XV años", tipo: "quinceañera", anfitriones: "Familia Ruiz" }, "f", "familia");
+    expect(c.parrafos.join(" ")).not.toMatch(/estudio|semestre|título/);
+    expect(c.parrafos[0]).toContain("Este día tan especial es de toda la familia");
+  });
+
+  it("la carta escrita para ese vínculo gana; si no hay, la general; la bendición queda", () => {
+    const ev = grad({ tarjeta: { agradecimiento: "Carta general.", carta_hermanos: "Querido hermano en la fe.\nGracias por orar." } });
+    expect(cartaDistancia(ev, "m", "hermanos").parrafos).toEqual(["Querido hermano en la fe.", "Gracias por orar.", expect.stringContaining("Le pido al Señor")]);
+    expect(cartaDistancia(ev, "m", "amigos").parrafos).toEqual(["Carta general.", expect.stringContaining("Le pido a Dios")]);
+    expect(cartaDistancia(ev, "m", "hermanos").bendicion.cita).toBe("Números 6:24-26");
+  });
+
+  it("la tarjeta lleva una dedicatoria corta para cada vínculo", () => {
+    expect(armarDatosTarjeta(carlos(), "Tía Rosa", "f", { distancia: true, vinculo: "familia" }).dedicatoria).toBe("Somos familia: la distancia no nos separa.");
+    expect(armarDatosTarjeta(carlos(), "Juan", "m", { distancia: true, vinculo: "amigos" }).dedicatoria).toBe("Tu amistad fue parte de este logro.");
+    expect(armarDatosTarjeta(carlos(), "Hno. Pedro", "m", { distancia: true, vinculo: "hermanos" }).dedicatoria).toBe("Tus oraciones fueron parte de este logro.");
+    expect(dedicatoriaDistancia(false, "hermanos", true)).toBe("Sus oraciones son parte de este momento.");
+    expect(armarDatosTarjeta(carlos(), "Tía Rosa", "f", { distancia: true }).dedicatoria).toBe("Aunque estés lejos, fuiste parte de este logro.");
+  });
+
+  it("guarda la transmisión solo si es un enlace https", () => {
+    expect(extrasDe(grad({ tarjeta: { transmision: "https://youtu.be/dQw4w9WgXcQ", transmision_titulo: "  Culto de acción de gracias " } })))
+      .toMatchObject({ transmision: "https://youtu.be/dQw4w9WgXcQ", transmision_titulo: "Culto de acción de gracias" });
+    expect(extrasDe(grad({ tarjeta: { transmision: "javascript:alert(1)" } })).transmision).toBeUndefined();
   });
 });

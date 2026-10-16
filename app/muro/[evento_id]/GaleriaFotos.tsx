@@ -1,13 +1,20 @@
 "use client";
-// ─── Galería del muro: grilla liviana + visor ─────────────────────────────────
+// ─── Galería del muro: tarjetas + visor ───────────────────────────────────────
 //
-// La grilla muestra miniaturas (thumb_url, ~80 KB) en un mosaico de dos
-// columnas con el lugar reservado según ancho/alto: nada salta mientras carga.
-// El visor muestra la miniatura al instante y la foto completa encima apenas
-// llega. Reacciones y comentarios se guardan en la base (antes vivían solo en
-// la memoria del navegador y nadie más los veía).
+// Cada foto es una tarjeta: la foto con su lugar reservado (ancho/alto, nada
+// salta mientras carga), quién la subió, cuándo, sus reacciones y, si tiene,
+// lo que escribió. La grilla usa miniaturas (thumb_url, ~80 KB).
+//
+// El visor muestra la foto sobre ella misma difuminada (como las historias),
+// la miniatura al instante y la completa encima apenas llega. Doble toque =
+// «Me encanta», con el corazón que late. Reacciones y comentarios se guardan
+// en la base.
+//
+// Las reacciones son íconos propios, no emojis: un emoji se dibuja distinto en
+// cada teléfono. En la base se siguen guardando ❤️ 🔥 😍 (la tabla tiene un
+// CHECK con esos valores); acá solo cambia cómo se ven.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 
 export type FotoMuro = {
@@ -32,7 +39,8 @@ export type TemaMuro = {
   esqueleto: string;   // fondo mientras carga
 };
 
-// La tabla reacciones acepta estos emojis (CHECK en la base)
+// La tabla reacciones acepta estos emojis (CHECK en la base): son la clave que
+// se guarda; el dibujo es propio
 export const REACCIONES_MURO = [
   { emoji: "❤️", label: "Me encanta" },
   { emoji: "🔥", label: "¡Qué chivo!" },
@@ -40,6 +48,40 @@ export const REACCIONES_MURO = [
 ] as const;
 
 export type ReaccionFila = { foto_id: string; invitado_id: string; emoji: string };
+
+// ─── Íconos de las reacciones ─────────────────────────────────────────────────
+const DIBUJO_REACCION: Record<string, { de: string; a: string; icono: ReactNode }> = {
+  "❤️": {
+    de: "#FF7A95", a: "#E11D48",
+    icono: <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" fill="#fff" />,
+  },
+  "🔥": {
+    de: "#FFC857", a: "#F45B19",
+    icono: <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5Z" fill="#fff" />,
+  },
+  "😍": {
+    de: "#F6DD93", a: "#B8862B",
+    icono: (
+      <>
+        <path d="M9.94 15.5a2 2 0 0 0-1.44-1.44l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0l1.58 6.13a2 2 0 0 0 1.44 1.44l6.13 1.58a.5.5 0 0 1 0 .96l-6.13 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0Z" fill="#fff" />
+        <path d="M20 3v4M22 5h-4" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+      </>
+    ),
+  },
+};
+
+export function IconoReaccionMuro({ emoji, size = 28 }: { emoji: string; size?: number }) {
+  const d = DIBUJO_REACCION[emoji] ?? DIBUJO_REACCION["❤️"];
+  return (
+    <span
+      className="irm"
+      aria-hidden="true"
+      style={{ width: size, height: size, borderRadius: Math.round(size * 0.34), background: `linear-gradient(140deg, ${d.de}, ${d.a})` }}
+    >
+      <svg width={Math.round(size * 0.6)} height={Math.round(size * 0.6)} viewBox="0 0 24 24">{d.icono}</svg>
+    </span>
+  );
+}
 
 export function miniatura(f: FotoMuro) {
   return f.thumb_url || f.url;
@@ -58,19 +100,19 @@ function Inicial({ nombre, size, fondo }: { nombre: string; size: number; fondo:
     <span style={{
       width: size, height: size, borderRadius: "50%", flexShrink: 0, background: fondo, color: "#FFFFFF",
       display: "inline-flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.42, fontWeight: 700, lineHeight: 1,
+      fontSize: size * 0.42, fontWeight: 700, lineHeight: 1, boxShadow: "0 0 0 2px rgba(255,255,255,.9)",
     }}>
       {(nombre || "?").trim().charAt(0).toUpperCase()}
     </span>
   );
 }
 
-// ─── Mosaico de la grilla ─────────────────────────────────────────────────────
+// ─── Tarjeta de la grilla ─────────────────────────────────────────────────────
 export function MiniaturaFoto({ foto, nueva, totalReacciones, emojis, tema, onAbrir }: {
   foto: FotoMuro;
   nueva: boolean;
   totalReacciones: number;
-  /** Emojis que recibió la foto, el más usado primero (se muestran los dos primeros) */
+  /** Reacciones que recibió la foto, la más usada primero (se muestran hasta tres) */
   emojis?: string[];
   tema: TemaMuro;
   onAbrir: () => void;
@@ -80,31 +122,38 @@ export function MiniaturaFoto({ foto, nueva, totalReacciones, emojis, tema, onAb
   // Con medidas reales se reserva el lugar exacto; sin ellas (fotos viejas), un 4:5 recortado
   const proporcion = foto.ancho && foto.alto ? `${foto.ancho} / ${foto.alto}` : "4 / 5";
   return (
-    <button className="mf" onClick={onAbrir} aria-label={`Foto de ${nombre}`}
-      style={{ aspectRatio: proporcion, background: tema.esqueleto }}>
-      <img
-        src={miniatura(foto)}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        className={lista ? "lista" : undefined}
-        onLoad={() => setLista(true)}
-        // Si la miniatura no está (borrada del storage), se cae a la original
-        onError={(e) => { const img = e.currentTarget; if (img.src !== foto.url) img.src = foto.url; }}
-        ref={(el) => { if (el?.complete && el.naturalWidth > 0 && !lista) setLista(true); }}
-      />
-      {!lista && <span className="mf-brillo" aria-hidden="true" />}
-      <span className="mf-velo" aria-hidden="true" />
-      {nueva && <span className="mf-nueva" style={{ background: tema.destaque }}>Nueva</span>}
-      <span className="mf-pie">
-        <Inicial nombre={nombre} size={20} fondo={tema.acento} />
-        <span className="mf-autor">{nombre.split(" ")[0]}</span>
+    <button className="mf" onClick={onAbrir} aria-label={`Foto de ${nombre}`} style={{ borderColor: tema.borde }}>
+      <span className="mf-foto" style={{ aspectRatio: proporcion, background: tema.esqueleto }}>
+        <img
+          src={miniatura(foto)}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className={lista ? "lista" : undefined}
+          onLoad={() => setLista(true)}
+          // Si la miniatura no está (borrada del storage), se cae a la original
+          onError={(e) => { const img = e.currentTarget; if (img.src !== foto.url) img.src = foto.url; }}
+          ref={(el) => { if (el?.complete && el.naturalWidth > 0 && !lista) setLista(true); }}
+        />
+        {!lista && <span className="mf-brillo" aria-hidden="true" />}
+        {nueva && <span className="mf-nueva" style={{ background: tema.destaque, color: tema.tinta }}>Nueva</span>}
         {totalReacciones > 0 && (
           <span className="mf-reac" aria-label={`${totalReacciones} reacciones`}>
-            {(emojis?.length ? emojis.slice(0, 2) : ["❤️"]).join("")} {totalReacciones}
+            <span className="mf-reac-iconos">
+              {(emojis?.length ? emojis.slice(0, 3) : ["❤️"]).map((e) => <IconoReaccionMuro key={e} emoji={e} size={18} />)}
+            </span>
+            {totalReacciones}
           </span>
         )}
       </span>
+      <span className="mf-info">
+        <Inicial nombre={nombre} size={26} fondo={tema.acento} />
+        <span className="mf-quien">
+          <b style={{ color: tema.tinta }}>{nombre.split(" ")[0]}</b>
+          <small>{tiempoRelativo(foto.created_at)}</small>
+        </span>
+      </span>
+      {foto.caption && <span className="mf-caption">“{foto.caption}”</span>}
     </button>
   );
 }
@@ -137,7 +186,11 @@ export function VisorFoto({
   const [comentariosOk, setComentariosOk] = useState(true);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  // El corazón que late con el doble toque, y la reacción que "salta" al tocarla
+  const [latido, setLatido] = useState(0);
+  const [salto, setSalto] = useState<string | null>(null);
   const toque = useRef<number | null>(null);
+  const ultimoToque = useRef(0);
 
   const hayAnterior = indice > 0;
   const haySiguiente = indice < fotos.length - 1;
@@ -145,6 +198,7 @@ export function VisorFoto({
   // Teclado y bloqueo del scroll de fondo
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === "INPUT") return;
       if (e.key === "Escape") onCerrar();
       if (e.key === "ArrowLeft" && hayAnterior) onCambiar(indice - 1);
       if (e.key === "ArrowRight" && haySiguiente) onCambiar(indice + 1);
@@ -182,8 +236,16 @@ export function VisorFoto({
 
   async function reaccionar(emoji: string) {
     if (!invitadoId) { setAviso("Abrí el muro desde tu invitación para reaccionar."); return; }
+    setSalto(emoji);
+    setTimeout(() => setSalto(null), 500);
     const error = await onReaccionar(foto.id, emoji);
     setAviso(error);
+  }
+
+  // Doble toque: «Me encanta» (si ya le gustaba, solo late: no la saca)
+  function dobleToque() {
+    setLatido(Date.now());
+    if (invitadoId && mia !== "❤️") reaccionar("❤️");
   }
 
   async function comentar() {
@@ -211,13 +273,20 @@ export function VisorFoto({
 
   return (
     <div className="vf" role="dialog" aria-label={`Foto de ${nombre}`}>
-      {/* Barra superior */}
+      {/* La foto misma, difuminada, de fondo */}
+      <div key={`amb-${foto.id}`} className="vf-ambiente" style={{ backgroundImage: `url("${miniatura(foto)}")` }} aria-hidden="true" />
+      <div className="vf-velo" aria-hidden="true" />
+
+      {/* Barra superior: quién la subió, cuántas van y las acciones */}
       <div className="vf-barra">
-        <button className="vf-ico" onClick={onCerrar} aria-label="Cerrar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-        <span className="vf-cuenta">{indice + 1} / {fotos.length}</span>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="vf-autor">
+          <Inicial nombre={nombre} size={36} fondo={tema.acento} />
+          <div style={{ minWidth: 0 }}>
+            <div className="vf-autor-nombre">{nombre}</div>
+            <div className="vf-autor-cuando">{tiempoRelativo(foto.created_at)} · {indice + 1} de {fotos.length}</div>
+          </div>
+        </div>
+        <div className="vf-acciones">
           <button className="vf-ico" onClick={() => onDescargar(foto)} aria-label="Descargar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           </button>
@@ -226,89 +295,102 @@ export function VisorFoto({
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
             </button>
           )}
+          <button className="vf-ico" onClick={onCerrar} aria-label="Cerrar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
         </div>
       </div>
+      <div className="vf-progreso" aria-hidden="true"><span style={{ width: `${((indice + 1) / fotos.length) * 100}%`, background: tema.destaque }} /></div>
 
-      {/* Foto: la miniatura al instante, la completa encima apenas llega. Se desliza con el dedo. */}
-      <div
-        className="vf-escena"
-        onTouchStart={(e) => { toque.current = e.touches[0].clientX; }}
-        onTouchEnd={(e) => {
-          const x0 = toque.current; toque.current = null;
-          if (x0 === null) return;
-          const dx = e.changedTouches[0].clientX - x0;
-          if (dx < -50 && haySiguiente) onCambiar(indice + 1);
-          if (dx > 50 && hayAnterior) onCambiar(indice - 1);
-        }}
-      >
-        <img key={`b-${foto.id}`} className="vf-img" src={miniatura(foto)} alt=""
-          onError={(e) => { const img = e.currentTarget; if (img.src !== foto.url) img.src = foto.url; }} />
-        {foto.thumb_url && (
-          <img key={`c-${foto.id}`} className={`vf-img vf-completa${completaLista ? " lista" : ""}`} src={foto.url} alt=""
-            onLoad={() => setCompletaLista(true)} />
-        )}
-        {foto.thumb_url && !completaLista && <span className="vf-cargando" aria-label="Cargando foto en alta calidad" />}
-        {hayAnterior && (
-          <button className="vf-flecha vf-izq" onClick={() => onCambiar(indice - 1)} aria-label="Anterior">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-        )}
-        {haySiguiente && (
-          <button className="vf-flecha vf-der" onClick={() => onCambiar(indice + 1)} aria-label="Siguiente">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-        )}
-      </div>
-
-      {/* Panel: quién la subió, reacciones y comentarios */}
-      <div className="vf-panel">
-        <div className="vf-autor">
-          <Inicial nombre={nombre} size={34} fondo={tema.acento} />
-          <div style={{ minWidth: 0 }}>
-            <div className="vf-autor-nombre" style={{ color: tema.tinta }}>{nombre}</div>
-            <div className="vf-autor-cuando">{tiempoRelativo(foto.created_at)}</div>
-          </div>
-        </div>
-        {foto.caption && <p className="vf-caption">“{foto.caption}”</p>}
-
-        <div className="vf-reacciones">
-          {REACCIONES_MURO.map(r => {
-            const n = deEsta.filter(x => x.emoji === r.emoji).length;
-            const activa = mia === r.emoji;
-            return (
-              <button key={r.emoji} className={`vf-reac${activa ? " activa" : ""}`} onClick={() => reaccionar(r.emoji)}
-                style={activa ? { borderColor: tema.destaque, background: tema.suave } : undefined}
-                aria-pressed={activa}>
-                <span style={{ fontSize: 16 }}>{r.emoji}</span>
-                <span>{r.label}</span>
-                {n > 0 && <b>{n}</b>}
-              </button>
-            );
-          })}
-        </div>
-        {aviso && <p className="vf-aviso">{aviso}</p>}
-
-        {comentariosOk && (
-          <div className="vf-comentarios">
-            {comentarios.map(c => (
-              <div key={c.id} className="vf-com">
-                <b style={{ color: tema.tinta }}>{c.nombre_autor}</b> {c.texto}
-              </div>
-            ))}
-            {puedeComentar ? (
-              <div className="vf-escribir">
-                <input value={texto} maxLength={300} onChange={e => setTexto(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") comentar(); }}
-                  placeholder={comentarios.length ? "Sumá un comentario…" : "Sé el primero en comentar…"} />
-                <button onClick={comentar} disabled={!texto.trim() || enviando} style={{ background: tema.acento }} aria-label="Publicar comentario">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                </button>
-              </div>
-            ) : (
-              <p className="vf-sin-comentar">Para comentar, abrí el muro desde el enlace de tu invitación.</p>
+      <div className="vf-cuerpo">
+        {/* Foto: la miniatura al instante, la completa encima apenas llega. Se desliza con el dedo. */}
+        <div
+          className="vf-escena"
+          onTouchStart={(e) => { toque.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => {
+            const x0 = toque.current; toque.current = null;
+            if (x0 === null) return;
+            const dx = e.changedTouches[0].clientX - x0;
+            if (dx < -50 && haySiguiente) { onCambiar(indice + 1); return; }
+            if (dx > 50 && hayAnterior) { onCambiar(indice - 1); return; }
+            if (Math.abs(dx) < 10) {
+              const ahora = Date.now();
+              if (ahora - ultimoToque.current < 300) { ultimoToque.current = 0; dobleToque(); }
+              else ultimoToque.current = ahora;
+            }
+          }}
+          onDoubleClick={dobleToque}
+        >
+          <div key={`f-${foto.id}`} className="vf-marco">
+            <img className="vf-img" src={miniatura(foto)} alt=""
+              onError={(e) => { const img = e.currentTarget; if (img.src !== foto.url) img.src = foto.url; }} />
+            {foto.thumb_url && (
+              <img className={`vf-img vf-completa${completaLista ? " lista" : ""}`} src={foto.url} alt=""
+                onLoad={() => setCompletaLista(true)} />
             )}
           </div>
-        )}
+          {foto.thumb_url && !completaLista && <span className="vf-cargando" aria-label="Cargando foto en alta calidad" />}
+          {latido > 0 && (
+            <span key={latido} className="vf-latido" aria-hidden="true">
+              <svg width="110" height="110" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" fill="#fff" /></svg>
+            </span>
+          )}
+          {hayAnterior && (
+            <button className="vf-flecha vf-izq" onClick={() => onCambiar(indice - 1)} aria-label="Anterior">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+          )}
+          {haySiguiente && (
+            <button className="vf-flecha vf-der" onClick={() => onCambiar(indice + 1)} aria-label="Siguiente">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          )}
+        </div>
+
+        {/* Panel esmerilado: lo que escribió, reacciones y comentarios */}
+        <div className="vf-panel" style={{ borderTopColor: tema.destaque }}>
+          {foto.caption && <p className="vf-caption">“{foto.caption}”</p>}
+
+          <div className="vf-reacciones">
+            {REACCIONES_MURO.map(r => {
+              const n = deEsta.filter(x => x.emoji === r.emoji).length;
+              const activa = mia === r.emoji;
+              return (
+                <button key={r.emoji} className={`vf-reac${activa ? " activa" : ""}${salto === r.emoji ? " salta" : ""}`} onClick={() => reaccionar(r.emoji)}
+                  style={activa ? { borderColor: tema.destaque } : undefined}
+                  aria-pressed={activa}>
+                  <IconoReaccionMuro emoji={r.emoji} size={30} />
+                  <span className="vf-reac-txt">{r.label}</span>
+                  {n > 0 && <b>{n}</b>}
+                </button>
+              );
+            })}
+          </div>
+          {!invitadoId && !esOrg && <p className="vf-pista">Abrí el muro desde tu invitación para reaccionar y comentar.</p>}
+          {(invitadoId || esOrg) && <p className="vf-pista">Tocá dos veces la foto para darle «Me encanta».</p>}
+          {aviso && <p className="vf-aviso">{aviso}</p>}
+
+          {comentariosOk && (
+            <div className="vf-comentarios">
+              {comentarios.map(c => (
+                <div key={c.id} className="vf-com">
+                  <Inicial nombre={c.nombre_autor} size={26} fondo={tema.acento} />
+                  <div><b>{c.nombre_autor}</b> {c.texto}</div>
+                </div>
+              ))}
+              {puedeComentar && (
+                <div className="vf-escribir">
+                  <input value={texto} maxLength={300} onChange={e => setTexto(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") comentar(); }}
+                    placeholder={comentarios.length ? "Sumá un comentario…" : "Sé el primero en comentar…"} />
+                  <button onClick={comentar} disabled={!texto.trim() || enviando} style={{ background: tema.destaque, color: tema.tinta }} aria-label="Publicar comentario">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -321,65 +403,100 @@ export function EstilosGaleria({ tema }: { tema: TemaMuro }) {
       @keyframes mfEntra{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
       @keyframes mfBrillo{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
       @keyframes vfGira{to{transform:rotate(360deg)}}
+      @keyframes vfFoto{from{opacity:0;transform:scale(.965)}to{opacity:1;transform:none}}
+      @keyframes vfLatido{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}45%{transform:translate(-50%,-50%) scale(.95)}70%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+      @keyframes irmSalta{0%{transform:scale(1)}35%{transform:scale(1.35) rotate(-8deg)}65%{transform:scale(.92) rotate(4deg)}100%{transform:scale(1)}}
+      .irm{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(15,23,42,.18),inset 0 1px 0 rgba(255,255,255,.35)}
       .galeria-cabecera{display:flex;align-items:baseline;justify-content:space-between;margin:4px 2px 10px;font-size:13px;font-weight:700}
       .galeria-orden{font-size:11.5px;font-weight:500;color:#94A3B8}
       .opt-banner{display:flex;align-items:center;gap:12px;background:#FFFFFF;border:1px solid;border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:#64748B;line-height:1.4}
       .opt-banner b{display:block;font-size:13px;margin-bottom:2px}
       .opt-banner button{flex-shrink:0;border:none;border-radius:10px;padding:9px 14px;color:#FFFFFF;font-size:12.5px;font-weight:700;cursor:pointer}
       .opt-banner button:disabled{opacity:.6;cursor:wait}
-      .galeria{columns:2;column-gap:10px}
+      .galeria{columns:2;column-gap:12px}
       @media (min-width:640px){.galeria{columns:3}}
       /* Pocas fotos: no se reparten en columnas vacías (una sola foto quedaba
          chiquita en una esquina). Una va centrada y grande; dos, lado a lado. */
       .galeria.galeria-1{columns:1;max-width:420px;margin:0 auto}
       @media (min-width:640px){.galeria.galeria-2{columns:2;max-width:640px;margin:0 auto}}
-      .mf{position:relative;display:block;width:100%;margin:0 0 10px;padding:0;border:none;border-radius:14px;overflow:hidden;cursor:pointer;
-        break-inside:avoid;box-shadow:0 2px 10px rgba(15,23,42,0.10);animation:mfEntra .45s ease both;-webkit-tap-highlight-color:transparent}
-      .mf img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .45s ease;display:block}
-      .mf img.lista{opacity:1}
+
+      /* Tarjeta: la foto enmarcada en blanco, con quién la subió debajo */
+      .mf{display:block;width:100%;margin:0 0 12px;padding:6px 6px 0;border:1px solid;border-radius:18px;background:#FFFFFF;cursor:pointer;text-align:left;font-family:inherit;
+        break-inside:avoid;box-shadow:0 1px 2px rgba(15,23,42,.05),0 12px 26px -16px rgba(15,23,42,.35);animation:mfEntra .45s ease both;
+        transition:transform .2s,box-shadow .2s;-webkit-tap-highlight-color:transparent}
+      @media (hover:hover){.mf:hover{transform:translateY(-3px);box-shadow:0 1px 2px rgba(15,23,42,.05),0 18px 34px -16px rgba(15,23,42,.45)}}
       .mf:active{transform:scale(.985)}
+      .mf-foto{position:relative;display:block;width:100%;border-radius:13px;overflow:hidden}
+      .mf-foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .45s ease,transform .6s ease;display:block}
+      .mf-foto img.lista{opacity:1}
+      @media (hover:hover){.mf:hover .mf-foto img{transform:scale(1.03)}}
       .mf-brillo{position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,0.45) 50%,transparent 70%);animation:mfBrillo 1.3s ease-in-out infinite}
-      .mf-velo{position:absolute;left:0;right:0;bottom:0;height:42%;background:linear-gradient(to top,rgba(0,0,0,0.55),transparent);pointer-events:none}
-      .mf-nueva{position:absolute;top:8px;left:8px;padding:3px 9px;border-radius:99px;color:${tema.tinta};font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 2px 8px rgba(0,0,0,0.25)}
-      .mf-pie{position:absolute;left:8px;right:8px;bottom:8px;display:flex;align-items:center;gap:6px;color:#FFFFFF;font-size:11.5px;font-weight:600;text-align:left}
-      .mf-autor{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px rgba(0,0,0,0.5)}
-      .mf-reac{flex-shrink:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);border-radius:99px;padding:2px 7px;font-size:10.5px;letter-spacing:-.04em}
+      .mf-nueva{position:absolute;top:8px;left:8px;padding:3px 9px;border-radius:99px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 2px 8px rgba(0,0,0,0.25)}
+      .mf-reac{position:absolute;right:8px;bottom:8px;display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 4px;border-radius:99px;
+        background:rgba(255,255,255,.92);color:#0F172A;font-size:11.5px;font-weight:800;box-shadow:0 4px 12px rgba(15,23,42,.25)}
+      .mf-reac-iconos{display:inline-flex}
+      .mf-reac-iconos .irm+.irm{margin-left:-6px}
+      .mf-reac-iconos .irm{border:1.5px solid #fff}
+      .mf-info{display:flex;align-items:center;gap:8px;padding:9px 4px 9px}
+      .mf-quien{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+      .mf-quien b{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .mf-quien small{font-size:10.5px;color:#94A3B8;margin-top:1px}
+      .mf-caption{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:-3px 4px 10px;font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:12.5px;line-height:1.35;color:#475569}
       @media (prefers-reduced-motion: reduce){.mf,.mf-brillo{animation:none}}
 
-      .vf{position:fixed;inset:0;z-index:9999;background:#06080F;display:flex;flex-direction:column;animation:mfEntra .2s ease both}
-      .vf-barra{display:flex;align-items:center;justify-content:space-between;padding:max(10px,env(safe-area-inset-top,10px)) 12px 8px;color:#FFFFFF}
-      .vf-cuenta{font-size:13px;font-weight:600;opacity:.8;font-variant-numeric:tabular-nums}
-      .vf-ico{width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.12);color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer}
-      .vf-peligro{background:rgba(220,38,38,0.25)}
-      .vf-escena{position:relative;flex:1;min-height:0;touch-action:pan-y}
-      .vf-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+      /* Visor: la foto sobre ella misma difuminada */
+      .vf{position:fixed;inset:0;z-index:9999;background:#05070D;display:flex;flex-direction:column;overflow:hidden;animation:mfEntra .2s ease both}
+      .vf-ambiente{position:absolute;inset:-60px;background-size:cover;background-position:center;filter:blur(38px) saturate(1.35) brightness(.75);transform:scale(1.15);animation:vfFoto .5s ease both}
+      .vf-velo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,13,.55) 0%,rgba(5,7,13,.25) 40%,rgba(5,7,13,.7) 100%)}
+      .vf-barra,.vf-progreso,.vf-cuerpo{position:relative;z-index:1}
+      .vf-barra{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:max(12px,env(safe-area-inset-top,12px)) 12px 10px;color:#FFFFFF}
+      .vf-autor{display:flex;align-items:center;gap:10px;min-width:0}
+      .vf-autor-nombre{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+      .vf-autor-cuando{font-size:11.5px;opacity:.75;margin-top:1px;font-variant-numeric:tabular-nums}
+      .vf-acciones{display:flex;gap:8px;flex-shrink:0}
+      .vf-ico{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,0.12);color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(8px)}
+      .vf-peligro{background:rgba(220,38,38,0.32)}
+      .vf-progreso{height:2px;margin:0 12px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden}
+      .vf-progreso span{display:block;height:100%;border-radius:2px;transition:width .35s ease}
+      .vf-cuerpo{flex:1;min-height:0;display:flex;flex-direction:column}
+      .vf-escena{position:relative;flex:1;min-height:0;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+      .vf-marco{position:absolute;inset:12px 10px;animation:vfFoto .35s ease both}
+      .vf-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 18px 40px rgba(0,0,0,.55))}
       .vf-completa{opacity:0;transition:opacity .35s ease}
       .vf-completa.lista{opacity:1}
-      .vf-cargando{position:absolute;right:14px;bottom:14px;width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,0.25);border-top-color:#FFFFFF;animation:vfGira .8s linear infinite}
-      .vf-flecha{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,0.14);color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px)}
-      .vf-izq{left:10px}.vf-der{right:10px}
+      .vf-cargando{position:absolute;right:18px;bottom:18px;width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,0.25);border-top-color:#FFFFFF;animation:vfGira .8s linear infinite}
+      .vf-latido{position:absolute;left:50%;top:50%;pointer-events:none;filter:drop-shadow(0 6px 22px rgba(225,29,72,.7));animation:vfLatido .9s ease both}
+      .vf-flecha{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,0.14);color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(8px)}
+      .vf-izq{left:12px}.vf-der{right:12px}
       @media (hover:none){.vf-flecha{display:none}}
-      .vf-panel{background:#FFFFFF;border-radius:20px 20px 0 0;padding:16px 16px max(16px,env(safe-area-inset-bottom,16px));max-height:46vh;overflow-y:auto}
-      .vf-autor{display:flex;align-items:center;gap:10px}
-      .vf-autor-nombre{font-size:14.5px;font-weight:700}
-      .vf-autor-cuando{font-size:11.5px;color:#94A3B8;margin-top:1px}
-      .vf-caption{font-size:14px;color:#334155;font-style:italic;line-height:1.5;margin-top:10px}
-      .vf-reacciones{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
-      .vf-reac{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;min-height:40px;border-radius:99px;border:1.5px solid #E2E8F0;background:#F8FAFC;
-        font-size:12.5px;font-weight:600;color:#475569;cursor:pointer;transition:transform .12s,border-color .15s,background .15s}
+      .vf-panel{background:rgba(12,14,22,.72);backdrop-filter:blur(22px) saturate(1.3);-webkit-backdrop-filter:blur(22px) saturate(1.3);
+        border-top:1.5px solid;border-radius:22px 22px 0 0;padding:16px 16px max(16px,env(safe-area-inset-bottom,16px));max-height:44vh;overflow-y:auto;color:#F1F5F9}
+      @media (min-width:900px){
+        .vf-cuerpo{flex-direction:row}
+        .vf-panel{width:380px;max-height:none;border-radius:22px 0 0 0;border-top:none;border-left:1.5px solid ${tema.destaque}}
+      }
+      .vf-caption{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:16px;line-height:1.5;color:#FFFFFF;margin-bottom:12px}
+      .vf-reacciones{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+      .vf-reac{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px 9px;border-radius:16px;border:1.5px solid rgba(255,255,255,.12);
+        background:rgba(255,255,255,.06);color:#E2E8F0;cursor:pointer;font-family:inherit;transition:transform .12s,border-color .15s,background .15s;position:relative}
       .vf-reac:active{transform:scale(.95)}
-      .vf-reac b{background:#E2E8F0;color:#334155;border-radius:99px;padding:0 6px;font-size:11px}
-      .vf-reac.activa{color:${tema.tinta}}
-      .vf-reac.activa b{background:${tema.acento};color:#FFFFFF}
-      .vf-aviso{margin-top:8px;font-size:12px;color:#B45309}
-      .vf-comentarios{margin-top:14px;border-top:1px solid #EEF0F4;padding-top:12px;display:flex;flex-direction:column;gap:8px}
-      .vf-com{font-size:13.5px;color:#334155;line-height:1.45}
-      .vf-escribir{display:flex;gap:8px;margin-top:4px}
-      .vf-escribir input{flex:1;min-width:0;border:1.5px solid #E2E8F0;border-radius:12px;padding:10px 12px;font-size:14px;outline:none;font-family:inherit}
+      .vf-reac.activa{background:rgba(255,255,255,.14)}
+      .vf-reac.salta .irm{animation:irmSalta .5s ease}
+      .vf-reac-txt{font-size:11.5px;font-weight:700;line-height:1.1;text-align:center}
+      .vf-reac b{position:absolute;top:6px;right:8px;min-width:20px;padding:1px 6px;border-radius:99px;background:rgba(255,255,255,.18);color:#fff;font-size:11px}
+      .vf-reac.activa b{background:${tema.destaque};color:${tema.tinta}}
+      .vf-pista{margin-top:10px;font-size:11.5px;color:rgba(226,232,240,.65);text-align:center}
+      .vf-aviso{margin-top:8px;font-size:12px;color:#FCD34D}
+      .vf-comentarios{margin-top:14px;border-top:1px solid rgba(255,255,255,.1);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+      .vf-com{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:#E2E8F0;line-height:1.45}
+      .vf-com b{color:#FFFFFF}
+      .vf-escribir{display:flex;gap:8px;margin-top:2px}
+      .vf-escribir input{flex:1;min-width:0;border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:#FFFFFF;border-radius:12px;padding:10px 12px;font-size:14px;outline:none;font-family:inherit}
+      .vf-escribir input::placeholder{color:rgba(226,232,240,.5)}
       .vf-escribir input:focus{border-color:${tema.destaque}}
-      .vf-escribir button{width:42px;border:none;border-radius:12px;color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer}
+      .vf-escribir button{width:42px;border:none;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer}
       .vf-escribir button:disabled{opacity:.45;cursor:default}
-      .vf-sin-comentar{font-size:12.5px;color:#64748B;background:#F8FAFC;border:1px dashed #E2E8F0;border-radius:10px;padding:9px 12px;margin-top:2px}
+      @media (prefers-reduced-motion: reduce){.vf-ambiente,.vf-marco,.vf-latido,.vf-reac.salta .irm{animation:none}}
     `}</style>
   );
 }

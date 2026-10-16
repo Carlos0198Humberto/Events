@@ -12,7 +12,7 @@
 // El enlace va solo en su línea y es el ÚNICO del mensaje: WhatsApp arma la
 // vista previa con el primero que encuentra.
 
-import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseGraduacion, fraseInvitacion, hablaElProtagonista, textosGracias, textosReserva, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
+import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseGraduacion, fraseInvitacion, hablaElProtagonista, textosGracias, textosReserva, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
 import { nombreDePila, saludo, type Trato } from "@/lib/tratoInvitado";
 
 export type EventoMensaje = EventoTarjeta & { fecha_limite_confirmacion?: string | null };
@@ -124,18 +124,29 @@ export function armarMensajeInvitacion(evento: EventoMensaje, nombreInvitado: st
  * le pide confirmar; se le agradece y se lo invita a ver las fotos y dejar su
  * mensaje. Mismo enlace personal: la página sabe que es "a distancia".
  */
-export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato): string {
+export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato, vinculo: VinculoDistancia | null = null): string {
   const plural = trato === "plural";
   const yo = hablaElProtagonista(evento);
   const graduacion = evento.tipo === "graduacion";
   // En graduación, qué se estudió y dónde: "Me gradúo de Ingeniería en Sistemas…, y aunque estés lejos…"
   const estudio = fraseGraduacion(evento);
+  // Lo que dice "aunque estés lejos…", según a quién va
+  const parte = (() => {
+    const momento = graduacion ? "este logro" : "este momento";
+    if (vinculo === "familia") return plural ? `son parte de esta familia y de ${momento}` : `sos parte de esta familia y de ${momento}`;
+    if (vinculo === "amigos") return `${plural ? "su" : "tu"} amistad ${graduacion ? "fue" : "es"} parte de ${momento}`;
+    if (vinculo === "hermanos") return `${plural ? "sus" : "tus"} oraciones ${graduacion ? "fueron" : "son"} parte de ${momento}`;
+    return plural ? (graduacion ? "fueron parte de este logro" : "son parte de este momento") : (graduacion ? "fuiste parte de este logro" : "sos parte de este momento");
+  })();
+  const aunque = plural ? "aunque estén lejos" : "aunque estés lejos";
   const lejos = estudio
-    ? `${estudio.charAt(0).toUpperCase()}${estudio.slice(1)}, y aunque ${plural ? "estén lejos, fueron" : "estés lejos, fuiste"} parte de este logro.`
-    : plural
-    ? (graduacion ? "Aunque estén lejos, fueron parte de este logro." : "Aunque estén lejos, son parte de este momento.")
-    : (graduacion ? "Aunque estés lejos, fuiste parte de este logro." : "Aunque estés lejos, sos parte de este momento.");
-  const gracias = plural ? "Gracias por su cariño y su apoyo." : "Gracias por tu cariño y tu apoyo.";
+    ? `${estudio.charAt(0).toUpperCase()}${estudio.slice(1)}, y ${aunque}, ${parte}.`
+    : `${aunque.charAt(0).toUpperCase()}${aunque.slice(1)}, ${parte}.`;
+  const gracias =
+    vinculo === "familia" ? (plural ? "Gracias por su cariño de familia, sus llamadas y sus oraciones." : "Gracias por tu cariño de familia, tus llamadas y tus oraciones.")
+    : vinculo === "amigos" ? (plural ? "Gracias por su amistad y por estar siempre." : "Gracias por tu amistad y por estar siempre.")
+    : vinculo === "hermanos" ? `${yo ? "Doy" : "Damos"} gracias a Dios por ${plural ? "sus vidas" : "tu vida"} y por la comunión que tenemos en Cristo.`
+    : plural ? "Gracias por su cariño y su apoyo." : "Gracias por tu cariño y tu apoyo.";
   const preparamos = `${plural ? "Les" : "Te"} ${yo ? "preparé" : "preparamos"}`;
   const invitacion = plural
     ? `${preparamos} una invitación especial para que vivan la celebración desde donde estén: las fotos del gran día y un espacio para su mensaje.`

@@ -439,10 +439,13 @@ export function extrasParaGuardar(v: ExtrasTarjeta): ExtrasTarjeta | null {
   // La foto y la entrada con QR van por defecto: solo se guarda cuando se sacan
   if (v.foto === false) out.foto = false;
   if (v.entrada_qr === false) out.entrada_qr = false;
+  // Las que se activan a propósito: sin esto, guardar el evento las borraba
+  if (v.sin_versiculo === true) out.sin_versiculo = true;
+  if (v.muro_galeria === true) out.muro_galeria = true;
   for (const [k, val] of Object.entries(v)) {
     if (typeof val !== "string") continue;
-    // La carta a distancia conserva sus párrafos (uno por línea)
-    const t = k === "agradecimiento"
+    // Las cartas a distancia (la general y la de cada vínculo) conservan sus párrafos (uno por línea)
+    const t = k === "agradecimiento" || k.startsWith("carta_")
       ? val.split(/\n+/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean).join("\n")
       : val.replace(/\s+/g, " ").trim();
     // honor "" es una elección ("sin frase"): se guarda aunque esté vacío

@@ -6,7 +6,8 @@ import Link from "next/link";
 import { AppLogo } from "@/app/components/AppLogo";
 import { achicarImagen } from "@/lib/fotos";
 import { CamposDireccion, CamposTarjeta, extrasParaGuardar } from "@/app/components/CamposTarjeta";
-import { cartaDistancia, extrasDe, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
+import { cartaDistancia, extrasDe, VINCULOS_DISTANCIA, type ExtrasTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
+import { transmisionDe } from "@/lib/transmision";
 
 type Evento = {
   id: string; nombre: string; tipo: string; anfitriones: string;
@@ -208,6 +209,12 @@ export default function EditarEvento() {
   // Fotos del anfitrión para los invitados a distancia (ej. la graduación con los padres)
   const [fotosAnfitrion, setFotosAnfitrion] = useState<string[]>([]);
   const [subiendoAnfitrion, setSubiendoAnfitrion] = useState(false);
+  // Video corto del anfitrión para el muro (se sube al storage, la URL va en la tarjeta)
+  const [subiendoVideo, setSubiendoVideo] = useState(false);
+  const [avisoVideo, setAvisoVideo] = useState("");
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  // Qué carta a distancia se está editando: la general o la de un vínculo
+  const [cartaDe, setCartaDe] = useState<"general" | VinculoDistancia>("general");
   const anfitrionInputRef = useRef<HTMLInputElement>(null);
   const [subiendoCarrusel, setSubiendoCarrusel] = useState(false);
   const carruselInputRef = useRef<HTMLInputElement>(null);
@@ -357,6 +364,10 @@ export default function EditarEvento() {
         .field-input::placeholder{color:var(--text3)}
         .field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,0.10);background:var(--surface)}
         .field-hint{font-size:10px;color:var(--text3);margin-top:4px;padding:0 2px;line-height:1.4}
+        .carta-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 8px}
+        .carta-tab{position:relative;padding:6px 11px;border-radius:999px;border:1.5px solid var(--border-mid,#e2e8f0);background:transparent;font-size:11.5px;font-weight:700;color:var(--text2);cursor:pointer;font-family:inherit}
+        .carta-tab.activa{background:var(--accent);border-color:var(--accent);color:#fff}
+        .carta-tab-punto{position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:#16a34a;border:1.5px solid #fff}
         .field-textarea{resize:none}
         .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
         .error-box{background:var(--danger-bg);border:1px solid var(--danger-border);color:var(--danger);font-size:13px;padding:10px 13px;border-radius:11px;display:flex;align-items:center;gap:8px}
@@ -632,36 +643,89 @@ export default function EditarEvento() {
               </p>
               <p className="field-hint" style={{ marginBottom: 10 }}>
                 Para familiares y amigos que están lejos pero fueron parte del logro. Los marcás en <strong>Invitados</strong>: reciben una
-                invitación de agradecimiento (no confirman), ven estas fotos y las del muro, y te dejan su mensaje.
+                invitación de agradecimiento (no confirman), ven tus fotos de graduación y las del muro, y te dejan su mensaje.
               </p>
               <div className="fields-group">
                 <div>
                   <label className="field-label">Carta de agradecimiento</label>
-                  <textarea
-                    className="field-input field-textarea"
-                    rows={extras.agradecimiento ? 10 : 4}
-                    maxLength={1500}
-                    value={extras.agradecimiento ?? ""}
-                    onChange={(e) => setExtras({ ...extras, agradecimiento: e.target.value })}
-                    placeholder={cartaDistancia({ nombre, tipo, anfitriones, tarjeta: { ...extras, agradecimiento: null } }, "neutro").parrafos[0]}
-                  />
-                  {!extras.agradecimiento && (
-                    <button
-                      type="button"
-                      className="btn-carta"
-                      onClick={() => {
-                        // La carta automática (sin la bendición, que va siempre), lista para retocar
-                        const c = cartaDistancia({ nombre, tipo, anfitriones, tarjeta: { ...extras, agradecimiento: null } }, "neutro");
-                        setExtras({ ...extras, agradecimiento: c.parrafos.slice(0, -1).join("\n") });
-                      }}
-                    >
-                      Editar la carta sugerida
-                    </button>
-                  )}
-                  <p className="field-hint">Si lo dejás vacío, cada invitado recibe la carta automática con su nombre, que habla de tu carrera y tu universidad. Lo que escribas acá la reemplaza (cada línea es un párrafo); el saludo con su nombre, la bendición de Números 6:24-26 y tu firma van siempre.</p>
+                  {(() => {
+                    // La carta de cada grupo: el campo que se edita y la automática de ese grupo
+                    const vinculo = cartaDe === "general" ? null : cartaDe;
+                    const campo = vinculo ? (`carta_${vinculo}` as const) : "agradecimiento";
+                    const sinPropias = { ...extras, agradecimiento: null, carta_familia: null, carta_amigos: null, carta_hermanos: null };
+                    const sugerida = cartaDistancia({ nombre, tipo, anfitriones, tarjeta: sinPropias }, "neutro", vinculo);
+                    const valor = extras[campo] ?? "";
+                    return (
+                      <>
+                        <div className="carta-tabs" role="tablist" aria-label="Para quién es la carta">
+                          {([{ id: "general" as const, nombre: "General" }, ...VINCULOS_DISTANCIA]).map((v) => (
+                            <button
+                              key={v.id}
+                              type="button"
+                              role="tab"
+                              aria-selected={cartaDe === v.id}
+                              className={`carta-tab${cartaDe === v.id ? " activa" : ""}`}
+                              onClick={() => setCartaDe(v.id)}
+                            >
+                              {v.nombre}
+                              {(v.id === "general" ? extras.agradecimiento : extras[`carta_${v.id}`]) && <span className="carta-tab-punto" aria-label="(escrita por vos)" />}
+                            </button>
+                          ))}
+                        </div>
+                        <textarea
+                          className="field-input field-textarea"
+                          rows={valor ? 10 : 4}
+                          maxLength={1500}
+                          value={valor}
+                          onChange={(e) => setExtras({ ...extras, [campo]: e.target.value })}
+                          placeholder={sugerida.parrafos[0]}
+                        />
+                        {!valor && (
+                          <button
+                            type="button"
+                            className="btn-carta"
+                            onClick={() => setExtras({ ...extras, [campo]: sugerida.parrafos.slice(0, -1).join("\n") })}
+                          >
+                            Editar la carta sugerida
+                          </button>
+                        )}
+                        <p className="field-hint">
+                          {vinculo
+                            ? <>La reciben los invitados a distancia marcados como <strong>{VINCULOS_DISTANCIA.find((x) => x.id === vinculo)?.nombre.toLowerCase()}</strong> (lo elegís en Invitados). Si la dejás vacía va la automática de este grupo; si tampoco hay, la general que escribiste.</>
+                            : <>La reciben los invitados a distancia sin grupo, y los de un grupo cuya carta dejaste vacía. Si la dejás vacía, cada uno recibe la carta automática con su nombre.</>}
+                          {" "}Cada línea es un párrafo; el saludo con su nombre, la bendición de Números 6:24-26 y tu firma van siempre.
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
+              </div>
+            </div>
+
+            {/* ── 4e. Tus fotos de graduación: para los de lejos y, si se activa, para el muro ── */}
+            <div className="section-card">
+              <p className="section-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" /></svg>
+                {tipo === "graduacion" ? "Tus fotos de graduación" : "Tus fotos del evento"}
+              </p>
+              <p className="field-hint" style={{ marginBottom: 10 }}>
+                Tus fotos (con la toga, con tu familia…) y un video corto. Las ven siempre los invitados a distancia; si activás la opción, también todos en el <strong>muro</strong>.
+              </p>
+              <div className="fields-group">
+                <label className="check-fila" htmlFor="muro-galeria">
+                  <input
+                    id="muro-galeria"
+                    type="checkbox"
+                    checked={extras.muro_galeria === true}
+                    onChange={(e) => setExtras({ ...extras, muro_galeria: e.target.checked ? true : undefined })}
+                  />
+                  <span>
+                    <strong>Mostrar en el muro</strong>
+                    <small>Arriba de las fotos de los invitados aparece tu espacio: tus fotos y tu video.</small>
+                  </span>
+                </label>
                 <div>
-                  <label className="field-label">Tus fotos para ellos ({fotosAnfitrion.length}/20)</label>
+                  <label className="field-label">Fotos ({fotosAnfitrion.length}/20)</label>
                   {fotosAnfitrion.length > 0 && (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 10 }}>
                       {fotosAnfitrion.map((url, i) => (
@@ -710,7 +774,109 @@ export default function EditarEvento() {
                       e.target.value = "";
                     }}
                   />
-                  <p className="field-hint" style={{ marginTop: 8 }}>Solo las ven los invitados a distancia. Recordá tocar <strong>Guardar</strong> al final.</p>
+                </div>
+                <div>
+                  <label className="field-label">Video corto (opcional)</label>
+                  {extras.muro_video ? (
+                    <div style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: "1.5px solid var(--border-mid)", background: "#0F172A" }}>
+                      <video src={extras.muro_video} controls playsInline preload="metadata" style={{ display: "block", width: "100%", maxHeight: 260 }} />
+                      <button
+                        type="button"
+                        onClick={() => setExtras({ ...extras, muro_video: null })}
+                        style={{ position: "absolute", top: 8, right: 8, border: "none", borderRadius: 999, padding: "6px 12px", cursor: "pointer", background: "rgba(220,38,38,0.92)", color: "white", fontSize: 12, fontWeight: 800 }}
+                      >
+                        Quitar video
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => videoInputRef.current?.click()}
+                      disabled={subiendoVideo}
+                      style={{ width: "100%", border: "2px dashed rgba(79,70,229,0.30)", borderRadius: 12, background: "rgba(79,70,229,0.04)", padding: "14px", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--accent)", fontFamily: "'DM Sans',sans-serif" }}
+                    >
+                      {subiendoVideo ? "Subiendo el video…" : "+ Subir un video corto (hasta 50 MB)"}
+                    </button>
+                  )}
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/mp4,video/quicktime,video/webm"
+                    style={{ display: "none" }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!file) return;
+                      // El plan gratuito de Supabase no acepta archivos de más de 50 MB
+                      if (file.size > 50 * 1024 * 1024) {
+                        setAvisoVideo(`El video pesa ${Math.round(file.size / 1024 / 1024)} MB: subí uno de hasta 50 MB (un minuto más o menos).`);
+                        return;
+                      }
+                      setAvisoVideo("");
+                      setSubiendoVideo(true);
+                      const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
+                      const path = `${eventoId}/video-${Date.now()}.${ext}`;
+                      const { error: upErr } = await supabase.storage.from("eventos").upload(path, file, { contentType: file.type || "video/mp4" });
+                      setSubiendoVideo(false);
+                      if (upErr) { setAvisoVideo("No se pudo subir el video. Probá de nuevo o con uno más liviano."); return; }
+                      setExtras((ex) => ({ ...ex, muro_video: supabase.storage.from("eventos").getPublicUrl(path).data.publicUrl }));
+                    }}
+                  />
+                  {avisoVideo && <p className="field-hint" style={{ color: "var(--danger)", fontWeight: 700 }}>{avisoVideo}</p>}
+                  <p className="field-hint">Un minuto alcanza: un saludo o un resumen del día. Recordá tocar <strong>Guardar</strong> al final.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 4d. Transmisión en vivo del culto ── */}
+            <div className="section-card">
+              <p className="section-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2" /><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14" /></svg>
+                Transmisión en vivo
+              </p>
+              <p className="field-hint" style={{ marginBottom: 10 }}>
+                Si el culto o la ceremonia se transmite, pegá el enlace: aparece arriba de las fotos del <strong>muro</strong> y en la invitación de quienes están a distancia.
+              </p>
+              <div className="fields-group">
+                <div>
+                  <label className="field-label">Enlace de la transmisión</label>
+                  <input
+                    className="field-input"
+                    type="url"
+                    inputMode="url"
+                    maxLength={300}
+                    value={extras.transmision ?? ""}
+                    onChange={(e) => setExtras({ ...extras, transmision: e.target.value })}
+                    placeholder="https://www.youtube.com/live/…"
+                  />
+                  {(() => {
+                    const enlace = extras.transmision?.trim();
+                    if (!enlace) return <p className="field-hint">YouTube o un video de Facebook se ven dentro del muro. Zoom u otros, con un botón que los abre.</p>;
+                    const t = transmisionDe(enlace);
+                    if (!t) return <p className="field-hint" style={{ color: "var(--danger)", fontWeight: 700 }}>Pegá el enlace completo, que empiece con https://</p>;
+                    return (
+                      <p className="field-hint" style={{ color: "var(--success, #16a34a)", fontWeight: 700 }}>
+                        {t.embed
+                          ? `✓ Se va a ver dentro del muro (${t.nombre}).`
+                          : t.plataforma === "youtube"
+                          ? "✓ Se abre con un botón. Para verlo dentro del muro, pegá el enlace del video en vivo (youtube.com/live/…), no el del canal."
+                          : t.plataforma === "facebook"
+                          ? "✓ Se abre con un botón. Para verlo dentro del muro, pegá el enlace del video (…/videos/…), no el de la página."
+                          : "✓ Se abre con un botón."}
+                      </p>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <label className="field-label">Título (opcional)</label>
+                  <input
+                    className="field-input"
+                    maxLength={80}
+                    value={extras.transmision_titulo ?? ""}
+                    onChange={(e) => setExtras({ ...extras, transmision_titulo: e.target.value })}
+                    placeholder="Culto de acción de gracias"
+                  />
+                  <p className="field-hint">Recordá tocar <strong>Guardar</strong> al final.</p>
                 </div>
               </div>
             </div>
