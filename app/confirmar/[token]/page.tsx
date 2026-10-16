@@ -979,10 +979,11 @@ const globalAudioRef: { current: HTMLAudioElement | null } = { current: null };
 // que iOS respeta. Se arma dentro del primer toque (iOS lo exige) y solo
 // donde hace falta: en compu y Android alcanza con audio.volume. El archivo
 // viene de Supabase Storage con CORS abierto (si no, Web Audio daría silencio).
-// Una canción comercial llega masterizada muy fuerte y la voz grabada no: la
-// música va bien de fondo (antes 0,18 y 0,025 se oía por encima de la voz)
-const MUSICA_BASE = 0.07;
-const MUSICA_CON_VOZ = 0.008;
+// Una canción comercial llega masterizada fuerte y la voz grabada no: la
+// música va de fondo y, mientras habla la voz, queda suave por debajo (0,07 y
+// 0,008 casi no se oían una vez arreglado el mezclador del iPhone)
+const MUSICA_BASE = 0.15;
+const MUSICA_CON_VOZ = 0.03;
 const FUNDIDO_S = 0.45;
 const ESPERA_VOLVER_MS = 2500;
 
