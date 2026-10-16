@@ -118,6 +118,11 @@ function ImagenUploader({
   );
 }
 
+/** El nombre del archivo como punto de partida del nombre de la canción */
+function nombreDeArchivo(archivo: string): string {
+  return archivo.replace(/\.[a-z0-9]+$/i, "").replace(/[_]+/g, " ").trim();
+}
+
 // ── Mini uploader de audio ─────────────────────────────────────────────────────
 function AudioUploader({
   currentUrl, eventoId, onUploaded, onQuitar, prefijo = "musica", etiqueta = "Archivo de música",
@@ -371,6 +376,9 @@ export default function EditarEvento() {
         .content{max-width:480px;margin:0 auto;padding:16px 14px 0;position:relative;z-index:1;display:flex;flex-direction:column;gap:11px}
         .section-card{background:var(--surface);border-radius:var(--radius);padding:16px 14px;border:1px solid var(--border);box-shadow:var(--shadow)}
         .check-fila{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1.5px solid var(--border-mid);border-radius:12px;cursor:pointer}
+        .musica-bloque{display:flex;flex-direction:column;gap:10px;padding:14px;border:1.5px solid var(--border-mid);border-radius:14px}
+        .musica-titulo{font-size:13.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:7px}
+        .musica-titulo + .field-hint{margin-top:-6px}
         .check-fila input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent);flex-shrink:0}
         .check-fila strong{display:block;font-size:13px;color:var(--text)}
         .check-fila small{display:block;font-size:11.5px;color:var(--text3);line-height:1.45;margin-top:2px}
@@ -846,43 +854,79 @@ export default function EditarEvento() {
               </div>
             </div>
 
-            {/* ── 4f. La canción del muro: otra, no la de la invitación ── */}
+            {/* ── 4f. Música: la de la invitación y la del muro, cada una por separado ── */}
             <div className="section-card">
               <p className="section-title">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
-                Canción del muro
+                Música
               </p>
-              <p className="field-hint" style={{ marginBottom: 10 }}>
-                Una canción propia para el <strong>muro</strong>, distinta de la de la invitación: suena de fondo mientras ven las fotos y dejan sus deseos.
-                Va bajita y se baja sola cuando alguien escucha un mensaje de voz o un video. Si no subís ninguna, el muro queda en silencio.
+              <p className="field-hint" style={{ marginBottom: 12 }}>
+                Dos canciones distintas: una para la <strong>invitación</strong> y otra para el <strong>muro</strong>.
+                La voz de la guía y los mensajes grabados siempre se escuchan por encima de la música.
               </p>
               <div className="fields-group">
-                <AudioUploader
-                  eventoId={eventoId}
-                  currentUrl={extras.muro_musica ?? null}
-                  prefijo="muro-musica"
-                  etiqueta="Archivo de la canción"
-                  onUploaded={(url, archivo) => setExtras((ex) => ({
-                    ...ex,
-                    muro_musica: url,
-                    // El nombre del archivo como punto de partida ("Gracias - Marcos Witt.mp3" → "Gracias - Marcos Witt")
-                    muro_musica_nombre: ex.muro_musica_nombre?.trim() ? ex.muro_musica_nombre : archivo.replace(/\.[a-z0-9]+$/i, "").replace(/[_]+/g, " ").trim(),
-                  }))}
-                  onQuitar={() => setExtras((ex) => ({ ...ex, muro_musica: null, muro_musica_nombre: null }))}
-                />
-                {extras.muro_musica && (
-                  <div>
-                    <label className="field-label">Nombre de la canción</label>
-                    <input
-                      className="field-input"
-                      maxLength={120}
-                      value={extras.muro_musica_nombre ?? ""}
-                      onChange={(e) => setExtras({ ...extras, muro_musica_nombre: e.target.value })}
-                      placeholder="Ej.: Gracias — Marcos Witt"
-                    />
-                    <p className="field-hint">Se ve en el botón de la música del muro. Recordá tocar <strong>Guardar</strong> al final.</p>
-                  </div>
-                )}
+                {/* La de la invitación (la tarjeta que abre cada invitado) */}
+                <div className="musica-bloque">
+                  <p className="musica-titulo">Canción de la invitación</p>
+                  <p className="field-hint">Suena cuando cada invitado abre su invitación.</p>
+                  <AudioUploader
+                    eventoId={eventoId}
+                    currentUrl={musicaUrl}
+                    prefijo="musica"
+                    etiqueta="Archivo de la canción"
+                    onUploaded={(url, archivo) => {
+                      setMusicaUrl(url);
+                      setMusicaNombre((n) => (n.trim() ? n : nombreDeArchivo(archivo)));
+                    }}
+                    onQuitar={() => { setMusicaUrl(null); setMusicaNombre(""); }}
+                  />
+                  {musicaUrl && (
+                    <div>
+                      <label className="field-label">Nombre de la canción</label>
+                      <input
+                        className="field-input"
+                        maxLength={120}
+                        value={musicaNombre}
+                        onChange={(e) => setMusicaNombre(e.target.value)}
+                        placeholder="Ej.: Perfect — Ed Sheeran"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* La del muro: otra, no la de la invitación (sin canción, el muro queda en silencio) */}
+                <div className="musica-bloque">
+                  <p className="musica-titulo">Canción del muro</p>
+                  <p className="field-hint">
+                    Suena de fondo mientras ven las fotos y dejan sus deseos, y se baja sola cuando alguien escucha un mensaje de voz o un video.
+                    Si no subís ninguna, el muro queda en silencio.
+                  </p>
+                  <AudioUploader
+                    eventoId={eventoId}
+                    currentUrl={extras.muro_musica ?? null}
+                    prefijo="muro-musica"
+                    etiqueta="Archivo de la canción"
+                    onUploaded={(url, archivo) => setExtras((ex) => ({
+                      ...ex,
+                      muro_musica: url,
+                      muro_musica_nombre: ex.muro_musica_nombre?.trim() ? ex.muro_musica_nombre : nombreDeArchivo(archivo),
+                    }))}
+                    onQuitar={() => setExtras((ex) => ({ ...ex, muro_musica: null, muro_musica_nombre: null }))}
+                  />
+                  {extras.muro_musica && (
+                    <div>
+                      <label className="field-label">Nombre de la canción</label>
+                      <input
+                        className="field-input"
+                        maxLength={120}
+                        value={extras.muro_musica_nombre ?? ""}
+                        onChange={(e) => setExtras({ ...extras, muro_musica_nombre: e.target.value })}
+                        placeholder="Ej.: Gracias — Marcos Witt"
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="field-hint">Recordá tocar <strong>Guardar</strong> al final para aplicar los cambios.</p>
               </div>
             </div>
 
