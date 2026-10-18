@@ -36,6 +36,8 @@ type Invitado = {
   asistentes_nombres?: string[] | null; // quiénes marcó que van (supabase-asistentes.sql)
   a_distancia?: boolean | null; // invitación especial de agradecimiento (supabase-distancia.sql)
   vinculo?: string | null; // familia | amigos | hermanos: qué carta recibe a distancia (supabase-vinculo.sql)
+  carta_personal?: string | null; // la carta escrita para esta persona (supabase-carta-personal.sql)
+  dedicatoria_personal?: string | null; // la frase de su tarjeta (supabase-carta-personal.sql)
   presente?: boolean | null; // entró con su código el día del evento (escáner)
   mesa_id?: string | null;
   mesa_nombre?: string | null; // populated by join
@@ -1429,14 +1431,17 @@ function guionLectura({ evento, invitado, distancia, nombresCarta, reserva, grac
     // Varias personas: las de la lista o las que el organizador escribió juntas
     const varios = nombresCarta.length > 1 || trato === "plural";
     const tratoCarta = varios ? "plural" : trato;
-    const carta = cartaDistancia(evento, tratoCarta, vinculoDe(invitado.vinculo));
+    const carta = cartaDistancia(evento, tratoCarta, vinculoDe(invitado.vinculo), invitado.carta_personal ?? null);
     const autor = quien || festejado;
     pasos.push({ t: `${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió esta carta.`, guia: "dl-inicio" });
     pasos.push({ t: saludoDeCarta(varios ? nombresCarta.slice(0, 2).join(" y ") : invitado.nombre, tratoCarta), guia: "dl-saludo" });
     carta.parrafos.forEach((p, i) => pasos.push({ t: p, guia: `dl-p${i}` }));
     pasos.push({ t: `${carta.oracion} ${carta.bendicion.texto} ${citaHablada(carta.bendicion.cita)}.`, guia: "dl-bendicion" });
     pasos.push({ t: `${carta.despedida} ${carta.firma}.`, guia: "dl-firma" });
-    pasos.push({ t: "Más abajo están las fotos del gran día.", guia: "dl-fotos" });
+    const exCarta = extrasDe(evento);
+    const conVideo = !!(exCarta.video || exCarta.muro_video);
+    if (conVideo) pasos.push({ t: `Más abajo hay un video para ${varios ? "ustedes" : "vos"}.`, guia: "dl-video" });
+    pasos.push({ t: conVideo ? "Y también están las fotos del gran día." : "Más abajo están las fotos del gran día.", guia: "dl-fotos" });
     pasos.push({ t: `${varios ? "Pueden" : "Podés"} dejarle ${varios ? "su" : "tu"} mensaje a ${autor}.`, guia: "dl-mensaje" });
     return { pasos, alTerminar: "reposo" };
   }
@@ -2872,7 +2877,7 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   // que sale de un sobre. Si el celular no la logra armar a tiempo, queda la
   // portada de siempre.
   const datosTarjeta = useMemo(
-    () => armarDatosTarjeta(evento, invitado.nombre, nombres.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token), { distancia: especial, vinculo: vinculoDe(invitado.vinculo), asistio: gracias }),
+    () => armarDatosTarjeta(evento, invitado.nombre, nombres.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token), { distancia: especial, vinculo: vinculoDe(invitado.vinculo), asistio: gracias, dedicatoria: invitado.dedicatoria_personal }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -6200,6 +6205,7 @@ export default function ConfirmarPage() {
             invitadoNombre={nombresEnTarjeta.length > 1 ? nombresEnTarjeta.slice(0, 2).join(" y ") : invitado.nombre}
             trato={nombresEnTarjeta.length > 1 ? "plural" : tratoDe(invitado.nombre, invitado.token)}
             vinculo={vinculoDe(invitado.vinculo)}
+            cartaPersonal={invitado.carta_personal ?? null}
             muro={{ href: `/muro/${invitado.evento_id}?token=${invitado.token}`, urls: muroPreview?.urls ?? [], total: muroPreview?.total ?? 0 }}
           >
             <section className="dist-seccion" data-guia="dl-mensaje">

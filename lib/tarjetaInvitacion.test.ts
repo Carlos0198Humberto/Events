@@ -23,6 +23,8 @@ import {
   protagonistaDe,
   tintasPlanas,
   versiculoDeEvento,
+  limpiarDedicatoriaPersonal,
+  MAX_DEDICATORIA,
   type EventoTarjeta,
 } from "@/lib/tarjetaInvitacion";
 import { VERSICULO_XV } from "@/lib/versiculos";
@@ -537,6 +539,24 @@ describe("invitados a distancia por vínculo", () => {
     expect(cartaDistancia(ev, "m", "hermanos").parrafos).toEqual(["Querido hermano en la fe.", "Gracias por orar.", expect.stringContaining("Le pido al Señor")]);
     expect(cartaDistancia(ev, "m", "amigos").parrafos).toEqual(["Carta general.", expect.stringContaining("Le pido a Dios")]);
     expect(cartaDistancia(ev, "m", "hermanos").bendicion.cita).toBe("Números 6:24-26");
+  });
+
+  it("la carta escrita para esa persona gana a la de su vínculo y a la general; la bendición queda", () => {
+    const ev = grad({ tarjeta: { agradecimiento: "Carta general.", carta_familia: "Carta de familia." } });
+    const c = cartaDistancia(ev, "f", "familia", "Tía Rosa, gracias por cada llamada.\n\n  Te quiero mucho.  ");
+    expect(c.parrafos).toEqual(["Tía Rosa, gracias por cada llamada.", "Te quiero mucho.", expect.stringContaining("Le pido a Dios")]);
+    expect(c.bendicion.cita).toBe("Números 6:24-26");
+    // Vacía: la de siempre
+    expect(cartaDistancia(ev, "f", "familia", "  \n ").parrafos[0]).toBe("Carta de familia.");
+    expect(cartaDistancia(ev, "f", "familia", null).parrafos[0]).toBe("Carta de familia.");
+  });
+
+  it("la frase escrita para esa persona va en su tarjeta, solo en la de distancia", () => {
+    const d = armarDatosTarjeta(carlos(), "Tía Rosa", "f", { distancia: true, vinculo: "familia", dedicatoria: "  Tus oraciones me sostuvieron.  " });
+    expect(d.dedicatoria).toBe("Tus oraciones me sostuvieron.");
+    expect(armarDatosTarjeta(carlos(), "Tía Rosa", "f", { distancia: true, vinculo: "familia", dedicatoria: " " }).dedicatoria).toBe("Somos familia: la distancia no nos separa.");
+    expect(armarDatosTarjeta(carlos(), "Tía Rosa", "f", { dedicatoria: "Tus oraciones me sostuvieron." }).dedicatoria).toBeNull();
+    expect(limpiarDedicatoriaPersonal("x".repeat(500))?.length).toBe(MAX_DEDICATORIA);
   });
 
   it("la tarjeta lleva una dedicatoria corta para cada vínculo", () => {

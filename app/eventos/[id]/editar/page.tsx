@@ -7,7 +7,8 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { achicarImagen } from "@/lib/fotos";
 import { CamposDireccion, CamposTarjeta, extrasParaGuardar } from "@/app/components/CamposTarjeta";
 import { cartaDistancia, extrasDe, MAX_CARTA, VINCULOS_DISTANCIA, type ExtrasTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
-import { transmisionDe } from "@/lib/transmision";
+import { transmisionDe, videoDe } from "@/lib/transmision";
+import VideoIncrustado from "@/app/components/VideoIncrustado";
 
 type Evento = {
   id: string; nombre: string; tipo: string; anfitriones: string;
@@ -850,6 +851,56 @@ export default function EditarEvento() {
                   />
                   {avisoVideo && <p className="field-hint" style={{ color: "var(--danger)", fontWeight: 700 }}>{avisoVideo}</p>}
                   <p className="field-hint">Un minuto alcanza: un saludo o un resumen del día. Recordá tocar <strong>Guardar</strong> al final.</p>
+                </div>
+                <div>
+                  <label className="field-label">Video por enlace (opcional)</label>
+                  <input
+                    className="field-input"
+                    type="url"
+                    inputMode="url"
+                    maxLength={400}
+                    value={extras.video ?? ""}
+                    onChange={(e) => setExtras({ ...extras, video: e.target.value })}
+                    placeholder="https://youtu.be/… · tiktok.com/… · facebook.com/…"
+                  />
+                  {(() => {
+                    const enlace = extras.video?.trim();
+                    if (!enlace) return <p className="field-hint">¿El video está en YouTube, TikTok, Facebook, Instagram, Google Drive o Vimeo? Pegá el enlace: se ve <strong>dentro del muro</strong> y en la invitación de quienes están a distancia, sin salir de tu página.</p>;
+                    const v = videoDe(enlace);
+                    if (!v) return <p className="field-hint" style={{ color: "var(--danger)", fontWeight: 700 }}>Pegá el enlace completo, que empiece con https://</p>;
+                    const aviso = v.embed || v.archivo
+                      ? `✓ Se va a ver dentro del muro (${v.plataforma === "archivo" ? "archivo de video" : v.nombre}${v.vertical ? ", vertical" : ""}).`
+                      : v.plataforma === "tiktok"
+                      ? "Este enlace corto de TikTok solo se abre con un botón. Para verlo dentro del muro, abrí el video en TikTok desde la computadora y copiá el enlace completo (…/video/123…)."
+                      : v.plataforma === "youtube"
+                      ? "Se abre con un botón. Para verlo dentro del muro, pegá el enlace del video, no el del canal."
+                      : v.plataforma === "facebook"
+                      ? "Se abre con un botón. Para verlo dentro del muro, pegá el enlace del video (…/videos/… o un reel), no el de la página."
+                      : v.plataforma === "drive"
+                      ? "Se abre con un botón. Pegá el enlace del archivo (drive.google.com/file/d/…) y compartilo como «Cualquier persona con el enlace»."
+                      : "Se abre con un botón.";
+                    return (
+                      <>
+                        <p className="field-hint" style={{ color: v.embed || v.archivo ? "var(--success, #16a34a)" : "var(--text2)", fontWeight: 700 }}>{aviso}</p>
+                        {v.plataforma === "drive" && v.embed && <p className="field-hint">En Drive, el video tiene que estar compartido como «Cualquier persona con el enlace».</p>}
+                        {(v.embed || v.archivo) && (
+                          <div style={{ marginTop: 8 }}>
+                            <VideoIncrustado enlace={enlace} titulo={extras.video_titulo} />
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                  {extras.video?.trim() && (
+                    <input
+                      className="field-input"
+                      style={{ marginTop: 8 }}
+                      maxLength={80}
+                      value={extras.video_titulo ?? ""}
+                      onChange={(e) => setExtras({ ...extras, video_titulo: e.target.value })}
+                      placeholder="Título del video (ej. Así vivimos el gran día)"
+                    />
+                  )}
                 </div>
               </div>
             </div>

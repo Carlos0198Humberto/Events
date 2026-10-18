@@ -12,7 +12,7 @@
 // El enlace va solo en su línea y es el ÚNICO del mensaje: WhatsApp arma la
 // vista previa con el primero que encuentra.
 
-import { extrasDe, familiaDe, fechaDiaMes, fechaLarga, fraseGraduacion, fraseInvitacion, hablaElProtagonista, textosGracias, textosReserva, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
+import { extrasDe, familiaDe, limpiarDedicatoriaPersonal, fechaDiaMes, fechaLarga, fraseGraduacion, fraseInvitacion, hablaElProtagonista, textosGracias, textosReserva, horaCorta, motivoCelebracion, protagonistaDe, type EventoTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
 import { nombreDePila, saludo, type Trato } from "@/lib/tratoInvitado";
 
 export type EventoMensaje = EventoTarjeta & { fecha_limite_confirmacion?: string | null };
@@ -123,8 +123,10 @@ export function armarMensajeInvitacion(evento: EventoMensaje, nombreInvitado: st
  * Invitación especial para quien está lejos pero fue parte del logro: no se
  * le pide confirmar; se le agradece y se lo invita a ver las fotos y dejar su
  * mensaje. Mismo enlace personal: la página sabe que es "a distancia".
+ * Si el organizador le escribió una frase a esa persona, va en lugar del
+ * agradecimiento según el vínculo.
  */
-export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato, vinculo: VinculoDistancia | null = null): string {
+export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: string, link: string, trato: Trato, vinculo: VinculoDistancia | null = null, dedicatoria: string | null = null): string {
   const plural = trato === "plural";
   const yo = hablaElProtagonista(evento);
   const graduacion = evento.tipo === "graduacion";
@@ -142,11 +144,11 @@ export function armarMensajeDistancia(evento: EventoMensaje, nombreInvitado: str
   const lejos = estudio
     ? `${estudio.charAt(0).toUpperCase()}${estudio.slice(1)}, y ${aunque}, ${parte}.`
     : `${aunque.charAt(0).toUpperCase()}${aunque.slice(1)}, ${parte}.`;
-  const gracias =
-    vinculo === "familia" ? (plural ? "Gracias por su cariño de familia, sus llamadas y sus oraciones." : "Gracias por tu cariño de familia, tus llamadas y tus oraciones.")
+  const gracias = limpiarDedicatoriaPersonal(dedicatoria) ??
+    (vinculo === "familia" ? (plural ? "Gracias por su cariño de familia, sus llamadas y sus oraciones." : "Gracias por tu cariño de familia, tus llamadas y tus oraciones.")
     : vinculo === "amigos" ? (plural ? "Gracias por su amistad y por estar siempre." : "Gracias por tu amistad y por estar siempre.")
     : vinculo === "hermanos" ? `${yo ? "Doy" : "Damos"} gracias a Dios por ${plural ? "sus vidas" : "tu vida"} y por la comunión que tenemos en Cristo.`
-    : plural ? "Gracias por su cariño y su apoyo." : "Gracias por tu cariño y tu apoyo.";
+    : plural ? "Gracias por su cariño y su apoyo." : "Gracias por tu cariño y tu apoyo.");
   const preparamos = `${plural ? "Les" : "Te"} ${yo ? "preparé" : "preparamos"}`;
   const invitacion = plural
     ? `${preparamos} una invitación especial para que vivan la celebración desde donde estén: las fotos del gran día y un espacio para su mensaje.`

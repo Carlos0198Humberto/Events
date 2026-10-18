@@ -51,6 +51,8 @@ export type ExtrasTarjeta = {
   transmision_titulo?: string | null; // "Culto de acción de gracias" (null = "Transmisión en vivo")
   muro_galeria?: boolean;         // true = el muro muestra las fotos del anfitrión (fotos_anfitrion) y su video
   muro_video?: string | null;     // video corto del anfitrión para el muro
+  video?: string | null;          // enlace a un video (YouTube, Facebook, TikTok, Instagram, Drive, Vimeo) que se ve en el muro y en la carta a distancia
+  video_titulo?: string | null;   // "Así vivimos el gran día" (null = "Un video del gran día")
   muro_musica?: string | null;    // canción de fondo del muro, distinta de la de la invitación (null = el muro en silencio)
   muro_musica_nombre?: string | null; // "Gracias — Marcos Witt"
   entrada_qr?: boolean;         // false = sin entrada con código QR al confirmar
@@ -119,6 +121,24 @@ const limpioParrafos = (v: unknown, max: number) => (typeof v === "string"
   : "");
 
 /**
+ * Largo máximo de la frase personal que va en la tarjeta de un invitado a
+ * distancia: la tarjeta le da tres renglones a la dedicatoria.
+ */
+export const MAX_DEDICATORIA = 120;
+
+/**
+ * Lo que el organizador escribió para UNA persona a distancia
+ * (supabase-carta-personal.sql): su carta, un párrafo por línea, y la frase
+ * corta de su tarjeta. Vacío = null, y recibe la de su vínculo o la general.
+ */
+export function limpiarCartaPersonal(v: unknown): string | null {
+  return limpioParrafos(v, MAX_CARTA) || null;
+}
+export function limpiarDedicatoriaPersonal(v: unknown): string | null {
+  return limpio(v, MAX_DEDICATORIA) || null;
+}
+
+/**
  * A quién va la invitación especial a distancia. Cambia la carta, el mensaje y
  * la dedicatoria de la tarjeta: no se le agradece igual a la tía que vive en
  * Estados Unidos, al amigo de la universidad o al hermano de la iglesia.
@@ -160,6 +180,8 @@ export function extrasDe(evento: Pick<EventoTarjeta, "tarjeta">): ExtrasTarjeta 
   if (typeof o.transmision_titulo === "string") ex.transmision_titulo = limpio(o.transmision_titulo, 80) || null;
   if (o.muro_galeria === true) ex.muro_galeria = true;
   if (typeof o.muro_video === "string" && /^https:\/\/[^\s]+$/i.test(o.muro_video.trim())) ex.muro_video = limpio(o.muro_video, 400);
+  if (typeof o.video === "string" && /^https:\/\/[^\s]+$/i.test(o.video.trim())) ex.video = limpio(o.video, 400);
+  if (typeof o.video_titulo === "string") ex.video_titulo = limpio(o.video_titulo, 80) || null;
   if (typeof o.muro_musica === "string" && /^https:\/\/[^\s]+$/i.test(o.muro_musica.trim())) ex.muro_musica = limpio(o.muro_musica, 400);
   if (typeof o.muro_musica_nombre === "string") ex.muro_musica_nombre = limpio(o.muro_musica_nombre, 120) || null;
   if (o.entrada_qr === false) ex.entrada_qr = false;
@@ -615,9 +637,10 @@ export type CartaDistancia = {
  * versículo. En primera persona si habla el mismo protagonista; en plural
  * ("les", "ustedes") si va a varios. Si el organizador escribió (o retocó) su
  * propia carta, esa reemplaza a la automática, un párrafo por línea; la
- * bendición queda.
+ * bendición queda. La carta escrita para esa persona (`personal`) gana a
+ * todas: la de su vínculo, la general y la automática.
  */
-export function cartaDistancia(evento: EventoTarjeta, trato: Trato, vinculo: VinculoDistancia | null = null): CartaDistancia {
+export function cartaDistancia(evento: EventoTarjeta, trato: Trato, vinculo: VinculoDistancia | null = null, personal: string | null = null): CartaDistancia {
   const yo = hablaElProtagonista(evento);
   const pl = trato === "plural";
   const grad = evento.tipo === "graduacion";
@@ -728,9 +751,9 @@ export function cartaDistancia(evento: EventoTarjeta, trato: Trato, vinculo: Vin
     cierre = `${pido} a Dios que ${t.te} devuelva multiplicado todo el bien que ${t.sembraste} en ${yo ? "mi vida" : "nuestras vidas"}, que guarde cada uno de ${t.tus} pasos y que llene ${t.casa} de paz.`;
   }
 
-  // La carta que escribió el organizador: la de ese vínculo o, si no hay, la general
+  // La carta que escribió el organizador: la de esa persona, la de su vínculo o, si no hay, la general
   const ex = extrasDe(evento);
-  const propio = (vinculo && ex[`carta_${vinculo}`]) || ex.agradecimiento;
+  const propio = limpiarCartaPersonal(personal) || (vinculo && ex[`carta_${vinculo}`]) || ex.agradecimiento;
   const parrafos = propio ? propio.split("\n") : carta;
   parrafos.push(cierre);
 
@@ -806,7 +829,7 @@ function inicialesDe(nombre: string): string {
  * género ("Querida María José, …"); sin trato (la vista previa del servidor,
  * que no conoce la corrección del organizador) el párrafo no lo nombra.
  */
-export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string, trato?: Trato | null, opciones: { distancia?: boolean; asistio?: boolean; vinculo?: VinculoDistancia | null } = {}): DatosTarjeta {
+export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string, trato?: Trato | null, opciones: { distancia?: boolean; asistio?: boolean; vinculo?: VinculoDistancia | null; dedicatoria?: string | null } = {}): DatosTarjeta {
   // El agradecimiento es solo para quien fue: a los demás, la tarjeta de siempre
   const gracias = enAgradecimiento(evento) && !!opciones.asistio;
   const especial = !gracias && !!opciones.distancia;
@@ -884,7 +907,8 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
     reserva,
     gracias,
     dedicatoria: especial
-      ? dedicatoriaDistancia(evento.tipo === "graduacion", opciones.vinculo ?? null, trato === "plural")
+      // La frase que el organizador escribió para esa persona, o la de su vínculo
+      ? limpiarDedicatoriaPersonal(opciones.dedicatoria) ?? dedicatoriaDistancia(evento.tipo === "graduacion", opciones.vinculo ?? null, trato === "plural")
       // En la pre-invitación, lo que escribió el organizador (ej. el culto de acción de gracias)
       : reserva ? textosReserva(evento, trato ?? "neutro").constancia
       // En el agradecimiento, las palabras para quien fue

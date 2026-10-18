@@ -10,6 +10,7 @@ import {
   MiniaturaFoto, VisorFoto, EstilosGaleria, miniatura,
 } from "./GaleriaFotos";
 import TransmisionEnVivo from "@/app/components/TransmisionEnVivo";
+import VideoIncrustado from "@/app/components/VideoIncrustado";
 import GaleriaAnfitrion from "./GaleriaAnfitrion";
 import MusicaMuro from "./MusicaMuro";
 import TituloMuro, { FondoMuroGrad } from "./TituloMuro";
@@ -35,6 +36,8 @@ type Evento = {
     graduando?: string | null; carrera?: string | null;
     transmision?: string | null; transmision_titulo?: string | null;
     muro_galeria?: boolean; muro_video?: string | null;
+    // El video del anfitrión por enlace (YouTube, TikTok, Facebook…): se ve acá adentro
+    video?: string | null; video_titulo?: string | null;
     // La canción del muro: otra, no la de la invitación (sin canción, silencio)
     muro_musica?: string | null; muro_musica_nombre?: string | null;
   } | null;
@@ -2270,6 +2273,13 @@ export default function MuroPublico() {
         {vista === "fotos" && evento.tarjeta?.transmision && (
           <div style={{ marginBottom: 14 }}>
             <TransmisionEnVivo enlace={evento.tarjeta.transmision} titulo={evento.tarjeta.transmision_titulo} fecha={evento.fecha} />
+          </div>
+        )}
+
+        {/* ── El video del anfitrión (por enlace): se ve sin salir del muro ── */}
+        {vista === "fotos" && evento.tarjeta?.video && (
+          <div style={{ marginBottom: 14 }}>
+            <VideoIncrustado enlace={evento.tarjeta.video} titulo={evento.tarjeta.video_titulo} />
           </div>
         )}
 

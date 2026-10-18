@@ -136,6 +136,13 @@ describe("armarMensajeDistancia", () => {
     expect(m).toContain("Aunque estén lejos, fueron parte de este logro.");
     expect(m).toContain("Les preparamos una invitación especial para que vivan la celebración");
   });
+
+  it("la frase escrita para esa persona reemplaza al agradecimiento de su vínculo", () => {
+    const m = armarMensajeDistancia(grad(), "Tía Rosa", LINK, "f", "familia", "  Tus oraciones desde Los Ángeles me sostuvieron.  ");
+    expect(m).toContain("Aunque estés lejos, sos parte de esta familia y de este logro. Tus oraciones desde Los Ángeles me sostuvieron.");
+    expect(m).not.toContain("Gracias por tu cariño de familia");
+    expect(armarMensajeDistancia(grad(), "Tía Rosa", LINK, "f", "familia", "   ")).toContain("Gracias por tu cariño de familia");
+  });
 });
 
 describe("título del mensaje", () => {

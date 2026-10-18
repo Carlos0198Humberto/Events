@@ -5,13 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
-import { armarDatosTarjeta, asistioAlEvento, enAgradecimiento, enReserva, sugerenciasGracias, sugerenciasReserva, textosGracias, textosReserva, versiculoDeEvento, vinculoDe, VINCULOS_DISTANCIA, type ExtrasTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, dedicatoriaDistancia, limpiarCartaPersonal, limpiarDedicatoriaPersonal, enAgradecimiento, enReserva, sugerenciasGracias, sugerenciasReserva, textosGracias, textosReserva, versiculoDeEvento, vinculoDe, VINCULOS_DISTANCIA, type ExtrasTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
 import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
 import { armarMensajeDia, armarMensajeDistancia, armarMensajeGracias, armarMensajeInvitacion, armarMensajeRecordatorio, armarMensajeReserva, diasHasta } from "@/lib/mensajeInvitacion";
 import { type Versiculo } from "@/lib/versiculos";
 import EnvioEnGrupo, { type MarcasEnvio, type TipoEnvio } from "./EnvioEnGrupo";
 import VersiculoEvento from "./VersiculoEvento";
-import { ETIQUETAS_TRATO, guardarTrato, nombreDePila, saludo, tratoDe, type Trato } from "@/lib/tratoInvitado";
+import CartaPersonal, { type CartaGuardada } from "./CartaPersonal";
+import { ETIQUETAS_TRATO, guardarTrato, nombreDePila, saludo, saludoDeCarta, tratoDe, type Trato } from "@/lib/tratoInvitado";
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { toast } from "@/app/components/Toast";
 import { IcoCarta, IcoCelular, IcoCheck, IcoEnlace, IcoImpresora, IcoPapelera, IcoMessenger, IcoPersonas, IcoWhatsApp } from "@/app/components/Iconos";
@@ -27,6 +28,8 @@ type Invitado = {
   estado?: string;
   a_distancia?: boolean | null; // invitación especial de agradecimiento (supabase-distancia.sql)
   vinculo?: VinculoDistancia | null; // familia | amigos | hermanos: qué carta recibe (supabase-vinculo.sql)
+  carta_personal?: string | null; // la carta escrita solo para esta persona (supabase-carta-personal.sql)
+  dedicatoria_personal?: string | null; // la frase de su tarjeta (supabase-carta-personal.sql)
 };
 
 // Los tres momentos de la graduación
@@ -72,6 +75,9 @@ export default function AgregarInvitados() {
   // columna (supabase-vinculo.sql)
   const [vinculoNuevo, setVinculoNuevo] = useState<VinculoDistancia>("familia");
   const [vinculoOk, setVinculoOk] = useState(true);
+  // La carta de una persona a distancia (supabase-carta-personal.sql) y a quién se le está escribiendo
+  const [cartaPersonalOk, setCartaPersonalOk] = useState(true);
+  const [cartaPara, setCartaPara] = useState<Invitado | null>(null);
   // Leer localStorage solo en el cliente (evita hydration mismatch)
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
@@ -191,11 +197,13 @@ export default function AgregarInvitados() {
 
   async function cargarTodosInvitados() {
     setLoadingInvitados(true);
-    // Con a_distancia (supabase-distancia.sql) y vinculo (supabase-vinculo.sql);
-    // sin las columnas, la lista carga igual
+    // Con a_distancia (supabase-distancia.sql), vinculo (supabase-vinculo.sql) y
+    // la carta de cada uno (supabase-carta-personal.sql); sin las columnas, la lista carga igual
     const columnas = "id, nombre, token, telefono, num_personas, cupo_elije_invitado, estado";
     const consulta = (cols: string) => supabase.from("invitados").select(cols).eq("evento_id", id).order("created_at", { ascending: true });
-    let { data, error: errLista } = await consulta(`${columnas}, a_distancia, vinculo`);
+    let { data, error: errLista } = await consulta(`${columnas}, a_distancia, vinculo, carta_personal, dedicatoria_personal`);
+    setCartaPersonalOk(!errLista);
+    if (errLista) ({ data, error: errLista } = await consulta(`${columnas}, a_distancia, vinculo`));
     setVinculoOk(!errLista);
     if (errLista) ({ data, error: errLista } = await consulta(`${columnas}, a_distancia`));
     setDistanciaOk(!errLista);
@@ -349,7 +357,7 @@ export default function AgregarInvitados() {
 
   function buildMensaje(inv: Invitado, trato: Trato = tratoInvitado(inv)) {
     if (graciasActiva) return armarMensajeGracias(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato);
-    if (inv.a_distancia) return armarMensajeDistancia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, vinculoDe(inv.vinculo));
+    if (inv.a_distancia) return armarMensajeDistancia(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, buildLink(inv.token), trato, vinculoDe(inv.vinculo), inv.dedicatoria_personal ?? null);
     if (esPreInvitacion(inv)) return armarMensajeReserva(evento ?? { nombre: "", tipo: "otro" }, inv.nombre, trato);
     // Si el invitado elige cuántos van, no se le dice un número de lugares
     const personas = inv.cupo_elije_invitado ? null : inv.num_personas ?? null;
@@ -396,6 +404,23 @@ export default function AgregarInvitados() {
     setAgregados(cambiar);
     const v = VINCULOS_DISTANCIA.find((x) => x.id === vinculo);
     toast.success(`${inv.nombre} recibe la carta ${v ? `para ${v.nombre.toLowerCase()}` : "general"}`);
+  }
+
+  async function guardarCartaPersonal(inv: Invitado, c: CartaGuardada): Promise<boolean> {
+    if (!inv.id) return false;
+    const cambios = { carta_personal: limpiarCartaPersonal(c.carta), dedicatoria_personal: limpiarDedicatoriaPersonal(c.dedicatoria) };
+    const { error } = await supabase.from("invitados").update(cambios).eq("id", inv.id);
+    if (error) {
+      toast.error(/carta_personal|dedicatoria_personal/i.test(error.message || "") ? "Falta correr supabase-carta-personal.sql" : "No se pudo guardar. Probá de nuevo.");
+      return false;
+    }
+    const cambiar = (lista: Invitado[]) => lista.map((i) => (i.id === inv.id ? { ...i, ...cambios } : i));
+    setTodosInvitados(cambiar);
+    setAgregados(cambiar);
+    toast.success(cambios.carta_personal || cambios.dedicatoria_personal
+      ? `${nombreDePila(inv.nombre)} va a leer la carta que le escribiste`
+      : `${nombreDePila(inv.nombre)} vuelve a recibir la carta de siempre`);
+    return true;
   }
 
   async function handleAgregar() {
@@ -496,7 +521,7 @@ export default function AgregarInvitados() {
       if (previa?.url) URL.revokeObjectURL(previa.url);
       return { inv, trato, blob: null, url: null };
     });
-    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, vinculo: inv.vinculo ?? null, asistio: asistioInv(inv) }));
+    const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, vinculo: inv.vinculo ?? null, asistio: asistioInv(inv), dedicatoria: inv.dedicatoria_personal }));
     if (n !== generacionRef.current) return;
     if (!blob) {
       toast.error("No se pudo generar la tarjeta. Probá de nuevo.");
@@ -710,7 +735,7 @@ export default function AgregarInvitados() {
     const { inv, trato } = tarjeta;
     // Sin código QR: la tarjeta impresa es para verse bonita, y sin el enlace
     // del mensaje tampoco dice «confirmá en el enlace»
-    const datosImp = armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, vinculo: inv.vinculo ?? null, asistio: asistioInv(inv) });
+    const datosImp = armarDatosTarjeta(evento, inv.nombre, trato, { distancia: !!inv.a_distancia, vinculo: inv.vinculo ?? null, asistio: asistioInv(inv), dedicatoria: inv.dedicatoria_personal });
     const blob = await generarTarjetaPNG({ ...datosImp, cta: "" }, "imprimir");
     if (!blob) { ventana.close(); toast.error("No se pudo preparar la tarjeta para imprimir."); return; }
     const src = await new Promise<string>((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.readAsDataURL(blob); });
@@ -736,7 +761,7 @@ export default function AgregarInvitados() {
       for (let i = 0; i < lista.length; i++) {
         const inv = lista[i];
         setZipProgreso(`${i + 1}/${lista.length}`);
-        const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, tratoInvitado(inv), { distancia: !!inv.a_distancia, vinculo: inv.vinculo ?? null, asistio: asistioInv(inv) }));
+        const blob = await generarTarjetaPNG(armarDatosTarjeta(evento, inv.nombre, tratoInvitado(inv), { distancia: !!inv.a_distancia, vinculo: inv.vinculo ?? null, asistio: asistioInv(inv), dedicatoria: inv.dedicatoria_personal }));
         if (blob) zip.file(`${String(i + 1).padStart(3, "0")}_${archivoTarjeta(inv, blob).name}`, blob);
       }
       const contenido = await zip.generateAsync({ type: "blob" });
@@ -1357,6 +1382,8 @@ export default function AgregarInvitados() {
         .vinculo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
         .vinculo-chip { padding: 7px 12px; border-radius: 999px; border: 1.5px solid #FBCFE8; background: #fff; color: #831843; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
         .vinculo-chip.activo { background: #9D174D; border-color: #9D174D; color: #fff; }
+        .inv-carta-btn { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; padding: 3px 8px; border-radius: 999px; border: 1px dashed #FBCFE8; background: #FDF2F8; color: #9D174D; font-size: 10.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .inv-carta-btn.propia { border-style: solid; background: #9D174D; border-color: #9D174D; color: #fff; }
         .inv-vinculo { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 10.5px; font-weight: 700; color: var(--text2); }
         .inv-vinculo select { font-size: 11px; font-weight: 700; padding: 3px 6px; border-radius: 8px; border: 1px solid var(--border-input); background: var(--surface); color: var(--text); font-family: inherit; }
         .btn-messenger { color: white; background: linear-gradient(135deg, #00B2FF, #006AFF); border-color: #0062E6; }
@@ -1426,6 +1453,26 @@ export default function AgregarInvitados() {
           onCerrar={() => setEditandoVersiculo(false)}
         />
       )}
+
+      {/* La carta de una persona a distancia */}
+      {cartaPara && evento && (() => {
+        const trato = tratoInvitado(cartaPara);
+        const vinculo = vinculoDe(cartaPara.vinculo);
+        // La que recibe hoy sin la propia: la de su vínculo, la general o la automática
+        const hoy = cartaDistancia(evento, trato, vinculo);
+        return (
+          <CartaPersonal
+            nombre={cartaPara.nombre}
+            saludo={saludoDeCarta(cartaPara.nombre, trato)}
+            actual={{ carta: cartaPara.carta_personal ?? null, dedicatoria: cartaPara.dedicatoria_personal ?? null }}
+            sugerida={hoy.parrafos.slice(0, -1).join("\n\n")}
+            cierre={hoy.parrafos[hoy.parrafos.length - 1] ?? ""}
+            dedicatoriaSugerida={dedicatoriaDistancia(evento.tipo === "graduacion", vinculo, trato === "plural")}
+            onGuardar={(c) => guardarCartaPersonal(cartaPara, c)}
+            onCerrar={() => setCartaPara(null)}
+          />
+        );
+      })()}
 
       {/* Vista previa de la tarjeta antes de enviarla */}
       {tarjeta && (
@@ -2137,6 +2184,12 @@ export default function AgregarInvitados() {
                             {VINCULOS_DISTANCIA.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
                           </select>
                         </label>
+                      )}
+                      {inv.a_distancia && cartaPersonalOk && inv.id && (
+                        <button type="button" className={`inv-carta-btn${inv.carta_personal || inv.dedicatoria_personal ? " propia" : ""}`} onClick={() => setCartaPara(inv)}>
+                          <IcoCarta size={11} strokeWidth={2.2} />
+                          {inv.carta_personal || inv.dedicatoria_personal ? "Su carta personal · editar" : "Escribirle su propia carta"}
+                        </button>
                       )}
                       {distanciaOk && inv.id && (
                         <button type="button" className="inv-distancia-btn" onClick={() => alternarDistancia(inv)}>

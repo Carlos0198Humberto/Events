@@ -31,10 +31,12 @@ export async function datosPorToken(token: string): Promise<{ datos: DatosTarjet
 
   // a_distancia (supabase-distancia.sql): la vista previa de la invitación especial;
   // vinculo (supabase-vinculo.sql): familia, amigos o hermanos en Cristo;
-  // estado y presente: en el agradecimiento, si fue o no
-  type Fila = { nombre: string; evento_id: string; estado?: string | null; a_distancia?: boolean | null; vinculo?: string | null; presente?: boolean | null };
+  // estado y presente: en el agradecimiento, si fue o no;
+  // dedicatoria_personal (supabase-carta-personal.sql): la frase escrita para esa persona
+  type Fila = { nombre: string; evento_id: string; estado?: string | null; a_distancia?: boolean | null; vinculo?: string | null; presente?: boolean | null; dedicatoria_personal?: string | null };
   const filtro = `invitados?token=eq.${encodeURIComponent(token)}&limit=1&select=nombre,evento_id,estado`;
   const invitados =
+    (await rest<Fila[]>(`${filtro},a_distancia,vinculo,presente,dedicatoria_personal`)) ??
     (await rest<Fila[]>(`${filtro},a_distancia,vinculo,presente`)) ??
     (await rest<Fila[]>(`${filtro},a_distancia,presente`)) ??
     (await rest<Fila[]>(`${filtro},a_distancia`)) ??
@@ -52,5 +54,5 @@ export async function datosPorToken(token: string): Promise<{ datos: DatosTarjet
     (await rest<EventoTarjeta[]>(base));
   const ev = eventos?.[0];
   if (!ev) return { datos: generica, encontrado: false };
-  return { datos: armarDatosTarjeta(ev, inv.nombre, null, { distancia: !!inv.a_distancia, vinculo: vinculoDe(inv.vinculo), asistio: asistioAlEvento(ev, inv) }), encontrado: true };
+  return { datos: armarDatosTarjeta(ev, inv.nombre, null, { distancia: !!inv.a_distancia, vinculo: vinculoDe(inv.vinculo), asistio: asistioAlEvento(ev, inv), dedicatoria: inv.dedicatoria_personal }), encontrado: true };
 }

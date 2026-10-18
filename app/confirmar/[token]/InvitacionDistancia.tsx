@@ -13,7 +13,8 @@
 // eventos, rosa viejo.
 //
 // La carta cambia según a quién va (familia, amigos, hermanos en Cristo), y si
-// el organizador cargó la transmisión del culto, se puede ver desde acá.
+// el organizador cargó la transmisión del culto, se puede ver desde acá. El
+// video del anfitrión (un enlace de YouTube, TikTok… o el que subió) también.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -21,6 +22,7 @@ import {
   type EventoTarjeta, type FormaFoto, type VinculoDistancia,
 } from "@/lib/tarjetaInvitacion";
 import TransmisionEnVivo from "@/app/components/TransmisionEnVivo";
+import VideoIncrustado from "@/app/components/VideoIncrustado";
 import { saludoDeCarta, type Trato } from "@/lib/tratoInvitado";
 import { BIRRETE } from "@/lib/ornamentosTarjeta";
 import { IcoCalendario, IcoCamara, IcoFlecha, IcoUbicacion } from "@/app/components/Iconos";
@@ -30,6 +32,8 @@ type Props = {
   invitadoNombre: string;
   trato: Trato;
   vinculo?: VinculoDistancia | null;
+  /** La carta que el organizador escribió solo para esta persona */
+  cartaPersonal?: string | null;
   muro: { href: string; urls: string[]; total: number } | null;
   children?: ReactNode;
 };
@@ -42,15 +46,18 @@ function dedicadaA(vinculo: VinculoDistancia | null, yo: boolean): string | null
   return null;
 }
 
-export default function InvitacionDistancia({ evento, invitadoNombre, trato, vinculo = null, muro, children }: Props) {
+export default function InvitacionDistancia({ evento, invitadoNombre, trato, vinculo = null, cartaPersonal = null, muro, children }: Props) {
   const p = protagonistaDe(evento);
   const ex = extrasDe(evento);
   const graduacion = evento.tipo === "graduacion";
-  const carta = cartaDistancia(evento, trato, vinculo);
+  const carta = cartaDistancia(evento, trato, vinculo, cartaPersonal);
   const paraQuien = dedicadaA(vinculo, hablaElProtagonista(evento));
   const saludoCarta = saludoDeCarta(invitadoNombre, trato);
   const foto = ex.foto === false ? null : ex.foto_url || evento.imagen_url?.trim() || null;
   const forma: FormaFoto = ex.forma_foto ?? "arco";
+  // El video por enlace y el que subió el anfitrión (los dos, si hay)
+  const videoEnlace = ex.video ?? null;
+  const videoSubido = ex.muro_video ?? null;
   const fotos = (Array.isArray(evento.fotos_anfitrion) ? evento.fotos_anfitrion : []).filter((u): u is string => typeof u === "string");
   const fecha = evento.fecha ? fechaLarga(evento.fecha) : null;
   const hora = evento.hora ? horaCorta(evento.hora) : null;
@@ -118,6 +125,16 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, vin
         <section className="dist-seccion">
           <h2>{ex.transmision_titulo || "Míralo en vivo"}</h2>
           <TransmisionEnVivo enlace={ex.transmision} titulo={ex.transmision_titulo} fecha={evento.fecha} />
+        </section>
+      )}
+
+      {(videoEnlace || videoSubido) && (
+        <section className="dist-seccion" data-guia="dl-video">
+          <h2>{ex.video_titulo || (trato === "plural" ? "Un video para ustedes" : "Un video para vos")}</h2>
+          <div className="dl-videos">
+            {videoEnlace && <VideoIncrustado enlace={videoEnlace} titulo={ex.video_titulo} cabecera={false} />}
+            {videoSubido && <VideoIncrustado enlace={videoSubido} titulo={ex.video_titulo} cabecera={false} />}
+          </div>
         </section>
       )}
 
@@ -341,6 +358,7 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dist-seccion{margin:26px 4px 0;animation:dlSube .7s .15s ease both}
 .dist-seccion h2{display:flex;align-items:center;gap:12px;font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:500;color:var(--tinta);margin-bottom:12px}
 .dist-seccion h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(185,122,104,.5),transparent)}
+.dl-videos{display:flex;flex-direction:column;gap:12px}
 .dl-datos{background:#FFFFFF;border:1px solid rgba(185,122,104,.28);border-radius:16px;padding:6px 16px}
 .dl-datos p{display:flex;align-items:center;gap:12px;padding:10px 0;font-size:15px;color:var(--tinta);line-height:1.35}
 .dl-datos p+p{border-top:1px solid rgba(185,122,104,.18)}
