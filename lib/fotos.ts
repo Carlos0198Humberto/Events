@@ -14,6 +14,7 @@
 // reintentan sin esas columnas.
 
 import { supabase } from "@/lib/supabase";
+import type { RetoId } from "@/lib/retosMuro";
 
 const BUCKET = "fotos-eventos";
 const LADO_COMPLETA = 2048;
@@ -97,17 +98,19 @@ export async function achicarImagen(archivo: File, ladoMax = 1800): Promise<File
   }
 }
 
-const COLUMNA_FALTANTE = /thumb_url|ancho|alto/i;
+const COLUMNA_FALTANTE = /thumb_url|ancho|alto|reto/i;
 
 /**
  * Sube una foto de un invitado al muro del evento: completa + miniatura.
  * Devuelve las URLs públicas o lanza un error legible.
  */
-export async function subirFotoEvento({ archivo, eventoId, invitadoId, caption }: {
+export async function subirFotoEvento({ archivo, eventoId, invitadoId, caption, reto }: {
   archivo: Blob;
   eventoId: string;
   invitadoId: string;
   caption?: string | null;
+  /** El reto que cumple (supabase-retos-muro.sql), o nada si es la foto libre */
+  reto?: RetoId | null;
 }): Promise<{ url: string; thumbUrl: string | null }> {
   const base = `${eventoId}/${invitadoId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const preparada = await prepararFoto(archivo);
@@ -146,10 +149,11 @@ export async function subirFotoEvento({ archivo, eventoId, invitadoId, caption }
   };
   if (thumbUrl) fila.thumb_url = thumbUrl;
   if (preparada) { fila.ancho = preparada.ancho; fila.alto = preparada.alto; }
+  if (reto) fila.reto = reto;
 
   let { error } = await supabase.from("fotos").insert(fila);
   if (error && COLUMNA_FALTANTE.test(error.message || "")) {
-    delete fila.thumb_url; delete fila.ancho; delete fila.alto;
+    delete fila.thumb_url; delete fila.ancho; delete fila.alto; delete fila.reto;
     ({ error } = await supabase.from("fotos").insert(fila));
   }
   if (error) throw new Error("La foto se subió pero no se pudo registrar. Probá de nuevo.");

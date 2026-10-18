@@ -27,6 +27,8 @@ export type FotoMuro = {
   created_at: string;
   invitado_id: string;
   caption: string | null;
+  /** El reto que cumple (supabase-retos-muro.sql): 'protagonista' | 'pastel' | null */
+  reto?: string | null;
   invitados: { nombre: string } | null;
 };
 
@@ -107,22 +109,48 @@ function Inicial({ nombre, size, fondo }: { nombre: string; size: number; fondo:
   );
 }
 
-// ─── Tarjeta de la grilla ─────────────────────────────────────────────────────
-export function MiniaturaFoto({ foto, nueva, totalReacciones, emojis, tema, onAbrir }: {
+// ─── Tarjeta de la grilla: una polaroid ───────────────────────────────────────
+// Marco blanco, apenas inclinada (cada foto siempre igual: el giro sale de su
+// id), con un trozo de cinta arriba y lo que escribió el invitado a mano
+// debajo. Si cumple un reto, lo dice al pie.
+const GIROS = [-2.2, 1.6, -1.1, 2, -0.6, 1.2, -1.7, 0.8];
+function giroDe(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return GIROS[h % GIROS.length];
+}
+
+export function MiniaturaFoto({ foto, nueva, totalReacciones, emojis, tema, reto, onAbrir }: {
   foto: FotoMuro;
   nueva: boolean;
   totalReacciones: number;
   /** Reacciones que recibió la foto, la más usada primero (se muestran hasta tres) */
   emojis?: string[];
   tema: TemaMuro;
+  /** El reto que cumple esta foto (nombre e ícono), si es de un reto */
+  reto?: { nombre: string; icono: ReactNode } | null;
   onAbrir: () => void;
 }) {
   const [lista, setLista] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  // Si la foto ya estaba en memoria (el círculo del reto muestra la misma), su
+  // «load» llega antes de que React escuche y la foto quedaba invisible:
+  // decode() se resuelve igual, haya pasado o no el evento
+  useEffect(() => {
+    const el = imgRef.current;
+    if (!el) return;
+    if (el.complete && el.naturalWidth > 0) { setLista(true); return; }
+    let vivo = true;
+    el.decode?.().then(() => { if (vivo) setLista(true); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [foto.id]);
   const nombre = foto.invitados?.nombre ?? "Invitado";
+  const pila = nombre.split(" ")[0];
   // Con medidas reales se reserva el lugar exacto; sin ellas (fotos viejas), un 4:5 recortado
   const proporcion = foto.ancho && foto.alto ? `${foto.ancho} / ${foto.alto}` : "4 / 5";
   return (
-    <button className="mf" onClick={onAbrir} aria-label={`Foto de ${nombre}`} style={{ borderColor: tema.borde }}>
+    <button className="mf" onClick={onAbrir} aria-label={`Foto de ${nombre}`} style={{ borderColor: tema.borde, ["--giro" as string]: `${giroDe(foto.id)}deg` }}>
+      <span className="mf-cinta" aria-hidden="true" style={{ background: tema.destaque }} />
       <span className="mf-foto" style={{ aspectRatio: proporcion, background: tema.esqueleto }}>
         <img
           src={miniatura(foto)}
@@ -133,7 +161,7 @@ export function MiniaturaFoto({ foto, nueva, totalReacciones, emojis, tema, onAb
           onLoad={() => setLista(true)}
           // Si la miniatura no está (borrada del storage), se cae a la original
           onError={(e) => { const img = e.currentTarget; if (img.src !== foto.url) img.src = foto.url; }}
-          ref={(el) => { if (el?.complete && el.naturalWidth > 0 && !lista) setLista(true); }}
+          ref={imgRef}
         />
         {!lista && <span className="mf-brillo" aria-hidden="true" />}
         {nueva && <span className="mf-nueva" style={{ background: tema.destaque, color: tema.tinta }}>Nueva</span>}
@@ -146,14 +174,20 @@ export function MiniaturaFoto({ foto, nueva, totalReacciones, emojis, tema, onAb
           </span>
         )}
       </span>
-      <span className="mf-info">
-        <Inicial nombre={nombre} size={26} fondo={tema.acento} />
-        <span className="mf-quien">
-          <b style={{ color: tema.tinta }}>{nombre.split(" ")[0]}</b>
-          <small>{tiempoRelativo(foto.created_at)}</small>
+      <span className="mf-pie">
+        {foto.caption && <span className="mf-frase" style={{ color: tema.tinta }}>{foto.caption}</span>}
+        {reto && (
+          <span className="mf-reto" style={{ color: tema.acento }}>
+            {reto.icono}{reto.nombre}
+          </span>
+        )}
+        <span className="mf-meta">
+          <Inicial nombre={nombre} size={18} fondo={tema.acento} />
+          <b style={{ color: tema.tinta }}>{pila}</b>
+          <span aria-hidden="true">·</span>
+          <span>{tiempoRelativo(foto.created_at)}</span>
         </span>
       </span>
-      {foto.caption && <span className="mf-caption">“{foto.caption}”</span>}
     </button>
   );
 }
@@ -161,7 +195,7 @@ export function MiniaturaFoto({ foto, nueva, totalReacciones, emojis, tema, onAb
 // ─── Visor a pantalla completa ────────────────────────────────────────────────
 export function VisorFoto({
   fotos, indice, onCambiar, onCerrar, esOrg, onEliminar, onDescargar,
-  invitadoId, invitadoNombre, eventoId, reacciones, onReaccionar, tema, nombreAnfitrion,
+  invitadoId, invitadoNombre, eventoId, reacciones, onReaccionar, tema, nombreAnfitrion, retoDe,
 }: {
   fotos: FotoMuro[];
   indice: number;
@@ -178,8 +212,11 @@ export function VisorFoto({
   reacciones: ReaccionFila[];
   onReaccionar: (fotoId: string, emoji: string) => Promise<string | null>;
   tema: TemaMuro;
+  /** El reto que cumple la foto (nombre e ícono), si es de un reto */
+  retoDe?: (f: FotoMuro) => { nombre: string; icono: ReactNode } | null;
 }) {
   const foto = fotos[indice];
+  const reto = retoDe?.(foto) ?? null;
   const [completaLista, setCompletaLista] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [comentarios, setComentarios] = useState<{ id: string; nombre_autor: string; texto: string; created_at: string }[]>([]);
@@ -349,6 +386,7 @@ export function VisorFoto({
 
         {/* Panel esmerilado: lo que escribió, reacciones y comentarios */}
         <div className="vf-panel" style={{ borderTopColor: tema.destaque }}>
+          {reto && <p className="vf-reto" style={{ color: tema.destaque }}>{reto.icono} Reto: {reto.nombre}</p>}
           {foto.caption && <p className="vf-caption">“{foto.caption}”</p>}
 
           <div className="vf-reacciones">
@@ -400,6 +438,7 @@ export function VisorFoto({
 export function EstilosGaleria({ tema }: { tema: TemaMuro }) {
   return (
     <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap');
       @keyframes mfEntra{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
       @keyframes mfBrillo{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
       @keyframes vfGira{to{transform:rotate(360deg)}}
@@ -420,13 +459,17 @@ export function EstilosGaleria({ tema }: { tema: TemaMuro }) {
       .galeria.galeria-1{columns:1;max-width:420px;margin:0 auto}
       @media (min-width:640px){.galeria.galeria-2{columns:2;max-width:640px;margin:0 auto}}
 
-      /* Tarjeta: la foto enmarcada en blanco, con quién la subió debajo */
-      .mf{display:block;width:100%;margin:0 0 12px;padding:6px 6px 0;border:1px solid;border-radius:18px;background:#FFFFFF;cursor:pointer;text-align:left;font-family:inherit;
-        break-inside:avoid;box-shadow:0 1px 2px rgba(15,23,42,.05),0 12px 26px -16px rgba(15,23,42,.35);animation:mfEntra .45s ease both;
-        transition:transform .2s,box-shadow .2s;-webkit-tap-highlight-color:transparent}
-      @media (hover:hover){.mf:hover{transform:translateY(-3px);box-shadow:0 1px 2px rgba(15,23,42,.05),0 18px 34px -16px rgba(15,23,42,.45)}}
+      /* Polaroid: marco blanco con más papel abajo, apenas inclinada, con un
+         trozo de cinta arriba. El giro va en «rotate» (no en transform) para
+         no pelear con la animación de entrada ni con el hover. */
+      .mf{position:relative;display:block;width:100%;margin:6px 0 18px;padding:8px 8px 0;border:1px solid;border-radius:3px;background:#FFFFFF;cursor:pointer;text-align:left;font-family:inherit;
+        break-inside:avoid;rotate:var(--giro,0deg);box-shadow:0 1px 2px rgba(15,23,42,.08),0 14px 24px -16px rgba(15,23,42,.5);animation:mfEntra .45s ease both;
+        transition:transform .2s,box-shadow .2s,rotate .25s;-webkit-tap-highlight-color:transparent}
+      @media (hover:hover){.mf:hover{rotate:0deg;transform:translateY(-3px);box-shadow:0 1px 2px rgba(15,23,42,.08),0 22px 34px -18px rgba(15,23,42,.55)}}
       .mf:active{transform:scale(.985)}
-      .mf-foto{position:relative;display:block;width:100%;border-radius:13px;overflow:hidden}
+      .mf-cinta{position:absolute;top:-9px;left:50%;width:62px;height:18px;margin-left:-31px;opacity:.55;rotate:-3deg;z-index:2;border-radius:2px;
+        mask:linear-gradient(90deg,transparent 0,#000 4px,#000 calc(100% - 4px),transparent 100%);-webkit-mask:linear-gradient(90deg,transparent 0,#000 4px,#000 calc(100% - 4px),transparent 100%)}
+      .mf-foto{position:relative;display:block;width:100%;border-radius:2px;overflow:hidden}
       .mf-foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .45s ease,transform .6s ease;display:block}
       .mf-foto img.lista{opacity:1}
       @media (hover:hover){.mf:hover .mf-foto img{transform:scale(1.03)}}
@@ -437,11 +480,11 @@ export function EstilosGaleria({ tema }: { tema: TemaMuro }) {
       .mf-reac-iconos{display:inline-flex}
       .mf-reac-iconos .irm+.irm{margin-left:-6px}
       .mf-reac-iconos .irm{border:1.5px solid #fff}
-      .mf-info{display:flex;align-items:center;gap:8px;padding:9px 4px 9px}
-      .mf-quien{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
-      .mf-quien b{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .mf-quien small{font-size:10.5px;color:#94A3B8;margin-top:1px}
-      .mf-caption{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:-3px 4px 10px;font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:12.5px;line-height:1.35;color:#475569}
+      .mf-pie{display:flex;flex-direction:column;align-items:center;gap:4px;padding:9px 4px 11px;text-align:center}
+      .mf-frase{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-family:'Caveat','Segoe Print','Bradley Hand',cursive;font-size:21px;font-weight:600;line-height:1.05;overflow-wrap:anywhere}
+      .mf-reto{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.2}
+      .mf-meta{display:inline-flex;align-items:center;gap:5px;max-width:100%;font-size:11px;color:#94A3B8;white-space:nowrap}
+      .mf-meta b{font-size:11.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis}
       @media (prefers-reduced-motion: reduce){.mf,.mf-brillo{animation:none}}
 
       /* Visor: la foto sobre ella misma difuminada */
@@ -475,6 +518,7 @@ export function EstilosGaleria({ tema }: { tema: TemaMuro }) {
         .vf-cuerpo{flex-direction:row}
         .vf-panel{width:380px;max-height:none;border-radius:22px 0 0 0;border-top:none;border-left:1.5px solid ${tema.destaque}}
       }
+      .vf-reto{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
       .vf-caption{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:16px;line-height:1.5;color:#FFFFFF;margin-bottom:12px}
       .vf-reacciones{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
       .vf-reac{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px 9px;border-radius:16px;border:1.5px solid rgba(255,255,255,.12);

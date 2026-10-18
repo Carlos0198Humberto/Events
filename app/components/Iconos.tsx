@@ -61,6 +61,26 @@ export const IcoMensaje = (p: Props) => <Linea {...p}><path d="M7.9 20A9 9 0 1 0
 export const IcoFlecha = (p: Props) => <Linea {...p}><path d="M5 12h14M13 6l6 6-6 6" /></Linea>;
 
 /** WhatsApp va relleno: es una marca, no un ícono de línea. */
+// Retos del muro: con la protagonista y el pastel
+export const IcoCorona = (p: Props) => (
+  <Linea {...p}><path d="M11.56 3.27a.5.5 0 0 1 .88 0l2.95 5.6a1 1 0 0 0 1.52.3l4.27-3.67a.5.5 0 0 1 .8.52l-2.83 10.25a1 1 0 0 1-.96.73H5.81a1 1 0 0 1-.96-.73L2.02 6.02a.5.5 0 0 1 .8-.52l4.27 3.67a1 1 0 0 0 1.52-.3z" /><path d="M5 21h14" /></Linea>
+);
+export const IcoPastel = (p: Props) => (
+  <Linea {...p}><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8" /><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1" /><path d="M2 21h20M7 8v3M12 8v3M17 8v3M7 4h.01M12 4h.01M17 4h.01" /></Linea>
+);
+export const IcoBirrete = (p: Props) => (
+  <Linea {...p}><path d="M21.42 10.92a1 1 0 0 0-.02-1.84L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.83l8.57 3.91a2 2 0 0 0 1.66 0z" /><path d="M22 10v6M6 12.5V16a6 3 0 0 0 12 0v-3.5" /></Linea>
+);
+export const IcoAnillos = (p: Props) => (
+  <Linea {...p}><circle cx="9" cy="14.5" r="5.5" /><circle cx="15" cy="14.5" r="5.5" /><path d="m10 5 2-2.5L14 5" /></Linea>
+);
+export const IcoEstrella = (p: Props) => (
+  <Linea {...p}><path d="M11.53 2.3a.53.53 0 0 1 .95 0l2.31 4.68a2.12 2.12 0 0 0 1.6 1.16l5.16.76a.53.53 0 0 1 .3.9l-3.74 3.64a2.12 2.12 0 0 0-.61 1.88l.88 5.14a.53.53 0 0 1-.77.56l-4.62-2.43a2.12 2.12 0 0 0-1.97 0L6.4 21.01a.53.53 0 0 1-.77-.56l.88-5.14a2.12 2.12 0 0 0-.61-1.88L2.16 9.8a.53.53 0 0 1 .3-.91l5.16-.75a2.12 2.12 0 0 0 1.6-1.16z" /></Linea>
+);
+export const IcoTodas = (p: Props) => (
+  <Linea {...p}><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></Linea>
+);
+
 export function IcoWhatsApp({ size = 16, ...rest }: Props) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...rest}>

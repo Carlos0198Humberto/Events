@@ -12,6 +12,8 @@ import {
 import TransmisionEnVivo from "@/app/components/TransmisionEnVivo";
 import VideoIncrustado from "@/app/components/VideoIncrustado";
 import GaleriaAnfitrion from "./GaleriaAnfitrion";
+import RetosMuro, { IconoDeReto } from "./RetosMuro";
+import { cuposDeFotos, retoDe, retosDelEvento, type Reto, type RetoId } from "@/lib/retosMuro";
 import MusicaMuro from "./MusicaMuro";
 import TituloMuro, { FondoMuroGrad } from "./TituloMuro";
 import { fechaLarga, hablaElProtagonista, protagonistaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
@@ -559,28 +561,35 @@ function ModalSubirFoto({
   onClose,
   onSubida,
   t,
+  retos,
+  usados,
+  retoInicial,
 }: {
   eventoId: string;
   invitadoId: string;
   onClose: () => void;
-  onSubida: () => void;
+  onSubida: (reto: RetoId | null) => void;
   t: (typeof T)["es"];
+  /** Los retos del muro (vacío si la base todavía no los tiene) */
+  retos: Reto[];
+  /** El reto de cada foto que ya subió (null = la libre) */
+  usados: (string | null)[];
+  /** El reto que eligió al tocar «Subir la mía» */
+  retoInicial: RetoId | null;
 }) {
   const [archivo, setArchivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [subiendo, setSubiendo] = useState(false);
-  const [yaSubio, setYaSubio] = useState(false);
-
-  useEffect(() => {
-    supabase
-      .from("fotos")
-      .select("id")
-      .eq("invitado_id", invitadoId)
-      .then(({ data }) => {
-        if (data && data.length > 0) setYaSubio(true);
-      });
-  }, [invitadoId]);
+  // 1 foto libre y 1 por cada reto; sin retos (base sin la columna), una sola como siempre
+  const sinRetos = retos.length === 0;
+  const cupos = cuposDeFotos(usados, retos);
+  const yaSubio = sinRetos ? usados.length > 0 : cupos.lleno;
+  const [reto, setReto] = useState<RetoId | null>(
+    retoInicial && cupos.pendientes.some((r) => r.id === retoInicial) ? retoInicial
+    : cupos.libre || sinRetos ? null : cupos.pendientes[0]?.id ?? null,
+  );
+  const retoElegido = retos.find((r) => r.id === reto) ?? null;
 
   const seleccionar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -594,14 +603,14 @@ function ModalSubirFoto({
     setSubiendo(true);
     try {
       // Se achica en el celular antes de subir (lib/fotos): completa + miniatura
-      await subirFotoEvento({ archivo, eventoId, invitadoId, caption });
+      await subirFotoEvento({ archivo, eventoId, invitadoId, caption, reto });
     } catch (err) {
       alert((err as Error).message);
       setSubiendo(false);
       return;
     }
     setSubiendo(false);
-    onSubida();
+    onSubida(reto);
     onClose();
   };
 
@@ -655,11 +664,11 @@ function ModalSubirFoto({
                 fontFamily: "'Playfair Display',serif",
               }}
             >
-              {yaSubio ? t.yaCompartiste : t.comparteMomento}
+              {yaSubio ? t.yaCompartiste : retoElegido ? `Reto: ${retoElegido.nombre}` : t.comparteMomento}
             </p>
             {!yaSubio && (
               <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
-                {t.solamente1}
+                {sinRetos ? t.solamente1 : "1 foto libre y 1 por cada reto"}
               </p>
             )}
           </div>
@@ -713,6 +722,24 @@ function ModalSubirFoto({
           </div>
         ) : (
           <>
+            {!sinRetos && (
+              <div className="reto-elegir" role="radiogroup" aria-label="¿Para qué es tu foto?">
+                {cupos.libre && (
+                  <button type="button" role="radio" aria-checked={reto === null} className={`reto-chip${reto === null ? " activo" : ""}`} onClick={() => setReto(null)}>
+                    {Ico.camera(14, reto === null ? "white" : "var(--m-acc,#4F46E5)")} Foto libre
+                  </button>
+                )}
+                {retos.map((r) => {
+                  const hecho = !cupos.pendientes.some((x) => x.id === r.id);
+                  return (
+                    <button key={r.id} type="button" role="radio" aria-checked={reto === r.id} disabled={hecho}
+                      className={`reto-chip${reto === r.id ? " activo" : ""}${hecho ? " hecho" : ""}`} onClick={() => setReto(r.id)}>
+                      <IconoDeReto icono={r.icono} size={14} /> {r.nombre}{hecho ? " ✓" : ""}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {preview ? (
               <div style={{ marginBottom: 12 }}>
                 <img
@@ -1325,6 +1352,13 @@ export default function MuroPublico() {
   const [modalSubir, setModalSubir] = useState(false);
   const [modalDeseo, setModalDeseo] = useState(false);
   const [yaFoto, setYaFoto] = useState(false);
+  // Retos de fotos (supabase-retos-muro.sql): si la base los tiene, cuál está
+  // elegido, qué fotos subió este invitado (el reto de cada una) y con qué reto
+  // se abre el modal
+  const [retosOk, setRetosOk] = useState(false);
+  const [retoActivo, setRetoActivo] = useState<RetoId | null>(null);
+  const [misFotos, setMisFotos] = useState<(string | null)[]>([]);
+  const [retoSubir, setRetoSubir] = useState<RetoId | null>(null);
   const [yaDeseo, setYaDeseo] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
   const [mounted, setMounted] = useState(false);
@@ -1423,11 +1457,14 @@ export default function MuroPublico() {
   }, [invId]);
 
   async function verificarJourney(id: string) {
-    const [{ data: fData }, { data: dData }] = await Promise.all([
-      supabase.from("fotos").select("id").eq("invitado_id", id),
+    const [conReto, { data: dData }] = await Promise.all([
+      supabase.from("fotos").select("id,reto").eq("invitado_id", id),
       supabase.from("deseos").select("id").eq("invitado_id", id),
     ]);
+    // Sin la columna reto, como antes: cada foto cuenta como la libre
+    const fData = (conReto.error ? (await supabase.from("fotos").select("id").eq("invitado_id", id)).data : conReto.data) as { id: string; reto?: string | null }[] | null;
     if (fData && fData.length > 0) setYaFoto(true);
+    if (fData) setMisFotos(fData.map((f) => retoDe(f.reto)));
     if (dData && dData.length > 0) setYaDeseo(true);
   }
 
@@ -1478,6 +1515,7 @@ export default function MuroPublico() {
     // reacciones son mejoras; si la base todavía no las tiene, se piden sin ellas.
     const base = "id,url,path,created_at,invitado_id,caption,invitados(nombre)";
     const intentos = [
+      `${base},reto,thumb_url,ancho,alto,reacciones(invitado_id,emoji)`,
       `${base},thumb_url,ancho,alto,reacciones(invitado_id,emoji)`,
       `${base},reacciones(invitado_id,emoji)`,
       base,
@@ -1490,6 +1528,7 @@ export default function MuroPublico() {
         .eq("estado", "aprobada")
         .order("created_at", { ascending: true });
       if (error) continue;
+      setRetosOk(cols.includes(",reto,"));
       type Fila = Foto & { invitados: Foto["invitados"] | Foto["invitados"][]; reacciones?: { invitado_id: string; emoji: string }[] };
       const filas = (data ?? []) as unknown as Fila[];
       setFotos(filas.map(({ reacciones: _r, ...f }) => ({
@@ -1744,6 +1783,9 @@ export default function MuroPublico() {
 
   // El muro se mira de la foto más nueva a la más vieja; el visor sigue ese orden
   const fotosOrden = [...fotos].reverse();
+  // Con un reto elegido, solo sus fotos (el visor recorre las mismas)
+  const fotosVista = retoActivo ? fotosOrden.filter((f) => f.reto === retoActivo) : fotosOrden;
+  const fotosVisor = vista === "fotos" ? fotosVista : fotosOrden;
   // thumb_url viene en las filas solo si la base ya tiene la columna (supabase-muro.sql)
   const columnasNuevas = fotos.some(f => "thumb_url" in f);
   const sinMiniatura = fotos.filter(f => !f.thumb_url);
@@ -1884,6 +1926,14 @@ export default function MuroPublico() {
         nombre: nombreGrande,
         linea: grad && anio ? `Promoción ${anio}` : evento.fecha ? fechaLarga(evento.fecha) : null,
       };
+  // Los retos: «Con la quinceañera» (o con quien se celebra) y «El pastel»
+  const retos: Reto[] = retosOk ? retosDelEvento(evento.tipo, prota) : [];
+  const cupos = cuposDeFotos(misFotos, retos);
+  const retoDeFoto = (f: Foto) => {
+    const r = retos.find((x) => x.id === f.reto);
+    return r ? { nombre: r.nombre, icono: <IconoDeReto icono={r.icono} size={12} /> } : null;
+  };
+  const abrirSubir = (reto: RetoId | null) => { setRetoSubir(reto); setModalSubir(true); };
   // El espacio del anfitrión: «Mis fotos de graduación» si habla el graduado
   const yoAnfitrion = hablaElProtagonista(eventoTarjeta);
   const espacioAnfitrion = {
@@ -1958,6 +2008,11 @@ export default function MuroPublico() {
           transition: opacity .15s, transform .12s;
         }
         .nav-guest-btn:active { transform: scale(0.96); opacity: 0.85; }
+        /* Modal de subir: para qué es la foto (libre o un reto) */
+        .reto-elegir { display: flex; flex-wrap: wrap; gap: 7px; margin: -4px 0 14px; }
+        .reto-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; border: 1.5px solid var(--m-soft2,#E0E7FF); background: #fff; color: var(--m-acc,#4F46E5); font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .reto-chip.activo { background: var(--m-acc,#4F46E5); border-color: var(--m-acc,#4F46E5); color: #fff; }
+        .reto-chip.hecho { opacity: .5; cursor: default; }
         .nav-tabs {
           display: grid; grid-template-columns: repeat(4,1fr);
           padding: 4px 0 2px;
@@ -2294,6 +2349,20 @@ export default function MuroPublico() {
           />
         )}
 
+        {/* ── Retos de fotos: círculos que filtran el muro ── */}
+        {vista === "fotos" && retos.length > 0 && (
+          <RetosMuro
+            retos={retos}
+            fotos={fotosOrden}
+            activo={retoActivo}
+            onElegir={setRetoActivo}
+            tema={tema}
+            invitado={!!invId}
+            pendientes={cupos.pendientes.map((r) => r.id)}
+            onSubir={(id) => abrirSubir(id)}
+          />
+        )}
+
         {/* ── FOTOS ── */}
         {vista === "fotos" &&
           (fotos.length === 0 ? (
@@ -2350,16 +2419,17 @@ export default function MuroPublico() {
                 </div>
               )}
               <div className="galeria-cabecera" style={{ color: tema.tinta }}>
-                <span>{fotos.length} foto{fotos.length > 1 ? "s" : ""}</span>
+                <span>{fotosVista.length} foto{fotosVista.length !== 1 ? "s" : ""}</span>
                 <span className="galeria-orden">La más reciente primero</span>
               </div>
-              <div className={`galeria${fotos.length <= 2 ? ` galeria-${fotos.length}` : ""}`}>
-                {fotosOrden.map((foto, i) => (
+              <div className={`galeria${fotosVista.length <= 2 ? ` galeria-${fotosVista.length}` : ""}`}>
+                {fotosVista.map((foto, i) => (
                   <MiniaturaFoto
                     key={foto.id}
                     foto={foto}
-                    nueva={i === 0}
+                    nueva={i === 0 && !retoActivo}
                     tema={tema}
+                    reto={retoDeFoto(foto)}
                     totalReacciones={reacciones.reduce((n, r) => n + (r.foto_id === foto.id ? 1 : 0), 0)}
                     emojis={emojisDe(reacciones, foto.id)}
                     onAbrir={() => setFotoActiva(i)}
@@ -3249,9 +3319,9 @@ export default function MuroPublico() {
       )}
 
       {/* Lightbox */}
-      {fotoActiva !== null && fotosOrden[fotoActiva] && (
+      {fotoActiva !== null && fotosVisor[fotoActiva] && (
         <VisorFoto
-          fotos={fotosOrden}
+          fotos={fotosVisor}
           indice={fotoActiva}
           onCambiar={setFotoActiva}
           onCerrar={() => setFotoActiva(null)}
@@ -3265,6 +3335,7 @@ export default function MuroPublico() {
           onReaccionar={reaccionar}
           tema={tema}
           nombreAnfitrion={evento.tarjeta?.graduando || evento.anfitriones || "Anfitrión"}
+          retoDe={retoDeFoto}
         />
       )}
 
@@ -3280,23 +3351,23 @@ export default function MuroPublico() {
       {/* Nav bottom invitados: Fotos / Deseos / Boda Civil (sin Albums). Quien llega
           al muro sin su enlace de invitación (link compartido) igual puede ver los
           deseos; los botones de subir foto y dejar deseo son solo para invitados. */}
-      {!esOrg && (
+      {!esOrg && (() => { const hecho = yaFoto && (retos.length === 0 || cupos.lleno); return (
         <nav className="bottom-nav">
           {invId && (
           <div className="nav-guest-row">
             <button
               className="nav-guest-btn"
-              onClick={() => setModalSubir(true)}
+              onClick={() => abrirSubir(retoActivo)}
               style={{
-                background: yaFoto ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,var(--m-acc,#4F46E5),var(--m-ink,#3730A3))",
-                color: yaFoto ? "#16a34a" : "white",
-                border: yaFoto ? "1.5px solid rgba(22,163,74,0.28)" : "none",
-                boxShadow: !yaFoto ? "0 3px 14px rgb(var(--m-acc-rgb,79 70 229) / 0.38)" : "none",
+                background: hecho ? "rgba(22,163,74,0.10)" : "linear-gradient(135deg,var(--m-acc,#4F46E5),var(--m-ink,#3730A3))",
+                color: hecho ? "#16a34a" : "white",
+                border: hecho ? "1.5px solid rgba(22,163,74,0.28)" : "none",
+                boxShadow: !hecho ? "0 3px 14px rgb(var(--m-acc-rgb,79 70 229) / 0.38)" : "none",
               }}
             >
-              {yaFoto ? Ico.check(15,"#16a34a") : Ico.camera(15,"white")}
-              {yaFoto ? t.yaCompartiste : t.comparteMomento}
-              {yaFoto && <span style={{ fontSize:10, background:"#22c55e", color:"white", borderRadius:99, padding:"1px 5px", marginLeft:2 }}>{"\u2713"}</span>}
+              {hecho ? Ico.check(15,"#16a34a") : Ico.camera(15,"white")}
+              {hecho ? t.yaCompartiste : yaFoto ? "Cumplí un reto" : t.comparteMomento}
+              {hecho && <span style={{ fontSize:10, background:"#22c55e", color:"white", borderRadius:99, padding:"1px 5px", marginLeft:2 }}>{"\u2713"}</span>}
             </button>
             <button
               className="nav-guest-btn"
@@ -3335,15 +3406,18 @@ export default function MuroPublico() {
             ))}
           </div>
         </nav>
-      )}
+      ); })()}
 
       {modalSubir && invId && (
         <ModalSubirFoto
           invitadoId={invId}
           eventoId={eventoId}
           onClose={() => setModalSubir(false)}
-          onSubida={() => { setYaFoto(true); setModalSubir(false); cargarFotos(); }}
+          onSubida={(reto) => { setYaFoto(true); setMisFotos((m) => [...m, reto]); setModalSubir(false); cargarFotos(); }}
           t={t}
+          retos={retos}
+          usados={misFotos}
+          retoInicial={retoSubir}
         />
       )}
 
