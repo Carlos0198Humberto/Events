@@ -1287,8 +1287,8 @@ function dibujarXV(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, il: Ilust
     escribir(ctx, "Mis XV Años", cx, y + 62, { fuente: (px) => `${px}px ${SCRIPT}`, px: 64, min: 44, max: 400, color: c.texto });
   } });
   if (datos.invitado) {
-    bloques.push({ alto: 34, antes: 20, dibujar: (y) =>
-      escribir(ctx, `Para ${datos.invitado}`, cx, y + 28, { fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 20, max: 600, color: suave }) });
+    // Dos personas con nombre largo: en dos renglones, nunca afuera de la tarjeta
+    bloques.push(bloqueQueEntra(ctx, `Para ${datos.invitado}`, { alto: 34, antes: 20, base: 28, fuente: (px) => `italic 500 ${px}px ${SERIF}`, px: 30, min: 22, max: 640, color: suave }));
   }
   if (datos.versiculo) {
     const v = datos.versiculo;
