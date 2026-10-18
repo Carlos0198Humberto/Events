@@ -74,7 +74,7 @@ const GRUPO = /(^|\s)(y|&|\+)(\s|$)|\se\s+h?i|^(los|las)\s|\b(familia|familias|f
 export function detectarTrato(nombre: string): Trato {
   const limpio = sinTildes(nombre).replace(/[.,;:]/g, " ").replace(/\s+/g, " ").trim();
   if (!limpio) return "neutro";
-  if (GRUPO.test(limpio)) return "plural";
+  if (GRUPO.test(limpio) || personasDelNombre(nombre).length > 1) return "plural";
 
   const palabras = limpio.split(" ");
   let i = 0;
@@ -120,11 +120,33 @@ const TITULO = /^(t[ií][oa]|abuel[oa]|prim[oa]|herman[oa]|padrin[oa]|madrina|do
 // cuando hay apellido después, para no confundir "María Pérez" con uno
 const COMPUESTO_1 = /^(mar[ií]a|jos[eé]|juan|ana|luis|jes[uú]s)$/i;
 const COMPUESTO_2 = /^(jos[eé]|mar[ií]a|fernanda|isabel|elena|teresa|luisa|alejandra|gabriela|celeste|luc[ií]a|paula|bel[eé]n|eugenia|carlos|luis|antonio|manuel|miguel|pablo|francisco|daniel|david|alberto|ernesto|ram[oó]n|fernando|enrique)$/i;
+// Las personas de un mismo invitado, como las escribe el organizador:
+// "Rosa Pérez y Juan Ramos", "Rosa Pérez e Isaac Ramos", "Rosa & Juan",
+// "Rosa, Juan y Ana", "Rosa / Juan". "Familia López" y "Los López" son uno.
+const SEPARADOR_PERSONAS = /\s*(?:,|\/|&|\+)\s*|\s+y\s+|\s+e\s+(?=h?i)/i;
+export function personasDelNombre(nombre: string): string[] {
+  const limpio = nombre.trim();
+  if (!limpio || /^(la\s+)?(familia|familias|flia\.?|fam\.)\s/i.test(limpio) || /^(los|las)\s/i.test(limpio)) return limpio ? [limpio] : [];
+  const partes = limpio.split(SEPARADOR_PERSONAS).map((x) => x.trim()).filter(Boolean);
+  return partes.length ? partes : [limpio];
+}
+
+/** "Rosa", "Rosa y Juan", "Rosa, Juan y Ana", "Rosa e Isaac" (la «y» pasa a «e» antes de «i»). */
+export function unirNombres(nombres: string[]): string {
+  if (nombres.length <= 1) return nombres[0] ?? "";
+  const ultimo = nombres[nombres.length - 1];
+  const y = /^h?i(?![aeouáéóú])/i.test(ultimo) ? "e" : "y";
+  return `${nombres.slice(0, -1).join(", ")} ${y} ${ultimo}`;
+}
+
 export function nombreDePila(nombre: string): string {
   const limpio = nombre.trim();
   if (/^(la\s+)?(familia|flia\.?|fam\.)\s/i.test(limpio)) return limpio;
   if (/^(los|las)\s/i.test(limpio)) return limpio; // "Los López"
-  if (/\s+y\s+/i.test(limpio)) return limpio.split(/\s+y\s+/i).map(nombreDePila).join(" y ");
+  // Dos o más personas: el nombre de pila de cada una ("Rosa y Juan", antes
+  // con coma, «&» o «e» salía solo la primera)
+  const personas = personasDelNombre(limpio);
+  if (personas.length > 1) return unirNombres(personas.map(nombreDePila));
   const partes = limpio.split(/\s+/);
   if (TITULO.test(partes[0]) && partes[1]) return `${partes[0]} ${partes[1]}`;
   if (partes.length >= 3 && COMPUESTO_1.test(partes[0]) && COMPUESTO_2.test(partes[1])) return `${partes[0]} ${partes[1]}`;

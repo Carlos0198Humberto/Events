@@ -316,7 +316,19 @@ function silueta(ctx: CanvasRenderingContext2D, forma: FormaFoto, x: number, y: 
 
 // La foto con su marco dorado. El recorte favorece la parte de arriba de la
 // foto, que es donde suele estar la cara.
+// Una foto horizontal (el graduado con sus papás) no entra en un arco ni en un
+// círculo sin cortar a la gente de los costados: va en un marco ancho con su
+// propia proporción, del mismo alto que tendría el arco (no mueve el resto)
+const proporcionDe = (img: HTMLImageElement) => (img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1);
+export const esHorizontal = (img: HTMLImageElement) => proporcionDe(img) > 1.1;
+function medidasApaisada(img: HTMLImageElement, altoDisponible: number, anchoMax: number) {
+  const r = Math.min(proporcionDe(img), 1.9);
+  const ancho = Math.min(anchoMax, altoDisponible * r);
+  return { ancho, alto: ancho / r };
+}
+
 function marcoFoto(ctx: CanvasRenderingContext2D, img: HTMLImageElement, forma: FormaFoto, cx: number, yTop: number, R: number) {
+  if (esHorizontal(img)) { marcoApaisado(ctx, img, forma, cx, yTop, R); return; }
   if (forma === "circulo") { retrato(ctx, img, cx, yTop + R + 16, R); return; }
   const { ancho, alto } = medidasFoto(forma, R);
   const x = cx - ancho / 2, y = yTop + 16;
@@ -345,6 +357,38 @@ function marcoFoto(ctx: CanvasRenderingContext2D, img: HTMLImageElement, forma: 
   ctx.stroke();
   ctx.lineWidth = 1.4;
   silueta(ctx, forma, x, y, ancho, alto, 15);
+  ctx.stroke();
+}
+
+function marcoApaisado(ctx: CanvasRenderingContext2D, img: HTMLImageElement, forma: FormaFoto, cx: number, yTop: number, R: number) {
+  const disponible = medidasFoto(forma, R).alto;
+  const { ancho, alto } = medidasApaisada(img, disponible, 760);
+  const x = cx - ancho / 2, y = yTop + 16 + (disponible - alto) / 2;
+  const marco = (extra: number) => { ctx.beginPath(); rectRedondo(ctx, x - extra, y - extra, ancho + extra * 2, alto + extra * 2, 14 + extra * 0.4); };
+
+  ctx.save();
+  ctx.shadowColor = "rgba(212,176,104,0.35)";
+  ctx.shadowBlur = 40;
+  marco(12);
+  ctx.fillStyle = P.fondoCentro;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  marco(0);
+  ctx.clip();
+  const r = proporcionDe(img);
+  // Más ancha que 1,9 (panorámica): se recorta apenas de los costados
+  const sw = r > 1.9 ? img.naturalHeight * 1.9 : img.naturalWidth;
+  ctx.drawImage(img, (img.naturalWidth - sw) / 2, 0, sw, img.naturalHeight, x, y, ancho, alto);
+  ctx.restore();
+
+  ctx.strokeStyle = oro(ctx, x, y, x + ancho, y + alto);
+  ctx.lineWidth = 6;
+  marco(3);
+  ctx.stroke();
+  ctx.lineWidth = 1.4;
+  marco(15);
   ctx.stroke();
 }
 
@@ -549,9 +593,14 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
       marcoFoto(ctx, foto, datos.formaFoto, cx, y, RF);
       if (datos.esGraduacion) {
         // Apoyado en el borde superior derecho del marco
-        const bx = datos.formaFoto === "circulo" ? cx + RF * 0.66 : cx + mf.ancho * 0.36;
-        const by = datos.formaFoto === "circulo" ? y + RF * 0.36 : y + (datos.formaFoto === "arco" ? mf.ancho * 0.16 : 10);
-        birrete(ctx, bx, by, 0.5, -0.32);
+        if (esHorizontal(foto)) {
+          const ap = medidasApaisada(foto, mf.alto, 760);
+          birrete(ctx, cx + ap.ancho / 2 - 34, y + 16 + (mf.alto - ap.alto) / 2 - 6, 0.5, -0.32);
+        } else {
+          const bx = datos.formaFoto === "circulo" ? cx + RF * 0.66 : cx + mf.ancho * 0.36;
+          const by = datos.formaFoto === "circulo" ? y + RF * 0.36 : y + (datos.formaFoto === "arco" ? mf.ancho * 0.16 : 10);
+          birrete(ctx, bx, by, 0.5, -0.32);
+        }
       }
     } }
     : datos.esGraduacion
@@ -702,8 +751,7 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
   // Para quién es (como el sobre de una invitación impresa), la frase que
   // invita y qué hacer: confirmar en el enlace que acompaña a la imagen
   if (datos.invitado) {
-    bloques.push({ alto: 46, antes: 34, dibujar: (y) =>
-      escribir(ctx, `Para ${datos.invitado}`, cx, y + 38, { fuente: (px) => `italic 600 ${px}px ${SERIF}`, px: 42, min: 28, max: 760, color: P.textoFuerte }) });
+    bloques.push(bloqueQueEntra(ctx, `Para ${datos.invitado}`, { alto: 46, antes: 34, base: 38, fuente: (px) => `italic 600 ${px}px ${SERIF}`, px: 42, min: 28, max: 760, color: P.textoFuerte }));
   }
   // El llamado a confirmar es para la tarjeta personal (va con el enlace); la
   // genérica (para estados) no lleva enlace al lado
@@ -781,6 +829,20 @@ const INTERIOR = 76; // borde de la foto
 
 function fotoModerna(ctx: CanvasRenderingContext2D, img: HTMLImageElement, forma: FormaFoto, alto: number) {
   const cx = W / 2;
+  if (esHorizontal(img)) {
+    // Entera y con su proporción, en el mismo espacio de la foto vertical
+    const { ancho: wa, alto: ha } = medidasApaisada(img, alto, W - 2 * 110);
+    const xa = cx - wa / 2, ya = INTERIOR + (alto - ha) / 2;
+    ctx.save();
+    ctx.beginPath();
+    rectRedondo(ctx, xa, ya, wa, ha, 18);
+    ctx.clip();
+    const r = proporcionDe(img);
+    const sw = r > 1.9 ? img.naturalHeight * 1.9 : img.naturalWidth;
+    ctx.drawImage(img, (img.naturalWidth - sw) / 2, 0, sw, img.naturalHeight, xa, ya, wa, ha);
+    ctx.restore();
+    return;
+  }
   // Vertical (como las fotos de toga): el arco y el retrato a 4:5, el círculo del alto
   const h = alto;
   const w = forma === "circulo" ? alto : Math.round(alto * 0.8);
@@ -943,8 +1005,7 @@ function dibujarModerna(ctx: CanvasRenderingContext2D, datos: DatosTarjeta, foto
   bloques.push({ alto: 2, antes: 30, dibujar: (y) => filete(ctx, y + 1, 72, T.acento) });
 
   if (datos.invitado) {
-    bloques.push({ alto: 44, antes: 26, dibujar: (y) =>
-      escribir(ctx, `Para ${datos.invitado}`, cx, y + 36, { fuente: italica, px: 40, min: 26, max: ancho, color: T.tinta }) });
+    bloques.push(bloqueQueEntra(ctx, `Para ${datos.invitado}`, { alto: 44, antes: 26, base: 36, fuente: italica, px: 40, min: 26, max: ancho, color: T.tinta }));
   }
   if (qr) {
     const lado = 180;

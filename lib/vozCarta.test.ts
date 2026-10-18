@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nombreDePila, saludoDeCarta } from "@/lib/tratoInvitado";
+import { detectarTrato, nombreDePila, personasDelNombre, saludoDeCarta } from "@/lib/tratoInvitado";
 import { citaHablada } from "@/lib/versiculos";
 
 describe("la carta en voz alta", () => {
@@ -21,5 +21,17 @@ describe("la carta en voz alta", () => {
     expect(nombreDePila("María Pérez")).toBe("María");
     expect(saludoDeCarta("Rosa María Pérez", "f")).toBe("Querida Rosa,");
     expect(saludoDeCarta("Alex Ramos", "neutro")).toBe("Alex,");
+  });
+
+  it("dos personas en el mismo invitado salen las dos, se escriban como se escriban", () => {
+    expect(nombreDePila("Rosa Pérez, Juan Ramos")).toBe("Rosa y Juan");
+    expect(nombreDePila("Rosa Pérez & Juan Ramos")).toBe("Rosa y Juan");
+    expect(nombreDePila("Rosa Pérez / Juan Ramos")).toBe("Rosa y Juan");
+    expect(nombreDePila("Rosa Pérez e Isaac Ramos")).toBe("Rosa e Isaac");
+    expect(nombreDePila("Rosa, Juan y Ana López")).toBe("Rosa, Juan y Ana");
+    expect(nombreDePila("Tío Juan y Tía Rosa")).toBe("Tío Juan y Tía Rosa");
+    expect(personasDelNombre("Familia López, de Santa Ana")).toEqual(["Familia López, de Santa Ana"]);
+    expect(detectarTrato("Rosa Pérez, Juan Ramos")).toBe("plural");
+    expect(saludoDeCarta("Rosa Pérez, Juan Ramos", detectarTrato("Rosa Pérez, Juan Ramos"))).toBe("Queridos Rosa y Juan,");
   });
 });

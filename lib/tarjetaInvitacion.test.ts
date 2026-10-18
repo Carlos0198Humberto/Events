@@ -421,6 +421,14 @@ describe("tarjeta de XV años", () => {
   });
 });
 
+describe("varias personas en el mismo invitado", () => {
+  it("la tarjeta las nombra a todas, unidas con «y»", () => {
+    expect(armarDatosTarjeta(grad(), "Rosa Pérez, Juan Ramos", "plural").invitado).toBe("Rosa Pérez y Juan Ramos");
+    expect(armarDatosTarjeta(grad(), "Rosa Pérez e Isaac Ramos", "plural").invitado).toBe("Rosa Pérez e Isaac Ramos");
+    expect(armarDatosTarjeta(grad(), "Familia López, de Santa Ana", "plural").invitado).toBe("Familia López, de Santa Ana");
+  });
+});
+
 describe("el nombre y quién invita siempre aparecen", () => {
   it("reconoce a la quinceañera en «XV de…», «15 años de…» y «Quinceañera de…»", () => {
     for (const nombre of ["XV de Ashley", "15 años de Ashley", "Quinceañera de Ashley", "XV años de Ashley"]) {

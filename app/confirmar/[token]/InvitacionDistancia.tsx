@@ -15,7 +15,7 @@
 // La carta cambia según a quién va (familia, amigos, hermanos en Cristo), y si
 // el organizador cargó la transmisión del culto, se puede ver desde acá.
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   cartaDistancia, extrasDe, fechaLarga, hablaElProtagonista, horaCorta, protagonistaDe,
   type EventoTarjeta, type FormaFoto, type VinculoDistancia,
@@ -62,6 +62,8 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, vin
   const direccion = ex.direccion ?? null;
   const lugar = direccion && ciudad && direccion.toLowerCase().includes(ciudad) ? lugarCompleto.slice(0, coma).trim() : lugarCompleto;
   const [abierta, setAbierta] = useState<number | null>(null);
+  // Tocar la foto de arriba la abre entera
+  const [verRetrato, setVerRetrato] = useState(false);
 
   return (
     <div className={`dl-wrap${graduacion ? " grad" : ""}`}>
@@ -75,12 +77,7 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, vin
         <header className="dl-cab" data-guia="dl-inicio">
           <p className="dl-kicker"><i />Invitación especial<i /></p>
           {paraQuien && <p className="dl-para">{paraQuien}</p>}
-          {foto && (
-            <figure className={`dl-retrato ${forma}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={foto} alt={p.nombre} />
-            </figure>
-          )}
+          {foto && <RetratoCarta src={foto} alt={p.nombre} forma={forma} onAbrir={() => setVerRetrato(true)} />}
           <p className="dl-script">Con gratitud</p>
           <h1 className="dl-nombre">{p.nombre}</h1>
           {ex.carrera && <p className="dl-carrera">{ex.carrera}</p>}
@@ -168,7 +165,41 @@ export default function InvitacionDistancia({ evento, invitadoNombre, trato, vin
       {abierta !== null && (
         <Visor fotos={fotos} indice={abierta} onCambiar={setAbierta} onCerrar={() => setAbierta(null)} />
       )}
+      {verRetrato && foto && (
+        <Visor fotos={[foto]} indice={0} onCambiar={() => {}} onCerrar={() => setVerRetrato(false)} />
+      )}
     </div>
+  );
+}
+
+// La foto de la carta con la forma de la foto. Antes iba siempre en un arco
+// angosto (4:5) recortada al centro: en una foto horizontal, como la del
+// graduado con sus papás, quedaba solo el del medio. Ahora:
+// - horizontal: un marco ancho con la proporción de la foto (entera, nada se corta);
+// - vertical o cuadrada: la forma elegida (arco, retrato o círculo), con la
+//   altura de la foto para que el recorte sea mínimo.
+function RetratoCarta({ src, alt, forma, onAbrir }: { src: string; alt: string; forma: FormaFoto; onAbrir: () => void }) {
+  const ref = useRef<HTMLImageElement>(null);
+  const [proporcion, setProporcion] = useState<number | null>(null);
+  const medir = () => {
+    const i = ref.current;
+    if (i && i.naturalWidth && i.naturalHeight) setProporcion(i.naturalWidth / i.naturalHeight);
+  };
+  // Si ya estaba en caché, el load llega antes que React: se mide igual
+  useEffect(() => { if (ref.current?.complete) medir(); }, [src]);
+  const horizontal = proporcion !== null && proporcion > 1.1;
+  const clase = horizontal ? "apaisada" : forma;
+  const aspecto = proporcion === null ? undefined
+    : horizontal ? Math.min(proporcion, 1.9)
+    : forma === "circulo" ? 1
+    : Math.min(Math.max(proporcion, 0.7), 0.9);
+  return (
+    <figure className={`dl-retrato ${clase}`}>
+      <button type="button" className="dl-retrato-boton" onClick={onAbrir} aria-label="Ver la foto entera">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img ref={ref} src={src} alt={alt} onLoad={medir} style={aspecto ? { aspectRatio: String(aspecto) } : undefined} />
+      </button>
+    </figure>
   );
 }
 
@@ -288,6 +319,9 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dl-retrato.arco,.dl-retrato.arco img{border-radius:999px 999px 0 0}
 .dl-retrato.arco img,.dl-retrato.retrato img{aspect-ratio:4/5}
 .dl-retrato.retrato,.dl-retrato.retrato img{border-radius:12px}
+.dl-retrato.apaisada{width:min(100%,340px);border-radius:14px}
+.dl-retrato.apaisada img{border-radius:14px;object-position:50% 40%}
+.dl-retrato-boton{display:block;width:100%;padding:0;border:none;background:none;cursor:zoom-in;border-radius:inherit}
 .dl-script{font-family:'Great Vibes',cursive;font-size:clamp(40px,12vw,52px);line-height:1.1;margin-top:16px;padding:0 6px;color:var(--rg)}
 .dl-nombre{font-family:'Playfair Display',Georgia,serif;font-size:clamp(25px,7vw,32px);font-weight:600;line-height:1.15;color:var(--tinta);margin-top:2px;text-wrap:balance}
 .dl-carrera{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:16.5px;color:var(--tinta2);margin-top:8px;text-wrap:balance}
@@ -313,15 +347,17 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dl-datos small{display:block;font-size:13px;color:var(--tinta2);margin-top:1px}
 .dl-ico{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:34px;height:34px;border-radius:50%;background:var(--rg4);color:var(--rg)}
 .dl-ico.grande{width:44px;height:44px}
-.dl-polaroids{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 14px;padding:4px 2px}
-.dl-polaroid{display:block;padding:7px 7px 24px;border:none;background:#FFFFFF;cursor:pointer;
+/* Columnas (no grilla): cada foto con su forma, entera, sin recortar a cuadrado */
+.dl-polaroids{columns:2;column-gap:14px;padding:4px 2px}
+.dl-polaroid{display:block;width:100%;margin:0 0 16px;break-inside:avoid;padding:7px 7px 24px;border:none;background:#FFFFFF;cursor:pointer;
   box-shadow:0 1px 2px rgba(42,35,38,.08),0 10px 22px -10px rgba(42,35,38,.30);transform:rotate(-1.6deg);transition:transform .25s}
 .dl-polaroid:nth-child(2n){transform:rotate(1.4deg)}
 .dl-polaroid:nth-child(3n){transform:rotate(-.6deg)}
 .dl-polaroid:active{transform:scale(.97)}
-/* Con un número impar de fotos, la última va centrada y no queda sola a un costado */
-.dl-polaroid:last-child:nth-child(odd){grid-column:1 / -1;justify-self:center;width:calc(50% - 7px)}
-.dl-polaroid img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:var(--rg4)}
+/* Una sola foto: centrada y más grande */
+.dl-polaroid:only-child{width:min(100%,300px);margin-left:auto;margin-right:auto}
+.dl-polaroids:has(.dl-polaroid:only-child){columns:1}
+.dl-polaroid img{display:block;width:100%;height:auto;background:var(--rg4)}
 .dist-vacio{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14.5px;color:var(--tinta2);text-align:center;
   background:#FFFFFF;border:1px dashed rgba(185,122,104,.55);border-radius:16px;padding:20px 16px}
 .dist-vacio svg{color:var(--rg2)}

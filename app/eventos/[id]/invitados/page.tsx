@@ -381,7 +381,7 @@ export default function AgregarInvitados() {
     const cambiar = (lista: Invitado[]) => lista.map((i) => (i.id === inv.id ? { ...i, a_distancia: nuevo } : i));
     setTodosInvitados(cambiar);
     setAgregados(cambiar);
-    toast.success(nuevo ? `${inv.nombre.split(" ")[0]} recibe ahora la invitación especial a distancia` : `${inv.nombre.split(" ")[0]} vuelve a la invitación normal`);
+    toast.success(nuevo ? `${nombreDePila(inv.nombre)} recibe ahora la invitación especial a distancia` : `${nombreDePila(inv.nombre)} vuelve a la invitación normal`);
   }
 
   async function cambiarVinculo(inv: Invitado, vinculo: VinculoDistancia | null) {
@@ -625,7 +625,7 @@ export default function AgregarInvitados() {
     } catch { /* este navegador no copia imágenes */ }
     openWhatsApp(buildWhatsAppUrl(inv, "invitacion", mensajeTarjeta()));
     marcarEnvio(inv, "invitacion");
-    const nombre = inv.nombre.split(" ")[0];
+    const nombre = nombreDePila(inv.nombre);
     copia.then((ok) => toast.success(ok
       ? `Chat de ${nombre} abierto. La tarjeta está copiada: en el chat, mantené presionado y Pegar.`
       : `Chat de ${nombre} abierto con el mensaje: el enlace ya muestra la tarjeta.`));
@@ -656,7 +656,7 @@ export default function AgregarInvitados() {
   }
 
   async function enviarPorMessenger(inv: Invitado, texto: string, imagen: Blob | null = null): Promise<boolean> {
-    const nombre = inv.nombre.split(" ")[0];
+    const nombre = nombreDePila(inv.nombre);
     const tactil = window.matchMedia("(pointer: coarse)").matches;
     if (tactil && typeof navigator.share === "function") {
       try {
@@ -1436,7 +1436,7 @@ export default function AgregarInvitados() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
                 Volver
               </button>
-              <div className="tarjeta-titulo">Tarjeta para {tarjeta.inv.nombre.split(" ")[0]}</div>
+              <div className="tarjeta-titulo">Tarjeta para {nombreDePila(tarjeta.inv.nombre)}</div>
               <button type="button" className="tarjeta-x" onClick={cerrarTarjeta} aria-label="Cerrar la tarjeta">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
@@ -1477,7 +1477,7 @@ export default function AgregarInvitados() {
               )}
             </details>
             {tarjeta.enviada ? (() => {
-              const nombre = tarjeta.inv.nombre.split(" ")[0];
+              const nombre = nombreDePila(tarjeta.inv.nombre);
               const sig = siguienteSinEnviar(tarjeta.inv);
               const faltan = listaEtapa().filter((i) => i.token !== tarjeta.inv.token && faltaEnviar(i)).length;
               return (
@@ -1502,7 +1502,7 @@ export default function AgregarInvitados() {
               );
             })() : (<>
             {(() => {
-              const nombre = tarjeta.inv.nombre.split(" ")[0];
+              const nombre = nombreDePila(tarjeta.inv.nombre);
               const pre = esPreInvitacion(tarjeta.inv);
               const tactil = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
               return (

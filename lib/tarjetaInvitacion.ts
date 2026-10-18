@@ -7,7 +7,7 @@
 //   • lib/mensajeInvitacion.ts → el texto del mensaje.
 // Por eso acá no hay nada de DOM ni de librerías de dibujo.
 
-import type { Trato } from "@/lib/tratoInvitado";
+import { personasDelNombre, unirNombres, type Trato } from "@/lib/tratoInvitado";
 import { VERSICULO_BENDICION, VERSICULO_XV, versiculoDe, type Versiculo } from "@/lib/versiculos";
 import { TONOS_XV, TONOS_XV_LISTA, type TonoXV } from "@/lib/ilustracionesXV";
 
@@ -817,7 +817,8 @@ export function armarDatosTarjeta(evento: EventoTarjeta, nombreInvitado: string,
   const gala = reserva || gracias;
   const esGraduacion = evento.tipo === "graduacion";
   const protagonista = protagonistaDe(evento);
-  const invitado = nombreInvitado.trim();
+  // «Rosa Pérez, Juan Ramos» → «Rosa Pérez y Juan Ramos»: varias personas, bien unidas
+  const invitado = unirNombres(personasDelNombre(nombreInvitado.trim()));
 
   let fecha: string | null = null;
   let fechaCorta: string | null = null;

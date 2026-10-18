@@ -1379,7 +1379,8 @@ function guionLectura({ evento, invitado, distancia, nombresCarta, reserva, grac
   const esCumple = evento.tipo === "cumpleaños";
   const esGrad = evento.tipo === "graduacion";
   const esXV = evento.tipo === "quinceañera";
-  const primerNombre = invitado.nombre.trim().split(" ")[0];
+  // El nombre de pila; si son dos o más, los de todos ("Rosa y Juan")
+  const primerNombre = nombreDePila(invitado.nombre);
   const festejado = esXV ? protagonistaDe(evento).nombre.split(/\s+/)[0]
     : evento.anfitriones?.trim() || (esCumple ? "el festejado" : "quien se gradúa");
   const pasos: PasoGuia[] = [];
@@ -1395,7 +1396,8 @@ function guionLectura({ evento, invitado, distancia, nombresCarta, reserva, grac
   // Agradecimiento: el saludo, las palabras del organizador, la firma, las
   // fotos de ese día y el lugar para responderle
   if (gracias) {
-    const varios = nombresCarta.length > 1;
+    // Varias personas: las de la lista o las que el organizador escribió juntas
+    const varios = nombresCarta.length > 1 || trato === "plural";
     const tg = textosGracias(evento, varios ? "plural" : trato);
     const autor = quien || festejado;
     pasos.push({ t: `¡Holaaa, ${primerNombre}! ${autor.charAt(0).toUpperCase()}${autor.slice(1)} ${varios ? "les" : "te"} escribió unas palabras de agradecimiento.`, guia: "ag-inicio" });
@@ -1410,7 +1412,8 @@ function guionLectura({ evento, invitado, distancia, nombresCarta, reserva, grac
   // Pre-invitación: que conste la invitación, la fecha para apartarla y que
   // la invitación para confirmar llega después
   if (reserva) {
-    const varios = nombresCarta.length > 1;
+    // Varias personas: las de la lista o las que el organizador escribió juntas
+    const varios = nombresCarta.length > 1 || trato === "plural";
     const tr = textosReserva(evento, varios ? "plural" : trato);
     pasos.push({ t: tr.constancia, guia: "pi-constancia" });
     if (evento.fecha) pasos.push({ t: `La fecha es el ${fechaHablada(evento.fecha)}.`, guia: "pi-fecha" });
@@ -1423,7 +1426,8 @@ function guionLectura({ evento, invitado, distancia, nombresCarta, reserva, grac
   // A distancia: no se confirma. La voz lee la carta entera, párrafo por
   // párrafo, y la pantalla la va acompañando; al final, las fotos y el mensaje
   if (distancia) {
-    const varios = nombresCarta.length > 1;
+    // Varias personas: las de la lista o las que el organizador escribió juntas
+    const varios = nombresCarta.length > 1 || trato === "plural";
     const tratoCarta = varios ? "plural" : trato;
     const carta = cartaDistancia(evento, tratoCarta, vinculoDe(invitado.vinculo));
     const autor = quien || festejado;
@@ -1535,7 +1539,8 @@ function FloatingMascot({
   const esCumple = evento.tipo === "cumpleaños";
   const esGrad = evento.tipo === "graduacion";
   const esXV = evento.tipo === "quinceañera";
-  const primerNombre = invitado.nombre.trim().split(" ")[0];
+  // El nombre de pila; si son dos o más, los de todos ("Rosa y Juan")
+  const primerNombre = nombreDePila(invitado.nombre);
   // En los XV los anfitriones suelen ser los papás: el deseo es para la quinceañera
   const festejado = esXV ? protagonistaDe(evento).nombre.split(/\s+/)[0]
     : evento.anfitriones?.trim() || (esCumple ? "el festejado" : "quien se gradúa");
