@@ -10,7 +10,7 @@
 // el navegador (Great Vibes y Cinzel a 100 px). Los ornamentos son los mismos
 // trazados que dibuja el canvas (lib/ornamentosTarjeta.ts).
 
-import { medidasImagen } from "@/lib/medidasImagen";
+import { marcoParaFoto, medidasImagen } from "@/lib/medidasImagen";
 import { ImageResponse } from "next/og";
 import { doradoCss, nombreEnPartes, partesPadres, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, separador } from "@/lib/ornamentosTarjeta";
@@ -113,10 +113,8 @@ function Birrete({ ancho, P }: { ancho: number; P: PaletaTarjeta }) {
 // La foto de portada como data URL (Satori no espera descargas lentas y no lee
 // WEBP/HEIC). Si tarda, no es JPEG/PNG o pesa demasiado, la tarjeta va sin foto.
 // La foto como data URL y su proporción (ancho / alto), leída del archivo:
-// Satori no mide imágenes, y una foto horizontal necesita otro marco
+// Satori no mide imágenes, y el marco toma la proporción de la foto
 type FotoOG = { src: string; proporcion: number };
-const HORIZONTAL = 1.1;
-const proporcionMarco = (p: number) => Math.min(p, 1.9);
 
 async function fotoComoDataUrl(url: string | null): Promise<FotoOG | null> {
   if (!url) return null;
@@ -142,12 +140,13 @@ function radios(forma: FormaFoto, ancho: number) {
 }
 
 function Retrato({ src, lado, P, forma: formaElegida, proporcion }: { src: string; lado: number; P: PaletaTarjeta; forma: FormaFoto; proporcion: number }) {
-  // Horizontal (el graduado con sus papás): marco ancho con su proporción,
-  // del mismo alto, entera. Arco y retrato son más altos que anchos.
-  const horizontal = proporcion > HORIZONTAL;
-  const forma: FormaFoto = horizontal ? "retrato" : formaElegida;
+  // El marco toma la proporción de la foto, del mismo alto: horizontal (el
+  // graduado con sus papás), un marco ancho; la quinceañera de cuerpo entero,
+  // un arco o un retrato angosto. Entera.
+  const marco = marcoParaFoto(proporcion, formaElegida);
+  const forma: FormaFoto = marco.forma === "apaisada" ? "retrato" : marco.forma;
   const alto = formaElegida === "circulo" ? lado : Math.round(lado * 1.05);
-  const ancho = horizontal ? Math.round(Math.min(320, alto * proporcionMarco(proporcion))) : forma === "circulo" ? lado : Math.round(lado * 0.8);
+  const ancho = marco.forma === "circulo" ? lado : Math.round(Math.min(320, alto * marco.aspecto));
   return (
     <div style={{
       display: "flex", width: ancho + 16, height: alto + 16, padding: 3, ...radios(forma, ancho + 16),
@@ -226,14 +225,23 @@ async function renderModernaOG(datos: DatosTarjeta) {
       fontFamily: "Sans", fontWeight: 500, fontSize: 13, letterSpacing: 3, color: T.tinta }}>{texto}</div>
   );
 
-  // Arco vertical, como en la tarjeta (el círculo y el retrato, con su forma)
-  // Horizontal: entera, a lo ancho de su columna, con su proporción
-  const fotoHorizontal = !!foto && foto.proporcion > HORIZONTAL;
-  const radiosFoto = fotoHorizontal ? { borderRadius: 14 }
-    : datos.formaFoto === "circulo" ? { borderRadius: "50%" }
-    : datos.formaFoto === "arco" ? { borderTopLeftRadius: 170, borderTopRightRadius: 170 } : { borderRadius: 14 };
-  const fotoAncho = fotoHorizontal ? 400 : datos.formaFoto === "circulo" ? 400 : 340;
-  const fotoAlto = fotoHorizontal ? Math.round(400 / proporcionMarco(foto!.proporcion)) : datos.formaFoto === "circulo" ? 400 : 430;
+  // Arco vertical, como en la tarjeta (el círculo y el retrato, con su forma),
+  // con la proporción de la foto para que se vea entera. Horizontal: a lo ancho
+  // de su columna; la quinceañera de cuerpo entero, más alta y angosta.
+  const marcoFoto = foto ? marcoParaFoto(foto.proporcion, datos.formaFoto) : null;
+  const { fotoAncho, fotoAlto } = (() => {
+    if (!marcoFoto) return { fotoAncho: 0, fotoAlto: 0 };
+    if (marcoFoto.forma === "apaisada") return { fotoAncho: 400, fotoAlto: Math.round(400 / marcoFoto.aspecto) };
+    if (marcoFoto.forma === "circulo") return { fotoAncho: 400, fotoAlto: 400 };
+    // Del alto de siempre; si queda muy angosta, crece hasta 540 (la columna mide 440 × 630)
+    let h = marcoFoto.aspecto < 0.63 ? Math.min(540, Math.round(270 / marcoFoto.aspecto)) : 430;
+    let w = Math.round(h * marcoFoto.aspecto);
+    if (w > 400) { w = 400; h = Math.round(400 / marcoFoto.aspecto); }
+    return { fotoAncho: w, fotoAlto: h };
+  })();
+  const radiosFoto = !marcoFoto || marcoFoto.forma === "apaisada" || marcoFoto.forma === "retrato" ? { borderRadius: 14 }
+    : marcoFoto.forma === "circulo" ? { borderRadius: "50%" }
+    : { borderTopLeftRadius: fotoAncho / 2, borderTopRightRadius: fotoAncho / 2 };
 
   return new ImageResponse(
     (

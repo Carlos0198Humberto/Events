@@ -7,6 +7,7 @@ import { AppLogo } from "@/app/components/AppLogo";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import qrcode from "qrcode-generator";
 import { subirFotoEvento } from "@/lib/fotos";
+import { marcoParaFoto } from "@/lib/medidasImagen";
 import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, vinculoDe, enAgradecimiento, enInstitucion, enReserva, extrasDe, familiaDe, nombreEnPartes, partesPadres, protagonistaDe, quienInvitaHablado, textosGracias, textosReserva, tintasPlanas, versiculoDeEvento, type ExtrasTarjeta } from "@/lib/tarjetaInvitacion";
 import InvitacionDistancia from "./InvitacionDistancia";
 import PreInvitacion from "./PreInvitacion";
@@ -2872,6 +2873,9 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
   const forma = ex.forma_foto ?? "arco";
   const [fotoLista, setFotoLista] = useState(false);
   const [fotoFallo, setFotoFallo] = useState(false);
+  // El marco toma la proporción de la foto, para que se vea entera
+  const [proporcionFoto, setProporcionFoto] = useState<number | null>(null);
+  const marcoPortada = proporcionFoto ? marcoParaFoto(proporcionFoto, forma) : null;
 
   // La portada es la misma tarjeta que recibió el invitado (con su nombre),
   // que sale de un sobre. Si el celular no la logra armar a tiempo, queda la
@@ -3143,12 +3147,18 @@ function PortadaGrad({ invitado, evento, nombres, saliendo, onEntrar, onSinSonid
 
       <div className="pt-centro">
         {foto && !fotoFallo ? (
-          <div className={`pt-retrato ${forma}`}>
+          <div
+            className={`pt-retrato ${marcoPortada?.forma ?? forma}`}
+            style={marcoPortada && marcoPortada.forma !== "circulo"
+              ? { width: `calc(var(--lado) * ${(1.06 * marcoPortada.aspecto).toFixed(3)})`, height: "auto", aspectRatio: String(marcoPortada.aspecto), maxWidth: "100%" }
+              : undefined}
+          >
             {/* El monograma queda debajo mientras la foto carga (señal floja) */}
             <div className="pt-retrato-in" aria-hidden="true">
               {mono}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={foto} alt="" className={fotoLista ? "lista" : ""} onLoad={() => setFotoLista(true)} onError={() => setFotoFallo(true)} />
+              <img src={foto} alt="" className={fotoLista ? "lista" : ""} onError={() => setFotoFallo(true)}
+                onLoad={(e) => { const i = e.currentTarget; if (i.naturalHeight) setProporcionFoto(i.naturalWidth / i.naturalHeight); setFotoLista(true); }} />
             </div>
           </div>
         ) : evento.tipo === "quinceañera" ? null : (

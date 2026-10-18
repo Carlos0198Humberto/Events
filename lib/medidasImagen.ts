@@ -35,3 +35,33 @@ export function medidasImagen(b: Uint8Array): Medidas | null {
   }
   return null;
 }
+
+// ─── El marco que deja ver la foto ENTERA ─────────────────────────────────────
+//
+// Cada forma tiene su proporción (el arco es 0,76 de ancho por 1 de alto), y
+// una foto que no la tiene se recortaba. La quinceañera de cuerpo entero con su
+// vestido (una foto del celular, 9:16 = 0,56) perdía la cabeza y los pies; el
+// graduado con sus papás (horizontal) perdía a los de los costados. Ahora el
+// marco toma la proporción de la foto: el arco y el retrato se angostan o se
+// ensanchan (siguen siendo arco y retrato), una foto horizontal va en un marco
+// ancho, y una muy alta no se mete en un círculo: va en un retrato.
+
+/** Más ancha que esto: marco ancho (horizontal) */
+export const PROPORCION_HORIZONTAL = 1.1;
+/** Más angosta que esto (cuerpo entero): no entra en un círculo sin cortar */
+export const PROPORCION_ALTA = 0.74;
+
+export type FormaMarco = "circulo" | "arco" | "retrato" | "apaisada";
+
+/**
+ * La forma y la proporción (ancho / alto) del marco para una foto de esa
+ * proporción. Entre 0,5 y 1,9 la foto entra entera; más extrema, se recorta
+ * apenas por los bordes.
+ */
+export function marcoParaFoto(proporcion: number, forma: "circulo" | "arco" | "retrato"): { forma: FormaMarco; aspecto: number } {
+  const p = Number.isFinite(proporcion) && proporcion > 0 ? proporcion : 0.8;
+  if (p > PROPORCION_HORIZONTAL) return { forma: "apaisada", aspecto: Math.min(p, 1.9) };
+  const aspecto = Math.max(p, 0.5);
+  if (forma === "circulo") return p < PROPORCION_ALTA ? { forma: "retrato", aspecto } : { forma: "circulo", aspecto: 1 };
+  return { forma, aspecto };
+}

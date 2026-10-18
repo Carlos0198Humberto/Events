@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { medidasImagen } from "@/lib/medidasImagen";
+import { marcoParaFoto, medidasImagen } from "@/lib/medidasImagen";
 
 describe("medidas de una foto por su cabecera", () => {
   it("lee el ancho y el alto de un PNG", () => {
@@ -22,5 +22,28 @@ describe("medidas de una foto por su cabecera", () => {
 
   it("si no es PNG ni JPEG, no adivina", () => {
     expect(medidasImagen(new Uint8Array([0x52, 0x49, 0x46, 0x46]))).toBeNull();
+  });
+});
+
+describe("marco para que la foto se vea entera", () => {
+  it("la quinceañera de cuerpo entero (9:16): el arco toma su proporción y el círculo pasa a retrato", () => {
+    expect(marcoParaFoto(9 / 16, "arco")).toEqual({ forma: "arco", aspecto: 9 / 16 });
+    expect(marcoParaFoto(9 / 16, "circulo")).toEqual({ forma: "retrato", aspecto: 9 / 16 });
+  });
+
+  it("una foto 3:4 del celular entra entera en el arco; en el círculo, el círculo queda", () => {
+    expect(marcoParaFoto(0.75, "arco")).toEqual({ forma: "arco", aspecto: 0.75 });
+    expect(marcoParaFoto(0.75, "circulo")).toEqual({ forma: "circulo", aspecto: 1 });
+  });
+
+  it("horizontal: marco ancho; los extremos se recortan apenas", () => {
+    expect(marcoParaFoto(1.5, "arco")).toEqual({ forma: "apaisada", aspecto: 1.5 });
+    expect(marcoParaFoto(3, "circulo")).toEqual({ forma: "apaisada", aspecto: 1.9 });
+    expect(marcoParaFoto(0.3, "retrato")).toEqual({ forma: "retrato", aspecto: 0.5 });
+  });
+
+  it("sin medidas (o rotas): la proporción de siempre", () => {
+    expect(marcoParaFoto(NaN, "arco").aspecto).toBe(0.8);
+    expect(marcoParaFoto(0, "retrato").aspecto).toBe(0.8);
   });
 });

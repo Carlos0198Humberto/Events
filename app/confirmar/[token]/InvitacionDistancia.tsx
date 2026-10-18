@@ -22,6 +22,7 @@ import {
   type EventoTarjeta, type FormaFoto, type VinculoDistancia,
 } from "@/lib/tarjetaInvitacion";
 import TransmisionEnVivo from "@/app/components/TransmisionEnVivo";
+import { marcoParaFoto } from "@/lib/medidasImagen";
 import VideoIncrustado from "@/app/components/VideoIncrustado";
 import { saludoDeCarta, type Trato } from "@/lib/tratoInvitado";
 import { BIRRETE } from "@/lib/ornamentosTarjeta";
@@ -204,12 +205,11 @@ function RetratoCarta({ src, alt, forma, onAbrir }: { src: string; alt: string; 
   };
   // Si ya estaba en caché, el load llega antes que React: se mide igual
   useEffect(() => { if (ref.current?.complete) medir(); }, [src]);
-  const horizontal = proporcion !== null && proporcion > 1.1;
-  const clase = horizontal ? "apaisada" : forma;
-  const aspecto = proporcion === null ? undefined
-    : horizontal ? Math.min(proporcion, 1.9)
-    : forma === "circulo" ? 1
-    : Math.min(Math.max(proporcion, 0.7), 0.9);
+  // El marco toma la proporción de la foto: entera, aunque sea horizontal o la
+  // quinceañera de cuerpo entero (en un círculo no entra: va en un retrato)
+  const marco = proporcion === null ? null : marcoParaFoto(proporcion, forma);
+  const clase = marco?.forma ?? forma;
+  const aspecto = marco ? (marco.forma === "circulo" ? 1 : marco.aspecto) : undefined;
   return (
     <figure className={`dl-retrato ${clase}`}>
       <button type="button" className="dl-retrato-boton" onClick={onAbrir} aria-label="Ver la foto entera">

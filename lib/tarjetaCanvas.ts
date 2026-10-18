@@ -21,6 +21,7 @@ import qrcode from "qrcode-generator";
 import { PALETAS_TARJETA, nombreEnPartes, partesPadres, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta, type TintasPlanas } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, sello, separador } from "@/lib/ornamentosTarjeta";
 import { coloresXV, svgDataUrl, svgQuinceanera, svgRamillete, type ColoresXV, type EsquinaXV } from "@/lib/ilustracionesXV";
+import { marcoParaFoto } from "@/lib/medidasImagen";
 
 const W = 1080;
 // Alto y paleta de la tarjeta que se está dibujando. Se fijan después de todas
@@ -314,23 +315,37 @@ function silueta(ctx: CanvasRenderingContext2D, forma: FormaFoto, x: number, y: 
   }
 }
 
-// La foto con su marco dorado. El recorte favorece la parte de arriba de la
-// foto, que es donde suele estar la cara.
-// Una foto horizontal (el graduado con sus papás) no entra en un arco ni en un
-// círculo sin cortar a la gente de los costados: va en un marco ancho con su
-// propia proporción, del mismo alto que tendría el arco (no mueve el resto)
+// La foto con su marco dorado, entera: el marco toma la proporción de la foto
+// (marcoParaFoto). Una horizontal (el graduado con sus papás) va en un marco
+// ancho del mismo alto que tendría el arco; la quinceañera de cuerpo entero, en
+// un arco angosto (no mueve el resto). Si algo se recorta, favorece la parte de
+// arriba, donde suele estar la cara.
 const proporcionDe = (img: HTMLImageElement) => (img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1);
-export const esHorizontal = (img: HTMLImageElement) => proporcionDe(img) > 1.1;
 function medidasApaisada(img: HTMLImageElement, altoDisponible: number, anchoMax: number) {
   const r = Math.min(proporcionDe(img), 1.9);
   const ancho = Math.min(anchoMax, altoDisponible * r);
   return { ancho, alto: ancho / r };
 }
 
-function marcoFoto(ctx: CanvasRenderingContext2D, img: HTMLImageElement, forma: FormaFoto, cx: number, yTop: number, R: number) {
-  if (esHorizontal(img)) { marcoApaisado(ctx, img, forma, cx, yTop, R); return; }
-  if (forma === "circulo") { retrato(ctx, img, cx, yTop + R + 16, R); return; }
-  const { ancho, alto } = medidasFoto(forma, R);
+/**
+ * El marco en que entra ENTERA esa foto, dentro del alto que tiene reservado
+ * la forma elegida (no mueve el resto de la tarjeta): horizontal, ancho; la
+ * quinceañera de cuerpo entero, un arco o un retrato angosto (en un círculo no
+ * entra sin cortarle la cabeza o los pies).
+ */
+function medidasEnMarco(img: HTMLImageElement, forma: FormaFoto, R: number) {
+  const m = marcoParaFoto(proporcionDe(img), forma);
+  const disponible = medidasFoto(forma, R).alto;
+  if (m.forma === "apaisada") return { forma: m.forma, ...medidasApaisada(img, disponible, 760) };
+  if (m.forma === "circulo") return { forma: m.forma, ancho: R * 2, alto: R * 2 };
+  return { forma: m.forma, ancho: Math.min(760, disponible * m.aspecto), alto: disponible };
+}
+
+function marcoFoto(ctx: CanvasRenderingContext2D, img: HTMLImageElement, formaElegida: FormaFoto, cx: number, yTop: number, R: number) {
+  const marco = medidasEnMarco(img, formaElegida, R);
+  if (marco.forma === "apaisada") { marcoApaisado(ctx, img, formaElegida, cx, yTop, R); return; }
+  if (marco.forma === "circulo") { retrato(ctx, img, cx, yTop + R + 16, R); return; }
+  const { forma, ancho, alto } = marco;
   const x = cx - ancho / 2, y = yTop + 16;
 
   ctx.save();
@@ -592,13 +607,13 @@ export async function generarTarjetaPNG(datos: DatosTarjeta, formato: FormatoTar
     ? { alto: mf.alto + 32, antes: 0, dibujar: (y) => {
       marcoFoto(ctx, foto, datos.formaFoto, cx, y, RF);
       if (datos.esGraduacion) {
-        // Apoyado en el borde superior derecho del marco
-        if (esHorizontal(foto)) {
-          const ap = medidasApaisada(foto, mf.alto, 760);
-          birrete(ctx, cx + ap.ancho / 2 - 34, y + 16 + (mf.alto - ap.alto) / 2 - 6, 0.5, -0.32);
+        // Apoyado en el borde superior derecho del marco (el que tomó la foto)
+        const mm = medidasEnMarco(foto, datos.formaFoto, RF);
+        if (mm.forma === "apaisada") {
+          birrete(ctx, cx + mm.ancho / 2 - 34, y + 16 + (mf.alto - mm.alto) / 2 - 6, 0.5, -0.32);
         } else {
-          const bx = datos.formaFoto === "circulo" ? cx + RF * 0.66 : cx + mf.ancho * 0.36;
-          const by = datos.formaFoto === "circulo" ? y + RF * 0.36 : y + (datos.formaFoto === "arco" ? mf.ancho * 0.16 : 10);
+          const bx = mm.forma === "circulo" ? cx + RF * 0.66 : cx + mm.ancho * 0.36;
+          const by = mm.forma === "circulo" ? y + RF * 0.36 : y + (mm.forma === "arco" ? mm.ancho * 0.16 : 10);
           birrete(ctx, bx, by, 0.5, -0.32);
         }
       }
@@ -827,9 +842,10 @@ const ALTO_FOTO: Record<FormatoTarjeta, number> = { tarjeta: 450, historia: 780,
 const MARGEN = 40;   // filete
 const INTERIOR = 76; // borde de la foto
 
-function fotoModerna(ctx: CanvasRenderingContext2D, img: HTMLImageElement, forma: FormaFoto, alto: number) {
+function fotoModerna(ctx: CanvasRenderingContext2D, img: HTMLImageElement, formaElegida: FormaFoto, alto: number) {
   const cx = W / 2;
-  if (esHorizontal(img)) {
+  const marco = marcoParaFoto(proporcionDe(img), formaElegida);
+  if (marco.forma === "apaisada") {
     // Entera y con su proporción, en el mismo espacio de la foto vertical
     const { ancho: wa, alto: ha } = medidasApaisada(img, alto, W - 2 * 110);
     const xa = cx - wa / 2, ya = INTERIOR + (alto - ha) / 2;
@@ -843,9 +859,11 @@ function fotoModerna(ctx: CanvasRenderingContext2D, img: HTMLImageElement, forma
     ctx.restore();
     return;
   }
-  // Vertical (como las fotos de toga): el arco y el retrato a 4:5, el círculo del alto
+  // Vertical: el arco y el retrato con la proporción de la foto (entera, aunque
+  // sea la quinceañera de cuerpo entero), el círculo del alto
+  const forma = marco.forma;
   const h = alto;
-  const w = forma === "circulo" ? alto : Math.round(alto * 0.8);
+  const w = forma === "circulo" ? alto : Math.round(alto * marco.aspecto);
   const x = cx - w / 2;
   const y = INTERIOR + (alto - h) / 2;
   ctx.save();
