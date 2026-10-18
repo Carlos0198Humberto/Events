@@ -10,6 +10,7 @@
 // el navegador (Great Vibes y Cinzel a 100 px). Los ornamentos son los mismos
 // trazados que dibuja el canvas (lib/ornamentosTarjeta.ts).
 
+import { medidasImagen } from "@/lib/medidasImagen";
 import { ImageResponse } from "next/og";
 import { doradoCss, nombreEnPartes, partesPadres, tintasPlanas, type DatosTarjeta, type FormaFoto, type PaletaTarjeta } from "@/lib/tarjetaInvitacion";
 import { BIRRETE, filigrana, separador } from "@/lib/ornamentosTarjeta";
@@ -111,7 +112,13 @@ function Birrete({ ancho, P }: { ancho: number; P: PaletaTarjeta }) {
 
 // La foto de portada como data URL (Satori no espera descargas lentas y no lee
 // WEBP/HEIC). Si tarda, no es JPEG/PNG o pesa demasiado, la tarjeta va sin foto.
-async function fotoComoDataUrl(url: string | null): Promise<string | null> {
+// La foto como data URL y su proporción (ancho / alto), leída del archivo:
+// Satori no mide imágenes, y una foto horizontal necesita otro marco
+type FotoOG = { src: string; proporcion: number };
+const HORIZONTAL = 1.1;
+const proporcionMarco = (p: number) => Math.min(p, 1.9);
+
+async function fotoComoDataUrl(url: string | null): Promise<FotoOG | null> {
   if (!url) return null;
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(6000), next: { revalidate: 600 } });
@@ -120,7 +127,8 @@ async function fotoComoDataUrl(url: string | null): Promise<string | null> {
     if (tipo !== "image/jpeg" && tipo !== "image/png") return null;
     const datos = await res.arrayBuffer();
     if (datos.byteLength > 8 * 1024 * 1024) return null;
-    return `data:${tipo};base64,${Buffer.from(datos).toString("base64")}`;
+    const m = medidasImagen(new Uint8Array(datos));
+    return { src: `data:${tipo};base64,${Buffer.from(datos).toString("base64")}`, proporcion: m ? m.ancho / m.alto : 0.8 };
   } catch {
     return null;
   }
@@ -133,10 +141,13 @@ function radios(forma: FormaFoto, ancho: number) {
   return { borderRadius: 10 };
 }
 
-function Retrato({ src, lado, P, forma }: { src: string; lado: number; P: PaletaTarjeta; forma: FormaFoto }) {
-  // Arco y retrato son más altos que anchos
-  const ancho = forma === "circulo" ? lado : Math.round(lado * 0.8);
-  const alto = forma === "circulo" ? lado : Math.round(lado * 1.05);
+function Retrato({ src, lado, P, forma: formaElegida, proporcion }: { src: string; lado: number; P: PaletaTarjeta; forma: FormaFoto; proporcion: number }) {
+  // Horizontal (el graduado con sus papás): marco ancho con su proporción,
+  // del mismo alto, entera. Arco y retrato son más altos que anchos.
+  const horizontal = proporcion > HORIZONTAL;
+  const forma: FormaFoto = horizontal ? "retrato" : formaElegida;
+  const alto = formaElegida === "circulo" ? lado : Math.round(lado * 1.05);
+  const ancho = horizontal ? Math.round(Math.min(320, alto * proporcionMarco(proporcion))) : forma === "circulo" ? lado : Math.round(lado * 0.8);
   return (
     <div style={{
       display: "flex", width: ancho + 16, height: alto + 16, padding: 3, ...radios(forma, ancho + 16),
@@ -216,9 +227,13 @@ async function renderModernaOG(datos: DatosTarjeta) {
   );
 
   // Arco vertical, como en la tarjeta (el círculo y el retrato, con su forma)
-  const radiosFoto = datos.formaFoto === "circulo" ? { borderRadius: "50%" }
+  // Horizontal: entera, a lo ancho de su columna, con su proporción
+  const fotoHorizontal = !!foto && foto.proporcion > HORIZONTAL;
+  const radiosFoto = fotoHorizontal ? { borderRadius: 14 }
+    : datos.formaFoto === "circulo" ? { borderRadius: "50%" }
     : datos.formaFoto === "arco" ? { borderTopLeftRadius: 170, borderTopRightRadius: 170 } : { borderRadius: 14 };
-  const fotoAncho = datos.formaFoto === "circulo" ? 400 : 340;
+  const fotoAncho = fotoHorizontal ? 400 : datos.formaFoto === "circulo" ? 400 : 340;
+  const fotoAlto = fotoHorizontal ? Math.round(400 / proporcionMarco(foto!.proporcion)) : datos.formaFoto === "circulo" ? 400 : 430;
 
   return new ImageResponse(
     (
@@ -240,7 +255,7 @@ async function renderModernaOG(datos: DatosTarjeta) {
         {foto && (
           <div style={{ position: "absolute", left: 60, top: 0, width: 440, height: 630, display: "flex", alignItems: "center", justifyContent: "center" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={foto} width={fotoAncho} height={datos.formaFoto === "circulo" ? 400 : 430} style={{ objectFit: "cover", objectPosition: "50% 22%", ...radiosFoto }} alt="" />
+            <img src={foto.src} width={fotoAncho} height={fotoAlto} style={{ objectFit: "cover", objectPosition: "50% 22%", ...radiosFoto }} alt="" />
           </div>
         )}
         <div style={{
@@ -435,7 +450,7 @@ export async function renderTarjetaOG(datos: DatosTarjeta) {
           position: "absolute", left: 64, top: 40, width: 560, height: 550,
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center",
         }}>
-          {foto ? <Retrato src={foto} lado={datos.carrera || datos.honor ? 118 : 132} P={P} forma={datos.formaFoto} />
+          {foto ? <Retrato src={foto.src} proporcion={foto.proporcion} lado={datos.carrera || datos.honor ? 118 : 132} P={P} forma={datos.formaFoto} />
             : datos.esGraduacion ? <Birrete ancho={190} P={P} /> : <Separador ancho={200} margen={0} P={P} />}
           <div style={{ display: "flex", fontFamily: "Script", fontSize: pxScript, lineHeight: 1.35, padding: "0 12px", marginTop: 4, ...TEXTO_ORO }}>{datos.tituloScript}</div>
           {honor && <div style={{ display: "flex", fontFamily: "Caps", fontWeight: 500, fontSize: pxHonor, letterSpacing: 4, whiteSpace: "nowrap", color: P.oroPlano }}>{honor}</div>}
