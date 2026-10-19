@@ -251,3 +251,43 @@ export function armarMensajeRecordatorio(evento: EventoMensaje, nombreInvitado: 
     firma(evento),
   ].filter(Boolean).join("\n\n");
 }
+
+/** Lo que el mensaje necesita de una reunión del día (lib/reuniones). */
+export type ReunionMensaje = {
+  nombre: string;
+  fecha?: string | null;
+  hora?: string | null;
+  lugar?: string | null;
+  direccion?: string | null;
+  nota?: string | null;
+};
+
+/**
+ * La invitación aparte a una reunión del día de la graduación (una reunión
+ * familiar, una cena): qué es, cuándo y dónde, los lugares, y el enlace propio
+ * de la reunión para confirmar si va.
+ */
+export function armarMensajeReunion(evento: EventoMensaje, reunion: ReunionMensaje, nombreInvitado: string, link: string, trato: Trato, hoy = new Date(), opciones: OpcionesMensaje = {}): string {
+  const plural = trato === "plural";
+  const yo = hablaElProtagonista(evento);
+  const te = plural ? "los" : "te";
+  // El día, la hora y el lugar son los de la reunión, no los de la ceremonia
+  const ev: EventoMensaje = {
+    ...evento,
+    fecha: reunion.fecha ?? null,
+    hora: reunion.hora ?? null,
+    lugar: reunion.lugar ?? null,
+    tarjeta: { ...extrasDe(evento), direccion: reunion.direccion ?? null },
+  };
+  const lugares = opciones.personas && opciones.personas > 1 ? `\u{1F39F}️ ${opciones.personas} lugares reservados` : "";
+  const confirmar = plural ? "✅ Confirmen si van aquí:" : "✅ Confirmá si vas aquí:";
+
+  return [
+    titulo(evento).texto,
+    `${saludo(nombreDePila(nombreInvitado), trato)}:\nCon mucha alegría ${te} ${yo ? "invito" : "invitamos"} a celebrar ${motivoCelebracion(evento)} en un momento especial:`,
+    [`✨ ${reunion.nombre.trim()}`, cuandoYDonde(ev, hoy), lugares].filter(Boolean).join("\n"),
+    reunion.nota?.trim() ?? "",
+    `${confirmar}\n${link}`,
+    firma(evento),
+  ].filter(Boolean).join("\n\n");
+}

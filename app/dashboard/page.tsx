@@ -1412,6 +1412,13 @@ export default function Dashboard() {
                             Ramo Solteras
                           </Link>
                         )}
+                        {/* Graduación: encuentros más chicos ese día (reunión familiar, cena), cada uno con su invitación */}
+                        {evento.tipo === "graduacion" && (
+                          <Link href={`/eventos/${evento.id}/reuniones`} className="pa-link">
+                            <Icon.calendar />
+                            Reuniones del día
+                          </Link>
+                        )}
                       </div>
 
                       {/* Expand */}
