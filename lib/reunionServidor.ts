@@ -12,7 +12,7 @@ const CLAVE = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export type InvitacionReunion = {
   invitado: { nombre: string; num_personas: number; estado: "pendiente" | "confirmado" | "rechazado"; personas_confirmadas: number | null; token: string };
-  reunion: Pick<Reunion, "nombre" | "fecha" | "hora" | "lugar" | "direccion" | "nota">;
+  reunion: Pick<Reunion, "nombre" | "fecha" | "hora" | "lugar" | "direccion" | "nota" | "color">;
   evento: EventoTarjeta & { id: string };
 };
 

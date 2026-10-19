@@ -10,7 +10,7 @@
 // columnas distintas a propósito: mezclarlas hacía que el Excel de invitados
 // contara lugares de gente que no confirmó.
 
-import { armarDatosTarjeta, extrasDe, type DatosTarjeta, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
+import { armarDatosTarjeta, conMetal, extrasDe, paletaDe, PALETAS_TARJETA, type DatosTarjeta, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 import type { Trato } from "@/lib/tratoInvitado";
 
 export type Reunion = {
@@ -22,6 +22,8 @@ export type Reunion = {
   lugar: string | null;
   direccion: string | null;
   nota: string | null;
+  /** Los colores de su tarjeta (una paleta de PALETAS_TARJETA); null = el de siempre */
+  color?: string | null;
   created_at?: string;
 };
 
@@ -52,8 +54,33 @@ const NOTA_EN_TARJETA = 120;
 
 const texto = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
 
+// ─── El color de la tarjeta de la reunión ─────────────────────────────────────
+// Distinto del de la invitación de la graduación: si no, la tarjeta de la
+// reunión se confundía con la de la ceremonia. Cada reunión elige el suyo.
+
+/** Los colores que puede tener una reunión, en el orden en que se ofrecen. */
+export const COLORES_REUNION = ["esmeralda", "rosa", "azul", "negro", "marfil"] as const;
+
+/** Un color guardado que la app conoce, o null. */
+export function colorValido(v: unknown): string | null {
+  return typeof v === "string" && (COLORES_REUNION as readonly string[]).includes(v) ? v : null;
+}
+
+/**
+ * El color de una reunión que todavía no eligió el suyo: el primero que no sea
+ * el de la invitación de la graduación ni el negro de la pre-invitación.
+ */
+export function colorPorDefecto(evento: Pick<EventoTarjeta, "tipo" | "tarjeta">): string {
+  const delEvento = paletaDe(evento).id;
+  return COLORES_REUNION.find((c) => c !== delEvento && c !== "negro") ?? "esmeralda";
+}
+
+export function colorDeReunion(evento: Pick<EventoTarjeta, "tipo" | "tarjeta">, reunion: Pick<Reunion, "color">): string {
+  return colorValido(reunion.color) ?? colorPorDefecto(evento);
+}
+
 /** Lo que se guarda de una reunión, ya limpio; o el motivo por el que no se puede. */
-export function limpiarReunion(v: Partial<Record<"nombre" | "fecha" | "hora" | "lugar" | "direccion" | "nota", unknown>>):
+export function limpiarReunion(v: Partial<Record<"nombre" | "fecha" | "hora" | "lugar" | "direccion" | "nota" | "color", unknown>>):
   { ok: true; datos: Omit<Reunion, "id" | "evento_id" | "created_at"> } | { ok: false; error: string } {
   const nombre = texto(v.nombre, MAX_NOMBRE_REUNION);
   if (!nombre) return { ok: false, error: "Ponele un nombre a la reunión (ej. Reunión familiar)" };
@@ -68,6 +95,7 @@ export function limpiarReunion(v: Partial<Record<"nombre" | "fecha" | "hora" | "
       lugar: texto(v.lugar, MAX_LUGAR_REUNION) || null,
       direccion: texto(v.direccion, MAX_DIRECCION_REUNION) || null,
       nota: texto(v.nota, MAX_NOTA_REUNION) || null,
+      color: colorValido(v.color),
     },
   };
 }
@@ -104,8 +132,9 @@ const CON_MOTIVO: Record<string, string> = {
  * La tarjeta de la reunión: el diseño de gala con el nombre de la reunión en
  * letra caligráfica, «con motivo de la graduación de», el graduado, su
  * carrera, y el día, la hora y el lugar de la reunión. Sin foto (el birrete).
+ * En su propio color, para que no se confunda con la invitación a la ceremonia.
  */
-export function datosTarjetaReunion(evento: EventoTarjeta, reunion: Pick<Reunion, "nombre" | "fecha" | "hora" | "lugar" | "direccion" | "nota">, nombreInvitado: string, trato?: Trato | null): DatosTarjeta {
+export function datosTarjetaReunion(evento: EventoTarjeta, reunion: Pick<Reunion, "nombre" | "fecha" | "hora" | "lugar" | "direccion" | "nota" | "color">, nombreInvitado: string, trato?: Trato | null): DatosTarjeta {
   const base = armarDatosTarjeta(eventoDeReunion(evento, reunion), nombreInvitado, trato);
   const plural = trato === "plural";
   const nota = reunion.nota?.trim() || "";
@@ -119,6 +148,8 @@ export function datosTarjetaReunion(evento: EventoTarjeta, reunion: Pick<Reunion
     foto: null,
     diseno: "gala",
     letraNombre: "mayusculas",
+    // Su propio color, con el metal de la invitación (oro, plata u oro rosa)
+    paleta: conMetal(PALETAS_TARJETA[colorDeReunion(evento, reunion)], extrasDe(evento).metal),
     especial: false,
     reserva: false,
     gracias: false,

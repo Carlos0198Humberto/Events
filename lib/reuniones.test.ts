@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { datosTarjetaReunion, eventoDeReunion, limpiarReunion, nuevoTokenReunion, resumenReunion } from "@/lib/reuniones";
+import { colorPorDefecto, colorValido, datosTarjetaReunion, eventoDeReunion, limpiarReunion, nuevoTokenReunion, resumenReunion } from "@/lib/reuniones";
 import { armarMensajeReunion } from "@/lib/mensajeInvitacion";
-import type { EventoTarjeta } from "@/lib/tarjetaInvitacion";
+import { paletaDe, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 
 const carlos = (extra: Partial<EventoTarjeta> = {}): EventoTarjeta => ({
   nombre: "Graduación de Carlos - Ingeniería 2026",
@@ -45,6 +45,22 @@ describe("reuniones del día", () => {
     expect(d.dedicatoria).toBe("Una cena sencilla para celebrar juntos");
     // Una nota larga no entra en los tres renglones de la tarjeta (sí en la página)
     expect(datosTarjetaReunion(carlos(), { ...reunion, nota: "x".repeat(200) }, "Rosa", "f").dedicatoria).toBeNull();
+  });
+
+  it("la tarjeta de la reunión va en otro color que la invitación de la graduación", () => {
+    // La graduación va en azul noche: la reunión, en esmeralda (nunca en el negro de la pre-invitación)
+    expect(paletaDe(carlos()).id).toBe("azul");
+    expect(colorPorDefecto(carlos())).toBe("esmeralda");
+    expect(datosTarjetaReunion(carlos(), reunion, "Rosa", "f").paleta.id).toBe("esmeralda");
+    // Si la invitación ya es esmeralda, la reunión pasa a rosa vino
+    expect(colorPorDefecto(carlos({ tarjeta: { paleta: "esmeralda" } }))).toBe("rosa");
+    // El color que eligió el organizador manda; uno desconocido no
+    expect(datosTarjetaReunion(carlos(), { ...reunion, color: "marfil" }, "Rosa", "f").paleta.id).toBe("marfil");
+    expect(datosTarjetaReunion(carlos(), { ...reunion, color: "fucsia" }, "Rosa", "f").paleta.id).toBe("esmeralda");
+    expect(colorValido("rosa")).toBe("rosa");
+    expect(colorValido("fucsia")).toBeNull();
+    const r = limpiarReunion({ nombre: "Cena", fecha: "2026-11-21", hora: "20:00", color: "rosa" });
+    expect(r.ok && r.datos.color).toBe("rosa");
   });
 
   it("cuenta a los que van aparte del cupo de los que no respondieron", () => {

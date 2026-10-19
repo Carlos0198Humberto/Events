@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS reuniones (
 );
 CREATE INDEX IF NOT EXISTS idx_reuniones_evento ON reuniones(evento_id);
 
+-- El color de la tarjeta de cada reunión (esmeralda, rosa, azul, negro, marfil),
+-- distinto del de la invitación a la ceremonia. NULL = el que elige la app.
+-- Va aparte para que también se agregue si ya habías corrido este archivo.
+ALTER TABLE reuniones ADD COLUMN IF NOT EXISTS color text;
+ALTER TABLE reuniones DROP CONSTRAINT IF EXISTS reuniones_color_largo;
+ALTER TABLE reuniones ADD CONSTRAINT reuniones_color_largo CHECK (color IS NULL OR char_length(color) <= 20);
+
 CREATE TABLE IF NOT EXISTS reunion_invitados (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   reunion_id            uuid NOT NULL REFERENCES reuniones(id) ON DELETE CASCADE,
@@ -76,7 +83,7 @@ AS $$
     ),
     'reunion', json_build_object(
       'nombre', r.nombre, 'fecha', r.fecha, 'hora', r.hora, 'lugar', r.lugar,
-      'direccion', r.direccion, 'nota', r.nota
+      'direccion', r.direccion, 'nota', r.nota, 'color', r.color
     ),
     -- El evento como lo ve ya la invitación (la tabla eventos es de lectura pública)
     'evento', to_jsonb(e) - 'organizador_id'

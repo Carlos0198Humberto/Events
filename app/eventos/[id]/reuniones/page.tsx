@@ -15,9 +15,9 @@ import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { toast } from "@/app/components/Toast";
 import { IcoCalendario, IcoCheck, IcoEnlace, IcoPapelera, IcoPersonas, IcoUbicacion, IcoWhatsApp } from "@/app/components/Iconos";
-import { datosTarjetaReunion, limpiarReunion, MAX_NOTA_REUNION, nuevoTokenReunion, resumenReunion, type InvitadoReunion, type Reunion } from "@/lib/reuniones";
+import { COLORES_REUNION, colorDeReunion, colorPorDefecto, datosTarjetaReunion, limpiarReunion, MAX_NOTA_REUNION, nuevoTokenReunion, resumenReunion, type InvitadoReunion, type Reunion } from "@/lib/reuniones";
 import { armarMensajeReunion } from "@/lib/mensajeInvitacion";
-import { fechaLarga, horaCorta, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
+import { fechaLarga, horaCorta, paletaDe, PALETAS_TARJETA, type EventoTarjeta } from "@/lib/tarjetaInvitacion";
 import { tratoDe } from "@/lib/tratoInvitado";
 
 type Evento = EventoTarjeta & { id: string };
@@ -76,7 +76,9 @@ export default function ReunionesDelDia() {
       ? await supabase.from("reuniones").update(datos).eq("id", existente.id).select().single()
       : await supabase.from("reuniones").insert({ ...datos, evento_id: id }).select().single();
     if (r.error) {
-      toast.error(TABLA_FALTA.test(`${r.error.code} ${r.error.message}`) ? "Falta correr supabase-reuniones.sql en Supabase" : "No se pudo guardar. Probá de nuevo.");
+      const motivo = `${r.error.code} ${r.error.message}`;
+      toast.error(/color/i.test(motivo) ? "Corré de nuevo supabase-reuniones.sql: agrega el color de cada reunión"
+        : TABLA_FALTA.test(motivo) ? "Falta correr supabase-reuniones.sql en Supabase" : "No se pudo guardar. Probá de nuevo.");
       return false;
     }
     await cargarReuniones();
@@ -161,7 +163,10 @@ export default function ReunionesDelDia() {
               return (
                 <article key={r.id} className="rn-reunion">
                   <button type="button" className="rn-cab" onClick={() => setAbierta(abiertaEsta ? null : r.id)} aria-expanded={abiertaEsta}>
-                    <span className="rn-nombre">{r.nombre}</span>
+                    <span className="rn-nombre">
+                      {evento && <Muestra color={colorDeReunion(evento, r)} />}
+                      {r.nombre}
+                    </span>
                     <span className="rn-cuando">
                       <IcoCalendario size={14} />
                       {r.fecha ? mayuscula(fechaLarga(r.fecha)) : "Sin día"}{r.hora ? ` · ${horaCorta(r.hora)}` : ""}
@@ -221,6 +226,7 @@ export default function ReunionesDelDia() {
 
       {formulario && evento && (
         <FormReunion
+          evento={evento}
           inicial={formulario === "nueva" ? null : formulario}
           fechaEvento={evento.fecha?.slice(0, 10) ?? ""}
           onGuardar={(d) => guardarReunion(d, formulario === "nueva" ? null : formulario)}
@@ -256,7 +262,8 @@ export default function ReunionesDelDia() {
 }
 
 // ─── Crear o editar una reunión ───────────────────────────────────────────────
-function FormReunion({ inicial, fechaEvento, onGuardar, onCerrar }: {
+function FormReunion({ evento, inicial, fechaEvento, onGuardar, onCerrar }: {
+  evento: Evento;
   inicial: Reunion | null;
   fechaEvento: string;
   onGuardar: (d: Omit<Reunion, "id" | "evento_id" | "created_at">) => Promise<boolean>;
@@ -269,7 +276,9 @@ function FormReunion({ inicial, fechaEvento, onGuardar, onCerrar }: {
     lugar: inicial?.lugar ?? "",
     direccion: inicial?.direccion ?? "",
     nota: inicial?.nota ?? "",
+    color: inicial ? colorDeReunion(evento, inicial) : colorPorDefecto(evento),
   });
+  const colorGraduacion = paletaDe(evento).id;
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const cambiar = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setV({ ...v, [k]: e.target.value }); setError(""); };
@@ -314,6 +323,16 @@ function FormReunion({ inicial, fechaEvento, onGuardar, onCerrar }: {
       </label>
       <textarea id="rn-nota" className="rn-campo" rows={3} value={v.nota} maxLength={MAX_NOTA_REUNION} onChange={cambiar("nota")} placeholder="Una cena sencilla para celebrar juntos" />
       <p className="rn-ayuda">Si es corto (hasta 120 letras) también va en la tarjeta.</p>
+      <p className="rn-etiqueta">Color de la tarjeta</p>
+      <div className="rn-colores" role="radiogroup" aria-label="Color de la tarjeta">
+        {COLORES_REUNION.map((c) => (
+          <button key={c} type="button" role="radio" aria-checked={v.color === c}
+            className={`rn-color${v.color === c ? " activo" : ""}`} onClick={() => setV({ ...v, color: c })}>
+            <Muestra color={c} grande />
+            <span>{PALETAS_TARJETA[c].nombre}{c === colorGraduacion && <small>Como la graduación</small>}</span>
+          </button>
+        ))}
+      </div>
       {error && <p className="rn-error">{error}</p>}
       <div className="rn-pie">
         <button type="button" className="rn-btn" onClick={onCerrar}>Cancelar</button>
@@ -530,6 +549,11 @@ function EnviarReunion({ evento, reunion, inv, trato, siguiente, onEnviado, onSi
   );
 }
 
+function Muestra({ color, grande = false }: { color: string; grande?: boolean }) {
+  const p = PALETAS_TARJETA[color] ?? PALETAS_TARJETA.esmeralda;
+  return <span className={`rn-muestra${grande ? " grande" : ""}`} aria-hidden="true" style={{ background: `radial-gradient(circle at 50% 40%, ${p.fondoCentro}, ${p.fondo})`, borderColor: p.oroPlano }} />;
+}
+
 function Modal({ titulo, onCerrar, children }: { titulo: string; onCerrar: () => void; children: React.ReactNode }) {
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onCerrar(); };
@@ -565,7 +589,13 @@ const ESTILOS = `
 .rn-vacio{font-size:13.5px;color:#64748B;text-align:center;padding:14px 8px;line-height:1.5}
 .rn-reunion{background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:18px;margin-bottom:12px;box-shadow:0 10px 26px -22px rgba(15,23,42,.45);overflow:hidden}
 .rn-cab{display:flex;flex-direction:column;gap:5px;width:100%;padding:16px;border:none;background:none;text-align:left;cursor:pointer;font-family:inherit;color:inherit}
-.rn-nombre{font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:600;line-height:1.15}
+.rn-nombre{display:flex;align-items:center;gap:9px;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:600;line-height:1.15}
+.rn-muestra{display:inline-block;flex:0 0 auto;width:16px;height:16px;border-radius:50%;border:2px solid}
+.rn-muestra.grande{width:30px;height:30px}
+.rn-colores{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rn-color{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:12px;border:1.5px solid rgba(15,23,42,.12);background:#fff;cursor:pointer;font-family:inherit;text-align:left;font-size:12.5px;font-weight:700;color:#0F172A}
+.rn-color small{display:block;font-size:10.5px;font-weight:600;color:#94A3B8}
+.rn-color.activo{border-color:#4F46E5;box-shadow:0 0 0 2px rgba(79,70,229,.18)}
 .rn-cuando{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#475569}
 .rn-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .rn-chip{padding:3px 9px;border-radius:999px;background:#F1F5F9;color:#334155;font-size:11.5px;font-weight:700}
