@@ -24,7 +24,9 @@ import {
   tintasPlanas,
   versiculoDeEvento,
   limpiarDedicatoriaPersonal,
+  limpiarCartaPersonal,
   MAX_DEDICATORIA,
+  MAX_CARTA,
   type EventoTarjeta,
 } from "@/lib/tarjetaInvitacion";
 import { VERSICULO_XV } from "@/lib/versiculos";
@@ -549,6 +551,16 @@ describe("invitados a distancia por vínculo", () => {
     // Vacía: la de siempre
     expect(cartaDistancia(ev, "f", "familia", "  \n ").parrafos[0]).toBe("Carta de familia.");
     expect(cartaDistancia(ev, "f", "familia", null).parrafos[0]).toBe("Carta de familia.");
+  });
+
+  it("una carta larga (de alguien expresivo) llega entera, hasta 10.000 letras", () => {
+    const parrafo = "Gracias por cada llamada, por cada consejo y por cada oración que me sostuvo. ".repeat(12).trim();
+    const larga = Array.from({ length: 9 }, () => parrafo).join("\n");
+    expect(larga.length).toBeGreaterThan(8000);
+    const c = cartaDistancia(grad(), "f", "familia", larga);
+    expect(c.parrafos.slice(0, -1).join("\n")).toBe(larga);
+    expect(limpiarCartaPersonal("x".repeat(12000))?.length).toBe(MAX_CARTA);
+    expect(MAX_CARTA).toBe(10000);
   });
 
   it("la frase escrita para esa persona va en su tarjeta, solo en la de distancia", () => {

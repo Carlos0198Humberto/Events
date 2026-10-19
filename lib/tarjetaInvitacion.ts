@@ -114,8 +114,11 @@ export const FRASES_HONOR: Record<string, string[]> = {
 
 const limpio = (v: unknown, max = 120) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
 // Igual, pero respeta los saltos de línea: cada línea es un párrafo
-/** Largo máximo de una carta a distancia escrita por el organizador */
-export const MAX_CARTA = 3000;
+/**
+ * Largo máximo de una carta a distancia escrita por el organizador: unas 1700
+ * palabras (con 3000 no alcanzaba para decir todo lo que se quiere decir)
+ */
+export const MAX_CARTA = 10000;
 const limpioParrafos = (v: unknown, max: number) => (typeof v === "string"
   ? v.split(/\n+/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean).join("\n").slice(0, max)
   : "");

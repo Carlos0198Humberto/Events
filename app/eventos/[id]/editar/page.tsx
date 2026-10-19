@@ -701,7 +701,7 @@ export default function EditarEvento() {
                         </div>
                         <textarea
                           className="field-input field-textarea"
-                          rows={valor ? 10 : 4}
+                          rows={valor ? 16 : 4}
                           maxLength={MAX_CARTA}
                           value={valor}
                           onChange={(e) => setExtras({ ...extras, [campo]: e.target.value })}

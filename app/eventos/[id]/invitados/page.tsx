@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { exportarInvitadosExcel } from "@/app/utils/exportarInvitados";
+import { exportarInvitadosExcel, type InvitadoExport } from "@/app/utils/exportarInvitados";
 import { openWhatsApp } from "@/app/utils/openWhatsApp";
 import { armarDatosTarjeta, asistioAlEvento, cartaDistancia, dedicatoriaDistancia, limpiarCartaPersonal, limpiarDedicatoriaPersonal, enAgradecimiento, enReserva, sugerenciasGracias, sugerenciasReserva, textosGracias, textosReserva, versiculoDeEvento, vinculoDe, VINCULOS_DISTANCIA, type ExtrasTarjeta, type VinculoDistancia } from "@/lib/tarjetaInvitacion";
 import { generarTarjetaPNG, cargarFuentesTarjeta } from "@/lib/tarjetaCanvas";
@@ -268,11 +268,14 @@ export default function AgregarInvitados() {
     if (exportando || todosInvitados.length === 0) return;
     setExportando(true);
     try {
-      const { data } = await supabase
-        .from("invitados")
-        .select("nombre, telefono, num_personas, estado, numero_confirmacion, mesa_id")
-        .eq("evento_id", id)
-        .order("estado", { ascending: true });
+      // Con a distancia, «elige cuántos van» y quiénes van, para contar bien
+      // los lugares; si alguna columna todavía no existe, se pide con menos
+      const base = "nombre, telefono, num_personas, estado, numero_confirmacion, mesa_id, cupo_elije_invitado";
+      let data: (InvitadoExport & { mesa_id?: string | null })[] | null = null;
+      for (const cols of [`${base}, a_distancia, asistentes_nombres`, `${base}, a_distancia`, base]) {
+        const r = await supabase.from("invitados").select(cols).eq("evento_id", id).order("estado", { ascending: true });
+        if (!r.error) { data = r.data as unknown as (InvitadoExport & { mesa_id?: string | null })[]; break; }
+      }
       const { data: mesas } = await supabase
         .from("mesas")
         .select("id, nombre")

@@ -302,7 +302,7 @@ function Visor({ fotos, indice, onCambiar, onCerrar }: { fotos: string[]; indice
 // Rosa viejo liso sobre blanco, sin degradados metálicos. El tono oscuro
 // (#8E5546) es el que se lee en texto chico; los claros solo decoran.
 const ESTILOS = `
-@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:ital,wght@0,500;0,600;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:ital,wght@0,500;0,600;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap');
 /* La página entera en papel blanco (la de graduación es azul noche) */
 html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .page.page-distancia{background-color:#FFFFFF;background-size:auto;
@@ -347,13 +347,16 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dl-bendicion cite{display:block;margin-top:6px;font-family:'Cormorant Garamond',Georgia,serif;font-style:normal;font-size:12px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--rg)}
 .dl-texto{margin-top:26px}
 .dl-saludo{font-family:'Great Vibes',cursive;font-size:34px;line-height:1.15;color:var(--rg);margin-bottom:10px}
-.dl-texto>p:not(.dl-saludo):not(.dl-oracion):not(.dl-despedida):not(.dl-firma){font-family:'Cormorant Garamond',Georgia,serif;font-size:19.5px;line-height:1.62;color:var(--tinta);margin-top:12px;text-wrap:pretty}
-.dl-oracion{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:19px;color:var(--tinta2);margin-top:18px}
+.dl-texto>p:not(.dl-saludo):not(.dl-oracion):not(.dl-despedida):not(.dl-firma){font-family:'EB Garamond',Garamond,Georgia,serif;font-size:19px;line-height:1.68;color:var(--tinta);margin-top:14px;
+  text-align:justify;text-justify:inter-word;hyphens:auto;-webkit-hyphens:auto;hyphenate-limit-chars:7 3 3;text-wrap:pretty;font-variant-numeric:oldstyle-nums;font-kerning:normal;font-feature-settings:"liga","kern"}
+/* Letra capital: la carta empieza como un libro */
+.dl-texto>p[data-guia="dl-p0"]::first-letter{float:left;font-family:'Playfair Display',Georgia,serif;font-weight:500;font-size:3.35em;line-height:.8;padding:7px 9px 0 0;color:var(--rg)}
+.dl-oracion{font-family:'EB Garamond',Garamond,Georgia,serif;font-style:italic;font-size:19px;color:var(--tinta2);margin-top:20px}
 .dl-bendicion{position:relative;margin:12px 0 0;padding:20px 18px 18px;border-radius:14px;text-align:center;
   background:#FFFFFF;border:1px solid rgba(142,85,70,.22)}
 .dl-bendicion::before{content:"";position:absolute;top:-1px;left:50%;width:44px;height:2px;margin-left:-22px;background:var(--rg)}
 .dl-bendicion p{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-size:17px;line-height:1.6;color:var(--tinta)}
-.dl-despedida{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:19px;color:var(--tinta2);margin-top:24px;text-align:right}
+.dl-despedida{font-family:'EB Garamond',Garamond,Georgia,serif;font-style:italic;font-size:19px;color:var(--tinta2);margin-top:24px;text-align:right}
 .dl-firma{font-family:'Great Vibes',cursive;font-size:clamp(30px,9vw,38px);line-height:1.15;color:var(--rg);text-align:right;margin-top:2px}
 .dist-seccion{margin:26px 4px 0;animation:dlSube .7s .15s ease both}
 .dist-seccion h2{display:flex;align-items:center;gap:12px;font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:500;color:var(--tinta);margin-bottom:12px}
@@ -395,7 +398,7 @@ html:has(.page-distancia),body:has(.page-distancia){background:#FFFFFF}
 .dist-visor-flecha{top:50%;transform:translateY(-50%);width:44px;height:44px}
 .dist-visor-flecha.izq{left:10px}.dist-visor-flecha.der{right:10px}
 .dist-visor-cuenta{position:absolute;bottom:max(16px,env(safe-area-inset-bottom,16px));left:0;right:0;text-align:center;color:rgba(255,255,255,.8);font-size:13px;font-weight:600}
-@media (max-width:360px){.dl-carta{padding:30px 20px 28px}.dl-texto>p:not(.dl-saludo):not(.dl-oracion):not(.dl-despedida):not(.dl-firma){font-size:18.5px}}
+@media (max-width:360px){.dl-carta{padding:30px 20px 28px}.dl-texto>p:not(.dl-saludo):not(.dl-oracion):not(.dl-despedida):not(.dl-firma){font-size:18px}}
 @media (prefers-reduced-motion:reduce){.dl-carta,.dist-seccion{animation:none}}
 `;
 
@@ -448,6 +451,7 @@ html:has(.dl-wrap.grad),body:has(.dl-wrap.grad){background:#EEF2F7}
 .dl-wrap.grad .dl-marco{border:1px solid rgba(184,149,74,.55);box-shadow:inset 0 0 0 4px #FFFFFF,inset 0 0 0 5px rgba(184,149,74,.28)}
 .dl-wrap.grad .dl-script{background:linear-gradient(100deg,#8A672C,#C9A35A 35%,#8A672C 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .dl-wrap.grad .dl-firma,.dl-wrap.grad .dl-saludo{color:#1E3A5F}
+.dl-wrap.grad .dl-texto>p[data-guia="dl-p0"]::first-letter{color:#8A6A2C}
 .dl-wrap.grad .dl-bendicion{border-color:rgba(184,149,74,.45)}
 .dl-wrap.grad .dl-bendicion::before{background:#B8954A}
 .dl-wrap.grad .dl-kicker,.dl-wrap.grad .dl-institucion,.dl-wrap.grad .dl-bendicion cite{color:#8A6A2C}

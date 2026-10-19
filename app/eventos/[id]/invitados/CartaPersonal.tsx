@@ -81,13 +81,13 @@ export default function CartaPersonal({ nombre, saludo, actual, sugerida, cierre
 
         <label className="cp-etiqueta" htmlFor="cp-carta">
           Su carta
-          <span className="cp-cuenta">{carta.length}/{MAX_CARTA}</span>
+          <span className="cp-cuenta">{carta.length.toLocaleString("es")}/{MAX_CARTA.toLocaleString("es")}</span>
         </label>
         <p className="cp-saludo">{saludo}</p>
         <textarea
           id="cp-carta"
           className="cp-campo"
-          rows={9}
+          rows={14}
           value={carta}
           maxLength={MAX_CARTA}
           placeholder="Escribile lo que querés que lea. Cada renglón es un párrafo."

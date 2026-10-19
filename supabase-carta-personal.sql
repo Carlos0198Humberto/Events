@@ -18,10 +18,11 @@ ALTER TABLE invitados
 ALTER TABLE invitados
   ADD COLUMN IF NOT EXISTS dedicatoria_personal text DEFAULT NULL;
 
--- Los mismos límites que la app (3000 y 120 caracteres)
+-- Los mismos límites que la app (10000 y 120 caracteres). Si ya habías corrido
+-- este archivo con el límite de 3000, correlo de nuevo: cambia el límite.
 ALTER TABLE invitados DROP CONSTRAINT IF EXISTS invitados_carta_personal_largo;
 ALTER TABLE invitados
-  ADD CONSTRAINT invitados_carta_personal_largo CHECK (carta_personal IS NULL OR char_length(carta_personal) <= 3000);
+  ADD CONSTRAINT invitados_carta_personal_largo CHECK (carta_personal IS NULL OR char_length(carta_personal) <= 10000);
 
 ALTER TABLE invitados DROP CONSTRAINT IF EXISTS invitados_dedicatoria_personal_largo;
 ALTER TABLE invitados
